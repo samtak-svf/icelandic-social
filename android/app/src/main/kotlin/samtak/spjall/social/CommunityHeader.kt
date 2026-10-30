@@ -130,7 +130,7 @@ private fun CoverBand(community: Community) {
     }
 }
 
-/** "Lokað samfélag · 12 meðlimir", with a lock in front of a private community; a tap opens the members. */
+/** `community_private_full` and the count, with a lock in front of a private community; a tap opens the members. */
 @Composable
 private fun AudienceLine(
     community: Community,

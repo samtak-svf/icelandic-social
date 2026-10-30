@@ -422,7 +422,7 @@ func audienceLine(_ community: Community) -> String {
     return "\(audience) · \(plural("community_members", Int(count)))"
 }
 
-/// The audience line the community header carries (decision 0080): `Lokað samfélag · 12 meðlimir`.
+/// The audience line the community header carries (decision 0080): `community_private_full` and the member count.
 func audienceLineFull(_ community: Community) -> String {
     let audience = localized(community.audience == .open ? "community_open_full" : "community_private_full")
     guard let count = community.memberCount else { return audience }

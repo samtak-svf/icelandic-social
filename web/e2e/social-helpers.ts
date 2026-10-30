@@ -119,7 +119,7 @@ export async function manage(page: Page) {
   await page.getByRole("menuitem", { name: new RegExp(`^${strings.community_manage}`) }).click();
 }
 
-/** Opens Stjórna with Breyta samfélagi unfolded. */
+/** Opens Stjórna with `community_edit` unfolded. */
 export async function manageDetails(page: Page) {
   await manage(page);
   // Beside the side navigation of an expanded window the details start open (decision 0087).

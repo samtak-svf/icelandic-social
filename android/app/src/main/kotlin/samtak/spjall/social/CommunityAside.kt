@@ -42,7 +42,7 @@ import samtak.spjall.ui.sideBySide
 internal const val COMMUNITY_ASIDE = "community-aside"
 
 /**
- * What Um samfélagið holds, in the form both the dialog and the aside show it, as the web's `AboutFacts`
+ * What `community_info` holds, in the form both the dialog and the aside show it, as the web's `AboutFacts`
  * (`web/src/social/about.tsx`): the description, who may read and join, the count of members, that the content is
  * not end-to-end encrypted, and where it is kept.
  */
@@ -76,7 +76,7 @@ internal fun AboutFacts(
 
 /**
  * The community page on an expanded window (decision 0087): a supporting-pane layout with the feed as the main pane
- * and Um samfélagið as the supporting one, so a foldable that unfolds changes layout without a restart. [feed]
+ * and `community_info` as the supporting one, so a foldable that unfolds changes layout without a restart. [feed]
  * draws the feed into the modifier it is given.
  */
 @OptIn(ExperimentalMaterial3AdaptiveApi::class)
@@ -108,7 +108,7 @@ internal fun CommunityPanes(
 }
 
 /**
- * Um samfélagið beside the feed on an expanded window (decision 0087): the facts and the first members' pictures.
+ * `community_info` beside the feed on an expanded window (decision 0087): the facts and the first members' pictures.
  * It scrolls on its own, so it stays in view while the feed moves.
  */
 @OptIn(ExperimentalLayoutApi::class)

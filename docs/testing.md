@@ -59,6 +59,12 @@ A backend test goes with the code whose rule it holds, not the route it happens 
 the test of a reaction rule is in `modules/social/` although it goes through `/v1`. A test
 that spans modules goes with the module that starts the flow.
 
+## A test reads the string
+
+A test takes a label from the generated strings (`strings.community_create` on the web, `getString(R.string.…)` on
+Android) instead of repeating it, so renaming a UI word touches no test (decision 0117). A word a test types as user
+content, such as a post body or a conversation's name, is data and may be anything.
+
 ## Screenshot tests (Android)
 
 Roborazzi renders Compose screens on the JVM (Robolectric, native graphics) and compares
@@ -74,7 +80,7 @@ timestamp comes from a past year so the row stamp never moves.
   failure's actual and diff images are in `app/build/outputs/roborazzi/` (uploaded by CI).
 - **Record** on the Mac (`node tooling/mac-remote.mjs -- 'cd android && ./gradlew
   :app:recordRoborazziDebug'`), copy the changed images in `android/app/src/test/screenshots/`
-  back with `scp`, and look at every one before committing it. A brand switch or a new Robolectric SDK is a re-record.
+  back with `scp`, and look at every one before committing it. A brand switch, a new Robolectric SDK or a renamed term (decision 0117) is a re-record.
 - **Every new visual state in the UI pass gets an image**: a new screen, row kind, banner or
   empty state adds a test method in that screen's `ScreenshotTest`, with fake data built the
   way its instrumented test builds it.

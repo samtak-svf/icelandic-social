@@ -116,7 +116,7 @@ fun SocialCard(
     )
 }
 
-/** "Opið · 12 meðlimir": the audience, and how many are in it when this account may know. */
+/** `community_open` or `community_private`, and how many are in it when this account may know. */
 @Composable
 fun CommunityLine(
     community: Community,

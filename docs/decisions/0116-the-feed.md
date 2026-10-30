@@ -3,6 +3,7 @@
 - Status: accepted; designed, not yet implemented
 - Date: 2026-10-30
 - Decided by: Guðröður Atli Jónsson
+- Amended by: [0117](0117-names-in-the-ui-are-one-table.md) (the `Samfélög` tab is `Hópar`)
 - Amends: [0044](0044-no-fljotid-in-v1.md) (two tabs, "no other tab"),
   [0009](0009-v1-scope.md) (the surfaces),
   [0060](0060-a-social-platform-with-an-encrypted-messenger.md) (no feed in the apps until after the open beta; the release order),

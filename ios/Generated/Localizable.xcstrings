@@ -476,7 +476,7 @@
         "is": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ bættist í hópinn."
+            "value": "%1$@ bættist í hópsamtalið."
           }
         }
       }
@@ -488,7 +488,7 @@
         "is": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ er ekki lengur í hópnum."
+            "value": "%1$@ er ekki lengur í hópsamtalinu."
           }
         }
       }
@@ -632,7 +632,7 @@
         "is": {
           "stringUnit": {
             "state": "translated",
-            "value": "Nýr hópur"
+            "value": "Nýtt hópsamtal"
           }
         }
       }
@@ -2348,7 +2348,7 @@
         "is": {
           "stringUnit": {
             "state": "translated",
-            "value": "Samfélög"
+            "value": "Hópar"
           }
         }
       }
@@ -2372,7 +2372,7 @@
         "is": {
           "stringUnit": {
             "state": "translated",
-            "value": "Mín samfélög"
+            "value": "Mínir hópar"
           }
         }
       }
@@ -2720,7 +2720,7 @@
         "is": {
           "stringUnit": {
             "state": "translated",
-            "value": "Slökkva á tilkynningum frá þessu samfélagi"
+            "value": "Slökkva á tilkynningum frá þessum hópi"
           }
         }
       }
@@ -2756,7 +2756,7 @@
         "is": {
           "stringUnit": {
             "state": "translated",
-            "value": "Samfélög"
+            "value": "Hópar"
           }
         }
       }
@@ -2888,7 +2888,7 @@
         "is": {
           "stringUnit": {
             "state": "translated",
-            "value": "Samfélögin mín"
+            "value": "Hóparnir mínir"
           }
         }
       }
@@ -2900,7 +2900,7 @@
         "is": {
           "stringUnit": {
             "state": "translated",
-            "value": "Þú ert ekki í neinu samfélagi enn."
+            "value": "Þú ert ekki í neinum hópi enn."
           }
         }
       }
@@ -2912,7 +2912,7 @@
         "is": {
           "stringUnit": {
             "state": "translated",
-            "value": "Finna samfélag"
+            "value": "Finna hóp"
           }
         }
       }
@@ -2924,7 +2924,7 @@
         "is": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ekkert samfélag fannst."
+            "value": "Enginn hópur fannst."
           }
         }
       }
@@ -2936,7 +2936,7 @@
         "is": {
           "stringUnit": {
             "state": "translated",
-            "value": "Engir póstar úr samfélögunum þínum enn."
+            "value": "Engir póstar úr hópunum þínum enn."
           }
         }
       }
@@ -2948,7 +2948,7 @@
         "is": {
           "stringUnit": {
             "state": "translated",
-            "value": "Stofna samfélag"
+            "value": "Stofna hóp"
           }
         }
       }
@@ -2984,7 +2984,7 @@
         "is": {
           "stringUnit": {
             "state": "translated",
-            "value": "Opið"
+            "value": "Opinn"
           }
         }
       }
@@ -2996,7 +2996,7 @@
         "is": {
           "stringUnit": {
             "state": "translated",
-            "value": "Lokað"
+            "value": "Lokaður"
           }
         }
       }
@@ -3008,7 +3008,7 @@
         "is": {
           "stringUnit": {
             "state": "translated",
-            "value": "Allir innskráðir geta lesið það og gengið í það."
+            "value": "Allir innskráðir geta lesið hann og gengið í hann."
           }
         }
       }
@@ -3020,7 +3020,7 @@
         "is": {
           "stringUnit": {
             "state": "translated",
-            "value": "Aðeins meðlimir lesa það og stjórnandi samþykkir nýja."
+            "value": "Aðeins meðlimir lesa hann og stjórnandi samþykkir nýja."
           }
         }
       }
@@ -3128,7 +3128,7 @@
         "is": {
           "stringUnit": {
             "state": "translated",
-            "value": "Um samfélagið"
+            "value": "Um hópinn"
           }
         }
       }
@@ -3152,7 +3152,7 @@
         "is": {
           "stringUnit": {
             "state": "translated",
-            "value": "Efni í samfélögum er hýst á þjóni og er ekki dulkóðað enda á milli."
+            "value": "Efni í hópum er hýst á þjóni og er ekki dulkóðað enda á milli."
           }
         }
       }
@@ -3164,7 +3164,7 @@
         "is": {
           "stringUnit": {
             "state": "translated",
-            "value": "Breyta samfélagi"
+            "value": "Breyta hópi"
           }
         }
       }
@@ -3200,7 +3200,7 @@
         "is": {
           "stringUnit": {
             "state": "translated",
-            "value": "Leita í samfélagi"
+            "value": "Leita í hópi"
           }
         }
       }
@@ -3224,7 +3224,7 @@
         "is": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ganga í samfélagið"
+            "value": "Ganga í hópinn"
           }
         }
       }
@@ -3260,7 +3260,7 @@
         "is": {
           "stringUnit": {
             "state": "translated",
-            "value": "Yfirgefa samfélagið"
+            "value": "Yfirgefa hópinn"
           }
         }
       }
@@ -3356,7 +3356,7 @@
         "is": {
           "stringUnit": {
             "state": "translated",
-            "value": "Til baka í samfélagið"
+            "value": "Til baka í hópinn"
           }
         }
       }
@@ -4100,7 +4100,7 @@
         "is": {
           "stringUnit": {
             "state": "translated",
-            "value": "Útiloka meðliminn? Hann sér þá ekkert í samfélaginu og getur ekki gengið í það aftur fyrr en honum er hleypt aftur inn."
+            "value": "Útiloka meðliminn? Hann sér þá ekkert í hópnum og getur ekki gengið í hann aftur fyrr en honum er hleypt aftur inn."
           }
         }
       }
@@ -4208,7 +4208,7 @@
         "is": {
           "stringUnit": {
             "state": "translated",
-            "value": "Eyða samfélaginu"
+            "value": "Eyða hópnum"
           }
         }
       }
@@ -4220,7 +4220,7 @@
         "is": {
           "stringUnit": {
             "state": "translated",
-            "value": "Eyða samfélaginu „%1$@“? Það hverfur strax öllum meðlimum, og eftir 30 daga er póstum þess, athugasemdum og myndum eytt fyrir fullt og allt."
+            "value": "Eyða hópnum „%1$@“? Hann hverfur strax öllum meðlimum, og eftir 30 daga er póstum hans, athugasemdum og myndum eytt fyrir fullt og allt."
           }
         }
       }
@@ -4340,7 +4340,7 @@
         "is": {
           "stringUnit": {
             "state": "translated",
-            "value": "Meðlimurinn var tekinn úr samfélaginu."
+            "value": "Meðlimurinn var tekinn úr hópnum."
           }
         }
       }
@@ -4388,7 +4388,7 @@
         "is": {
           "stringUnit": {
             "state": "translated",
-            "value": "Lokað þegar samfélaginu var eytt."
+            "value": "Lokað þegar hópnum var eytt."
           }
         }
       }
@@ -4400,7 +4400,7 @@
         "is": {
           "stringUnit": {
             "state": "translated",
-            "value": "Mynd samfélagsins var sett."
+            "value": "Mynd hópsins var sett."
           }
         }
       }
@@ -4412,7 +4412,7 @@
         "is": {
           "stringUnit": {
             "state": "translated",
-            "value": "Mynd samfélagsins var fjarlægð."
+            "value": "Mynd hópsins var fjarlægð."
           }
         }
       }
@@ -4424,7 +4424,7 @@
         "is": {
           "stringUnit": {
             "state": "translated",
-            "value": "Forsíðumynd samfélagsins var sett."
+            "value": "Forsíðumynd hópsins var sett."
           }
         }
       }
@@ -4436,7 +4436,7 @@
         "is": {
           "stringUnit": {
             "state": "translated",
-            "value": "Forsíðumynd samfélagsins var fjarlægð."
+            "value": "Forsíðumynd hópsins var fjarlægð."
           }
         }
       }
@@ -4448,7 +4448,7 @@
         "is": {
           "stringUnit": {
             "state": "translated",
-            "value": "Færsla var fest í samfélaginu."
+            "value": "Færsla var fest í hópnum."
           }
         }
       }
@@ -4568,7 +4568,7 @@
         "is": {
           "stringUnit": {
             "state": "translated",
-            "value": "Bæta við í hópinn"
+            "value": "Bæta við í hópsamtalið"
           }
         }
       }
@@ -4604,7 +4604,7 @@
         "is": {
           "stringUnit": {
             "state": "translated",
-            "value": "Nafn hópsins"
+            "value": "Nafn hópsamtalsins"
           }
         }
       }
@@ -4616,7 +4616,7 @@
         "is": {
           "stringUnit": {
             "state": "translated",
-            "value": "Nafn á hópinn"
+            "value": "Nafn á hópsamtalið"
           }
         }
       }
@@ -4652,7 +4652,7 @@
         "is": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ nefndi hópinn „%2$@“."
+            "value": "%1$@ nefndi hópsamtalið „%2$@“."
           }
         }
       }
@@ -4664,7 +4664,7 @@
         "is": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ fjarlægði nafn hópsins."
+            "value": "%1$@ fjarlægði nafn hópsamtalsins."
           }
         }
       }
@@ -4676,7 +4676,7 @@
         "is": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ breytti mynd hópsins."
+            "value": "%1$@ breytti mynd hópsamtalsins."
           }
         }
       }
@@ -4688,7 +4688,7 @@
         "is": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ fjarlægði mynd hópsins."
+            "value": "%1$@ fjarlægði mynd hópsamtalsins."
           }
         }
       }
@@ -4700,7 +4700,7 @@
         "is": {
           "stringUnit": {
             "state": "translated",
-            "value": "Setja inn mynd hópsins"
+            "value": "Setja inn mynd hópsamtalsins"
           }
         }
       }
@@ -4712,7 +4712,7 @@
         "is": {
           "stringUnit": {
             "state": "translated",
-            "value": "Skipta um mynd hópsins"
+            "value": "Skipta um mynd hópsamtalsins"
           }
         }
       }
@@ -4724,7 +4724,7 @@
         "is": {
           "stringUnit": {
             "state": "translated",
-            "value": "Fjarlægja mynd hópsins"
+            "value": "Fjarlægja mynd hópsamtalsins"
           }
         }
       }
@@ -4736,7 +4736,7 @@
         "is": {
           "stringUnit": {
             "state": "translated",
-            "value": "Fjarlægja mynd hópsins? Hún hverfur hjá öllum í hópnum."
+            "value": "Fjarlægja mynd hópsamtalsins? Hún hverfur hjá öllum í hópsamtalinu."
           }
         }
       }
@@ -4748,7 +4748,7 @@
         "is": {
           "stringUnit": {
             "state": "translated",
-            "value": "Aðeins fólk í hópnum sér myndina. Hún er dulkóðuð enda á milli."
+            "value": "Aðeins fólk í hópsamtalinu sér myndina. Hún er dulkóðuð enda á milli."
           }
         }
       }
@@ -4772,7 +4772,7 @@
         "is": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ekki tókst að breyta mynd hópsins. Reyndu aftur."
+            "value": "Ekki tókst að breyta mynd hópsamtalsins. Reyndu aftur."
           }
         }
       }
@@ -4784,7 +4784,7 @@
         "is": {
           "stringUnit": {
             "state": "translated",
-            "value": "Mynd hópsins"
+            "value": "Mynd hópsamtalsins"
           }
         }
       }
@@ -4796,7 +4796,7 @@
         "is": {
           "stringUnit": {
             "state": "translated",
-            "value": "Fjarlægja úr hópnum"
+            "value": "Fjarlægja úr hópsamtalinu"
           }
         }
       }
@@ -4808,7 +4808,7 @@
         "is": {
           "stringUnit": {
             "state": "translated",
-            "value": "Fjarlægja %1$@ úr hópnum?"
+            "value": "Fjarlægja %1$@ úr hópsamtalinu?"
           }
         }
       }
@@ -4820,7 +4820,7 @@
         "is": {
           "stringUnit": {
             "state": "translated",
-            "value": "Yfirgefa hópinn"
+            "value": "Yfirgefa hópsamtalið"
           }
         }
       }
@@ -4832,7 +4832,7 @@
         "is": {
           "stringUnit": {
             "state": "translated",
-            "value": "Yfirgefa hópinn? Þú færð ekki fleiri skilaboð úr honum."
+            "value": "Yfirgefa hópsamtalið? Þú færð ekki fleiri skilaboð úr því."
           }
         }
       }
@@ -4844,19 +4844,19 @@
         "is": {
           "stringUnit": {
             "state": "translated",
-            "value": "Þú hefur yfirgefið þennan hóp."
+            "value": "Þú hefur yfirgefið þetta hópsamtal."
           }
         }
       }
     },
     "community_picture_choose": {
-      "comment": "Label of the file picker for a community's square picture, on the create screen and in Breyta samfélagi (decision 0080).",
+      "comment": "Label of the file picker for a community's square picture, on the create screen and in `community_edit` (decision 0080).",
       "extractionState": "manual",
       "localizations": {
         "is": {
           "stringUnit": {
             "state": "translated",
-            "value": "Velja mynd samfélagsins"
+            "value": "Velja mynd hópsins"
           }
         }
       }
@@ -4868,7 +4868,7 @@
         "is": {
           "stringUnit": {
             "state": "translated",
-            "value": "Fjarlægja mynd samfélagsins"
+            "value": "Fjarlægja mynd hópsins"
           }
         }
       }
@@ -4904,7 +4904,7 @@
         "is": {
           "stringUnit": {
             "state": "translated",
-            "value": "Frá samfélögunum þínum"
+            "value": "Frá hópunum þínum"
           }
         }
       }
@@ -4940,7 +4940,7 @@
         "is": {
           "stringUnit": {
             "state": "translated",
-            "value": "Opið samfélag"
+            "value": "Opinn hópur"
           }
         }
       }
@@ -4952,7 +4952,7 @@
         "is": {
           "stringUnit": {
             "state": "translated",
-            "value": "Lokað samfélag"
+            "value": "Lokaður hópur"
           }
         }
       }
@@ -4964,7 +4964,7 @@
         "is": {
           "stringUnit": {
             "state": "translated",
-            "value": "Hlekkur samfélagsins afritaður"
+            "value": "Hlekkur hópsins afritaður"
           }
         }
       }
@@ -4976,7 +4976,7 @@
         "is": {
           "stringUnit": {
             "state": "translated",
-            "value": "Meðlimir samfélagsins"
+            "value": "Meðlimir hópsins"
           }
         }
       }
@@ -4988,7 +4988,7 @@
         "is": {
           "stringUnit": {
             "state": "translated",
-            "value": "Forsíðumynd samfélagsins"
+            "value": "Forsíðumynd hópsins"
           }
         }
       }
@@ -5360,7 +5360,7 @@
         "is": {
           "stringUnit": {
             "state": "translated",
-            "value": "Flipar samfélagsins"
+            "value": "Flipar hópsins"
           }
         }
       }
@@ -5516,7 +5516,7 @@
         "is": {
           "stringUnit": {
             "state": "translated",
-            "value": "Leita að samfélögum"
+            "value": "Leita að hópum"
           }
         }
       }
@@ -5528,7 +5528,7 @@
         "is": {
           "stringUnit": {
             "state": "translated",
-            "value": "Fest efst"
+            "value": "Festur efst"
           }
         }
       }
@@ -5918,7 +5918,7 @@
       }
     },
     "community_anonymous_posts": {
-      "comment": "The owner's switch in Breyta samfélagi that lets members post without their name (decision 0091).",
+      "comment": "The owner's switch in `community_edit` that lets members post without their name (decision 0091).",
       "extractionState": "manual",
       "localizations": {
         "is": {
@@ -6068,7 +6068,7 @@
         "is": {
           "stringUnit": {
             "state": "translated",
-            "value": "Sýna höfund? Aðgerðin er skráð í aðgerðaskrá samfélagsins."
+            "value": "Sýna höfund? Aðgerðin er skráð í aðgerðaskrá hópsins."
           }
         }
       }
@@ -6092,7 +6092,7 @@
         "is": {
           "stringUnit": {
             "state": "translated",
-            "value": "Þetta samfélag leyfir ekki nafnlausar færslur."
+            "value": "Þessi hópur leyfir ekki nafnlausar færslur."
           }
         }
       }

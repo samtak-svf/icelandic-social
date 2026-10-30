@@ -18,6 +18,7 @@ import { android } from "./lib/brand-gen/android.mjs";
 import { backend } from "./lib/brand-gen/backend.mjs";
 import { ios } from "./lib/brand-gen/ios.mjs";
 import { activeBrand, OWNED_DIRS } from "./lib/brand-gen/paths.mjs";
+import { expandStrings, readTerms, tokensInOutputs } from "./lib/brand-gen/terms.mjs";
 import { web } from "./lib/brand-gen/web.mjs";
 import { readJson, ROOT } from "./lib/repo.mjs";
 
@@ -42,7 +43,7 @@ export function generate(name, root = ROOT) {
   const brand = {
     name,
     manifest,
-    strings: readJson(`${dir}/strings.is.json`, root),
+    strings: expandStrings(readJson(`${dir}/strings.is.json`, root), readTerms(dir, root)),
     contract: readJson("brand/strings.contract.json", root),
     tokens: readJson(`${dir}/tokens.json`, root),
     ids: readJson("identifiers/ids.json", root),
@@ -60,6 +61,8 @@ export function generate(name, root = ROOT) {
     ),
   };
   const files = [...android(brand), ...ios(brand), ...backend(brand), ...web(brand)];
+  const leaked = tokensInOutputs(files);
+  if (leaked.length > 0) return { problems: leaked, files: [] };
   return {
     problems: [],
     files: files.sort((a, b) => a.path.localeCompare(b.path)),

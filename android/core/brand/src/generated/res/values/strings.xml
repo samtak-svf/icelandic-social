@@ -79,9 +79,9 @@
     <!-- Android channel description: messages. -->
     <string name="notification_channel_messages_description">Ný skilaboð í samtölunum þínum.</string>
     <!-- Android notification channel for community notifications: comments, replies and reactions (decision 0107). -->
-    <string name="notification_channel_social_name">Samfélög</string>
+    <string name="notification_channel_social_name">Hópar</string>
     <!-- Description of the community notifications channel in Android settings (decision 0107). -->
-    <string name="notification_channel_social_description">Athugasemdir, svör og viðbrögð í samfélögunum þínum.</string>
+    <string name="notification_channel_social_description">Athugasemdir, svör og viðbrögð í hópunum þínum.</string>
     <!-- The reader in a message notification's conversation style; Android requires a name for them, though it rarely shows it (docs/decisions/0025). -->
     <string name="notification_you">Þú</string>
     <!-- Row on Ég when the system blocks the app's notifications: new messages are not announced until it is opened (docs/decisions/0025). -->
@@ -91,9 +91,9 @@
     <!-- System card in a conversation when a member adds a device (from an MLS add commit). -->
     <string name="new_device_card">%1$s tengdi nýtt tæki.</string>
     <!-- System card when an account joins a group (docs/decisions/0022). -->
-    <string name="member_added_card">%1$s bættist í hópinn.</string>
+    <string name="member_added_card">%1$s bættist í hópsamtalið.</string>
     <!-- System card when an account leaves a group, is removed, or deletes its account (docs/decisions/0022). -->
-    <string name="member_removed_card">%1$s er ekki lengur í hópnum.</string>
+    <string name="member_removed_card">%1$s er ekki lengur í hópsamtalinu.</string>
     <!-- System card in a 1:1 when the other account leaves it, as on a block; member_removed_card says the same of a group (docs/decisions/0022). -->
     <string name="member_removed_card_direct">%1$s er ekki lengur í samtalinu.</string>
     <!-- Explains that a new device sees only messages sent after it joined (docs/decisions/0006). -->
@@ -119,7 +119,7 @@
     <!-- Default URL opened by the Android update screen. -->
     <string name="update_url_android">https://play.google.com/apps/internaltest/4701643324608289838</string>
     <!-- Action that starts a new group. -->
-    <string name="new_group">Nýr hópur</string>
+    <string name="new_group">Nýtt hópsamtal</string>
     <!-- Members in a group. -->
     <plurals name="group_member_count">
         <item quantity="one">%1$d meðlimur</item>
@@ -414,11 +414,11 @@
     <!-- A browser session whose browser the server could not name. -->
     <string name="session_browser_unknown">Vafri</string>
     <!-- Navigation: the communities a person is in and the way to find more (decision 0063). -->
-    <string name="tab_communities">Samfélög</string>
+    <string name="tab_communities">Hópar</string>
     <!-- Tab of the community hub: the chronological feed of the posts in the person's communities (decision 0079). -->
     <string name="communities_tab_feed">Nýjast</string>
     <!-- Tab of the community hub: the communities the person is a member of. -->
-    <string name="communities_tab_mine">Mín samfélög</string>
+    <string name="communities_tab_mine">Mínir hópar</string>
     <!-- Tab of the community hub: the search and the list of communities to join. -->
     <string name="communities_tab_discover">Finna</string>
     <!-- The notifications screen's title, and the name the bell in the top bar is read out by: what was addressed to this account in communities (decisions 0067, 0109). -->
@@ -480,13 +480,13 @@
     <!-- Notification menu item: notifications of this kind stop reaching the phone and stay in the app (decision 0106). -->
     <string name="notice_menu_kind_in_app">Aðeins í appinu fyrir þessa tegund</string>
     <!-- Notification menu item: no more notifications from this community (decision 0106). -->
-    <string name="notice_menu_community_off">Slökkva á tilkynningum frá þessu samfélagi</string>
+    <string name="notice_menu_community_off">Slökkva á tilkynningum frá þessum hópi</string>
     <!-- Heading of the notifications section in Settings, and the community menu item that opens its level (decision 0106). -->
     <string name="notification_settings_title">Tilkynningar</string>
     <!-- Under the notifications heading in Settings: what the levels mean (decision 0106). -->
     <string name="notification_settings_body">Veldu hvað birtist í símanum og hvað aðeins í appinu.</string>
     <!-- Heading over the communities whose level the reader has changed (decision 0106). -->
-    <string name="notification_settings_communities">Samfélög</string>
+    <string name="notification_settings_communities">Hópar</string>
     <!-- Notification settings row: comments on the reader's posts (decision 0106). -->
     <string name="notification_kind_comment">Athugasemdir við póstana þína</string>
     <!-- Notification settings row: replies to the reader's comments (decision 0106). -->
@@ -508,29 +508,29 @@
     <!-- Shown in place of the name of an account that was deleted. -->
     <string name="person_deleted">Eyddur reikningur</string>
     <!-- Heading of the communities the person is a member of. -->
-    <string name="communities_mine">Samfélögin mín</string>
+    <string name="communities_mine">Hóparnir mínir</string>
     <!-- The person's community list when it is empty. -->
-    <string name="communities_empty">Þú ert ekki í neinu samfélagi enn.</string>
+    <string name="communities_empty">Þú ert ekki í neinum hópi enn.</string>
     <!-- Label of the search for communities by name. -->
-    <string name="communities_find">Finna samfélag</string>
+    <string name="communities_find">Finna hóp</string>
     <!-- The community search found nothing. -->
-    <string name="communities_none_found">Ekkert samfélag fannst.</string>
+    <string name="communities_none_found">Enginn hópur fannst.</string>
     <!-- The hub's feed when the person's communities have no posts yet (decision 0079). -->
-    <string name="communities_feed_empty">Engir póstar úr samfélögunum þínum enn.</string>
+    <string name="communities_feed_empty">Engir póstar úr hópunum þínum enn.</string>
     <!-- Heading and button: create a new community. -->
-    <string name="community_create">Stofna samfélag</string>
+    <string name="community_create">Stofna hóp</string>
     <!-- Label of a community's name field. -->
     <string name="community_name">Heiti</string>
     <!-- Label of a community's description field. -->
     <string name="community_description">Lýsing</string>
     <!-- A community anyone signed in may read and join (decision 0063). -->
-    <string name="community_open">Opið</string>
+    <string name="community_open">Opinn</string>
     <!-- A community only members read; joining takes approval (decision 0063). -->
-    <string name="community_private">Lokað</string>
+    <string name="community_private">Lokaður</string>
     <!-- Explains an open community where it is chosen. -->
-    <string name="community_open_hint">Allir innskráðir geta lesið það og gengið í það.</string>
+    <string name="community_open_hint">Allir innskráðir geta lesið hann og gengið í hann.</string>
     <!-- Explains a private community where it is chosen. -->
-    <string name="community_private_hint">Aðeins meðlimir lesa það og stjórnandi samþykkir nýja.</string>
+    <string name="community_private_hint">Aðeins meðlimir lesa hann og stjórnandi samþykkir nýja.</string>
     <!-- How many members a community has. -->
     <plurals name="community_members">
         <item quantity="one">%1$d meðlimur</item>
@@ -549,29 +549,29 @@
     <!-- Owner action on a moderator: take the role away. -->
     <string name="community_remove_moderator">Taka úr stjórnendum</string>
     <!-- Title of the screen with a community's full description, its hosting notice and its members (decision 0079). -->
-    <string name="community_info">Um samfélagið</string>
+    <string name="community_info">Um hópinn</string>
     <!-- Link that opens the full description from the feed's clamped community description (decision 0079). -->
     <string name="community_read_more">Lesa meira</string>
     <!-- Says a community's content is hosted on a server and is not end-to-end encrypted (decisions 0060, 0063). -->
-    <string name="community_not_encrypted_notice">Efni í samfélögum er hýst á þjóni og er ekki dulkóðað enda á milli.</string>
+    <string name="community_not_encrypted_notice">Efni í hópum er hýst á þjóni og er ekki dulkóðað enda á milli.</string>
     <!-- Owner action: change a community's name, description or audience. -->
-    <string name="community_edit">Breyta samfélagi</string>
+    <string name="community_edit">Breyta hópi</string>
     <!-- Title of the screen holding a moderator's and the owner's tools (decision 0079). -->
     <string name="community_manage">Stjórna</string>
     <!-- The manage screen's label with the number of items waiting for the person. -->
     <string name="community_manage_count">Stjórna (%1$d)</string>
     <!-- Placeholder of the search over one community's posts. -->
-    <string name="community_search_posts">Leita í samfélagi</string>
+    <string name="community_search_posts">Leita í hópi</string>
     <!-- The search over a community's posts found nothing. -->
     <string name="community_search_empty">Enginn póstur fannst.</string>
     <!-- Button: join an open community. -->
-    <string name="community_join">Ganga í samfélagið</string>
+    <string name="community_join">Ganga í hópinn</string>
     <!-- Button: ask to join a private community. -->
     <string name="community_request_join">Biðja um inngöngu</string>
     <!-- Shown while the person's join request waits. -->
     <string name="community_join_requested">Beiðni þín bíður samþykkis stjórnanda.</string>
     <!-- Button: leave a community. -->
-    <string name="community_leave">Yfirgefa samfélagið</string>
+    <string name="community_leave">Yfirgefa hópinn</string>
     <!-- Shown to a muted member in place of the composer. -->
     <string name="community_muted">Stjórnandi þaggaði niður í þér hér. Þú getur lesið en ekki skrifað.</string>
     <!-- Label of the field where a member writes a new post. -->
@@ -588,7 +588,7 @@
         <item quantity="other">%1$d athugasemdir</item>
     </plurals>
     <!-- Link from a post back to its community. -->
-    <string name="post_back">Til baka í samfélagið</string>
+    <string name="post_back">Til baka í hópinn</string>
     <!-- Label of the field where a member writes a comment. -->
     <string name="comment_compose">Skrifa athugasemd</string>
     <!-- Opens the picker for the one image a comment may carry (decision 0082). -->
@@ -713,7 +713,7 @@
     <!-- Text alternative of an image in a post. -->
     <string name="post_image_alt">Mynd í póstinum</string>
     <!-- Confirmation before a moderator bans an author (#343). -->
-    <string name="moderation_ban_confirm">Útiloka meðliminn? Hann sér þá ekkert í samfélaginu og getur ekki gengið í það aftur fyrr en honum er hleypt aftur inn.</string>
+    <string name="moderation_ban_confirm">Útiloka meðliminn? Hann sér þá ekkert í hópnum og getur ekki gengið í hann aftur fyrr en honum er hleypt aftur inn.</string>
     <!-- Title of the join-request list a community's moderators see (#354, decision 0070). -->
     <string name="join_requests_title">Beiðnir um aðild</string>
     <!-- How many join requests wait, shown to moderators on the community and as the link to the list (#354). -->
@@ -732,9 +732,9 @@
     <!-- Under community_join_declined: when the account may ask again; {date} is a formatted date. -->
     <string name="community_join_again">Þú getur beðið aftur %1$s.</string>
     <!-- The owner's action that deletes a community, and its confirm button (#364). -->
-    <string name="community_delete">Eyða samfélaginu</string>
+    <string name="community_delete">Eyða hópnum</string>
     <!-- Confirmation before the owner deletes a community, naming it and what is lost (decision 0070). -->
-    <string name="community_delete_confirm">Eyða samfélaginu „%1$s“? Það hverfur strax öllum meðlimum, og eftir 30 daga er póstum þess, athugasemdum og myndum eytt fyrir fullt og allt.</string>
+    <string name="community_delete_confirm">Eyða hópnum „%1$s“? Hann hverfur strax öllum meðlimum, og eftir 30 daga er póstum hans, athugasemdum og myndum eytt fyrir fullt og allt.</string>
     <!-- Supporting text under the reason field of a report: the actions need it (#359). -->
     <string name="moderation_reason_required">Skrifaðu ástæðu fyrst. Hún er skráð með aðgerðinni.</string>
     <!-- A closed report's decision (#360). -->
@@ -754,7 +754,7 @@
     <!-- A closed report's decision. -->
     <string name="moderation_decision_unmute_member">Meðlimurinn mátti skrifa aftur.</string>
     <!-- A closed report's decision. -->
-    <string name="moderation_decision_remove_member">Meðlimurinn var tekinn úr samfélaginu.</string>
+    <string name="moderation_decision_remove_member">Meðlimurinn var tekinn úr hópnum.</string>
     <!-- A closed report's decision. -->
     <string name="moderation_decision_ban_member">Meðlimurinn var útilokaður.</string>
     <!-- A closed report's decision. -->
@@ -762,17 +762,17 @@
     <!-- A closed report's decision: closed without acting. -->
     <string name="moderation_decision_dismissed">Lokað án aðgerðar.</string>
     <!-- A closed report's decision: the community's deletion closed it (decision 0070). -->
-    <string name="moderation_decision_community_deleted">Lokað þegar samfélaginu var eytt.</string>
+    <string name="moderation_decision_community_deleted">Lokað þegar hópnum var eytt.</string>
     <!-- A log entry: a moderator set the community's picture (decision 0080). -->
-    <string name="moderation_log_community_picture_set">Mynd samfélagsins var sett.</string>
+    <string name="moderation_log_community_picture_set">Mynd hópsins var sett.</string>
     <!-- A log entry: a moderator removed the community's picture (decision 0080). -->
-    <string name="moderation_log_community_picture_removed">Mynd samfélagsins var fjarlægð.</string>
+    <string name="moderation_log_community_picture_removed">Mynd hópsins var fjarlægð.</string>
     <!-- A log entry: a moderator set the community's cover (decision 0080). -->
-    <string name="moderation_log_community_cover_set">Forsíðumynd samfélagsins var sett.</string>
+    <string name="moderation_log_community_cover_set">Forsíðumynd hópsins var sett.</string>
     <!-- A log entry: a moderator removed the community's cover (decision 0080). -->
-    <string name="moderation_log_community_cover_removed">Forsíðumynd samfélagsins var fjarlægð.</string>
+    <string name="moderation_log_community_cover_removed">Forsíðumynd hópsins var fjarlægð.</string>
     <!-- A log entry: a moderator pinned a post to the top of the community (decision 0080). -->
-    <string name="moderation_log_post_pinned">Færsla var fest í samfélaginu.</string>
+    <string name="moderation_log_post_pinned">Færsla var fest í hópnum.</string>
     <!-- A log entry: a moderator unpinned the community's pinned post (decision 0080). -->
     <string name="moderation_log_post_unpinned">Færsla var losuð úr festingu.</string>
     <!-- Who closed a report and when; {date} is a formatted date. -->
@@ -792,83 +792,83 @@
     <!-- Action on a group's info screen: add people to the group (docs/decisions/0078). -->
     <string name="add_people">Bæta við</string>
     <!-- Title of the people picker when opened to add people to an existing group (docs/decisions/0078). -->
-    <string name="add_people_title">Bæta við í hópinn</string>
+    <string name="add_people_title">Bæta við í hópsamtalið</string>
     <!-- Confirm button in the people picker when adding picked people to an existing group (docs/decisions/0078). -->
     <string name="add_people_confirm">Bæta við</string>
     <!-- Action on a group's info screen: set or change the group's name (docs/decisions/0078). -->
     <string name="group_name">Nafn</string>
     <!-- Title of the dialog or sheet that sets or changes a group's name (docs/decisions/0078). -->
-    <string name="group_name_title">Nafn hópsins</string>
+    <string name="group_name_title">Nafn hópsamtalsins</string>
     <!-- Placeholder in the group name field when the group has no name (docs/decisions/0078). -->
-    <string name="group_name_hint">Nafn á hópinn</string>
+    <string name="group_name_hint">Nafn á hópsamtalið</string>
     <!-- Action in the group name dialog that clears the group's name (docs/decisions/0078). -->
     <string name="group_name_remove">Fjarlægja</string>
     <!-- Confirm button that saves a change, such as a group's name (docs/decisions/0078). -->
     <string name="save">Vista</string>
     <!-- System card when a member names or renames the group (docs/decisions/0078). -->
-    <string name="name_set_card">%1$s nefndi hópinn „%2$s“.</string>
+    <string name="name_set_card">%1$s nefndi hópsamtalið „%2$s“.</string>
     <!-- System card when a member clears the group's name (docs/decisions/0078). -->
-    <string name="name_cleared_card">%1$s fjarlægði nafn hópsins.</string>
+    <string name="name_cleared_card">%1$s fjarlægði nafn hópsamtalsins.</string>
     <!-- System card when a member sets or changes the group's photo (docs/decisions/0094). -->
-    <string name="photo_set_card">%1$s breytti mynd hópsins.</string>
+    <string name="photo_set_card">%1$s breytti mynd hópsamtalsins.</string>
     <!-- System card when a member removes the group's photo (docs/decisions/0094). -->
-    <string name="photo_cleared_card">%1$s fjarlægði mynd hópsins.</string>
+    <string name="photo_cleared_card">%1$s fjarlægði mynd hópsamtalsins.</string>
     <!-- On a group's information screen when the group has no photo: opens the photo picker to set one (docs/decisions/0094). -->
-    <string name="group_photo_choose">Setja inn mynd hópsins</string>
+    <string name="group_photo_choose">Setja inn mynd hópsamtalsins</string>
     <!-- On a group's information screen when the group has a photo: opens the photo picker to put another in its place (docs/decisions/0094). -->
-    <string name="group_photo_change">Skipta um mynd hópsins</string>
+    <string name="group_photo_change">Skipta um mynd hópsamtalsins</string>
     <!-- On a group's information screen: removes the group's photo, after a confirmation; also that confirmation's button (docs/decisions/0094). -->
-    <string name="group_photo_remove">Fjarlægja mynd hópsins</string>
+    <string name="group_photo_remove">Fjarlægja mynd hópsamtalsins</string>
     <!-- Asks before the group's photo is removed: it goes for every member (docs/decisions/0094). -->
-    <string name="group_photo_remove_confirm">Fjarlægja mynd hópsins? Hún hverfur hjá öllum í hópnum.</string>
+    <string name="group_photo_remove_confirm">Fjarlægja mynd hópsamtalsins? Hún hverfur hjá öllum í hópsamtalinu.</string>
     <!-- The one line beside the group photo buttons: only the group's members see it, and it is end-to-end encrypted, unlike a profile photo (docs/decisions/0094). -->
-    <string name="group_photo_seen_by_members">Aðeins fólk í hópnum sér myndina. Hún er dulkóðuð enda á milli.</string>
+    <string name="group_photo_seen_by_members">Aðeins fólk í hópsamtalinu sér myndina. Hún er dulkóðuð enda á milli.</string>
     <!-- The chosen picture could not be read as an image the group photo accepts (docs/decisions/0094). -->
     <string name="group_photo_unsupported">Ekki tókst að lesa myndina. Veldu aðra mynd.</string>
     <!-- Setting, replacing or removing the group's photo failed for another reason, such as the network (docs/decisions/0094). -->
-    <string name="group_photo_failed">Ekki tókst að breyta mynd hópsins. Reyndu aftur.</string>
+    <string name="group_photo_failed">Ekki tókst að breyta mynd hópsamtalsins. Reyndu aftur.</string>
     <!-- Alternative text of a group's photo, in the conversation list, the header and the information screen (docs/decisions/0094). -->
-    <string name="group_photo_alt">Mynd hópsins</string>
+    <string name="group_photo_alt">Mynd hópsamtalsins</string>
     <!-- Action on a member row in a group's info screen: remove the member from the group (docs/decisions/0078). -->
-    <string name="remove_member">Fjarlægja úr hópnum</string>
+    <string name="remove_member">Fjarlægja úr hópsamtalinu</string>
     <!-- Confirmation prompt before removing {name} from the group (docs/decisions/0078). -->
-    <string name="remove_member_confirm">Fjarlægja %1$s úr hópnum?</string>
+    <string name="remove_member_confirm">Fjarlægja %1$s úr hópsamtalinu?</string>
     <!-- Destructive action at the foot of a group's info screen: leave the group (docs/decisions/0078). -->
-    <string name="leave_group">Yfirgefa hópinn</string>
+    <string name="leave_group">Yfirgefa hópsamtalið</string>
     <!-- Confirmation prompt before leaving the group (docs/decisions/0078). -->
-    <string name="leave_group_confirm">Yfirgefa hópinn? Þú færð ekki fleiri skilaboð úr honum.</string>
+    <string name="leave_group_confirm">Yfirgefa hópsamtalið? Þú færð ekki fleiri skilaboð úr því.</string>
     <!-- Banner shown in a conversation the user has left (docs/decisions/0078). -->
-    <string name="left_banner">Þú hefur yfirgefið þennan hóp.</string>
-    <!-- Label of the file picker for a community's square picture, on the create screen and in Breyta samfélagi (decision 0080). -->
-    <string name="community_picture_choose">Velja mynd samfélagsins</string>
+    <string name="left_banner">Þú hefur yfirgefið þetta hópsamtal.</string>
+    <!-- Label of the file picker for a community's square picture, on the create screen and in `community_edit` (decision 0080). -->
+    <string name="community_picture_choose">Velja mynd hópsins</string>
     <!-- Button that removes a community's picture (decision 0080). -->
-    <string name="community_picture_remove">Fjarlægja mynd samfélagsins</string>
+    <string name="community_picture_remove">Fjarlægja mynd hópsins</string>
     <!-- Label of the file picker for a community's wide cover (decision 0080). -->
     <string name="community_cover_choose">Velja forsíðumynd</string>
     <!-- Button that removes a community's cover (decision 0080). -->
     <string name="community_cover_remove">Fjarlægja forsíðumynd</string>
     <!-- Heading of the cross-community feed under the list on the hub -->
-    <string name="communities_from_yours">Frá samfélögunum þínum</string>
+    <string name="communities_from_yours">Frá hópunum þínum</string>
     <!-- Second line of the create row on the hub -->
     <string name="communities_create_row_hint">Safnaðu fólki saman um málefni</string>
     <!-- Closes a dialog or a menu -->
     <string name="close">Loka</string>
     <!-- Audience line of a community header, open -->
-    <string name="community_open_full">Opið samfélag</string>
+    <string name="community_open_full">Opinn hópur</string>
     <!-- Audience line of a community header, private -->
-    <string name="community_private_full">Lokað samfélag</string>
+    <string name="community_private_full">Lokaður hópur</string>
     <!-- Title of the invitation dialog -->
-    <string name="community_invite_title">Bjóða í samfélagið</string>
+    <string name="community_invite_title">Bjóða í hópinn</string>
     <!-- Told after an invitation went out -->
     <string name="community_invite_sent">Boð sent</string>
     <!-- No person matched the invitation search -->
     <string name="community_invite_none">Enginn fannst</string>
     <!-- Told after the community link was copied -->
-    <string name="community_link_copied">Hlekkur samfélagsins afritaður</string>
+    <string name="community_link_copied">Hlekkur hópsins afritaður</string>
     <!-- Name of the picture stack of members in a community header -->
-    <string name="community_members_stack">Meðlimir samfélagsins</string>
+    <string name="community_members_stack">Meðlimir hópsins</string>
     <!-- Name of the cover picture -->
-    <string name="community_cover_alt">Forsíðumynd samfélagsins</string>
+    <string name="community_cover_alt">Forsíðumynd hópsins</string>
     <!-- Relative time of something posted less than a minute ago -->
     <string name="time_now">Núna</string>
     <!-- Relative time in minutes, as a short label on a post -->
@@ -931,7 +931,7 @@
     <!-- Heading of the community's featured posts, in the aside on a wide screen (decision 0088) -->
     <string name="community_featured">Fest</string>
     <!-- Accessible name of the row of tabs under a community's header (decision 0089) -->
-    <string name="community_tabs">Flipar samfélagsins</string>
+    <string name="community_tabs">Flipar hópsins</string>
     <!-- Label of the community tab Umræða, the feed (decision 0089) -->
     <string name="community_tab_discussion">Umræða</string>
     <!-- Label of the community tab Fest, the featured posts (decision 0089) -->
@@ -958,7 +958,7 @@
     <!-- Share sheet entry that sends a post into a conversation (decision 0080). -->
     <string name="post_share_to_conversation">Senda í samtal</string>
     <!-- Hub header icon that opens the community search (decision 0080). -->
-    <string name="communities_search_open">Leita að samfélögum</string>
+    <string name="communities_search_open">Leita að hópum</string>
     <!-- Entry on the devices list that starts scanning a browser's link code (docs/decisions/0064, 0077). -->
     <string name="device_link_action">Tengja vafra</string>
     <!-- Title of the screen that scans a browser's link code. -->
@@ -1023,7 +1023,7 @@
     <string name="composer_anonymous">Birta nafnlaust</string>
     <!-- Explains the anonymous switch in the composer (decision 0091). -->
     <string name="composer_anonymous_hint">Stjórnandi fer yfir færsluna áður en hún birtist. Stjórnandi getur afhjúpað höfundinn.</string>
-    <!-- The owner's switch in Breyta samfélagi that lets members post without their name (decision 0091). -->
+    <!-- The owner's switch in `community_edit` that lets members post without their name (decision 0091). -->
     <string name="community_anonymous_posts">Nafnlausar færslur</string>
     <!-- Explains the community switch for anonymous posts (decision 0091). -->
     <string name="community_anonymous_posts_hint">Færslur eru yfirfarnar af stjórnanda áður en þær birtast. Stjórnandi getur afhjúpað höfundinn.</string>
@@ -1049,11 +1049,11 @@
     <!-- A moderator asks for the author of an anonymous post; the community's log records it (decision 0091). -->
     <string name="anonymous_reveal">Sýna höfund</string>
     <!-- Confirmation before revealing the author of an anonymous post (decision 0091). -->
-    <string name="anonymous_reveal_confirm">Sýna höfund? Aðgerðin er skráð í aðgerðaskrá samfélagsins.</string>
+    <string name="anonymous_reveal_confirm">Sýna höfund? Aðgerðin er skráð í aðgerðaskrá hópsins.</string>
     <!-- The author of an anonymous post, shown to the moderator who revealed it (decision 0091). -->
     <string name="anonymous_revealed">Höfundur: %1$s</string>
     <!-- Posting anonymously in a community whose switch is off (decision 0091). -->
-    <string name="problem_anonymous_off">Þetta samfélag leyfir ekki nafnlausar færslur.</string>
+    <string name="problem_anonymous_off">Þessi hópur leyfir ekki nafnlausar færslur.</string>
     <!-- Entry in the moderation log: the owner turned anonymous posts on (decision 0091). -->
     <string name="moderation_log_anonymous_on">Nafnlausar færslur voru leyfðar.</string>
     <!-- Entry in the moderation log: the owner turned anonymous posts off (decision 0091). -->

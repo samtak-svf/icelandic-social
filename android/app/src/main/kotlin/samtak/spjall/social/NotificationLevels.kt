@@ -102,7 +102,7 @@ fun LevelPicker(
     }
 }
 
-/** The level of one community, on its Um samfélagið; nothing while the levels are not provided. */
+/** The level of one community, on its `community_info`; nothing while the levels are not provided. */
 @Composable
 internal fun CommunityLevelPicker(communityId: String) {
     val levels = LocalNotificationLevels.current ?: return

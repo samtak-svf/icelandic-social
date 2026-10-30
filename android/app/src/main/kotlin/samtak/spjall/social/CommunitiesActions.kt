@@ -34,7 +34,7 @@ interface CommunitiesActions : PollActions {
         pinned: Boolean,
     )
 
-    /** "Stofna samfélag": only offered to a verified account (decision 0063). */
+    /** `community_create`: only offered to a verified account (decision 0063). */
     fun create()
 
     fun search(text: String)

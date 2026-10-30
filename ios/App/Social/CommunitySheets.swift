@@ -1,11 +1,11 @@
 import SpjallCore
 import SwiftUI
 
-// The two screens a community's header opens (decision 0079): `Um samfélagið`, which every reader has, and
+// The two screens a community's header opens (decision 0079): `community_info`, which every reader has, and
 // `Stjórna`, which its moderators and its owner have. A member's tools are nowhere else: not above the composer,
 // not on a post card, not behind a long press.
 
-/// `Um samfélagið` (decision 0079): the facts about the community (`AboutFacts`) and the member list with each
+/// `community_info` (decision 0079): the facts about the community (`AboutFacts`) and the member list with each
 /// member's role. It is what a plain member has instead of `Stjórna`.
 struct CommunityInfoSheet: View {
     let model: CommunityModel
@@ -51,8 +51,8 @@ struct CommunityInfoSheet: View {
     }
 }
 
-/// `Um samfélagið` beside the feed on an expanded window (decision 0087): the facts about the community
-/// (`AboutFacts`) and the first members' faces. A narrower window shows none of it; the header and `Um samfélagið`
+/// `community_info` beside the feed on an expanded window (decision 0087): the facts about the community
+/// (`AboutFacts`) and the first members' faces. A narrower window shows none of it; the header and `community_info`
 /// carry the same there.
 struct CommunityAside: View {
     let community: Community
@@ -80,7 +80,7 @@ struct CommunityAside: View {
     }
 }
 
-/// What `Um samfélagið` says about a community, in the sheet and in the aside alike, as the web's `AboutFacts`
+/// What `community_info` says about a community, in the sheet and in the aside alike, as the web's `AboutFacts`
 /// (`web/src/social/about.tsx`): the description, who may read and join, how many members it has when this account
 /// may know, that the content is not end-to-end encrypted (decisions 0060, 0063), and where it is kept (0001).
 struct AboutFacts: View {
@@ -455,7 +455,7 @@ private struct LogCard: View {
     }
 }
 
-/// `Breyta samfélagi` (decision 0079): the name, the description and the audience, which its owner alone sends. A
+/// `community_edit` (decision 0079): the name, the description and the audience, which its owner alone sends. A
 /// private community never becomes open again, so it offers its own audience alone (decision 0063).
 private struct EditCommunityView: View {
     let model: CommunityModel

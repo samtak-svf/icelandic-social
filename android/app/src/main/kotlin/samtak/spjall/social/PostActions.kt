@@ -7,7 +7,7 @@ import samtak.spjall.core.ReportTarget
 /** What [PostScreen] can ask for. */
 @Suppress("TooManyFunctions")
 interface PostActions {
-    /** "Til baka í samfélagið". */
+    /** `post_back`. */
     fun community(communityId: String)
 
     fun draft(text: String)

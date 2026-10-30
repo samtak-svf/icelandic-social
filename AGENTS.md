@@ -28,6 +28,10 @@ Consequences, all enforced by `tooling/brand-leak-guard.mjs`:
   `brand/<name>/brand.json` `leakTerms`. A word that only shares the stem (a person's name,
   another noun) is added to `allowPrefixes` **with its reason**. `allowPaths` lists the files
   allowed to talk about the brand (this file, `docs/**`).
+- **A UI noun is a term, not a word in a string** (decision 0117). `brand/<name>/terms.is.json` holds its BÍN forms
+  and agreement words, a string writes a token (`Stofna [[group.acc]]`), `brand:gen` expands it to plain text, and
+  `check:brand` fails on a raw form, an unknown token or a retired word. Renaming one edits the table and regenerates.
+  Comments and tests name the string key or say "the community", never the label.
 - **Strings are whole sentences per brand**, never `{name}` interpolation: the name inflects.
   Key set, placeholders and plural categories (`one`, `other`) must match
   `brand/strings.contract.json` exactly (`tooling/brand-check.mjs`).
@@ -148,7 +152,8 @@ checks staged files, commit messages, the whole tree and every PR; a new name go
 
 ## Icelandic text
 
-User-facing strings are Icelandic and live only in `brand/<name>/strings.is.json`. No
+User-facing strings are Icelandic and live only in `brand/<name>/strings.is.json`, with the nouns
+they share in `terms.is.json` beside it. No
 þankastrik (em dash, or spaced en dash) in them: `tooling/thankastrik.mjs`. An unspaced en
 dash in a range (`9–17`) is a millistrik and is fine. Everything else written here (code,
 comments, docs, commits, PRs, issues) is English.

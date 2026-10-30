@@ -3,7 +3,7 @@ import SpjallCore
 import SwiftUI
 
 /// One community (decisions 0063, 0079): a compact header whose name, audience and info button lead to
-/// `Um samfélagið` and, for a moderator, `Stjórna`; joining, taking a request back or leaving it; its posts,
+/// `community_info` and, for a moderator, `Stjórna`; joining, taking a request back or leaving it; its posts,
 /// newest first, searchable, this account's own with a delete. A member who is not muted writes in a sheet that
 /// its one-line prompt opens, with up to four images (decision 0065). Every moderator and owner tool is in the
 /// management sheet, never above the composer.
@@ -178,7 +178,7 @@ struct CommunityView: View {
     }
 
     /// The community as the groups readers know lay it out (decision 0080): a cover band with the picture over its
-    /// edge, a large name, the audience line that opens `Um samfélagið`, a row of members, `Bjóða`, and the start of
+    /// edge, a large name, the audience line that opens `community_info`, a row of members, `Bjóða`, and the start of
     /// the description. The band is plain while the cover loads and when there is none.
     private func header(_ community: Community) -> some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -320,13 +320,13 @@ struct CommunityView: View {
         }
     }
 
-    /// How much of the description the header shows before `Lesa meira` takes the reader to `Um samfélagið`
+    /// How much of the description the header shows before `Lesa meira` takes the reader to `community_info`
     /// (decision 0079).
     private static let descriptionLines = 3
 
     /// Whether `text` takes more lines than the header shows. A description over `longDescription` characters, or
     /// one with a line break in it, is the tie the apps use for the same question; every word longer than that and
-    /// still cut is one tap away on `Um samfélagið`.
+    /// still cut is one tap away on `community_info`.
     private func isLong(_ text: String) -> Bool {
         text.count > Self.longDescription || text.contains("\n")
     }

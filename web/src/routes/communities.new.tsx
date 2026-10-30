@@ -5,7 +5,7 @@ import { CreateCommunity } from "../social/create-community.tsx";
 import { Status } from "../ui/kit.tsx";
 import { VerifyCta } from "../ui/verify.tsx";
 
-// Stofna samfélag (decisions 0063, 0080): its own screen, opened from the
+// `community_create` (decisions 0063, 0080): its own screen, opened from the
 // first row of the hub, so the hub itself holds only the list and the feed.
 export const Route = createFileRoute("/communities/new")({
   component: NewCommunity,

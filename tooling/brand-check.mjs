@@ -9,6 +9,8 @@
 //   - each value has the declared placeholders, no more and no fewer, and a
 //     plural key carries the Icelandic CLDR categories `one` and `other`;
 //   - a claim the brand makes is worded exactly as decided (CLAIMS below);
+//   - every token resolves in the brand's terms.is.json, and no string writes a term's noun or a
+//     retired word by hand (decision 0117, tooling/lib/brand-gen/terms.mjs);
 //   - the dark colours have exactly the keys of the light ones (decision 0052);
 //   - every colour pair in brand/contrast-pairs.json meets its WCAG threshold,
 //     in light and in dark;
@@ -30,6 +32,7 @@ import {
   resolveColor,
   THRESHOLDS,
 } from "./lib/contrast.mjs";
+import { checkTerms, readTerms } from "./lib/brand-gen/terms.mjs";
 import { brandNames, readJson, ROOT } from "./lib/repo.mjs";
 import { validate } from "./lib/schema.mjs";
 
@@ -314,6 +317,14 @@ export function checkBrand(name, root = ROOT) {
       manifest.claims ?? {},
     ).map((p) => `strings.is.json ${p}`),
   );
+  if (existsSync(join(root, dir, "terms.is.json"))) {
+    problems.push(
+      ...validate(readJson("brand/terms.schema.json", root), readTerms(dir, root)).map(
+        (p) => `terms.is.json ${p}`,
+      ),
+    );
+  }
+  problems.push(...checkTerms(readTerms(dir, root), strings).map((p) => `strings.is.json ${p}`));
   const tokens = readJson(`${dir}/tokens.json`, root);
   problems.push(...checkIcon(manifest.icon, dir, root, tokens));
   problems.push(...checkFonts(manifest.fonts, dir, root, tokens));

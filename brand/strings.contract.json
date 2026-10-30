@@ -2075,7 +2075,7 @@
     },
     "community_picture_choose": {
       "surfaces": ["android", "web", "ios"],
-      "description": "Label of the file picker for a community's square picture, on the create screen and in Breyta samfélagi (decision 0080)."
+      "description": "Label of the file picker for a community's square picture, on the create screen and in `community_edit` (decision 0080)."
     },
     "community_picture_remove": {
       "surfaces": ["android", "web", "ios"],
@@ -2508,7 +2508,7 @@
     },
     "community_anonymous_posts": {
       "surfaces": ["android", "ios", "web"],
-      "description": "The owner's switch in Breyta samfélagi that lets members post without their name (decision 0091)."
+      "description": "The owner's switch in `community_edit` that lets members post without their name (decision 0091)."
     },
     "community_anonymous_posts_hint": {
       "surfaces": ["android", "ios", "web"],

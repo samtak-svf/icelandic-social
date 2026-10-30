@@ -7,7 +7,7 @@ import { Avatar } from "./avatar.tsx";
 import { FeaturedList } from "./featured.tsx";
 import type { Members } from "./members.ts";
 
-// Um samfélagið beside the feed on an expanded window (decision 0087): the
+// `community_info` beside the feed on an expanded window (decision 0087): the
 // facts, and the first members' pictures with the way to all of them. It
 // stays in view while the feed scrolls; a narrower window shows none of it,
 // the header and Um carry the same there.
