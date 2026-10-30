@@ -91,7 +91,7 @@ struct CommunitiesView: View {
             CreateCommunitySheet(model: model)
         }
         .onChange(of: column, initial: true) {
-            // `Mín samfélög` is the column's now; the main pane keeps the feed.
+            // `communities_tab_mine` is the column's now; the main pane keeps the feed.
             if column && model.part == .mine { model.part = .feed }
         }
         .sharingPost($sharing)
@@ -133,7 +133,7 @@ struct CommunitiesView: View {
         feedRows
     }
 
-    /// The feed's cards and the sentinel that pages it: shared by the feed part and the one under `Mín samfélög`,
+    /// The feed's cards and the sentinel that pages it: shared by the feed part and the `communities_tab_mine` one,
     /// so there is one feed state and one way to draw it.
     @ViewBuilder private var feedRows: some View {
         ForEach(model.feedPosts, id: \.postId) { post in
@@ -236,7 +236,7 @@ struct CommunitiesView: View {
     }
 }
 
-/// `Stofna samfélag`, the first row of `Mín samfélög`: it opens the create screen (decision 0080).
+/// `community_create`, the first row of `communities_tab_mine`: it opens the create screen (decision 0080).
 private struct CreateRow: View {
     let action: () -> Void
 

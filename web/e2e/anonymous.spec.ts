@@ -11,7 +11,7 @@ test("an anonymous post waits for approval, shows no name, and a moderator can r
   const owner = await person(browser, "Eigandi Nafnlausdóttir");
   const address = await found(owner, "open");
 
-  // The owner turns the switch on in Breyta samfélagi.
+  // The owner turns the switch on in `community_edit`.
   await manageDetails(owner);
   await owner.getByRole("switch", { name: new RegExp(strings.community_anonymous_posts) }).check();
   await owner.getByRole("button", { name: strings.community_edit }).last().click();

@@ -90,7 +90,8 @@ final class CommunitiesModel {
         communities.filter(\.pinned) + communities.filter { !$0.pinned }
     }
 
-    /// Pins a community to the top of `Mín samfélög`, or takes the pin off, and reads the list again so the order
+    /// Pins a community to the top of `communities_tab_mine`, or takes the pin off, and reads the list again so the
+    /// order
     /// is the server's.
     func pin(_ communityId: String, _ pinned: Bool) async {
         guard mine.contains(where: { $0.communityId == communityId }) else { return }
@@ -260,7 +261,7 @@ final class CommunitiesModel {
                 try social.createCommunity(name: name, description: description, audience: audience)
             }
             // The community exists from here on: a picture that fails to send is not a reason to make it again
-            // (the owner sets it in `Breyta samfélagi`), so only the ones that went are drawn.
+            // (the owner sets it in `community_edit`), so only the ones that went are drawn.
             let id = community.communityId
             if let picture, let file = try? await picture() {
                 defer { try? FileManager.default.removeItem(at: file) }

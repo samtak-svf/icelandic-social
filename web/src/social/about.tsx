@@ -5,7 +5,7 @@ import type { Members } from "./members.ts";
 import { ProblemText, Status, VerifiedMark } from "../ui/kit.tsx";
 import { CommunityLevel } from "./notification-level.tsx";
 
-// Um samfélagið (decisions 0079, 0087): the whole description, who may read
+// `community_info` (decisions 0079, 0087): the whole description, who may read
 // and join, where it is hosted, and the members with their roles. The facts
 // are also the community page's aside on an expanded window. The members have
 // their own tab (decision 0089).

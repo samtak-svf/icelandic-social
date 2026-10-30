@@ -17,15 +17,15 @@ func windowClass(width: CGFloat) -> Frame {
 struct WindowLayout: Equatable, Sendable {
     /// The five places: a bar at the bottom of the screen, or a rail down the leading edge.
     enum Navigation: Equatable, Sendable { case bar, rail }
-    /// The community page: one column, or the feed with `Um samfélagið` beside it.
+    /// The community page: one column, or the feed with `community_info` beside it.
     enum Community: Equatable, Sendable { case column, feedAndAside }
     /// `Stjórna`: one screen, or a side navigation with a page for each part.
     enum Manage: Equatable, Sendable { case oneScreen, sideNav }
     /// The featured posts: a strip between the composer and the feed, or in the aside (0088).
     enum Featured: Equatable, Sendable { case strip, aside }
-    /// The hub: `Nýjast`, `Mín samfélög` and `Finna` as tabs, or the reader's communities in a column beside the feed.
+    /// The hub: `Nýjast`, `communities_tab_mine` and `Finna` as tabs, or the communities in a column beside the feed.
     enum Hub: Equatable, Sendable { case tabs, column }
-    /// `Stofna samfélag`: the form alone, or the form beside a live preview of the community's header.
+    /// `community_create`: the form alone, or the form beside a live preview of the community's header.
     enum Create: Equatable, Sendable { case form, formAndPreview }
     /// The community's tab row: it scrolls sideways when it does not fit, or lies in one row (0089).
     enum Tabs: Equatable, Sendable { case scroll, row }

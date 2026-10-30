@@ -33,7 +33,7 @@ import samtak.spjall.ui.SpjallTheme
 import java.lang.reflect.Proxy
 
 /**
- * A community by window width (decision 0087): Um samfélagið beside the feed only at the expanded size class, and
+ * A community by window width (decision 0087): `community_info` beside the feed only at the expanded size class, and
  * Stjórna as a section list beside the section chosen only there too.
  */
 @RunWith(RobolectricTestRunner::class)

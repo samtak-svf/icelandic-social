@@ -158,6 +158,10 @@
       "reason": "Runs checks on the Mac from a Linux machine; it is a runner, not a check."
     },
     {
+      "script": "terms-forms",
+      "reason": "Prints a word's forms from BÍN for a term table; a person runs it when setting a term, and it checks nothing."
+    },
+    {
       "script": "worker-secrets",
       "reason": "Copies the vault secrets into the deployed Worker; it checks nothing."
     }

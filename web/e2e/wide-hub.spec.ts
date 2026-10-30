@@ -4,7 +4,7 @@ import { layoutOf } from "../src/ui/layout.ts";
 import { expect, test } from "./origin.ts";
 import { found, join, pageOverflow, person, write } from "./social-helpers.ts";
 
-// The hub and Stofna samfélag at the contract's size classes (decision 0087):
+// The hub and `community_create` at the contract's size classes (decision 0087):
 // on an expanded window the reader's communities sit in a column beside the
 // feed, each with its unread count, and the create form sits beside a live
 // preview of the community header; below it the tabs and the bare form stay.

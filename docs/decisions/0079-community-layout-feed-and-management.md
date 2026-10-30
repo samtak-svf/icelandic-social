@@ -3,6 +3,7 @@
 - Status: accepted; implemented; amended by [0080](0080-communities-follow-the-familiar-group-layout.md) and [0089](0089-a-community-has-tabs.md)
 - Date: 2026-10-22
 - Decided by: Guðröður Atli Jónsson
+- Amended by: [0117](0117-names-in-the-ui-are-one-table.md) (the word in the labels quoted here is now a term, `hópur`)
 - Amended by: [0080](0080-communities-follow-the-familiar-group-layout.md) (hub rows, header, composer, post card and post screen)
 - Amended by: [0089](0089-a-community-has-tabs.md) (the member list is a tab of the community)
 - Amends: [0009](0009-v1-scope.md) (community hub feed, member list, and management screens in v1), [0063](0063-communities-audiences-and-moderation.md) (how communities, posts, members, and moderation tools are presented)

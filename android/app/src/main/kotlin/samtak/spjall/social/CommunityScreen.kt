@@ -126,7 +126,7 @@ internal fun CommunityScreen(
 }
 
 /**
- * What sits under the header: Stjórna as a page (an expanded window), the feed with Um samfélagið beside it (an
+ * What sits under the header: Stjórna as a page (an expanded window), the feed with `community_info` beside it (an
  * expanded window), or the feed alone. [feed] draws the feed into the modifier it is given.
  */
 @Composable
@@ -149,7 +149,7 @@ private fun ColumnScope.CommunityBody(
                 onDelete = onDeleteCommunity,
                 modifier = Modifier.weight(1f),
             )
-        // The feed in the main pane, Um samfélagið in the supporting pane (decision 0087).
+        // The feed in the main pane, `community_info` in the supporting pane (decision 0087).
         currentLayout().community == CommunityLayout.FEED_AND_ASIDE && community != null -> {
             val modifier = Modifier.weight(1f).fillMaxWidth()
             CommunityPanes(community, state.members, modifier, state.featured, actions::open, feed)

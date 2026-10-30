@@ -484,7 +484,7 @@ final class CommunityModel {
         }
     }
 
-    /// The member list, its owner and moderators first, for `Um samfélagið` and `Meðlimir og hlutverk`
+    /// The member list, its owner and moderators first, for `community_info` and `Meðlimir og hlutverk`
     /// (decision 0079). Asked for once; a second ask waits for the first.
     func loadMembers() async {
         guard !membersLoaded, !loadingMembers, !busy else { return }

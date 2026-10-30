@@ -344,7 +344,8 @@ test("the owner deletes a community, and a platform moderator restores it", asyn
 
   // A platform moderator sees it deleted, with its last day, and restores it.
   await platform.goto(community);
-  await expect(platform.getByText(/^Samfélaginu var eytt\. Það má endurheimta til /)).toBeVisible();
+  const notice = strings.community_deleted_notice({ date: "" }).replace(/\.$/, "");
+  await expect(platform.getByText(notice)).toBeVisible();
   await expect(platform.getByText("Síðasti pósturinn.")).toHaveCount(0);
   await platform.getByRole("button", { name: strings.community_restore }).click();
   await expect(platform.getByRole("button", { name: strings.community_join })).toBeVisible();

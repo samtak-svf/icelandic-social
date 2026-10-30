@@ -15,7 +15,7 @@ import samtak.spjall.frames.windowWidthDp
 /** How the five places are reached: a bar along the bottom, or a rail down the left. */
 enum class Navigation { BAR, RAIL }
 
-/** The community page: one column, or the feed with Um samfélagið beside it. */
+/** The community page: one column, or the feed with `community_info` beside it. */
 enum class CommunityLayout { COLUMN, FEED_AND_ASIDE }
 
 /** Stjórna: one screen of buttons, or a side navigation with a page for each part. */
@@ -24,10 +24,10 @@ enum class ManageLayout { ONE_SCREEN, SIDE_NAV }
 /** The featured posts: a row between the composer and the feed, or in the aside (0088). */
 enum class FeaturedLayout { STRIP, ASIDE }
 
-/** The hub: Nýjast, Mín samfélög and Finna as tabs, or the reader's communities in a column beside the feed. */
+/** The hub: Nýjast, `communities_tab_mine` and Finna as tabs, or the communities in a column beside the feed. */
 enum class HubLayout { TABS, COLUMN }
 
-/** Stofna samfélag: the form alone, or the form beside a live preview of the community's header. */
+/** `community_create`: the form alone, or the form beside a live preview of the community's header. */
 enum class CreateLayout { FORM, FORM_AND_PREVIEW }
 
 /** The community's tab row: it scrolls sideways when it does not fit, or lies in one row (0089). */

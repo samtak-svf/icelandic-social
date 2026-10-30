@@ -12,10 +12,10 @@ import { outcome } from "./outcome.ts";
 import { PicturePick, sendImage } from "./picture-pick.tsx";
 import { Button } from "../ui/kit.tsx";
 
-// Stofna samfélag (decisions 0063, 0080): the name, the description, the
+// `community_create` (decisions 0063, 0080): the name, the description, the
 // audience and, if wanted, a picture and a cover. The community is made
 // first and the chosen images are sent to it after; one that fails leaves the
-// community made and says so, and Breyta samfélagi is where to try again. On
+// community made and says so, and `community_edit` is where to try again. On
 // an expanded window (decision 0087) the form sits beside a live preview of
 // the header, with the chosen pictures shown in place before Stofna.
 

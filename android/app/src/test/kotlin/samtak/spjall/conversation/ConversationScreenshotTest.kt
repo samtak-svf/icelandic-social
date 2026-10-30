@@ -23,8 +23,10 @@ import org.junit.Test
 import org.junit.rules.TemporaryFolder
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
+import samtak.spjall.brand.R
 import samtak.spjall.conversations.SCREENSHOT_DEVICE
 import samtak.spjall.conversations.SCREENSHOT_SDK
 import samtak.spjall.core.Content
@@ -45,23 +47,20 @@ import kotlin.math.abs
 import android.graphics.Color as AndroidColor
 
 /**
- * What one conversation looks like in the states 0043 names: the composer's one action, the
- * clock of a pending message and a shared post's line. Rewrite the
- * images with `./gradlew recordRoborazziDebug` when a change is meant.
+ * What one conversation looks like in the states 0043 names: the composer's one action, the clock of a pending
+ * message and a shared post's line. Rewrite the images with `./gradlew recordRoborazziDebug` when a change is meant.
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [SCREENSHOT_SDK], qualifiers = SCREENSHOT_DEVICE, fontScale = 1f)
 class ConversationScreenshotTest {
-    @get:Rule
-    val folder = TemporaryFolder()
+    @get:Rule val folder = TemporaryFolder()
 
     @get:Rule val compose = createComposeRule()
 
     @get:Rule val zone = IcelandZone()
 
     private val actions = IdleActions
-
     private val anna = Person("a2", "Anna Jónsdóttir", true)
     private val me = Person("a1", "Jón Jónsson", true)
 
@@ -130,8 +129,9 @@ class ConversationScreenshotTest {
             item(2u, Content.Name("Fjölskyldan")),
             item(3u, Content.Name(null)),
         )
-        compose.onNodeWithText("Anna Jónsdóttir nefndi hópinn „Fjölskyldan“.").assertExists()
-        compose.onNodeWithText("Anna Jónsdóttir fjarlægði nafn hópsins.").assertExists()
+        val app = RuntimeEnvironment.getApplication()
+        compose.onNodeWithText(app.getString(R.string.name_set_card, anna.name, "Fjölskyldan")).assertExists()
+        compose.onNodeWithText(app.getString(R.string.name_cleared_card, anna.name)).assertExists()
         compose.onRoot().captureRoboImage()
     }
 

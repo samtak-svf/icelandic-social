@@ -27,7 +27,7 @@ import samtak.spjall.socket.Live
  * The new-conversation picker (decisions 0022, 0036, 0078): the people met through
  * a shared conversation, then everyone else signed in, a page at a time, and
  * a name search over the whole directory. A tap on a person opens the 1:1
- * with them at once (decision 0043); "Nýr hópur" switches to picking several,
+ * with them at once (decision 0043); `new_group` switches to picking several,
  * and more than one picked start a group. Given [targetConversation] it adds
  * people to that group instead, with everyone already in it shown as taken.
  */
@@ -96,7 +96,7 @@ class PeopleViewModel(
         load()
     }
 
-    /** "Nýr hópur": the rows become checkboxes. */
+    /** `new_group`: the rows become checkboxes. */
     fun group() {
         _state.update { it.copy(group = true) }
     }

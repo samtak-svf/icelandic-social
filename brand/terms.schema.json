@@ -1,0 +1,190 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$comment": "The shape of brand/<name>/terms.is.json (decision 0117). The grammar of a token and the meaning of a slot are at the top of tooling/lib/brand-gen/terms.mjs.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["terms", "compounds", "retired"],
+  "properties": {
+    "$comment": {
+      "type": "string"
+    },
+    "terms": {
+      "type": "object",
+      "propertyNames": {
+        "pattern": "^[a-z][a-z_]*$"
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/term"
+      }
+    },
+    "compounds": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["word", "reason"],
+        "properties": {
+          "word": {
+            "type": "string",
+            "minLength": 1
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "retired": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["headword", "guid", "forms"],
+        "properties": {
+          "headword": {
+            "type": "string",
+            "minLength": 1
+          },
+          "guid": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{32}$"
+          },
+          "forms": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "word": {
+      "type": "string",
+      "minLength": 1
+    },
+    "term": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["bin", "gender", "forms", "agreement"],
+      "properties": {
+        "bin": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["headword", "guid"],
+          "properties": {
+            "headword": {
+              "type": "string",
+              "minLength": 1
+            },
+            "guid": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{32}$"
+            },
+            "prefix": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        },
+        "gender": {
+          "enum": ["kk", "kvk", "hk"]
+        },
+        "forms": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "nom",
+            "acc",
+            "dat",
+            "gen",
+            "nom.def",
+            "acc.def",
+            "dat.def",
+            "gen.def",
+            "nom.pl",
+            "acc.pl",
+            "dat.pl",
+            "gen.pl",
+            "nom.pl.def",
+            "acc.pl.def",
+            "dat.pl.def",
+            "gen.pl.def"
+          ],
+          "properties": {
+            "nom": {
+              "$ref": "#/$defs/word"
+            },
+            "acc": {
+              "$ref": "#/$defs/word"
+            },
+            "dat": {
+              "$ref": "#/$defs/word"
+            },
+            "gen": {
+              "$ref": "#/$defs/word"
+            },
+            "nom.def": {
+              "$ref": "#/$defs/word"
+            },
+            "acc.def": {
+              "$ref": "#/$defs/word"
+            },
+            "dat.def": {
+              "$ref": "#/$defs/word"
+            },
+            "gen.def": {
+              "$ref": "#/$defs/word"
+            },
+            "nom.pl": {
+              "$ref": "#/$defs/word"
+            },
+            "acc.pl": {
+              "$ref": "#/$defs/word"
+            },
+            "dat.pl": {
+              "$ref": "#/$defs/word"
+            },
+            "gen.pl": {
+              "$ref": "#/$defs/word"
+            },
+            "nom.pl.def": {
+              "$ref": "#/$defs/word"
+            },
+            "acc.pl.def": {
+              "$ref": "#/$defs/word"
+            },
+            "dat.pl.def": {
+              "$ref": "#/$defs/word"
+            },
+            "gen.pl.def": {
+              "$ref": "#/$defs/word"
+            }
+          }
+        },
+        "variants": {
+          "type": "object",
+          "additionalProperties": false,
+          "patternProperties": {
+            "^(nom|acc|dat|gen)(\\.pl)?(\\.def)?$": {
+              "$ref": "#/$defs/word"
+            }
+          }
+        },
+        "agreement": {
+          "type": "object",
+          "additionalProperties": false,
+          "patternProperties": {
+            "^[a-z]+(\\.[a-z]+)+$": {
+              "$ref": "#/$defs/word"
+            }
+          }
+        }
+      }
+    }
+  }
+}

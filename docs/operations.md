@@ -183,6 +183,18 @@ maintainer sends a would-be tester is the public guide at https://spjall.samtak.
 ([decision 0112](decisions/0112-tester-guide-in-the-web-app.md)): it walks the Play opt-in and
 TestFlight screens, and the maintainer adds the tester's address afterwards.
 
+## Renaming a word in the UI
+
+A UI noun is one entry in `brand/<name>/terms.is.json` (decision 0117). No identifier, route, table, string key or API
+field changes with it, so nothing here needs a migration or an `api: breaking` label.
+
+1. `node tooling/terms-forms.mjs <headword>` prints the forms from BÍN. Exit 3 means BÍN did not answer, not that the word
+   has no forms. `--prefix` builds a compound BÍN has no headword for.
+2. Put the forms in the term, set its gender and agreement words for that gender, and move the old forms to `retired`.
+3. `pnpm brand:gen`, then `pnpm check`. The gate names any string that still holds a raw form.
+4. Read every string that carries the token: a new gender can read wrong where no table sees it. Run
+   `node tooling/mac-remote.mjs android` and re-record the screenshots that show the word (`docs/testing.md`).
+
 ## Monitoring
 
 The daily cron logs these with counts only (decision 0008):

@@ -27,7 +27,7 @@ import java.lang.reflect.Proxy
 
 /**
  * The expanded layouts of decision 0087 on a tablet in landscape (1280 by 800 dp), and the community at a medium
- * width, as evidence that an Android tablet shows the layouts of its size class: the feed with Um samfélagið and the
+ * width, as evidence that an Android tablet shows the layouts of its size class: the feed with `community_info` and the
  * featured posts beside it, Stjórna as a section list beside the section, and the hub as a column of communities
  * beside the feed. The screens decide their own layout; nothing here picks one.
  */

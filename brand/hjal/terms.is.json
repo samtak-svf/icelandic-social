@@ -1,0 +1,103 @@
+{
+  "$comment": "The words the UI uses for the product's nouns (decision 0117). Strings write tokens and generation expands them, so no client knows this file. [[group.acc]] is the slot `acc` of the term `group`; [[Group.acc]] capitalises it to open a sentence. Noun slots: case (nom, acc, dat, gen), then .pl, then .def, from BIN by tooling/terms-forms.mjs, never typed. A compound with no headword has `bin.prefix`, its forms being the prefix plus the last part's forms. `agreement` holds the words that lean on the noun's gender: this (demonstrative), it (pronoun), open, closed, no (none), any, my, new and pinned, each with its case. To rename a term: fetch the new forms, set the agreement words for the new gender, and move the old forms to `retired`. `compounds` lists real words that merely contain a noun; `retired` lists words no string may use.",
+  "terms": {
+    "group": {
+      "bin": {
+        "headword": "hópur",
+        "guid": "662d8f28aec3bdb5e6acdccc23c3b460"
+      },
+      "gender": "kk",
+      "forms": {
+        "nom": "hópur",
+        "nom.def": "hópurinn",
+        "acc": "hóp",
+        "acc.def": "hópinn",
+        "dat": "hópi",
+        "dat.def": "hópnum",
+        "gen": "hóps",
+        "gen.def": "hópsins",
+        "nom.pl": "hópar",
+        "nom.pl.def": "hóparnir",
+        "acc.pl": "hópa",
+        "acc.pl.def": "hópana",
+        "dat.pl": "hópum",
+        "dat.pl.def": "hópunum",
+        "gen.pl": "hópa",
+        "gen.pl.def": "hópanna"
+      },
+      "variants": {
+        "dat": "hóp"
+      },
+      "agreement": {
+        "this.nom": "þessi",
+        "this.dat": "þessum",
+        "it.nom": "hann",
+        "it.acc": "hann",
+        "it.gen": "hans",
+        "open.nom": "opinn",
+        "closed.nom": "lokaður",
+        "no.nom": "enginn",
+        "any.dat": "neinum",
+        "my.nom.pl": "mínir",
+        "pinned.nom": "festur"
+      }
+    },
+    "group_conversation": {
+      "bin": {
+        "headword": "samtal",
+        "guid": "ef0c860639cf692a25bf576ffc276415",
+        "prefix": "hóp"
+      },
+      "gender": "hk",
+      "forms": {
+        "nom": "hópsamtal",
+        "nom.def": "hópsamtalið",
+        "acc": "hópsamtal",
+        "acc.def": "hópsamtalið",
+        "dat": "hópsamtali",
+        "dat.def": "hópsamtalinu",
+        "gen": "hópsamtals",
+        "gen.def": "hópsamtalsins",
+        "nom.pl": "hópsamtöl",
+        "nom.pl.def": "hópsamtölin",
+        "acc.pl": "hópsamtöl",
+        "acc.pl.def": "hópsamtölin",
+        "dat.pl": "hópsamtölum",
+        "dat.pl.def": "hópsamtölunum",
+        "gen.pl": "hópsamtala",
+        "gen.pl.def": "hópsamtalanna"
+      },
+      "agreement": {
+        "this.acc": "þetta",
+        "it.dat": "því",
+        "new.nom": "nýtt"
+      }
+    }
+  },
+  "compounds": [
+    {
+      "word": "prófunarhópinn",
+      "reason": "the testers on a store's test track, not a community"
+    }
+  ],
+  "retired": [
+    {
+      "headword": "samfélag",
+      "guid": "1c31ce6f8864510523ff7383285ec92b",
+      "forms": [
+        "samfélag",
+        "samfélaga",
+        "samfélaganna",
+        "samfélagi",
+        "samfélaginu",
+        "samfélagið",
+        "samfélags",
+        "samfélagsins",
+        "samfélög",
+        "samfélögin",
+        "samfélögum",
+        "samfélögunum"
+      ]
+    }
+  ]
+}

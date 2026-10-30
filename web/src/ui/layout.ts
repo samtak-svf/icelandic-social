@@ -8,7 +8,7 @@ import { sizeClassOf, type SizeClass } from "../generated/frames.ts";
 export type Layout = {
   /** The five places: a bar at the bottom of the screen, or a rail down the left. */
   navigation: "bar" | "rail";
-  /** The community page: one column, or the feed with Um samfélagið beside it. */
+  /** The community page: one column, or the feed with `community_info` beside it. */
   community: "column" | "feed-and-aside";
   /** How many members' pictures the community header or aside shows at most. */
   memberPictures: number;
@@ -16,9 +16,9 @@ export type Layout = {
   manage: "one-screen" | "side-nav";
   /** The featured posts: a row between the composer and the feed, or in the aside (0088). */
   featured: "strip" | "aside";
-  /** The hub: Nýjast, Mín samfélög and Finna as tabs, or the reader's communities in a column beside the feed. */
+  /** The hub: Nýjast, `communities_tab_mine` and Finna as tabs, or the reader's communities in a column beside the feed. */
   hub: "tabs" | "column";
-  /** Stofna samfélag: the form alone, or the form beside a live preview of the community's header. */
+  /** `community_create`: the form alone, or the form beside a live preview of the community's header. */
   create: "form" | "form-and-preview";
   /** Samtöl: the list or the open conversation, or the list beside the open one (0093). */
   conversations: "list" | "list-and-thread";

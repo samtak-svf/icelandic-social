@@ -45,7 +45,7 @@ export function Manage({
   const owner = community.role === "owner";
   return (
     <section aria-labelledby="manage-title" className="mt-4">
-      {/* Beside the side navigation this page is Breyta samfélagi, titled as each other part is. */}
+      {/* Beside the side navigation this page is `community_edit`, titled as each other part is. */}
       <h1 id="manage-title" className="font-headline text-3xl expanded:hidden">
         {waiting > 0
           ? strings.community_manage_count({ count: waiting })
@@ -97,7 +97,7 @@ export function Manage({
   );
 }
 
-/** Breyta samfélagi: the owner changes its name, description or audience (decision 0063). */
+/** `community_edit`: the owner changes its name, description or audience (decision 0063). */
 function Edit({
   community,
   changed,

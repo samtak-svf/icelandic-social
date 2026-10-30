@@ -52,7 +52,7 @@ class PeopleScreenshotTest {
         compose.onRoot().captureRoboImage()
     }
 
-    /** A tap opens a 1:1; "Nýr hópur" heads the list. */
+    /** A tap opens a 1:1; `new_group` heads the list. */
     @Test
     fun oneTap() = shoot(PeopleViewModel.State(people = met, directory = others, loaded = true))
 

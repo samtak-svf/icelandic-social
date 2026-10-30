@@ -38,7 +38,7 @@ import samtak.spjall.ui.Palette
 import samtak.spjall.ui.ProblemCard
 import samtak.spjall.ui.currentLayout
 
-/** "Stofna samfélag": a name, a description, and whether anyone may read and join it or only those let in. */
+/** `community_create`: a name, a description, and whether anyone may read and join it or only those let in. */
 @Composable
 fun CreateCommunityScreen(
     state: CreateCommunityViewModel.State,

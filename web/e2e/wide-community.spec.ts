@@ -6,7 +6,7 @@ import { cardMenu, found, join, pageOverflow, person, post, write } from "./soci
 
 // The community page at the contract's size classes (decision 0087): the
 // header shows as many members' pictures as the layout allows, and on an
-// expanded window Um samfélagið sits beside the feed, in view while it scrolls.
+// expanded window `community_info` sits beside the feed, in view while it scrolls.
 // A featured post is in the strip and its place in the feed below expanded, and
 // in the aside only on an expanded window (decision 0092).
 

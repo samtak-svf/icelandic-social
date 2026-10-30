@@ -134,7 +134,7 @@ interface CommunityActions : PollActions {
 }
 
 /**
- * What the feed asks of the screen around it: open Stjórna, report or delete a post, open Um samfélagið, and open
+ * What the feed asks of the screen around it: open Stjórna, report or delete a post, open `community_info`, and open
  * the composer. The screen holds what these change above its layouts, so a change of size class (which moves the
  * feed into another pane) keeps it (decision 0087).
  */

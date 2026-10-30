@@ -64,10 +64,10 @@ export const strings = {
     args.name + " tengdi nýtt tæki.",
   /** System card when an account joins a group (docs/decisions/0022). */
   member_added_card: (args: { name: string }): string =>
-    args.name + " bættist í hópinn.",
+    args.name + " bættist í hópsamtalið.",
   /** System card when an account leaves a group, is removed, or deletes its account (docs/decisions/0022). */
   member_removed_card: (args: { name: string }): string =>
-    args.name + " er ekki lengur í hópnum.",
+    args.name + " er ekki lengur í hópsamtalinu.",
   /** System card in a 1:1 when the other account leaves it, as on a block; member_removed_card says the same of a group (docs/decisions/0022). */
   member_removed_card_direct: (args: { name: string }): string =>
     args.name + " er ekki lengur í samtalinu.",
@@ -243,11 +243,11 @@ export const strings = {
   /** Button that reloads the web page. */
   reload: "Hlaða aftur",
   /** Navigation: the communities a person is in and the way to find more (decision 0063). */
-  tab_communities: "Samfélög",
+  tab_communities: "Hópar",
   /** Tab of the community hub: the chronological feed of the posts in the person's communities (decision 0079). */
   communities_tab_feed: "Nýjast",
   /** Tab of the community hub: the communities the person is a member of. */
-  communities_tab_mine: "Mín samfélög",
+  communities_tab_mine: "Mínir hópar",
   /** Tab of the community hub: the search and the list of communities to join. */
   communities_tab_discover: "Finna",
   /** The notifications screen's title, and the name the bell in the top bar is read out by: what was addressed to this account in communities (decisions 0067, 0109). */
@@ -316,13 +316,13 @@ export const strings = {
   /** Notification menu item: notifications of this kind stop reaching the phone and stay in the app (decision 0106). */
   notice_menu_kind_in_app: "Aðeins í appinu fyrir þessa tegund",
   /** Notification menu item: no more notifications from this community (decision 0106). */
-  notice_menu_community_off: "Slökkva á tilkynningum frá þessu samfélagi",
+  notice_menu_community_off: "Slökkva á tilkynningum frá þessum hópi",
   /** Heading of the notifications section in Settings, and the community menu item that opens its level (decision 0106). */
   notification_settings_title: "Tilkynningar",
   /** Under the notifications heading in Settings: what the levels mean (decision 0106). */
   notification_settings_body: "Veldu hvað birtist í símanum og hvað aðeins í appinu.",
   /** Heading over the communities whose level the reader has changed (decision 0106). */
-  notification_settings_communities: "Samfélög",
+  notification_settings_communities: "Hópar",
   /** Notification settings row: comments on the reader's posts (decision 0106). */
   notification_kind_comment: "Athugasemdir við póstana þína",
   /** Notification settings row: replies to the reader's comments (decision 0106). */
@@ -344,31 +344,31 @@ export const strings = {
   /** Shown in place of the name of an account that was deleted. */
   person_deleted: "Eyddur reikningur",
   /** Heading of the communities the person is a member of. */
-  communities_mine: "Samfélögin mín",
+  communities_mine: "Hóparnir mínir",
   /** The person's community list when it is empty. */
-  communities_empty: "Þú ert ekki í neinu samfélagi enn.",
+  communities_empty: "Þú ert ekki í neinum hópi enn.",
   /** Label of the search for communities by name. */
-  communities_find: "Finna samfélag",
+  communities_find: "Finna hóp",
   /** The community search found nothing. */
-  communities_none_found: "Ekkert samfélag fannst.",
+  communities_none_found: "Enginn hópur fannst.",
   /** The hub's feed when the person's communities have no posts yet (decision 0079). */
-  communities_feed_empty: "Engir póstar úr samfélögunum þínum enn.",
+  communities_feed_empty: "Engir póstar úr hópunum þínum enn.",
   /** Heading and button: create a new community. */
-  community_create: "Stofna samfélag",
+  community_create: "Stofna hóp",
   /** Label of the live preview of the community header beside the create form on an expanded window (decision 0087). */
-  community_preview: "Forskoðun á samfélaginu",
+  community_preview: "Forskoðun á hópnum",
   /** Label of a community's name field. */
   community_name: "Heiti",
   /** Label of a community's description field. */
   community_description: "Lýsing",
   /** A community anyone signed in may read and join (decision 0063). */
-  community_open: "Opið",
+  community_open: "Opinn",
   /** A community only members read; joining takes approval (decision 0063). */
-  community_private: "Lokað",
+  community_private: "Lokaður",
   /** Explains an open community where it is chosen. */
-  community_open_hint: "Allir innskráðir geta lesið það og gengið í það.",
+  community_open_hint: "Allir innskráðir geta lesið hann og gengið í hann.",
   /** Explains a private community where it is chosen. */
-  community_private_hint: "Aðeins meðlimir lesa það og stjórnandi samþykkir nýja.",
+  community_private_hint: "Aðeins meðlimir lesa hann og stjórnandi samþykkir nýja.",
   /** How many members a community has. */
   community_members: (args: { count: number }): string =>
     plural.select(args.count) === "one"
@@ -387,30 +387,30 @@ export const strings = {
   /** Owner action on a moderator: take the role away. */
   community_remove_moderator: "Taka úr stjórnendum",
   /** Title of the screen with a community's full description, its hosting notice and its members (decision 0079). */
-  community_info: "Um samfélagið",
+  community_info: "Um hópinn",
   /** Link that opens the full description from the feed's clamped community description (decision 0079). */
   community_read_more: "Lesa meira",
   /** Says a community's content is hosted on a server and is not end-to-end encrypted (decisions 0060, 0063). */
-  community_not_encrypted_notice: "Efni í samfélögum er hýst á þjóni og er ekki dulkóðað enda á milli.",
+  community_not_encrypted_notice: "Efni í hópum er hýst á þjóni og er ekki dulkóðað enda á milli.",
   /** Owner action: change a community's name, description or audience. */
-  community_edit: "Breyta samfélagi",
+  community_edit: "Breyta hópi",
   /** Title of the screen holding a moderator's and the owner's tools (decision 0079). */
   community_manage: "Stjórna",
   /** The manage screen's label with the number of items waiting for the person. */
   community_manage_count: (args: { count: number }): string =>
     "Stjórna (" + String(args.count) + ")",
   /** Placeholder of the search over one community's posts. */
-  community_search_posts: "Leita í samfélagi",
+  community_search_posts: "Leita í hópi",
   /** The search over a community's posts found nothing. */
   community_search_empty: "Enginn póstur fannst.",
   /** Button: join an open community. */
-  community_join: "Ganga í samfélagið",
+  community_join: "Ganga í hópinn",
   /** Button: ask to join a private community. */
   community_request_join: "Biðja um inngöngu",
   /** Shown while the person's join request waits. */
   community_join_requested: "Beiðni þín bíður samþykkis stjórnanda.",
   /** Button: leave a community. */
-  community_leave: "Yfirgefa samfélagið",
+  community_leave: "Yfirgefa hópinn",
   /** Shown to a muted member in place of the composer. */
   community_muted: "Stjórnandi þaggaði niður í þér hér. Þú getur lesið en ekki skrifað.",
   /** Label of the field where a member writes a new post. */
@@ -427,7 +427,7 @@ export const strings = {
       ? String(args.count) + " athugasemd"
       : String(args.count) + " athugasemdir",
   /** Link from a post back to its community. */
-  post_back: "Til baka í samfélagið",
+  post_back: "Til baka í hópinn",
   /** Label of the field where a member writes a comment. */
   comment_compose: "Skrifa athugasemd",
   /** Opens the picker for the one image a comment may carry (decision 0082). */
@@ -571,15 +571,15 @@ export const strings = {
   community_join_again: (args: { date: string }): string =>
     "Þú getur beðið aftur " + args.date + ".",
   /** The owner's action that deletes a community, and its confirm button (#364). */
-  community_delete: "Eyða samfélaginu",
+  community_delete: "Eyða hópnum",
   /** Confirmation before the owner deletes a community, naming it and what is lost (decision 0070). */
   community_delete_confirm: (args: { name: string }): string =>
-    "Eyða samfélaginu „" + args.name + "“? Það hverfur strax öllum meðlimum, og eftir 30 daga er póstum þess, athugasemdum og myndum eytt fyrir fullt og allt.",
+    "Eyða hópnum „" + args.name + "“? Hann hverfur strax öllum meðlimum, og eftir 30 daga er póstum hans, athugasemdum og myndum eytt fyrir fullt og allt.",
   /** To a platform moderator viewing a deleted community; {date} is when it is purged (decision 0070). */
   community_deleted_notice: (args: { date: string }): string =>
-    "Samfélaginu var eytt. Það má endurheimta til " + args.date + ".",
+    "Hópnum var eytt. Hann má endurheimta til " + args.date + ".",
   /** A platform moderator restores a deleted community (decision 0070). */
-  community_restore: "Endurheimta samfélagið",
+  community_restore: "Endurheimta hópinn",
   /** Supporting text under the reason field of a report: the actions need it (#359). */
   moderation_reason_required: "Skrifaðu ástæðu fyrst. Hún er skráð með aðgerðinni.",
   /** A closed report's decision (#360). */
@@ -599,7 +599,7 @@ export const strings = {
   /** A closed report's decision. */
   moderation_decision_unmute_member: "Meðlimurinn mátti skrifa aftur.",
   /** A closed report's decision. */
-  moderation_decision_remove_member: "Meðlimurinn var tekinn úr samfélaginu.",
+  moderation_decision_remove_member: "Meðlimurinn var tekinn úr hópnum.",
   /** A closed report's decision. */
   moderation_decision_ban_member: "Meðlimurinn var útilokaður.",
   /** A closed report's decision. */
@@ -609,17 +609,17 @@ export const strings = {
   /** A closed report's decision and a log entry: a platform moderator removed an account's photo (decision 0115). */
   moderation_decision_clear_account_photo: "Myndin var fjarlægð.",
   /** A closed report's decision: the community's deletion closed it (decision 0070). */
-  moderation_decision_community_deleted: "Lokað þegar samfélaginu var eytt.",
+  moderation_decision_community_deleted: "Lokað þegar hópnum var eytt.",
   /** A log entry: a moderator set the community's picture (decision 0080). */
-  moderation_log_community_picture_set: "Mynd samfélagsins var sett.",
+  moderation_log_community_picture_set: "Mynd hópsins var sett.",
   /** A log entry: a moderator removed the community's picture (decision 0080). */
-  moderation_log_community_picture_removed: "Mynd samfélagsins var fjarlægð.",
+  moderation_log_community_picture_removed: "Mynd hópsins var fjarlægð.",
   /** A log entry: a moderator set the community's cover (decision 0080). */
-  moderation_log_community_cover_set: "Forsíðumynd samfélagsins var sett.",
+  moderation_log_community_cover_set: "Forsíðumynd hópsins var sett.",
   /** A log entry: a moderator removed the community's cover (decision 0080). */
-  moderation_log_community_cover_removed: "Forsíðumynd samfélagsins var fjarlægð.",
+  moderation_log_community_cover_removed: "Forsíðumynd hópsins var fjarlægð.",
   /** A log entry: a moderator pinned a post to the top of the community (decision 0080). */
-  moderation_log_post_pinned: "Færsla var fest í samfélaginu.",
+  moderation_log_post_pinned: "Færsla var fest í hópnum.",
   /** A log entry: a moderator unpinned the community's pinned post (decision 0080). */
   moderation_log_post_unpinned: "Færsla var losuð úr festingu.",
   /** Who closed a report and when; {date} is a formatted date. */
@@ -648,15 +648,15 @@ export const strings = {
   /** Section heading on /privacy: what personal data is processed. */
   privacy_data_heading: "Hvaða gögn eru unnin",
   /** Body on /privacy describing sign-in identities, Kenni HMAC, E2EE messages, profile photos and community content (decisions 0002, 0008, 0033, 0039, 0063, 0065). */
-  privacy_data_body: "Við innskráningu með Google tekur þjónninn við nafni og staðfestu auðkenni frá Google. Ef þú staðfestir auðkenni með rafrænum skilríkjum í gegnum Kenni fær þjónninn skráð nafn þitt úr Þjóðskrá, en kennitalan sjálf er aldrei geymd í gagnagrunni heldur aðeins óafturkræft dulritunarlegt fingrafar hennar (HMAC). Einkasamtöl og hópsamtöl í símaöppunum eru dulkóðuð enda á milli (MLS) þannig að þjónninn getur hvorki lesið skilaboð né viðhengi þeirra. Mynd sem þú setur á aðganginn þinn og efni í samfélögum (póstar, athugasemdir, myndir og viðbrögð) eru hýst á þjóninum án lýsigagna (EXIF) og eru ekki dulkóðuð enda á milli.",
+  privacy_data_body: "Við innskráningu með Google tekur þjónninn við nafni og staðfestu auðkenni frá Google. Ef þú staðfestir auðkenni með rafrænum skilríkjum í gegnum Kenni fær þjónninn skráð nafn þitt úr Þjóðskrá, en kennitalan sjálf er aldrei geymd í gagnagrunni heldur aðeins óafturkræft dulritunarlegt fingrafar hennar (HMAC). Einkasamtöl og hópsamtöl í símaöppunum eru dulkóðuð enda á milli (MLS) þannig að þjónninn getur hvorki lesið skilaboð né viðhengi þeirra. Mynd sem þú setur á aðganginn þinn og efni í hópum (póstar, athugasemdir, myndir og viðbrögð) eru hýst á þjóninum án lýsigagna (EXIF) og eru ekki dulkóðuð enda á milli.",
   /** Section heading on /privacy: where data is stored and how long it is kept. */
   privacy_retention_heading: "Varðveisla og geymslutími",
   /** Body on /privacy describing retention periods (encrypted media 30 days, removed posts 90 days, moderation logs and closed reports 1 year, no PII in logs; decisions 0001, 0008, 0023, 0066, 0070). */
-  privacy_retention_body: "Dulkóðuð viðhengi í samtölum geymast á þjóninum í allt að 30 daga á meðan tæki sækja þau. Ef samfélagi er eytt má endurheimta það í 30 daga áður en póstum, athugasemdum og myndum þess er eytt varanlega. Póstum og athugasemdum sem stjórnandi fjarlægir er eytt eftir 90 daga, og lokuðum tilkynningum og aðgerðaskrá stjórnenda er eytt eftir eitt ár. Atburðaskrár þjónsins geyma engin nöfn, kennitölur, símanúmer né innihald skilaboða.",
+  privacy_retention_body: "Dulkóðuð viðhengi í samtölum geymast á þjóninum í allt að 30 daga á meðan tæki sækja þau. Ef hópi er eytt má endurheimta hann í 30 daga áður en póstum, athugasemdum og myndum hans er eytt varanlega. Póstum og athugasemdum sem stjórnandi fjarlægir er eytt eftir 90 daga, og lokuðum tilkynningum og aðgerðaskrá stjórnenda er eytt eftir eitt ár. Atburðaskrár þjónsins geyma engin nöfn, kennitölur, símanúmer né innihald skilaboða.",
   /** Section heading on /privacy: account deletion and user rights. */
   privacy_rights_heading: "Eyðing aðgangs og réttindi þín",
   /** Body on /privacy describing immediate account deletion in the app and how to contact the controller. */
-  privacy_rights_body: "Þú getur hvenær sem er skráð út einstaka vafra og tæki í stillingum eða eytt aðganginum þínum í appinu. Þegar aðgangi er eytt lokast allar innskráningar og lyklar strax, mynd og upplýsingar aðgangsins eyðast af þjóninum og reikningurinn er tekinn úr öllum samtölum og samfélögum. Fyrirspurnir um persónuvernd má senda á samtak@samtak.is.",
+  privacy_rights_body: "Þú getur hvenær sem er skráð út einstaka vafra og tæki í stillingum eða eytt aðganginum þínum í appinu. Þegar aðgangi er eytt lokast allar innskráningar og lyklar strax, mynd og upplýsingar aðgangsins eyðast af þjóninum og reikningurinn er tekinn úr öllum samtölum og hópum. Fyrirspurnir um persónuvernd má senda á samtak@samtak.is.",
   /** Title and link label of the public support page (/support, decision 0009, #383). */
   support_title: "Aðstoð",
   /** Introductory paragraph on /support explaining how to get help. */
@@ -714,88 +714,88 @@ export const strings = {
   /** Action on a group's info screen: add people to the group (docs/decisions/0078). */
   add_people: "Bæta við",
   /** Title of the people picker when opened to add people to an existing group (docs/decisions/0078). */
-  add_people_title: "Bæta við í hópinn",
+  add_people_title: "Bæta við í hópsamtalið",
   /** Confirm button in the people picker when adding picked people to an existing group (docs/decisions/0078). */
   add_people_confirm: "Bæta við",
   /** Action on a group's info screen: set or change the group's name (docs/decisions/0078). */
   group_name: "Nafn",
   /** Title of the dialog or sheet that sets or changes a group's name (docs/decisions/0078). */
-  group_name_title: "Nafn hópsins",
+  group_name_title: "Nafn hópsamtalsins",
   /** Placeholder in the group name field when the group has no name (docs/decisions/0078). */
-  group_name_hint: "Nafn á hópinn",
+  group_name_hint: "Nafn á hópsamtalið",
   /** Action in the group name dialog that clears the group's name (docs/decisions/0078). */
   group_name_remove: "Fjarlægja",
   /** Confirm button that saves a change, such as a group's name (docs/decisions/0078). */
   save: "Vista",
   /** System card when a member names or renames the group (docs/decisions/0078). */
   name_set_card: (args: { who: string; name: string }): string =>
-    args.who + " nefndi hópinn „" + args.name + "“.",
+    args.who + " nefndi hópsamtalið „" + args.name + "“.",
   /** System card when a member clears the group's name (docs/decisions/0078). */
   name_cleared_card: (args: { who: string }): string =>
-    args.who + " fjarlægði nafn hópsins.",
+    args.who + " fjarlægði nafn hópsamtalsins.",
   /** System card when a member sets or changes the group's photo (docs/decisions/0094). */
   photo_set_card: (args: { who: string }): string =>
-    args.who + " breytti mynd hópsins.",
+    args.who + " breytti mynd hópsamtalsins.",
   /** System card when a member removes the group's photo (docs/decisions/0094). */
   photo_cleared_card: (args: { who: string }): string =>
-    args.who + " fjarlægði mynd hópsins.",
+    args.who + " fjarlægði mynd hópsamtalsins.",
   /** On a group's information screen when the group has no photo: opens the photo picker to set one (docs/decisions/0094). */
-  group_photo_choose: "Setja inn mynd hópsins",
+  group_photo_choose: "Setja inn mynd hópsamtalsins",
   /** On a group's information screen when the group has a photo: opens the photo picker to put another in its place (docs/decisions/0094). */
-  group_photo_change: "Skipta um mynd hópsins",
+  group_photo_change: "Skipta um mynd hópsamtalsins",
   /** On a group's information screen: removes the group's photo, after a confirmation; also that confirmation's button (docs/decisions/0094). */
-  group_photo_remove: "Fjarlægja mynd hópsins",
+  group_photo_remove: "Fjarlægja mynd hópsamtalsins",
   /** Asks before the group's photo is removed: it goes for every member (docs/decisions/0094). */
-  group_photo_remove_confirm: "Fjarlægja mynd hópsins? Hún hverfur hjá öllum í hópnum.",
+  group_photo_remove_confirm: "Fjarlægja mynd hópsamtalsins? Hún hverfur hjá öllum í hópsamtalinu.",
   /** The one line beside the group photo buttons: only the group's members see it, and it is end-to-end encrypted, unlike a profile photo (docs/decisions/0094). */
-  group_photo_seen_by_members: "Aðeins fólk í hópnum sér myndina. Hún er dulkóðuð enda á milli.",
+  group_photo_seen_by_members: "Aðeins fólk í hópsamtalinu sér myndina. Hún er dulkóðuð enda á milli.",
   /** The chosen picture could not be read as an image the group photo accepts (docs/decisions/0094). */
   group_photo_unsupported: "Ekki tókst að lesa myndina. Veldu aðra mynd.",
   /** Setting, replacing or removing the group's photo failed for another reason, such as the network (docs/decisions/0094). */
-  group_photo_failed: "Ekki tókst að breyta mynd hópsins. Reyndu aftur.",
+  group_photo_failed: "Ekki tókst að breyta mynd hópsamtalsins. Reyndu aftur.",
   /** Alternative text of a group's photo, in the conversation list, the header and the information screen (docs/decisions/0094). */
-  group_photo_alt: "Mynd hópsins",
+  group_photo_alt: "Mynd hópsamtalsins",
   /** Action on a member row in a group's info screen: remove the member from the group (docs/decisions/0078). */
-  remove_member: "Fjarlægja úr hópnum",
+  remove_member: "Fjarlægja úr hópsamtalinu",
   /** Confirmation prompt before removing {name} from the group (docs/decisions/0078). */
   remove_member_confirm: (args: { name: string }): string =>
-    "Fjarlægja " + args.name + " úr hópnum?",
+    "Fjarlægja " + args.name + " úr hópsamtalinu?",
   /** Destructive action at the foot of a group's info screen: leave the group (docs/decisions/0078). */
-  leave_group: "Yfirgefa hópinn",
+  leave_group: "Yfirgefa hópsamtalið",
   /** Confirmation prompt before leaving the group (docs/decisions/0078). */
-  leave_group_confirm: "Yfirgefa hópinn? Þú færð ekki fleiri skilaboð úr honum.",
+  leave_group_confirm: "Yfirgefa hópsamtalið? Þú færð ekki fleiri skilaboð úr því.",
   /** Banner shown in a conversation the user has left (docs/decisions/0078). */
-  left_banner: "Þú hefur yfirgefið þennan hóp.",
-  /** Label of the file picker for a community's square picture, on the create screen and in Breyta samfélagi (decision 0080). */
-  community_picture_choose: "Velja mynd samfélagsins",
+  left_banner: "Þú hefur yfirgefið þetta hópsamtal.",
+  /** Label of the file picker for a community's square picture, on the create screen and in `community_edit` (decision 0080). */
+  community_picture_choose: "Velja mynd hópsins",
   /** Button that removes a community's picture (decision 0080). */
-  community_picture_remove: "Fjarlægja mynd samfélagsins",
+  community_picture_remove: "Fjarlægja mynd hópsins",
   /** Label of the file picker for a community's wide cover (decision 0080). */
   community_cover_choose: "Velja forsíðumynd",
   /** Button that removes a community's cover (decision 0080). */
   community_cover_remove: "Fjarlægja forsíðumynd",
   /** Heading of the cross-community feed under the list on the hub */
-  communities_from_yours: "Frá samfélögunum þínum",
+  communities_from_yours: "Frá hópunum þínum",
   /** Second line of the create row on the hub */
   communities_create_row_hint: "Safnaðu fólki saman um málefni",
   /** Closes a dialog or a menu */
   close: "Loka",
   /** Audience line of a community header, open */
-  community_open_full: "Opið samfélag",
+  community_open_full: "Opinn hópur",
   /** Audience line of a community header, private */
-  community_private_full: "Lokað samfélag",
+  community_private_full: "Lokaður hópur",
   /** Title of the invitation dialog */
-  community_invite_title: "Bjóða í samfélagið",
+  community_invite_title: "Bjóða í hópinn",
   /** Told after an invitation went out */
   community_invite_sent: "Boð sent",
   /** No person matched the invitation search */
   community_invite_none: "Enginn fannst",
   /** Told after the community link was copied */
-  community_link_copied: "Hlekkur samfélagsins afritaður",
+  community_link_copied: "Hlekkur hópsins afritaður",
   /** Name of the picture stack of members in a community header */
-  community_members_stack: "Meðlimir samfélagsins",
+  community_members_stack: "Meðlimir hópsins",
   /** Name of the cover picture */
-  community_cover_alt: "Forsíðumynd samfélagsins",
+  community_cover_alt: "Forsíðumynd hópsins",
   /** Relative time of something posted less than a minute ago */
   time_now: "Núna",
   /** Relative time in minutes, as a short label on a post */
@@ -863,7 +863,7 @@ export const strings = {
   /** Heading of the community's featured posts, in the aside on a wide screen (decision 0088) */
   community_featured: "Fest",
   /** Accessible name of the row of tabs under a community's header (decision 0089) */
-  community_tabs: "Flipar samfélagsins",
+  community_tabs: "Flipar hópsins",
   /** Label of the community tab Umræða, the feed (decision 0089) */
   community_tab_discussion: "Umræða",
   /** Label of the community tab Fest, the featured posts (decision 0089) */
@@ -893,7 +893,7 @@ export const strings = {
   /** Share sheet entry that sends a post into a conversation (decision 0080). */
   post_share_to_conversation: "Senda í samtal",
   /** Hub header icon that opens the community search (decision 0080). */
-  communities_search_open: "Leita að samfélögum",
+  communities_search_open: "Leita að hópum",
   /** The link request has expired or is gone. */
   device_link_expired: "Kóðinn er útrunninn. Búðu til nýjan í vafranum.",
   /** A linked browser on the account's device list. */
@@ -940,7 +940,7 @@ export const strings = {
   composer_anonymous: "Birta nafnlaust",
   /** Explains the anonymous switch in the composer (decision 0091). */
   composer_anonymous_hint: "Stjórnandi fer yfir færsluna áður en hún birtist. Stjórnandi getur afhjúpað höfundinn.",
-  /** The owner's switch in Breyta samfélagi that lets members post without their name (decision 0091). */
+  /** The owner's switch in `community_edit` that lets members post without their name (decision 0091). */
   community_anonymous_posts: "Nafnlausar færslur",
   /** Explains the community switch for anonymous posts (decision 0091). */
   community_anonymous_posts_hint: "Færslur eru yfirfarnar af stjórnanda áður en þær birtast. Stjórnandi getur afhjúpað höfundinn.",
@@ -966,12 +966,12 @@ export const strings = {
   /** A moderator asks for the author of an anonymous post; the community's log records it (decision 0091). */
   anonymous_reveal: "Sýna höfund",
   /** Confirmation before revealing the author of an anonymous post (decision 0091). */
-  anonymous_reveal_confirm: "Sýna höfund? Aðgerðin er skráð í aðgerðaskrá samfélagsins.",
+  anonymous_reveal_confirm: "Sýna höfund? Aðgerðin er skráð í aðgerðaskrá hópsins.",
   /** The author of an anonymous post, shown to the moderator who revealed it (decision 0091). */
   anonymous_revealed: (args: { name: string }): string =>
     "Höfundur: " + args.name,
   /** Posting anonymously in a community whose switch is off (decision 0091). */
-  problem_anonymous_off: "Þetta samfélag leyfir ekki nafnlausar færslur.",
+  problem_anonymous_off: "Þessi hópur leyfir ekki nafnlausar færslur.",
   /** Entry in the moderation log: the owner turned anonymous posts on (decision 0091). */
   moderation_log_anonymous_on: "Nafnlausar færslur voru leyfðar.",
   /** Entry in the moderation log: the owner turned anonymous posts off (decision 0091). */
@@ -985,7 +985,7 @@ export const strings = {
   /** Platform moderator's action: clear the profile photo of the reported account. */
   platform_clear_photo: "Fjarlægja mynd aðgangsins",
   /** Confirmation before the platform moderator removes a reported post or comment from its community. */
-  platform_remove_confirm: "Fjarlægja efnið úr samfélaginu? Aðgerðin er skráð í aðgerðaskrá samfélagsins.",
+  platform_remove_confirm: "Fjarlægja efnið úr hópnum? Aðgerðin er skráð í aðgerðaskrá hópsins.",
   /** Confirmation before the platform moderator clears an account's photo. */
   platform_clear_photo_confirm: "Fjarlægja myndina af aðganginum? Aðgerðin er skráð í aðgerðaskrá Samtaks.",
   /** A notification: a moderator declined the reader's anonymous post (decision 0091). */

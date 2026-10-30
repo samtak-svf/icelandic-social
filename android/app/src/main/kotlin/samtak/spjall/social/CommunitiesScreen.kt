@@ -110,7 +110,7 @@ private fun Content(
     hubColumn: Boolean,
     onReport: (String) -> Unit,
 ) {
-    // With the communities in their own column there is no tab for them: Mín samfélög is what the column shows.
+    // With the communities in their own column there is no tab for them: the column is `communities_tab_mine`.
     val tab = if (hubColumn && state.tab == CommunitiesTab.MINE) CommunitiesTab.FEED else state.tab
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -215,7 +215,7 @@ internal const val HUB_COLUMN = "hub-column"
 
 /**
  * The reader's communities in a column beside the feed (decision 0087): pinned first, then in the order the core
- * gives (latest activity first), each with its unread count; "Stofna samfélag" on top for a verified account.
+ * gives (latest activity first), each with its unread count; `community_create` on top for a verified account.
  */
 @Composable
 private fun HubColumn(
@@ -243,7 +243,7 @@ private fun HubColumn(
     }
 }
 
-/** "Stofna samfélag" at the top of the list (0080): only a verified account is offered it. */
+/** `community_create` at the top of the list (0080): only a verified account is offered it. */
 @Composable
 private fun CreateRow(onCreate: () -> Unit) {
     SocialCard(modifier = Modifier.clickable(role = Role.Button, onClick = onCreate)) {

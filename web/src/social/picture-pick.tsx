@@ -11,7 +11,7 @@ import { IMAGE_TYPES } from "./images.ts";
 import { outcome } from "./outcome.ts";
 
 // The picture and the cover of a community (decision 0080), chosen on the
-// create screen and changed in Stjórna → Breyta samfélagi. A choice past the
+// create screen and changed in Stjórna → `community_edit`. A choice past the
 // size the server takes is refused here, before any upload.
 
 /** A `<label>`-wrapped file input that reads as a button, and, when set, the way to take it away. */
@@ -76,7 +76,7 @@ export function sendImage(
   return putFramed({ kind: which, communityId }, chosen.master, chosen.framing);
 }
 
-/** Breyta samfélagi's pictures: each is framed and sent when chosen, framed again on request, and removed on request. */
+/** `community_edit`'s pictures: each is framed and sent when chosen, framed again on request, and removed on request. */
 export function CommunityPictures({
   community,
   changed,
