@@ -23,9 +23,8 @@ name: core
 #
 # Where the jobs run (docs/testing.md, "Where CI runs"): every job but publish
 # reads no secret, so it runs on the lane a repository variable names
-# (RUNNER_LABELS, and MAC_RUNNER_LABELS for ios), which today is samtak-mac,
-# and falls back to a hosted runner when the variable is unset or the PR comes
-# from a fork. Each step therefore works on Linux x64 and macOS ARM64: binaries
+# (RUNNER_LABELS, and MAC_RUNNER_LABELS for ios), and falls back to a hosted
+# runner when the variable is unset or the PR comes from a fork. Each step therefore works on Linux x64 and macOS ARM64: binaries
 # are picked from RUNNER_OS and RUNNER_ARCH, checksums use `shasum -a 256`, and
 # the GitHub API is called with curl, since the Mac has no gh. publish stays on
 # ubuntu-latest: it writes the release with a contents: write token.
