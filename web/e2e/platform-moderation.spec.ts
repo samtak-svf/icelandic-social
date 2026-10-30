@@ -39,8 +39,8 @@ test("a platform moderator clears an account's photo from the queue; others are 
     .click();
   await expect(author.getByRole("img", { name: strings.photo_own_alt })).toBeVisible();
 
-  // The reporter reports the author's account (decision 0115): the web has no
-  // button for it yet, so the report is filed through the API as the app would.
+  // The reporter reports the author's account (decision 0115), through the API
+  // as the app would, so this holds without the web's button.
   const accountId = await accountOf(author);
   const filed = await reporter.evaluate(
     async ([id, client]) => {
