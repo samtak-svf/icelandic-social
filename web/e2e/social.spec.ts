@@ -8,6 +8,7 @@ import {
   manage,
   openComposer,
   openHubFeed,
+  pageOverflow,
   person,
   platformModerator,
   post,
@@ -376,10 +377,7 @@ test("renders the shell while /v1/me waits, fits a 390px screen on /communities,
   releaseMe();
   await member.unroute("**/v1/me");
 
-  const overflow = await member.evaluate(
-    () => document.documentElement.scrollWidth - window.innerWidth,
-  );
-  expect(overflow).toBeLessThanOrEqual(0);
+  expect(await pageOverflow(member)).toBe(0);
 
   await member.goto(community);
   await post(member, "Póstur á litlum skjá.")

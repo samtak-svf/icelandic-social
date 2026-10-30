@@ -7,6 +7,17 @@ import { signInVerified } from "./accounts.ts";
 // What the social specs share: people in browsers of their own, the composer,
 // a post card's menu and the founding of a community.
 
+/**
+ * How far the page runs past its layout width. The layout width leaves out the
+ * gutter `html` reserves: 15 px with classic scrollbars, as on Linux, and nothing
+ * with overlay ones, as on macOS, so `innerWidth` would measure the platform.
+ */
+export function pageOverflow(page: Page) {
+  return page.evaluate(
+    () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+  );
+}
+
 /** A person in a browser of their own, signed in with Google and marked by Kenni as `name`. */
 export async function person(
   browser: Browser,

@@ -2,7 +2,7 @@ import { strings } from "../src/generated/brand/strings.ts";
 import { SIZE_CLASSES } from "../src/generated/frames.ts";
 import { layoutOf } from "../src/ui/layout.ts";
 import { expect, test } from "./origin.ts";
-import { found, openMenu, person } from "./social-helpers.ts";
+import { found, openMenu, pageOverflow, person } from "./social-helpers.ts";
 
 // Stjórna at the contract's size classes (decision 0087): on an expanded
 // window a side navigation reaches each part of it, with what waits on each,
@@ -71,7 +71,7 @@ test("Stjórna is a side navigation on an expanded window and one screen below i
     const content = (await main.getByLabel(strings.community_name).boundingBox())!;
     const at = (await nav.boundingBox())!;
     expect(content.x).toBeGreaterThanOrEqual(at.x + at.width);
-    expect(await owner.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(0);
+    expect(await pageOverflow(owner)).toBe(0);
 
     // Each part is a page of its own, and the navigation stays where it was.
     for (const [name, url] of PARTS) {

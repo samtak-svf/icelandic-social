@@ -1,9 +1,9 @@
-import type { Locator, Page } from "@playwright/test";
+import type { Locator } from "@playwright/test";
 import { strings } from "../src/generated/brand/strings.ts";
 import { SIZE_CLASSES, sizeClassOf } from "../src/generated/frames.ts";
 import { layoutOf } from "../src/ui/layout.ts";
 import { expect, test } from "./origin.ts";
-import { found, person, post, write } from "./social-helpers.ts";
+import { found, pageOverflow, person, post, write } from "./social-helpers.ts";
 
 // The shell at the contract's size classes (decision 0087): a bar at the
 // bottom of a compact window, a rail down the left from medium up, at each
@@ -26,10 +26,6 @@ async function box(locator: Locator) {
   return measured!;
 }
 
-async function overflow(page: Page) {
-  return page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
-}
-
 for (const width of WIDTHS) {
   test(`at ${width} px the places are a ${sizeClassOf(width) === "compact" ? "bottom bar" : "left rail"}, the bell ends the top bar, Bjóða ends the header and the post bars match the post`, async ({
     browser,
@@ -43,7 +39,7 @@ for (const width of WIDTHS) {
     const rail = await box(nav);
     const content = await box(main);
     if (sizeClassOf(width) === "compact") {
-      expect(rail.width).toBe(width);
+      expect(rail.width).toBe(await member.evaluate(() => document.documentElement.clientWidth));
       expect(rail.y + rail.height).toBeCloseTo(HEIGHT, 0);
       expect(rail.height).toBeLessThan(100);
     } else {
@@ -57,7 +53,7 @@ for (const width of WIDTHS) {
     for (const place of [strings.tab_me, strings.tab_communities, strings.settings_title]) {
       await expect(nav.getByRole("link", { name: place })).toBeInViewport();
     }
-    expect(await overflow(member)).toBeLessThanOrEqual(0);
+    expect(await pageOverflow(member)).toBe(0);
 
     // The notifications are no place but the bell at the right of the top bar,
     // above the page and in line with its edge (decision 0109).
@@ -92,7 +88,7 @@ for (const width of WIDTHS) {
       expect(bar.x).toBeCloseTo(card.x, 0);
       expect(bar.width).toBeCloseTo(card.width, 0);
     }
-    expect(await overflow(member)).toBeLessThanOrEqual(0);
+    expect(await pageOverflow(member)).toBe(0);
   });
 }
 
