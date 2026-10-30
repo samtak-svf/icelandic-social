@@ -11,16 +11,10 @@ permissions:
   contents: read
 
 on:
+  # No `paths` filter: a required check that a path filter keeps from running
+  # never reports on a PR that touches neither, and that PR waits forever. The
+  # `changes` job below decides instead, and a skipped job reports success.
   pull_request:
-    paths:
-      - "backend/**"
-      - "api/**"
-      - "pnpm-lock.yaml"
-      - "tooling/old-client/**"
-      - ".github/workflows/old-client.yml"
-      - ".github/actions/node-workspace/**"
-      - ".github/actions/core-artifact/**"
-      - ".github/actions/rust-toolchain/**"
   # Daily on main: a cache a PR can read (the build of the tag is 10 minutes
   # without it), and the job that says release.json has fallen behind.
   schedule:
@@ -38,7 +32,42 @@ env:
   WRANGLER_SEND_METRICS: "false"
 
 jobs:
+  # The decider. The paths are the ones the trigger used to filter on.
+  changes:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      relevant: ${{ steps.diff.outputs.relevant }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 1
+      - name: Did anything the test reads change
+        id: diff
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          git fetch --no-tags --depth=1 origin "$BASE_SHA"
+          files=$(git diff --name-only "$BASE_SHA" HEAD)
+          if printf '%s\n' "$files" | grep -Eq '^(backend/|api/|pnpm-lock\.yaml$|tooling/old-client/|\.github/workflows/old-client\.yml$|\.github/actions/(node-workspace|core-artifact|rust-toolchain)/)'; then
+            echo "relevant=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "relevant=false" >> "$GITHUB_OUTPUT"
+          fi
+
   old-client:
+    needs: changes
+    # Skipped (which a required check reads as a pass) only when `changes`
+    # succeeded and said nothing relevant changed. If `changes` failed or was
+    # skipped, result is not 'success', so this runs: a broken decider cannot
+    # read as a pass. !cancelled() so a failed need does not skip the job.
+    if: >-
+      !cancelled() && (
+        github.event_name != 'pull_request' ||
+        needs.changes.result != 'success' ||
+        needs.changes.outputs.relevant == 'true'
+      )
     runs-on: ${{ fromJSON(github.event.pull_request.head.repo.fork && '["ubuntu-latest"]' || vars.RUNNER_LABELS || '["ubuntu-latest"]') }}
     timeout-minutes: 40
     steps:
