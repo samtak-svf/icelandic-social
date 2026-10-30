@@ -12,7 +12,8 @@ type NoticeKind =
   | "join_approved"
   | "moderated"
   | "friend_request"
-  | "friend_accepted";
+  | "friend_accepted"
+  | "reports_waiting";
 export type NoticeBadge = "emoji" | "comment" | "approved" | "moderator" | "friend";
 
 export interface NoticeSource {
@@ -48,6 +49,7 @@ const BADGE: Record<NoticeKind, NoticeBadge> = {
   moderated: "moderator",
   friend_request: "friend",
   friend_accepted: "friend",
+  reports_waiting: "moderator",
 };
 
 /** The moderated rows with a sentence of their own; any other action reads `notice_moderated`. */
@@ -75,6 +77,10 @@ export function noticeText(n: NoticeSource): NoticeText {
   const badge = BADGE[n.kind];
   if (n.kind === "join_approved") {
     return { key: "notice_join_approved", args: {}, badge, text: strings.notice_join_approved };
+  }
+  // Names no count, reporter or target (decision 0115).
+  if (n.kind === "reports_waiting") {
+    return { key: "notice_reports_waiting", args: {}, badge, text: strings.notice_reports_waiting };
   }
   if (n.kind === "moderated") {
     const key = MODERATED[n.action ?? ""] ?? "notice_moderated";

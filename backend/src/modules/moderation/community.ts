@@ -13,7 +13,7 @@ export async function lifecycleRecord(
   by: string | null,
   event: "delete" | "restore" | "purge",
 ): Promise<D1PreparedStatement[]> {
-  const closed = event === "restore" ? [] : [closingAll(env, communityId, by)];
+  const closed = event === "restore" ? [] : closingAll(env, communityId, by);
   if (by === null || event === "purge") return closed;
   const found = await standing(env, by, communityId, { deleted: true });
   return [

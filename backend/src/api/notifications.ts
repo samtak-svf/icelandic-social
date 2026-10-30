@@ -19,6 +19,7 @@ const Notification = z
       "moderated",
       "friend_request",
       "friend_accepted",
+      "reports_waiting",
     ]),
     // Who did it, the newest if several; null once deleted.
     actor: z.union([Author, z.null()]),

@@ -942,7 +942,7 @@ export interface NotificationPage {
 
 export interface Notification {
   notificationId: string;
-  kind: "comment" | "reply" | "reaction" | "join_approved" | "moderated" | "friend_request" | "friend_accepted";
+  kind: "comment" | "reply" | "reaction" | "join_approved" | "moderated" | "friend_request" | "friend_accepted" | "reports_waiting";
   actor: Author | null;
   /** The newest three distinct accounts that caused the notification, newest first (decision 0103) */
   actors: Array<Author>;

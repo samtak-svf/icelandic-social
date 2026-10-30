@@ -158,6 +158,44 @@ fn suspended_on_the_release(moderator: &Phone, phone: &Phone, community: &str, s
     hosted.create_post(community, "Aftur", &[]).unwrap();
 }
 
+/// A notice of reports waiting reaches a platform moderator on the web, and no
+/// app (0115): the release neither gets it nor counts it, and neither does a
+/// knowing app, since no app has the queue it opens.
+fn reports_notice_withheld(moderator: &Phone) {
+    let deadline = Instant::now() + PATIENCE;
+    let told = loop {
+        dev("/dev/jobs");
+        let (status, page) = moderator.on_the_web("/v1/notifications?limit=50");
+        assert_eq!(status, 200);
+        let rows = page["notifications"].as_array().unwrap();
+        if let Some(row) = rows.iter().find(|row| row["kind"] == "reports_waiting") {
+            assert!(
+                row["actor"].is_null() && row["communityId"].is_null(),
+                "{row:?}"
+            );
+            break row["notificationId"].as_str().unwrap().to_owned();
+        }
+        assert!(Instant::now() < deadline, "only these arrived: {rows:?}");
+        std::thread::sleep(Duration::from_millis(250));
+    };
+
+    let page = moderator.client.hosted().notifications(None, 50).unwrap();
+    assert!(
+        page.notifications.iter().all(|n| n.notification_id != told),
+        "reports_waiting reached the release"
+    );
+    assert_eq!(
+        page.unread,
+        page.notifications.len() as u64,
+        "the counts leave out what the list leaves out"
+    );
+    let rows = knowing_rows(moderator);
+    assert!(
+        rows.iter().all(|row| row["kind"] != "reports_waiting"),
+        "reports_waiting reached an app: {rows:?}"
+    );
+}
+
 #[test]
 #[ignore = "needs `cf dev --mode interop` of the tree under test; run by old-client.yml"]
 fn the_last_store_release_reads_this_worker() {
@@ -322,6 +360,17 @@ fn the_last_store_release_reads_this_worker() {
         .join_community(&community)
         .unwrap();
     suspended_on_the_release(&owner, &suspended, &community, &plain.post_id);
+
+    // A report to the platform tells its moderator on the web, and no app.
+    asked.knowing_post(
+        "/v1/reports",
+        &json!({
+            "target": { "kind": "account", "id": owner.account },
+            "reason": "spam",
+            "note": "",
+        }),
+    );
+    reports_notice_withheld(&decider);
 
     // The owner's page, with the notices of content: a comment and a reaction.
     await_rows(&owner, |rows| {

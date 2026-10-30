@@ -173,6 +173,16 @@ export const READS = [
     why: "a notification is written and shown only for a community that is not deleted",
   },
   {
+    module: "notifications",
+    table: "reports",
+    why: "a notice of reports waiting stands only while a report waits in the platform's queue (decision 0115)",
+  },
+  {
+    module: "notifications",
+    table: "platform_moderators",
+    why: "a notice of reports waiting is written only for an account still a platform moderator (decision 0115)",
+  },
+  {
     module: "friends",
     table: "accounts",
     why: "a list and a person's screen show a name, a mark and a photo (decision 0114)",

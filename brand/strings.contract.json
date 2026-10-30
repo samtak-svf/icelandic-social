@@ -2898,6 +2898,10 @@
         "name": "string"
       }
     },
+    "notice_reports_waiting": {
+      "surfaces": ["web"],
+      "description": "A notification to a platform moderator: reports wait in the platform queue (decision 0115). Names no count, reporter or target."
+    },
     "notice_friend_accepted": {
       "surfaces": ["android", "ios", "web"],
       "description": "A notification: someone accepted the reader's friend request. {name} is that person.",

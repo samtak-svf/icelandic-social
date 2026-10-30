@@ -9,6 +9,8 @@ import type {
 } from "../../api/moderation.ts";
 import { suspendedAmong } from "../../identity/index.ts";
 import { standing } from "../communities/index.ts";
+import { notice } from "../jobs/index.ts";
+import { withdrawingReportsWaiting } from "../notifications/index.ts";
 import {
   authors,
   commentAccess,
@@ -73,27 +75,54 @@ export async function fileReport(
   // Samtak answers for unlawful content, and for communities and accounts (0063).
   const toPlatform =
     input.toPlatform || input.reason === "unlawful" || kind === "community" || kind === "account";
-  await db(env)
-    .prepare(
-      `INSERT OR IGNORE INTO reports
-         (report_id, community_id, target_kind, target_id, target_account, reporter_id, reason,
-          note, to_platform, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    )
-    .bind(
-      `r_${hex(16)}`,
-      place.communityId,
-      kind,
-      id,
-      place.targetAccount,
-      reporter,
-      input.reason,
-      input.note,
-      toPlatform ? 1 : 0,
-      Date.now(),
-    )
-    .run();
+  const reportId = `r_${hex(16)}`;
+  await db(env).batch([
+    db(env)
+      .prepare(
+        `INSERT OR IGNORE INTO reports
+           (report_id, community_id, target_kind, target_id, target_account, reporter_id, reason,
+            note, to_platform, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      )
+      .bind(
+        reportId,
+        place.communityId,
+        kind,
+        id,
+        place.targetAccount,
+        reporter,
+        input.reason,
+        input.note,
+        toPlatform ? 1 : 0,
+        Date.now(),
+      ),
+    ...(toPlatform ? await tellingModerators(env, reportId, reporter) : []),
+  ]);
   return true;
+}
+
+/**
+ * A notice of reports waiting to every platform moderator but the reporter
+ * (decision 0115). Each is written only if the statement before it changed a row,
+ * so a report already open, which writes nothing, tells nobody.
+ */
+async function tellingModerators(
+  env: Env,
+  reportId: string,
+  reporter: string,
+): Promise<D1PreparedStatement[]> {
+  const { results } = await db(env)
+    .prepare("SELECT account_id FROM platform_moderators WHERE account_id != ?")
+    .bind(reporter)
+    .all<{ account_id: string }>();
+  return results.map(({ account_id: accountId }) =>
+    notice(
+      env,
+      `${reportId}:${accountId}`,
+      { kind: "reports_waiting", accountId, actorId: null, communityId: null },
+      true,
+    ),
+  );
 }
 
 type Row = {
@@ -273,32 +302,45 @@ export async function isPlatformModerator(env: Env, accountId: string): Promise<
  */
 export type Decision = Action | PlatformAction | "dismissed" | "community_deleted";
 
-/** The statement that closes a report, for the batch of the action or entry with it. */
+/**
+ * The statements that close a report, for the batch of the action or entry with
+ * it, and take back the notice of reports waiting if it was the last (decision 0115).
+ */
 export function closing(
   env: Env,
   reportId: string,
   by: string,
   decision: Decision,
   resolution: string,
-): D1PreparedStatement {
-  return db(env)
-    .prepare(
-      `UPDATE reports SET state = 'closed', closed_at = ?, closed_by = ?, decision = ?,
-                          resolution = ?
-        WHERE report_id = ? AND state = 'open'`,
-    )
-    .bind(Date.now(), by, decision, resolution, reportId);
+): D1PreparedStatement[] {
+  return [
+    db(env)
+      .prepare(
+        `UPDATE reports SET state = 'closed', closed_at = ?, closed_by = ?, decision = ?,
+                            resolution = ?
+          WHERE report_id = ? AND state = 'open'`,
+      )
+      .bind(Date.now(), by, decision, resolution, reportId),
+    withdrawingReportsWaiting(env),
+  ];
 }
 
-/** The statement that closes every open report on a community deleted by `by` (decision 0070). */
-export function closingAll(env: Env, communityId: string, by: string | null): D1PreparedStatement {
-  return db(env)
-    .prepare(
-      `UPDATE reports SET state = 'closed', closed_at = ?, closed_by = ?,
-                          decision = 'community_deleted', resolution = ''
-        WHERE community_id = ? AND state = 'open'`,
-    )
-    .bind(Date.now(), by, communityId);
+/** The same for every open report on a community deleted by `by` (decisions 0070, 0115). */
+export function closingAll(
+  env: Env,
+  communityId: string,
+  by: string | null,
+): D1PreparedStatement[] {
+  return [
+    db(env)
+      .prepare(
+        `UPDATE reports SET state = 'closed', closed_at = ?, closed_by = ?,
+                            decision = 'community_deleted', resolution = ''
+          WHERE community_id = ? AND state = 'open'`,
+      )
+      .bind(Date.now(), by, communityId),
+    withdrawingReportsWaiting(env),
+  ];
 }
 
 /** A closed report is kept this long (decision 0063). */

@@ -35,7 +35,7 @@ const tell = async (key: string, n: Notice, push = recorder()) => {
 };
 
 /** A moderator's notice to `one` about nothing in any community. */
-const aboutAccount = (one: Person, actor: Person): Notice => ({
+const aboutAccount = (one: Person, actor: Person): Notice & { kind: "moderated" } => ({
   kind: "moderated",
   accountId: one.accountId,
   actorId: actor.accountId,

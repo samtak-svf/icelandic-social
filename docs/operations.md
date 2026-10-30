@@ -187,6 +187,10 @@ platform moderator answers at `/moderation`, never the one who acted or the one 
 platform moderator, a review of that moderator's own action waits until there is a second: that is
 correct, not a stuck queue.
 
+Every platform moderator is told on the web when a report reaches the queue, except the one who made
+it, by one notice that goes when the queue empties. No app and no push says so, so nobody is told
+who does not open the web ([decision 0115](decisions/0115-the-wall.md)).
+
 The role is never granted by a route:
 
 ```bash

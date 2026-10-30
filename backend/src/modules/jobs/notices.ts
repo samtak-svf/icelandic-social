@@ -13,11 +13,19 @@ type NoticeKind =
   | "friend_request"
   | "friend_accepted";
 
-/** Who is told what, by whom, about which thing. Ids only, never content. */
-export type Notice = {
-  kind: NoticeKind;
+/**
+ * Who is told what, by whom, about which thing. Ids only, never content. Reports
+ * waiting are told by nobody and in no community: the reporter's id never enters
+ * the job (decision 0115).
+ */
+export type Notice = Told &
+  (
+    | { kind: NoticeKind; actorId: string }
+    | { kind: "reports_waiting"; actorId: null; communityId: null }
+  );
+
+type Told = {
   accountId: string;
-  actorId: string;
   /** None for a notice about the account itself (decision 0114). */
   communityId: string | null;
   postId?: string;

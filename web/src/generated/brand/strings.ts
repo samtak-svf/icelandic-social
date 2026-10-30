@@ -1138,6 +1138,8 @@ export const strings = {
   /** A notification: someone asked the reader to be friends. {name} is that person. */
   notice_friend_request: (args: { name: string }): string =>
     args.name + " sendi þér vinabeiðni.",
+  /** A notification to a platform moderator: reports wait in the platform queue (decision 0115). Names no count, reporter or target. */
+  notice_reports_waiting: "Tilkynnt efni bíður yfirferðar.",
   /** A notification: someone accepted the reader's friend request. {name} is that person. */
   notice_friend_accepted: (args: { name: string }): string =>
     args.name + " samþykkti vinabeiðni þína.",
