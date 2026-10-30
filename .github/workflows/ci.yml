@@ -16,15 +16,31 @@ on:
   pull_request:
   push:
     branches: [main]
+  # Daily, because a merge the gate skips writes no cache, and PRs restore main's.
+  schedule:
+    - cron: "23 4 * * *"
 
 concurrency:
   group: ci-${{ github.head_ref || github.ref }}
   cancel-in-progress: true
 
 jobs:
+  # A merge whose tree a green PR run tested starts nothing (tooling/tree-proof.mjs).
+  gate:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    permissions:
+      contents: read
+      actions: read
+    uses: ./.github/workflows/tree-proof.yml
+    with:
+      workflow: ci
+      mode: gate
+
   check:
     # RUNNER_LABELS: hosted unless set, and always hosted for a fork's PR
     # (tooling/workflow-guard.mjs).
+    needs: gate
+    if: ${{ !cancelled() && needs.gate.outputs.run != 'false' }}
     runs-on: ${{ fromJSON(github.event.pull_request.head.repo.fork && '["ubuntu-latest"]' || vars.RUNNER_LABELS || '["ubuntu-latest"]') }}
     timeout-minutes: 10
     steps:
@@ -69,3 +85,12 @@ jobs:
           esac
           curl -sSfL "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_${asset}.tar.gz" | tar -xz gitleaks
           ./gitleaks git --redact --verbose --config .gitleaks.toml --log-opts="$RANGE" .
+
+  # Named one by one: the default success() also reads the skipped gate above them.
+  proof:
+    needs: [check]
+    if: ${{ !cancelled() && github.event_name == 'pull_request' && needs.check.result == 'success' }}
+    uses: ./.github/workflows/tree-proof.yml
+    with:
+      workflow: ci
+      mode: prove

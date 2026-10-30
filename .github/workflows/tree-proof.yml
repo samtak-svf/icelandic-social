@@ -1,0 +1,81 @@
+name: tree-proof
+
+# Called by each workflow that repeats its jobs on a merge (tooling/tree-proof.mjs).
+#
+# - gate, on a push to main: looks for a marker of this exact tree. Its output
+#   `run` is "false" when a green PR run tested the tree. The callers' jobs run
+#   unless it says "false", so a gate that fails, or an API that does not answer,
+#   runs everything.
+# - prove, at the end of a PR run, after all the jobs the gate can skip: uploads
+#   the marker. It never starts when one of those jobs failed.
+
+permissions:
+  contents: read
+
+on:
+  workflow_call:
+    inputs:
+      workflow:
+        description: the calling workflow's file name, without .yml
+        required: true
+        type: string
+      mode:
+        description: gate or prove
+        required: true
+        type: string
+    outputs:
+      run:
+        description: '"false" when a green PR run already tested this tree'
+        value: ${{ jobs.gate.outputs.run }}
+
+jobs:
+  gate:
+    if: inputs.mode == 'gate'
+    runs-on: ${{ fromJSON(github.event.pull_request.head.repo.fork && '["ubuntu-latest"]' || vars.GUARD_RUNNER_LABELS || '["ubuntu-latest"]') }}
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      run: ${{ steps.look.outputs.run }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Look for a marker of this tree
+        id: look
+        env:
+          GH_TOKEN: ${{ github.token }}
+          WORKFLOW: ${{ inputs.workflow }}
+          REPO_ID: ${{ github.repository_id }}
+        run: |
+          NAME=$(node tooling/tree-proof.mjs name "$WORKFLOW")
+          RUN=$(curl -fsSL -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" \
+            "$GITHUB_API_URL/repos/$GITHUB_REPOSITORY/actions/artifacts?name=$NAME&per_page=100" \
+            | node tooling/core-reuse.mjs pick "$NAME" "$REPO_ID")
+          if [ -n "$RUN" ]; then
+            echo "::notice::$WORKFLOW: run $RUN already tested this tree ($NAME)"
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "No marker $NAME: this merge runs in full"
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          fi
+
+  prove:
+    if: inputs.mode == 'prove'
+    runs-on: ${{ fromJSON(github.event.pull_request.head.repo.fork && '["ubuntu-latest"]' || vars.GUARD_RUNNER_LABELS || '["ubuntu-latest"]') }}
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Name and write the marker
+        id: marker
+        env:
+          WORKFLOW: ${{ inputs.workflow }}
+        run: |
+          NAME=$(node tooling/tree-proof.mjs name "$WORKFLOW")
+          echo "name=$NAME" >> "$GITHUB_OUTPUT"
+          echo "$WORKFLOW passed on $GITHUB_SHA" > "$RUNNER_TEMP/tree-proof.txt"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ${{ steps.marker.outputs.name }}
+          path: ${{ runner.temp }}/tree-proof.txt
+          if-no-files-found: error
+          retention-days: 14

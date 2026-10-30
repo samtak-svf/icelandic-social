@@ -211,6 +211,16 @@ instances), for its speed and its one AVD, each chosen by a repository variable:
   reads a runner variable.
 - Steps that download a binary pick the build from `RUNNER_OS` and `RUNNER_ARCH`, so a job runs
   on either lane.
+- **A merge does not repeat what its PR proved.** A green PR run of a workflow leaves a marker
+  named from the workflow file and every tracked file under its push filter
+  (`tooling/tree-proof.mjs`). The push of the merge looks for that name, and when it finds one from
+  this repository, the jobs start nothing. Two PRs merged side by side land a tree neither tested,
+  so the name differs and the merge runs in full; so does any failure of the gate itself. Still run
+  on every push: gitleaks in `ci.yml`, the core's tags and publish, the jurisdiction check. A daily
+  scheduled run keeps the caches a PR restores from main warm, and tests main as it stands. A merge
+  queue was the other way to do this, and it was not chosen: it runs on `merge_group`, for which
+  GitHub documents no path filter, and it serialises merges (GitHub changelog, 2023-07-12).
+  `tooling/workflow-guard.mjs` rule 12 holds the wiring.
 - **A job hook reaps what a cancelled job leaves.** Cancelling kills the step's shell, not its
   process group, so `workerd` and its `pnpm`/`node` parents survived (#318).
   `tooling/mac-runner-hook.sh` runs as both `ACTIONS_RUNNER_HOOK_JOB_STARTED` and

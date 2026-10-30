@@ -48,9 +48,22 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
+  # A merge whose tree a green PR run tested starts nothing (tooling/tree-proof.mjs).
+  gate:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    permissions:
+      contents: read
+      actions: read
+    uses: ./.github/workflows/tree-proof.yml
+    with:
+      workflow: ios
+      mode: gate
+
   build:
     # MAC_RUNNER_LABELS names a Mac of Samtak's own (tooling/mac-bootstrap.sh);
     # unset, or for a fork's PR, the job runs on GitHub's hosted macOS.
+    needs: gate
+    if: ${{ !cancelled() && needs.gate.outputs.run != 'false' }}
     runs-on: ${{ fromJSON(github.event.pull_request.head.repo.fork && '["macos-26"]' || vars.MAC_RUNNER_LABELS || '["macos-26"]') }}
     timeout-minutes: 60
     defaults:
@@ -116,3 +129,12 @@ jobs:
         if: failure()
         run: |
           grep -E -A6 '(error|note): ' "$RUNNER_TEMP/xcodebuild-test.log" | head -200 || true
+
+  # Named one by one: the default success() also reads the skipped gate above them.
+  proof:
+    needs: [build]
+    if: ${{ !cancelled() && github.event_name == 'pull_request' && needs.build.result == 'success' }}
+    uses: ./.github/workflows/tree-proof.yml
+    with:
+      workflow: ios
+      mode: prove

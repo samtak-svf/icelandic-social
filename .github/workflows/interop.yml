@@ -34,6 +34,9 @@ on:
       - ".github/workflows/interop.yml"
       - ".github/actions/node-workspace/**"
       - ".github/actions/rust-toolchain/**"
+  # Daily, because a merge the gate skips writes no cache, and PRs restore main's.
+  schedule:
+    - cron: "23 4 * * *"
 
 concurrency:
   group: interop-${{ github.head_ref || github.ref }}
@@ -46,9 +49,22 @@ env:
   WRANGLER_SEND_METRICS: "false"
 
 jobs:
+  # A merge whose tree a green PR run tested starts nothing (tooling/tree-proof.mjs).
+  gate:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    permissions:
+      contents: read
+      actions: read
+    uses: ./.github/workflows/tree-proof.yml
+    with:
+      workflow: interop
+      mode: gate
+
   interop:
     # The Worker takes a free port per job (backend/scripts/dev-worker.sh), so
     # this job shares the build lane with web.
+    needs: gate
+    if: ${{ !cancelled() && needs.gate.outputs.run != 'false' }}
     runs-on: ${{ fromJSON(github.event.pull_request.head.repo.fork && '["ubuntu-latest"]' || vars.RUNNER_LABELS || '["ubuntu-latest"]') }}
     timeout-minutes: 40
     steps:
@@ -115,3 +131,12 @@ jobs:
       - name: Stop the Worker
         if: always()
         run: backend/scripts/dev-worker.sh stop
+
+  # Named one by one: the default success() also reads the skipped gate above them.
+  proof:
+    needs: [interop]
+    if: ${{ !cancelled() && github.event_name == 'pull_request' && needs.interop.result == 'success' }}
+    uses: ./.github/workflows/tree-proof.yml
+    with:
+      workflow: interop
+      mode: prove

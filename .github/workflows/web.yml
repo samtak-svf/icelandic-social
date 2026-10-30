@@ -34,15 +34,31 @@ on:
       - ".github/actions/core-artifact/**"
       - ".github/actions/node-workspace/**"
       - ".github/actions/rust-toolchain/**"
+  # Daily, because a merge the gate skips writes no cache, and PRs restore main's.
+  schedule:
+    - cron: "23 4 * * *"
 
 concurrency:
   group: web-${{ github.head_ref || github.ref }}
   cancel-in-progress: true
 
 jobs:
+  # A merge whose tree a green PR run tested starts nothing (tooling/tree-proof.mjs).
+  gate:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    permissions:
+      contents: read
+      actions: read
+    uses: ./.github/workflows/tree-proof.yml
+    with:
+      workflow: web
+      mode: gate
+
   web:
     # The Worker takes a free port per run (backend/scripts/dev-worker.sh), so
     # this job shares the build lane with interop.
+    needs: gate
+    if: ${{ !cancelled() && needs.gate.outputs.run != 'false' }}
     runs-on: ${{ fromJSON(github.event.pull_request.head.repo.fork && '["ubuntu-latest"]' || vars.RUNNER_LABELS || '["ubuntu-latest"]') }}
     timeout-minutes: 20
     steps:
@@ -85,3 +101,12 @@ jobs:
             web/playwright-report/
             web/test-results/
           retention-days: 7
+
+  # Named one by one: the default success() also reads the skipped gate above them.
+  proof:
+    needs: [web]
+    if: ${{ !cancelled() && github.event_name == 'pull_request' && needs.web.result == 'success' }}
+    uses: ./.github/workflows/tree-proof.yml
+    with:
+      workflow: web
+      mode: prove
