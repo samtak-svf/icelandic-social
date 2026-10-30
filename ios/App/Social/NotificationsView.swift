@@ -69,7 +69,9 @@ struct NotificationsView: View {
             ForEach(rows, id: \.notificationId) { notification in
                 NoticeRow(
                     notification: notification,
-                    community: communities.mine.first { $0.communityId == notification.communityId },
+                    community: notification.communityId.flatMap { id in
+                        communities.mine.first { $0.communityId == id }
+                    },
                     model: model)
             }
         }

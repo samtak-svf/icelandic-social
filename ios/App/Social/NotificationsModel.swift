@@ -148,7 +148,7 @@ final class NotificationsModel {
     /// This notification's community off.
     func communityOff(_ notification: SocialNotification) async {
         let social = social
-        let community = notification.communityId
+        guard let community = notification.communityId else { return }
         _ = await quiet({ try social.setCommunityNotificationLevel(community, level: .off) })
     }
 

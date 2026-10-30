@@ -92,8 +92,9 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
         let thread = content.threadIdentifier
         let community = content.userInfo[SocialTapKey.community] as? String
         let post = content.userInfo[SocialTapKey.post] as? String
+        let notice = content.userInfo[SocialTapKey.notice] as? String
         onMainThread {
-            self.push.tapped(thread: thread, community: community, post: post)
+            self.push.tapped(thread: thread, community: community, post: post, notice: notice)
             completionHandler()
         }
     }

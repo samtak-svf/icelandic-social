@@ -70,7 +70,7 @@ private fun Notice.words(labels: Labels) =
 data class SocialAnnouncement(
     val notificationId: String,
     val text: String,
-    val communityId: String,
+    val communityId: String?,
     val postId: String?,
 )
 

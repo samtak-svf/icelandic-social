@@ -57,6 +57,13 @@ final class SocialPushTests: XCTestCase {
         XCTAssertEqual(noticeRoute(row), .community("k1"))
     }
 
+    func testANoticeWithNoCommunityOpensNothingAndSaysItIsNoConversation() {
+        let row = makeNotice("n1", .moderated, community: nil)
+        XCTAssertNil(noticeRoute(row))
+        let announced = SocialAnnouncement(id: "n1", sentence: "s", post: nil, community: nil)
+        XCTAssertEqual(announced.content().userInfo as? [String: String], ["notice": "n1"])
+    }
+
     func testAPostlessNoticeOpensTheCommunity() {
         let postless = notices(social: [social("n1", .joinApproved, post: nil)])
         let content = pushContents(postless, labels: .brand, sound: nil)[0]

@@ -20,7 +20,7 @@ protocol Notifier: Sendable {
 /// What a tapped social notification opens.
 struct SocialTap: Equatable, Sendable {
     let post: String?
-    let community: String
+    let community: String?
 }
 
 /// Push in the app (decision 0025). The notification service announces what a
@@ -101,17 +101,18 @@ final class PushModel {
         opened = conversation
     }
 
-    /// A notification was tapped. A social one carries its community; a conversation's thread is its id.
-    func tapped(thread: String, community: String?, post: String?) {
-        if let community {
+    /// A notification was tapped. A social one carries its community, or `notice` when it has none; a conversation's
+    /// thread is its id.
+    func tapped(thread: String, community: String?, post: String?, notice: String? = nil) {
+        if community != nil || notice != nil {
             tappedSocial(post: post, community: community)
         } else {
             tapped(thread)
         }
     }
 
-    /// A social notification was tapped: its post, or its community when it has none.
-    func tappedSocial(post: String?, community: String) {
+    /// A social notification was tapped: its post, or its community when it has none, or neither.
+    func tappedSocial(post: String?, community: String?) {
         openedSocial = SocialTap(post: post, community: community)
     }
 

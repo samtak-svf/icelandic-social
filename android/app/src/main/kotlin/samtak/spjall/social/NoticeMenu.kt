@@ -43,7 +43,9 @@ fun NoticeMenu(
                     add(readLabel to { actions.setRead(notification, !notification.read) })
                     add(removeLabel to { actions.remove(notification) })
                     if (silenceable) add(inAppLabel to { actions.kindInApp(notification) })
-                    if (silenceable) add(offLabel to { actions.communityOff(notification) })
+                    if (silenceable && notification.communityId != null) {
+                        add(offLabel to { actions.communityOff(notification) })
+                    }
                 }
             items.forEach { (label, act) ->
                 DropdownMenuItem(

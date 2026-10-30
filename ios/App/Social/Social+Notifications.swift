@@ -27,10 +27,11 @@ extension CoreAccount {
     }
 }
 
-/// Where a notification opens: its post, or its community when it has no post or the post was moderated away.
-func noticeRoute(_ notification: SocialNotification) -> SocialRoute {
+/// Where a notification opens: its post, or its community when it has no post or the post was moderated away;
+/// nowhere when it has no community either (0114).
+func noticeRoute(_ notification: SocialNotification) -> SocialRoute? {
     let target = noticeTarget(
         kind: notification.kind, postId: notification.postId, communityId: notification.communityId)
     if let post = target.post { return .post(post) }
-    return .community(target.community)
+    return target.community.map(SocialRoute.community)
 }

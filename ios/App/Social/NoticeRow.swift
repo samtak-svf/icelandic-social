@@ -13,11 +13,20 @@ struct NoticeRow: View {
     var body: some View {
         VStack(spacing: 0) {
             HStack(alignment: .top, spacing: 4) {
-                NavigationLink(value: noticeRoute(notification)) {
-                    content
+                if let route = noticeRoute(notification) {
+                    NavigationLink(value: route) {
+                        content
+                    }
+                    .buttonStyle(.plain)
+                    .simultaneousGesture(TapGesture().onEnded { Task { await model.open(notification) } })
+                } else {
+                    Button {
+                        Task { await model.open(notification) }
+                    } label: {
+                        content
+                    }
+                    .buttonStyle(.plain)
                 }
-                .buttonStyle(.plain)
-                .simultaneousGesture(TapGesture().onEnded { Task { await model.open(notification) } })
                 menu
             }
             .padding(.leading, 20)
@@ -102,10 +111,12 @@ private struct NoticeMenuItems: View {
             } label: {
                 Label(localized("notice_menu_kind_in_app"), systemImage: "bell.slash")
             }
-            Button {
-                Task { await model.communityOff(notification) }
-            } label: {
-                Label(localized("notice_menu_community_off"), systemImage: "speaker.slash")
+            if notification.communityId != nil {
+                Button {
+                    Task { await model.communityOff(notification) }
+                } label: {
+                    Label(localized("notice_menu_community_off"), systemImage: "speaker.slash")
+                }
             }
         }
     }

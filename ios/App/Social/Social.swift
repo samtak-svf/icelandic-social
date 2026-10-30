@@ -620,7 +620,7 @@ func roleLabel(_ role: CommunityRole) -> String {
 }
 
 /// What a moderation log entry records (decision 0079). The log has no words of its own, so it borrows the past
-/// tense a closed report's decision uses; nil for an action a later server adds.
+/// tense a closed report's decision uses; nil for a later server's action, or a platform moderator's: no surface here.
 func logActionLabel(_ action: ModerationLogAction) -> String? {
     switch action {
     case .hidePost: localized("moderation_decision_hide_post")
@@ -647,7 +647,7 @@ func logActionLabel(_ action: ModerationLogAction) -> String? {
     case .anonymousPostsOn: localized("moderation_log_anonymous_on")
     case .anonymousPostsOff: localized("moderation_log_anonymous_off")
     case .revealAuthor: localized("moderation_log_author_revealed")
-    case .unknown: nil
+    case .clearAccountPhoto, .unknown: nil
     }
 }
 

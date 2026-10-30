@@ -159,8 +159,9 @@ class NotificationsViewModel(
 
     /** The menu's "turn this community off". */
     fun communityOff(notification: SocialNotification) {
-        if (notification.kind == SocialNotificationKind.MODERATED) return
-        change(null) { social.setCommunityNotificationLevel(notification.communityId, NotificationLevel.OFF) }
+        val community = notification.communityId
+        if (notification.kind == SocialNotificationKind.MODERATED || community == null) return
+        change(null) { social.setCommunityNotificationLevel(community, NotificationLevel.OFF) }
     }
 
     private fun replace(list: List<SocialNotification>) = _state.update { it.copy(notifications = list) }
@@ -189,7 +190,7 @@ private fun Social.communitiesById(): Map<String, Community>? =
         null
     }
 
-/** Where a tap on [this] goes: the post, or its community when the post is not there to open. */
+/** Where a tap on [this] goes: the post, else its community when the post is not there to open, else nowhere. */
 sealed interface Opens {
     data class Post(
         val postId: String,
@@ -198,6 +199,8 @@ sealed interface Opens {
     data class Community(
         val communityId: String,
     ) : Opens
+
+    data object Nowhere : Opens
 }
 
 /** A moderated post may be removed, so a moderation notice opens its community, as on the web. */
@@ -208,7 +211,7 @@ fun SocialNotification.opens(): Opens {
     ) {
         Opens.Post(post)
     } else {
-        Opens.Community(communityId)
+        communityId?.let { Opens.Community(it) } ?: Opens.Nowhere
     }
 }
 
