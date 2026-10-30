@@ -119,7 +119,7 @@ describe("who is told", () => {
 });
 
 describe("a client from before friends", () => {
-  for (const version of ["0.17.7", "0.19.0"]) {
+  for (const version of ["0.17.7", "0.19.0", "0.20.0"]) {
     for (const platform of ["android", "ios"]) {
       it(`${platform}/${version} reads its list and counts as if there were none`, async () => {
         const { author, readers, postId } = await scene("Lesandi", "Vinur");
