@@ -49,12 +49,16 @@ const MODERATED: Partial<
     | "notice_review_upheld"
     | "notice_review_overturned"
     | "notice_account_photo_cleared"
+    | "notice_account_suspended"
+    | "notice_account_unsuspended"
   >
 > = {
   decline_anonymous_post: "notice_anonymous_declined",
   review_upheld: "notice_review_upheld",
   review_overturned: "notice_review_overturned",
   clear_account_photo: "notice_account_photo_cleared",
+  suspend_account: "notice_account_suspended",
+  unsuspend_account: "notice_account_unsuspended",
 };
 
 /** The strings key, its arguments, the badge and the finished sentence of a row. */

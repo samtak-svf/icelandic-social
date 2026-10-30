@@ -4,7 +4,7 @@ import type { OpenModerationReview } from "../generated/api.ts";
 import { strings } from "../generated/brand/strings.ts";
 import type { Problem } from "../problem.ts";
 import { Button, ProblemText, Status } from "../ui/kit.tsx";
-import { LOGGED } from "./moderation-log.tsx";
+import { decisionText } from "./moderation-log.tsx";
 import { when } from "./outcome.ts";
 import type { Paged } from "./paged.ts";
 import { act, reviewActionsFor, undecided, type Calls, type Row } from "./platform-moderation.ts";
@@ -81,11 +81,11 @@ export function ReviewItem({
 
   return (
     <article
-      aria-label={LOGGED[review.action]}
+      aria-label={decisionText(review)}
       className="flex flex-col gap-2 rounded-md border border-border p-4"
     >
       <header className="flex flex-wrap items-baseline justify-between gap-2">
-        <span className="font-semibold">{LOGGED[review.action]}</span>
+        <span className="font-semibold">{decisionText(review)}</span>
         <time dateTime={new Date(review.askedAt).toISOString()} className="text-sm text-muted-fg">
           {when(review.askedAt)}
         </time>

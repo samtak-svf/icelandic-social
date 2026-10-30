@@ -9,6 +9,7 @@ import {
 import type { REVIEW_OUTCOMES } from "../../api/moderation.ts";
 import { db } from "../../env/index.ts";
 import type { AppEnv } from "../../http.ts";
+import { setSuspension, suspension } from "../../identity/index.ts";
 import { fail } from "../../shared/errors.ts";
 import { log } from "../../shared/log.ts";
 import { notice } from "../jobs/index.ts";
@@ -43,6 +44,7 @@ type Row = {
   target_account: string | null;
   reason: string;
   created_at: number;
+  suspended_until: number | null;
   account_id: string | null;
   state: "open" | "upheld" | "overturned" | null;
   asked_at: number | null;
@@ -54,7 +56,7 @@ type Row = {
 const LISTED = REVIEWABLE.map((a) => `'${a}'`).join(", ");
 
 const SELECTED = `l.entry_id, l.community_id, l.actor_id, l.action, l.target_kind, l.target_id,
-       l.target_account, l.reason, l.created_at, r.account_id, r.state, r.asked_at, r.decided_at,
+       l.target_account, l.reason, l.created_at, l.suspended_until, r.account_id, r.state, r.asked_at, r.decided_at,
        r.reason AS review_reason, r.restored`;
 
 /**
@@ -107,6 +109,7 @@ async function statementPage(
         communityId: r.community_id,
         reason: r.reason,
         createdAt: r.created_at,
+        until: r.suspended_until,
         body: await textOf(env, r),
         canAsk: r.state === null && (await targetState(env, r)) !== "visible",
         review:
@@ -184,6 +187,7 @@ async function openReviews(env: Env, accountId: string, before: string | undefin
         targetAccount: named(r.target_account),
         reason: r.reason,
         createdAt: r.created_at,
+        until: r.suspended_until,
         body: await textOf(env, r),
         askedAt: r.asked_at ?? r.created_at,
         canDecide: r.actor_id !== accountId && r.account_id !== accountId,
@@ -209,6 +213,19 @@ async function overtaken(env: Env, r: Row): Promise<boolean> {
   return later !== null;
 }
 
+/** Whether a later suspension of `r`'s account decides now: the latest does. */
+async function laterSuspension(env: Env, r: Row): Promise<boolean> {
+  const later = await db(env)
+    .prepare(
+      `SELECT 1 AS yes FROM moderation_log
+        WHERE target_kind = 'account' AND target_id = ? AND entry_id > ? AND action = 'suspend_account'
+        LIMIT 1`,
+    )
+    .bind(r.target_id, r.entry_id)
+    .first();
+  return later !== null;
+}
+
 /**
  * Whether a review's answer brings its target back, the entry that says so when
  * this write is what does it, and the write. Only an overturn can. Read here and
@@ -222,11 +239,20 @@ async function restoring(
   outcome: Outcome,
 ): Promise<{
   restored: boolean;
-  action: "restore_post" | "restore_comment" | null;
+  action: "restore_post" | "restore_comment" | "unsuspend_account" | null;
   write: (s: D1PreparedStatement[]) => Promise<unknown>;
 }> {
   const batch = (s: D1PreparedStatement[]) => db(env).batch(s);
   const nothing = { action: null, write: batch };
+  if (outcome === "overturned" && r.action === "suspend_account") {
+    if (!(await suspension(env, r.target_id))) return { restored: true, ...nothing };
+    if (await laterSuspension(env, r)) return { restored: false, ...nothing };
+    return {
+      restored: true,
+      action: "unsuspend_account",
+      write: (s) => setSuspension(env, r.target_id, null, s),
+    };
+  }
   if (outcome !== "overturned" || r.community_id === null || r.target_kind === "account") {
     return { restored: false, ...nothing };
   }
@@ -273,7 +299,7 @@ async function decide(
 
   const { restored, action: restoration, write } = await restoring(env, r, input.outcome);
   const action = input.outcome === "overturned" ? "review_overturned" : "review_upheld";
-  const logged = (a: typeof action | "restore_post" | "restore_comment") =>
+  const logged = (a: typeof action | NonNullable<typeof restoration>) =>
     entry(env, {
       communityId: r.community_id,
       actorId: accountId,

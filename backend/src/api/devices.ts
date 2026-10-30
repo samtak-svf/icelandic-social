@@ -270,6 +270,17 @@ export const deleteAccountRoute = createRoute({
   responses: { 204: { description: "The account is deleted" }, ...AUTHED },
 });
 
+const Suspension = z
+  .object({
+    until: z.int().nullable().openapi({
+      description: "When it ends, Unix milliseconds; null until a moderator lifts it",
+    }),
+  })
+  .openapi("Suspension", {
+    description:
+      "The account may not post, comment, react, vote, create or join a community, or invite; it may do everything else, its conversations included (decision 0115)",
+  });
+
 const Me = z
   .object({
     accountId: OpaqueId,
@@ -278,6 +289,12 @@ const Me = z
     }),
     verified: z.boolean().openapi({ description: "Kenni vouched for the name (decision 0009)" }),
     photo: PhotoVersion,
+    suspension: Suspension.nullable().openapi({
+      description: "A suspension that stands now, else null (decision 0115)",
+    }),
+    platformModerator: z
+      .boolean()
+      .openapi({ description: "One of Samtak's platform moderators (decision 0115)" }),
     devices: z.array(
       z.object({
         deviceId: OpaqueId,

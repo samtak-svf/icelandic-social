@@ -106,7 +106,7 @@ jobs:
       - name: A browser and a phone through the Worker
         env:
           SPJALL_BROWSER_PHONE: "1"
-        run: pnpm --filter spjall-web exec playwright test e2e/chat.spec.ts e2e/group.spec.ts
+        run: pnpm --filter spjall-web exec playwright test e2e/chat.spec.ts e2e/group.spec.ts e2e/suspension.spec.ts
 
       - name: Worker log
         if: failure() || cancelled()

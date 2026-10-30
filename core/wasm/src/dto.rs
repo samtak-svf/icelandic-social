@@ -3,11 +3,12 @@
 //! Field names are camelCase; an enum is an object with a `kind`.
 use serde::Serialize;
 use spjall_client as core;
-use spjall_client::api;
 use spjall_envelope::Body;
 
 mod event;
+mod me;
 pub use event::Event;
+pub use me::{AccountDevice, AccountSuspension, Me};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -402,67 +403,6 @@ impl From<core::Outcome> for Outcome {
         Self {
             events: events.into_iter().map(Into::into).collect(),
             frames,
-        }
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct AccountDevice {
-    pub device_id: String,
-    pub platform: api::Platform,
-    /// `phone` or `web`.
-    pub kind: &'static str,
-    pub created_at: u64,
-    pub current: bool,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct Me {
-    pub account_id: String,
-    pub name: Option<String>,
-    pub verified: bool,
-    pub devices: Vec<AccountDevice>,
-    pub photo: Option<String>,
-}
-
-impl From<api::Me> for Me {
-    fn from(me: api::Me) -> Self {
-        let api::Me {
-            account_id,
-            name,
-            verified,
-            photo,
-            devices,
-        } = me;
-
-        Self {
-            account_id,
-            name,
-            verified,
-            devices: devices
-                .into_iter()
-                .map(
-                    |api::AccountDevice {
-                         device_id,
-                         platform,
-                         kind,
-                         created_at,
-                         current,
-                     }| AccountDevice {
-                        device_id,
-                        platform,
-                        kind: match kind {
-                            api::DeviceKind::Phone => "phone",
-                            api::DeviceKind::Web => "web",
-                        },
-                        created_at,
-                        current,
-                    },
-                )
-                .collect(),
-            photo,
         }
     }
 }

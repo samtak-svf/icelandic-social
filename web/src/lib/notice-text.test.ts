@@ -15,6 +15,8 @@ describe("what a moderated row reads", () => {
     ["review_upheld", "notice_review_upheld"],
     ["review_overturned", "notice_review_overturned"],
     ["clear_account_photo", "notice_account_photo_cleared"],
+    ["suspend_account", "notice_account_suspended"],
+    ["unsuspend_account", "notice_account_unsuspended"],
     ["remove_post", "notice_moderated"],
     [null, "notice_moderated"],
   ] as const)("%s reads %s, and names nobody", (action, key) => {

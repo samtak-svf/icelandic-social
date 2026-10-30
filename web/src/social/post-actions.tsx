@@ -7,6 +7,7 @@ import { Status } from "../ui/kit.tsx";
 import { EmojiPicker, QUICK } from "./emoji-picker.tsx";
 import { tally } from "./reaction-tally.ts";
 import { outcome } from "./outcome.ts";
+import { useSuspended } from "./suspended.tsx";
 
 // What sits under a post's text (decision 0080): the reaction summary and the
 // Líkar, Athugasemd and Deila row.
@@ -57,7 +58,7 @@ const GLYPH = "inline-flex size-5 shrink-0 items-center justify-center text-base
 const ICON = "hidden size-5 shrink-0 medium:block";
 
 const ACTION =
-  "inline-flex min-h-11 min-w-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-md px-1 font-medium hover:bg-muted";
+  "inline-flex min-h-11 min-w-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-md px-1 font-medium hover:bg-muted disabled:opacity-60";
 
 /** Líkar, Athugasemd and Deila: three equal actions under the post. */
 export function ActionRow({
@@ -130,6 +131,7 @@ const HOLD_MS = 450;
  * which a keyboard has instead of either.
  */
 function LikeButton({ reactions }: Readonly<{ reactions: ReactionState }>) {
+  const suspended = useSuspended();
   const [open, setOpen] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const held = useRef(false);
@@ -163,7 +165,7 @@ function LikeButton({ reactions }: Readonly<{ reactions: ReactionState }>) {
         aria-pressed={mine !== null}
         aria-haspopup="true"
         aria-expanded={open}
-        disabled={reactions.busy}
+        disabled={reactions.busy || (suspended && mine === null)}
         className={`${ACTION} w-full aria-pressed:text-primary`}
         onPointerDown={(event) => {
           held.current = false;

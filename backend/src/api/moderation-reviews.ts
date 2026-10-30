@@ -14,6 +14,7 @@ export const REVIEWABLE = [
   "hide_comment",
   "remove_comment",
   "clear_account_photo",
+  "suspend_account",
 ] as const;
 
 const EntryId = z
@@ -32,7 +33,7 @@ const Review = z
     reason: z.string().nullable().openapi({ description: "The decider's reason, once decided" }),
     restored: z.boolean().openapi({
       description:
-        "The content is back. False on an overturned review when it no longer exists, as a cleared photo does not, or when a later hide or remove of it still stands",
+        "The content is back, or the suspension is lifted. False on an overturned review when it no longer exists, as a cleared photo does not, or when a later hide, remove or suspension still stands",
     }),
   })
   .openapi("ModerationReview");
@@ -45,6 +46,10 @@ const Statement = z
     communityId: OpaqueId.nullable(),
     reason: z.string().openapi({ description: "The moderator's reason, as written" }),
     createdAt: At,
+    until: At.nullable().openapi({
+      description:
+        "The end a suspension was given when it was decided; null on any other action and on a suspension until a moderator lifts it",
+    }),
     body: z.string().nullable().openapi({
       description: "The text the action was on, while it is kept (90 days after a removal, 0063)",
     }),
@@ -77,6 +82,10 @@ const OpenReview = z
     targetAccount: z.union([Author, z.null()]),
     reason: z.string(),
     createdAt: At,
+    until: At.nullable().openapi({
+      description:
+        "The end a suspension was given when it was decided; null on any other action and on a suspension until a moderator lifts it",
+    }),
     body: z.string().nullable().openapi({
       description: "The text, while it is kept; null means the decision is made without it",
     }),

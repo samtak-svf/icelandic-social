@@ -24,6 +24,8 @@ pub enum ModerationLogAction {
     BanMember,
     UnbanMember,
     ClearAccountPhoto,
+    SuspendAccount,
+    UnsuspendAccount,
     /// A moderator closed a report about the content.
     CloseReport,
     DeleteCommunity,
@@ -68,8 +70,9 @@ pub struct ModerationReview {
     pub decided_at: Option<u64>,
     /// The decider's reason, once decided.
     pub reason: Option<String>,
-    /// The content came back. False on an overturned review when it no longer
-    /// exists, as a cleared photo does not.
+    /// The content came back, or the suspension was lifted. False on an
+    /// overturned review when the content no longer exists, as a cleared photo
+    /// does not, or when a later suspension stands.
     pub restored: bool,
 }
 
@@ -93,6 +96,61 @@ impl From<api::ModerationReview> for ModerationReview {
     }
 }
 
+/// One action in a community's moderation log, with the reason its
+/// moderator gave.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct ModerationLogEntry {
+    pub entry_id: u64,
+    /// None for an action a platform moderator took on an account.
+    pub community_id: Option<String>,
+    /// Who did it; none once that account is deleted.
+    pub actor: Option<Author>,
+    /// Done as one of the platform's moderators rather than as this
+    /// community's.
+    pub as_platform: bool,
+    pub action: ModerationLogAction,
+    pub target: LogTarget,
+    /// Whose content it is, or the account acted on.
+    pub target_account: Option<Author>,
+    pub reason: String,
+    /// Unix milliseconds.
+    pub created_at: u64,
+    /// The end a suspension was given when it was decided; none on any other
+    /// action and on a suspension until a moderator lifts it.
+    #[uniffi(default = None)]
+    pub until: Option<u64>,
+}
+
+impl From<api::ModerationLogEntry> for ModerationLogEntry {
+    fn from(entry: api::ModerationLogEntry) -> Self {
+        let api::ModerationLogEntry {
+            entry_id,
+            community_id,
+            actor,
+            as_platform,
+            action,
+            target,
+            target_account,
+            reason,
+            created_at,
+            until,
+        } = entry;
+
+        Self {
+            entry_id,
+            community_id,
+            actor,
+            as_platform,
+            action,
+            target: target.into(),
+            target_account,
+            reason,
+            created_at,
+            until,
+        }
+    }
+}
+
 /// Why a moderator acted on this account's content. It never names who did.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct ModerationStatement {
@@ -104,6 +162,10 @@ pub struct ModerationStatement {
     pub reason: String,
     /// Unix milliseconds.
     pub created_at: u64,
+    /// The end a suspension was given when it was decided; none on any other
+    /// action and on a suspension until a moderator lifts it.
+    #[uniffi(default = None)]
+    pub until: Option<u64>,
     /// The text the action was on, while it is kept (90 days after a removal).
     pub body: Option<String>,
     /// No review was asked for yet and the content has not come back since.
@@ -120,6 +182,7 @@ impl From<api::ModerationStatement> for ModerationStatement {
             community_id,
             reason,
             created_at,
+            until,
             body,
             can_ask,
             review,
@@ -132,6 +195,7 @@ impl From<api::ModerationStatement> for ModerationStatement {
             community_id,
             reason,
             created_at,
+            until,
             body,
             can_ask,
             review: review.map(Into::into),
@@ -162,6 +226,10 @@ pub struct OpenModerationReview {
     pub reason: String,
     /// Unix milliseconds.
     pub created_at: u64,
+    /// The end a suspension was given when it was decided; none on any other
+    /// action and on a suspension until a moderator lifts it.
+    #[uniffi(default = None)]
+    pub until: Option<u64>,
     /// The text, while it is kept; none means deciding without it.
     pub body: Option<String>,
     pub asked_at: u64,
@@ -181,6 +249,7 @@ impl From<api::OpenModerationReview> for OpenModerationReview {
             target_account,
             reason,
             created_at,
+            until,
             body,
             asked_at,
             can_decide,
@@ -196,6 +265,7 @@ impl From<api::OpenModerationReview> for OpenModerationReview {
             target_account,
             reason,
             created_at,
+            until,
             body,
             asked_at,
             can_decide,

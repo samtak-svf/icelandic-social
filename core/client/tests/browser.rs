@@ -1,7 +1,8 @@
 //! A real browser meets a phone through the Worker under `cf dev`: the
-//! phone's halves of web/e2e/chat.spec.ts and web/e2e/group.spec.ts. Ignored
-//! by `cargo test`; interop.yml runs them through those specs, which start
-//! them with `SPJALL_BROWSER_DIR`, the directory the two sides meet in.
+//! phone's halves of web/e2e/chat.spec.ts, web/e2e/group.spec.ts and
+//! web/e2e/suspension.spec.ts. Ignored by `cargo test`; interop.yml runs them
+//! through those specs, which start them with `SPJALL_BROWSER_DIR`, the
+//! directory the two sides meet in.
 
 #![allow(clippy::disallowed_methods)] // tests use files
 

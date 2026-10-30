@@ -53,6 +53,12 @@ export function AccountProvider({ children }: Readonly<{ children: ReactNode }>)
   return <AccountContext value={{ state, refresh, signedOut }}>{children}</AccountContext>;
 }
 
+/** The signed-in account, or null: signed out, still loading, or a card drawn with no provider. */
+export function useMe(): Me | null {
+  const value = use(AccountContext);
+  return value?.state.status === "signed-in" ? value.state.me : null;
+}
+
 export function useAccount(): AccountValue {
   const value = use(AccountContext);
   if (!value) throw new Error("useAccount outside AccountProvider");

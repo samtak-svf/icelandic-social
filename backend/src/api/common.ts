@@ -24,7 +24,7 @@ export const ApiError = z
   .object({
     error: z.string().openapi({
       description:
-        "A stable code: unauthorized, invalid_request, group_mismatch, not_a_member, not_found, conversation_exists, epoch_conflict, upgrade_required, sign_in_failed, device_key_taken, kenni_unavailable, google_unavailable, identity_taken, already_linked, rate_limited, blocked, conflict, too_large, invalid_image, no_master, not_this_device, no_key_packages, client_too_old, claim_names_departed, not_author, forbidden_origin, no_linked_device, not_verified, not_permitted, banned, read_only, owner_cannot_leave, audience_locked, pin_limit, poll_closed, anonymous_off, invalid_media, muted, expired, incomplete, internal_error",
+        "A stable code: unauthorized, invalid_request, group_mismatch, not_a_member, not_found, conversation_exists, epoch_conflict, upgrade_required, sign_in_failed, device_key_taken, kenni_unavailable, google_unavailable, identity_taken, already_linked, rate_limited, blocked, conflict, too_large, invalid_image, no_master, not_this_device, no_key_packages, client_too_old, claim_names_departed, not_author, forbidden_origin, no_linked_device, not_verified, not_permitted, banned, read_only, owner_cannot_leave, audience_locked, pin_limit, poll_closed, anonymous_off, invalid_media, muted, suspended, expired, incomplete, internal_error",
       example: "unauthorized",
     }),
     requestId: z.string().openapi({
@@ -35,6 +35,10 @@ export const ApiError = z
     minVersion: z.string().optional().openapi({
       description: "With client_too_old: the lowest version this platform accepts (decision 0030)",
       example: "0.2.0",
+    }),
+    until: z.int().optional().openapi({
+      description:
+        "With suspended: when the suspension ends, Unix milliseconds; absent while it is open-ended (decision 0115)",
     }),
     updateUrl: z.string().optional().openapi({
       description: "Where to get a current build when error === 'client_too_old' (decision 0030)",

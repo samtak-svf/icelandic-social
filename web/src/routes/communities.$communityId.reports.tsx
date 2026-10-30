@@ -12,6 +12,7 @@ import {
 import { strings } from "../generated/brand/strings.ts";
 import { ManageFrame } from "../social/manage-frame.tsx";
 import { outcome, useLoad, when } from "../social/outcome.ts";
+import { DAY, MUTES } from "../social/mute-lengths.ts";
 import { authorName } from "../social/post.tsx";
 import {
   Decision,
@@ -37,15 +38,7 @@ export const Route = createFileRoute("/communities/$communityId/reports")({
   staticData: { width: "wide" },
 });
 
-const DAY = 24 * 60 * 60 * 1000;
-
 /** How long a mute lasts, in days, as the moderator chooses it. */
-const MUTES = [
-  [1, strings.moderation_mute_day],
-  [7, strings.moderation_mute_week],
-  [30, strings.moderation_mute_month],
-] as const;
-
 type Queue = "open" | "closed";
 
 function ReportsPage() {

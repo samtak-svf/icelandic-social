@@ -10,6 +10,7 @@ import { ImageProblem } from "./image-problem.tsx";
 import { useObjectUrl } from "./object-url.ts";
 import { outcome } from "./outcome.ts";
 import { PicturePick, sendImage } from "./picture-pick.tsx";
+import { useSuspended } from "./suspended.tsx";
 import { Button } from "../ui/kit.tsx";
 
 // `community_create` (decisions 0063, 0080): the name, the description, the
@@ -23,6 +24,7 @@ import { Button } from "../ui/kit.tsx";
 type Chosen = { name: string; master: Blob; framing: Framing | null };
 
 export function CreateCommunity() {
+  const suspended = useSuspended();
   const id = useId();
   const navigate = useNavigate();
   const [name, setName] = useState("");
@@ -126,7 +128,7 @@ export function CreateCommunity() {
             </label>
           ))}
         </fieldset>
-        <Button tone="primary" type="submit" disabled={busy || name.trim() === ""}>
+        <Button tone="primary" type="submit" disabled={busy || suspended || name.trim() === ""}>
           {strings.community_create}
         </Button>
         <ImageProblem problem={problem} />

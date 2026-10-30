@@ -51,5 +51,11 @@ declare module "@tanstack/react-router" {
      * the shell lets it use the width (decision 0087).
      */
     width?: "wide";
+    /**
+     * The page takes its height from the window, so a notice above it would push
+     * its composer below the fold, and nothing on it is refused to a suspended
+     * account (decision 0115).
+     */
+    noSuspendedNotice?: true;
   }
 }

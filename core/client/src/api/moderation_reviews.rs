@@ -24,6 +24,8 @@ pub enum ModerationLogAction {
     BanMember,
     UnbanMember,
     ClearAccountPhoto,
+    SuspendAccount,
+    UnsuspendAccount,
     CloseReport,
     DeleteCommunity,
     RestoreCommunity,
@@ -64,8 +66,9 @@ pub struct ModerationReview {
     pub decided_at: Option<u64>,
     /// The decider's reason, once decided.
     pub reason: Option<String>,
-    /// The content came back. False on an overturned review when it no longer
-    /// exists, as a cleared photo does not.
+    /// The content came back, or the suspension was lifted. False on an
+    /// overturned review when the content no longer exists, as a cleared photo
+    /// does not, or when a later suspension stands.
     pub restored: bool,
 }
 
@@ -81,11 +84,41 @@ pub struct ModerationStatement {
     pub reason: String,
     /// Unix milliseconds.
     pub created_at: u64,
+    /// The end a suspension was given when it was decided; none on any other
+    /// action and on a suspension until a moderator lifts it.
+    #[serde(default)]
+    pub until: Option<u64>,
     /// The text the action was on, while it is kept (90 days after a removal).
     pub body: Option<String>,
     /// No review was asked for yet and the content has not come back since.
     pub can_ask: bool,
     pub review: Option<ModerationReview>,
+}
+
+/// One action in a community's moderation log, with the reason its
+/// moderator gave.
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ModerationLogEntry {
+    pub entry_id: u64,
+    /// None for an action a platform moderator took on an account.
+    pub community_id: Option<String>,
+    /// Who did it; none once that account is deleted.
+    pub actor: Option<Author>,
+    /// Done as one of the platform's moderators rather than as this
+    /// community's.
+    pub as_platform: bool,
+    pub action: ModerationLogAction,
+    pub target: LogTarget,
+    /// Whose content it is, or the account acted on.
+    pub target_account: Option<Author>,
+    pub reason: String,
+    /// Unix milliseconds.
+    pub created_at: u64,
+    /// The end a suspension was given when it was decided; none on any other
+    /// action and on a suspension until a moderator lifts it.
+    #[serde(default)]
+    pub until: Option<u64>,
 }
 
 /// A page of statements, newest first, and the cursor of the next, older page.
@@ -112,6 +145,10 @@ pub struct OpenModerationReview {
     pub reason: String,
     /// Unix milliseconds.
     pub created_at: u64,
+    /// The end a suspension was given when it was decided; none on any other
+    /// action and on a suspension until a moderator lifts it.
+    #[serde(default)]
+    pub until: Option<u64>,
     /// The text, while it is kept; none means deciding without it.
     pub body: Option<String>,
     pub asked_at: u64,

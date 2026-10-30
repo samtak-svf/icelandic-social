@@ -49,12 +49,12 @@ export const drainBody = createMiddleware<AppEnv>(async (c, next) => {
   }
 });
 
-/** An error answer: the stable code, the request id, and minVersion with a 426. */
+/** An error answer: the stable code, the request id, minVersion with a 426, until with a suspension's end. */
 export function fail<S extends ContentfulStatusCode>(
   c: Context<AppEnv>,
   status: S,
   error: string,
-  extra: { minVersion?: string } = {},
+  extra: { minVersion?: string; until?: number } = {},
 ) {
   return c.json({ error, ...extra, requestId: c.var.requestId }, status);
 }

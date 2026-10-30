@@ -2687,7 +2687,7 @@
     },
     "platform_review_overturn_confirm": {
       "surfaces": ["web"],
-      "description": "Confirmation before overturning; says that a cleared photo does not return."
+      "description": "Confirmation before overturning; says that a cleared photo does not return. A suspension is lifted too, unless a later one stands."
     },
     "platform_review_not_yours": {
       "surfaces": ["web"],
@@ -2712,6 +2712,83 @@
     "post_tombstone_open": {
       "surfaces": ["android", "ios", "web"],
       "description": "Link from a removed post to reading it, for a moderator of its community."
+    },
+    "notice_account_suspended": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "A notification: a platform moderator suspended the reader's account (decision 0115)."
+    },
+    "notice_account_unsuspended": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "A notification: a platform moderator lifted the suspension of the reader's account (decision 0115)."
+    },
+    "moderation_decision_suspend_account": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "The decision recorded when a platform moderator suspends an account (decision 0115)."
+    },
+    "moderation_decision_suspend_account_until": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "What a statement, the log and a review card say of a suspension decided with an end date (decision 0115).",
+      "placeholders": {
+        "date": "string"
+      }
+    },
+    "moderation_decision_suspend_account_open": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "What a statement, the log and a review card say of a suspension decided with no end date: it stands until a moderator lifts it (decision 0115)."
+    },
+    "moderation_decision_unsuspend_account": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "The decision recorded when a platform moderator lifts a suspension (decision 0115)."
+    },
+    "platform_suspend": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "The platform moderator's action: suspend the reported account (decision 0115)."
+    },
+    "platform_suspend_confirm": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "Confirmation before the platform moderator suspends an account."
+    },
+    "platform_unsuspend": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "The platform moderator's action: lift the suspension of the reported account (decision 0115)."
+    },
+    "platform_unsuspend_confirm": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "Confirmation before the platform moderator lifts a suspension."
+    },
+    "platform_suspend_open": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "The duration a suspension has when it has no end date; beside the mute durations."
+    },
+    "problem_suspended": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "The server refused a write because the account is suspended, with no end date (decision 0115)."
+    },
+    "problem_suspended_until": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "The server refused a write because the account is suspended until the date (decision 0115).",
+      "placeholders": {
+        "date": "string"
+      }
+    },
+    "suspended_notice": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "The notice a suspended account sees on every signed-in screen, with no end date (decision 0115)."
+    },
+    "suspended_notice_until": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "The notice a suspended account sees on every signed-in screen, with the end date (decision 0115).",
+      "placeholders": {
+        "date": "string"
+      }
+    },
+    "statement_review_overturned_lifted": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "A statement's review of a suspension: overturned, and the suspension lifted (decision 0115)."
+    },
+    "statement_review_overturned_later_stands": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "A statement's review of a suspension: overturned, but a later suspension stands (decision 0115)."
     }
   }
 }

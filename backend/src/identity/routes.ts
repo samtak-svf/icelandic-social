@@ -112,8 +112,11 @@ export function identityRoutes(app: OpenAPIHono<AppEnv>, hooks: IdentityHooks): 
     const deviceId = c.var.device?.deviceId;
     const account = await me(c.env, accountId);
     const devices = account.devices.map((d) => ({ ...d, current: d.deviceId === deviceId }));
-    const { name, verified, photo } = account;
-    return c.json({ accountId, name, verified, photo, devices }, 200);
+    const { name, verified, photo, suspension, platformModerator } = account;
+    return c.json(
+      { accountId, name, verified, photo, devices, suspension, platformModerator },
+      200,
+    );
   });
 
   // Decision 0014: in the contract now, built in phase 1.

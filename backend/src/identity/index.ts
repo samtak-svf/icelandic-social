@@ -14,6 +14,13 @@ export {
   revokeAllDevices,
   setPhotoVersion,
 } from "./accounts.ts";
+export {
+  notSuspended,
+  setSuspension,
+  suspendedAmong,
+  suspension,
+  type Suspension,
+} from "./suspension.ts";
 export { block, blockedEither, blockersAmong, blockList, UNBLOCKED, unblock } from "./blocks.ts";
 export { inviteRoutes } from "./invites.ts";
 export { identityRoutes } from "./routes.ts";

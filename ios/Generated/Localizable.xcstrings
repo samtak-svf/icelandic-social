@@ -6164,7 +6164,7 @@
         "is": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ákvörðun stjórnanda um efni frá þér stendur eftir endurskoðun."
+            "value": "Ákvörðun stjórnanda stendur eftir endurskoðun."
           }
         }
       }
@@ -6176,7 +6176,7 @@
         "is": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ákvörðun stjórnanda um efni frá þér var felld úr gildi eftir endurskoðun."
+            "value": "Ákvörðun stjórnanda var felld úr gildi eftir endurskoðun."
           }
         }
       }
@@ -6369,6 +6369,210 @@
           "stringUnit": {
             "state": "translated",
             "value": "Opna færsluna"
+          }
+        }
+      }
+    },
+    "notice_account_suspended": {
+      "comment": "A notification: a platform moderator suspended the reader's account (decision 0115).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stjórnandi setti aðganginn þinn í bann. Þú getur enn lesið og sent skilaboð."
+          }
+        }
+      }
+    },
+    "notice_account_unsuspended": {
+      "comment": "A notification: a platform moderator lifted the suspension of the reader's account (decision 0115).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stjórnandi aflétti banni af aðganginum þínum."
+          }
+        }
+      }
+    },
+    "moderation_decision_suspend_account": {
+      "comment": "The decision recorded when a platform moderator suspends an account (decision 0115).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aðgangurinn var settur í bann."
+          }
+        }
+      }
+    },
+    "moderation_decision_suspend_account_until": {
+      "comment": "What a statement, the log and a review card say of a suspension decided with an end date (decision 0115).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aðgangurinn var settur í bann til %1$@."
+          }
+        }
+      }
+    },
+    "moderation_decision_suspend_account_open": {
+      "comment": "What a statement, the log and a review card say of a suspension decided with no end date: it stands until a moderator lifts it (decision 0115).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aðgangurinn var settur í bann þar til stjórnandi aflétti því."
+          }
+        }
+      }
+    },
+    "moderation_decision_unsuspend_account": {
+      "comment": "The decision recorded when a platform moderator lifts a suspension (decision 0115).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Banni var aflétt af aðganginum."
+          }
+        }
+      }
+    },
+    "platform_suspend": {
+      "comment": "The platform moderator's action: suspend the reported account (decision 0115).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Setja aðganginn í bann"
+          }
+        }
+      }
+    },
+    "platform_suspend_confirm": {
+      "comment": "Confirmation before the platform moderator suspends an account.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Setja aðganginn í bann? Viðkomandi fær að vita það. Aðgerðin er skráð í aðgerðaskrá Samtaks."
+          }
+        }
+      }
+    },
+    "platform_unsuspend": {
+      "comment": "The platform moderator's action: lift the suspension of the reported account (decision 0115).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aflétta banni"
+          }
+        }
+      }
+    },
+    "platform_unsuspend_confirm": {
+      "comment": "Confirmation before the platform moderator lifts a suspension.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aflétta banni af aðganginum? Aðgerðin er skráð í aðgerðaskrá Samtaks."
+          }
+        }
+      }
+    },
+    "platform_suspend_open": {
+      "comment": "The duration a suspension has when it has no end date; beside the mute durations.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Þar til banni er aflétt"
+          }
+        }
+      }
+    },
+    "problem_suspended": {
+      "comment": "The server refused a write because the account is suspended, with no end date (decision 0115).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aðgangurinn þinn er í banni svo að þú getur ekki gert þetta. Þú getur enn lesið og sent skilaboð."
+          }
+        }
+      }
+    },
+    "problem_suspended_until": {
+      "comment": "The server refused a write because the account is suspended until the date (decision 0115).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aðgangurinn þinn er í banni til %1$@ svo að þú getur ekki gert þetta. Þú getur enn lesið og sent skilaboð."
+          }
+        }
+      }
+    },
+    "suspended_notice": {
+      "comment": "The notice a suspended account sees on every signed-in screen, with no end date (decision 0115).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aðgangurinn þinn er í banni. Þú getur lesið og sent skilaboð, en ekki skrifað færslur eða athugasemdir, brugðist við, stofnað eða gengið í hóp né boðið öðrum."
+          }
+        }
+      }
+    },
+    "suspended_notice_until": {
+      "comment": "The notice a suspended account sees on every signed-in screen, with the end date (decision 0115).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aðgangurinn þinn er í banni til %1$@. Þú getur lesið og sent skilaboð, en ekki skrifað færslur eða athugasemdir, brugðist við, stofnað eða gengið í hóp né boðið öðrum."
+          }
+        }
+      }
+    },
+    "statement_review_overturned_lifted": {
+      "comment": "A statement's review of a suspension: overturned, and the suspension lifted (decision 0115).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ákvörðunin var felld úr gildi og banninu aflétt."
+          }
+        }
+      }
+    },
+    "statement_review_overturned_later_stands": {
+      "comment": "A statement's review of a suspension: overturned, but a later suspension stands (decision 0115).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ákvörðunin var felld úr gildi, en nýrra bann stendur."
           }
         }
       }

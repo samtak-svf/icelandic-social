@@ -1,4 +1,5 @@
 import { db } from "../../env/index.ts";
+import type { NoticeReach } from "../../shared/client-version.ts";
 import { authors } from "../social/index.ts";
 import { announcer } from "./settings.ts";
 import { snippetOf } from "./snippet.ts";
@@ -31,10 +32,14 @@ const OLD_ACTIONS = [
  * What a client is shown (0114). An app below `NOTICE_CLIENT_VERSION` fails its
  * whole page on a null community and does not know a new kind, so neither
  * reaches its list or its counts. It reads a new action as "unknown" and words
- * it as a removal, so that stays out as well (0115).
+ * it as a removal, so that stays out as well (0115). An app that decodes every
+ * row may still word a suspension that way, until its core knows the action.
  */
-export function shownTo(knowing: boolean): string {
-  if (knowing) return LIVE;
+export function shownTo(reach: NoticeReach): string {
+  if (reach === "all") return LIVE;
+  if (reach === "decoding") {
+    return `${LIVE} AND (n.action IS NULL OR n.action NOT IN ('suspend_account', 'unsuspend_account'))`;
+  }
   const kinds = OLD_KINDS.map((k) => `'${k}'`).join(", ");
   const actions = OLD_ACTIONS.map((a) => `'${a}'`).join(", ");
   return `${LIVE} AND n.community_id IS NOT NULL AND n.kind IN (${kinds})
@@ -74,12 +79,12 @@ const ACTORS = `
   SELECT notification_id, actor_id, n FROM ranked WHERE rank <= ${SHOWN} ORDER BY notification_id, rank`;
 
 /** The caller's counts: unread, unseen (unread and newer than `seenAt`), and `seenAt` itself. */
-async function counters(env: Env, accountId: string, knowing: boolean) {
+async function counters(env: Env, accountId: string, reach: NoticeReach) {
   const row = await db(env)
     .prepare(
       `WITH seen AS (SELECT seen_at FROM notification_seen WHERE account_id = ?1),
             unread AS (SELECT created_at FROM notifications n
-                        WHERE account_id = ?1 AND read_at IS NULL AND ${shownTo(knowing)})
+                        WHERE account_id = ?1 AND read_at IS NULL AND ${shownTo(reach)})
        SELECT (SELECT COUNT(*) FROM unread) AS unread,
               (SELECT COUNT(*) FROM unread
                 WHERE created_at > COALESCE((SELECT seen_at FROM seen), 0)) AS unseen,
@@ -108,7 +113,7 @@ export async function notificationPage(
   accountId: string,
   before: number | null,
   limit: number,
-  knowing: boolean,
+  reach: NoticeReach,
 ) {
   const [{ results }, count, announces] = await Promise.all([
     db(env)
@@ -116,12 +121,12 @@ export async function notificationPage(
         `SELECT notification_id, kind, actor_id, community_id, post_id, comment_id, action,
                 emoji, created_at, read_at
            FROM notifications n WHERE account_id = ?1 AND (?2 IS NULL OR created_at < ?2)
-            AND ${shownTo(knowing)}
+            AND ${shownTo(reach)}
           ORDER BY created_at DESC LIMIT ?3`,
       )
       .bind(accountId, before, limit + 1)
       .all<Row>(),
-    counters(env, accountId, knowing),
+    counters(env, accountId, reach),
     announcer(env, accountId),
   ]);
   const shown = results.slice(0, limit);
@@ -173,12 +178,12 @@ export async function markRead(
   env: Env,
   accountId: string,
   upTo: number,
-  knowing: boolean,
+  reach: NoticeReach,
 ): Promise<void> {
   await db(env)
     .prepare(
       `UPDATE notifications AS n SET read_at = ?3
-        WHERE account_id = ?1 AND created_at <= ?2 AND read_at IS NULL AND ${shownTo(knowing)}`,
+        WHERE account_id = ?1 AND created_at <= ?2 AND read_at IS NULL AND ${shownTo(reach)}`,
     )
     .bind(accountId, upTo, Date.now())
     .run();

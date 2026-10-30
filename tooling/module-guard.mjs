@@ -95,6 +95,11 @@ export const OWNERS = {
 /** The reads of another module's table, each with its reason. */
 export const READS = [
   {
+    module: "identity",
+    table: "platform_moderators",
+    why: "the account's own /v1/me says whether it is a platform moderator, so its client shows the way to the queue (decision 0115)",
+  },
+  {
     module: "messaging",
     table: "accounts",
     why: "a roster copy leaves out accounts already deleted",

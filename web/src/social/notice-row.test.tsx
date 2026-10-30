@@ -77,22 +77,25 @@ describe("NoticeRow", () => {
     );
   });
 
-  it.each(["remove_post", "clear_account_photo", "review_upheld", "review_overturned"])(
-    "leads a %s row to its statement, with or without a community",
-    (action) => {
-      const moderated: Partial<Notification> = {
-        kind: "moderated",
-        actors: [],
-        actorCount: 0,
-        actor: null,
-        emoji: undefined,
-        action,
-        snippet: null,
-      };
-      expect(html(row({ ...moderated, communityId: null }))).toContain('href="/statements"');
-      expect(html(row({ ...moderated, communityId: "c1" }))).toContain('href="/statements"');
-    },
-  );
+  it.each([
+    "remove_post",
+    "clear_account_photo",
+    "suspend_account",
+    "review_upheld",
+    "review_overturned",
+  ])("leads a %s row to its statement, with or without a community", (action) => {
+    const moderated: Partial<Notification> = {
+      kind: "moderated",
+      actors: [],
+      actorCount: 0,
+      actor: null,
+      emoji: undefined,
+      action,
+      snippet: null,
+    };
+    expect(html(row({ ...moderated, communityId: null }))).toContain('href="/statements"');
+    expect(html(row({ ...moderated, communityId: "c1" }))).toContain('href="/statements"');
+  });
 
   it("leaves a member's sanction where it was", () => {
     const out = html(

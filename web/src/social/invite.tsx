@@ -4,6 +4,7 @@ import { inviteToCommunity, listPeople, type Community, type Profile } from "../
 import { strings } from "../generated/brand/strings.ts";
 import { Avatar } from "./avatar.tsx";
 import { outcome, useLoad } from "./outcome.ts";
+import { useSuspended } from "./suspended.tsx";
 import { Button, ProblemText, Status } from "../ui/kit.tsx";
 import { Dialog } from "../ui/dialog.tsx";
 
@@ -61,6 +62,7 @@ function InviteDialog({
   community,
   onClose,
 }: Readonly<{ community: Community; onClose: () => void }>) {
+  const suspended = useSuspended();
   const [query, setQuery] = useState("");
   const [searched, setSearched] = useState("");
   useEffect(() => {
@@ -131,7 +133,10 @@ function InviteDialog({
               <span className="min-w-0 flex-1 truncate font-medium">
                 {person.name ?? strings.person_unnamed}
               </span>
-              <Button disabled={sent.has(person.accountId)} onClick={() => void invite(person)}>
+              <Button
+                disabled={suspended || sent.has(person.accountId)}
+                onClick={() => void invite(person)}
+              >
                 {strings.invite}
               </Button>
             </li>

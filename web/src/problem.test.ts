@@ -11,6 +11,7 @@ group("a refusal", () => {
       ["pin_limit", strings.post_pin_full],
       ["poll_closed", strings.poll_closed_problem],
       ["anonymous_off", strings.problem_anonymous_off],
+      ["suspended", strings.problem_suspended],
     ] as const) {
       expect(describe(refused({ error, requestId: "r1" }))).toEqual({ message, requestId: null });
     }

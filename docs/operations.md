@@ -195,6 +195,18 @@ cf d1 execute spjall-db --remote --command \
   "SELECT account_id, added_at FROM platform_moderators ORDER BY added_at"
 ```
 
+### Lifting a suspension by hand
+
+A platform moderator lifts a suspension from the moderation page, which logs it and tells the
+person (decision 0115). Use the database only when no moderator can act, for instance when the
+only one is the suspended account. This write leaves no log entry and sends no notice, so tell
+the person yourself and note why:
+
+```bash
+cf d1 execute spjall-db --remote --command \
+  "UPDATE accounts SET suspended_at = NULL, suspended_until = NULL WHERE account_id = '<accountId>'"
+```
+
 ## Testers
 
 Testers reach the maintainer directly and are added by hand

@@ -20,7 +20,7 @@ import { voteRoute, withdrawVoteRoute } from "../../api/polls.ts";
 import { likeCommentRoute, unlikeCommentRoute } from "../../api/social-hub.ts";
 import type { AppEnv } from "../../http.ts";
 import { space, withinLimit } from "../../env/index.ts";
-import { blockedEither } from "../../identity/index.ts";
+import { blockedEither, notSuspended } from "../../identity/index.ts";
 import { CLIENT_HEADER, decodesEveryNotice } from "../../shared/client-version.ts";
 import { fail } from "../../shared/errors.ts";
 import { log } from "../../shared/log.ts";
@@ -57,7 +57,7 @@ import {
 export function socialRoutes(app: OpenAPIHono<AppEnv>): void {
   cardRoutes(app);
 
-  app.openapi(createPostRoute, async (c) => {
+  app.openapi(notSuspended(createPostRoute), async (c) => {
     const { accountId } = c.var.session;
     const { communityId } = c.req.valid("param");
     const access = await spaceAccess(c.env, accountId, communityId);
@@ -100,7 +100,7 @@ export function socialRoutes(app: OpenAPIHono<AppEnv>): void {
     );
   });
 
-  app.openapi(uploadSocialMediaRoute, async (c) => {
+  app.openapi(notSuspended(uploadSocialMediaRoute), async (c) => {
     const { accountId } = c.var.session;
     const { communityId } = c.req.valid("param");
     const body = c.req.raw.body;
@@ -241,7 +241,7 @@ export function socialRoutes(app: OpenAPIHono<AppEnv>): void {
     );
   });
 
-  app.openapi(createCommentRoute, async (c) => {
+  app.openapi(notSuspended(createCommentRoute), async (c) => {
     const { accountId } = c.var.session;
     const { postId } = c.req.valid("param");
     const input = c.req.valid("json");
@@ -278,7 +278,7 @@ export function socialRoutes(app: OpenAPIHono<AppEnv>): void {
     return c.body(null, 204);
   });
 
-  app.openapi(reactRoute, async (c) => {
+  app.openapi(notSuspended(reactRoute), async (c) => {
     const { accountId } = c.var.session;
     const { postId } = c.req.valid("param");
     const found = await postAccess(c.env, accountId, postId);
@@ -316,7 +316,7 @@ export function socialRoutes(app: OpenAPIHono<AppEnv>): void {
   // no notice is written, and the log line carries ids, never the option.
   // noteAuthor records that the account wrote in the space, so deleting the
   // account reaches its votes. A post that is no poll answers 404.
-  app.openapi(voteRoute, async (c) => {
+  app.openapi(notSuspended(voteRoute), async (c) => {
     const { accountId } = c.var.session;
     const { postId } = c.req.valid("param");
     const found = await postAccess(c.env, accountId, postId);
@@ -347,7 +347,7 @@ export function socialRoutes(app: OpenAPIHono<AppEnv>): void {
   // A comment's 👍 (decision 0080) follows the rule of commenting and tells
   // nobody, so no notice is written. noteAuthor still records that the account
   // wrote in the space, so deleting the account reaches its likes.
-  app.openapi(likeCommentRoute, async (c) => {
+  app.openapi(notSuspended(likeCommentRoute), async (c) => {
     const { accountId } = c.var.session;
     const found = await commentAccess(c.env, accountId, c.req.valid("param").commentId);
     if (!found) return fail(c, 404, "not_found");

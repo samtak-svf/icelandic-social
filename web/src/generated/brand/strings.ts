@@ -652,7 +652,7 @@ export const strings = {
   /** Section heading on /privacy: where data is stored and how long it is kept. */
   privacy_retention_heading: "Varðveisla og geymslutími",
   /** Body on /privacy describing retention periods (encrypted media 30 days, removed posts 90 days, moderation logs and closed reports 1 year, no PII in logs; decisions 0001, 0008, 0023, 0066, 0070). */
-  privacy_retention_body: "Dulkóðuð viðhengi í samtölum geymast á þjóninum í allt að 30 daga á meðan tæki sækja þau. Ef hópi er eytt má endurheimta hann í 30 daga áður en póstum, athugasemdum og myndum hans er eytt varanlega. Póstum og athugasemdum sem stjórnandi fjarlægir er eytt eftir 90 daga, og lokuðum tilkynningum og aðgerðaskrá stjórnenda er eytt eftir eitt ár. Atburðaskrár þjónsins geyma engin nöfn, kennitölur, símanúmer né innihald skilaboða.",
+  privacy_retention_body: "Dulkóðuð viðhengi í samtölum geymast á þjóninum í allt að 30 daga á meðan tæki sækja þau. Ef hópi er eytt má endurheimta hann í 30 daga áður en póstum, athugasemdum og myndum hans er eytt varanlega. Póstum og athugasemdum sem stjórnandi fjarlægir er eytt eftir 90 daga og lokuðum tilkynningum og aðgerðaskrá stjórnenda, sem skráir líka bann á aðgöngum, er eytt eftir eitt ár. Atburðaskrár þjónsins geyma hvorki nöfn, kennitölur, símanúmer né innihald skilaboða.",
   /** Section heading on /privacy: account deletion and user rights. */
   privacy_rights_heading: "Eyðing aðgangs og réttindi þín",
   /** Body on /privacy describing immediate account deletion in the app and how to contact the controller. */
@@ -991,9 +991,9 @@ export const strings = {
   /** A notification: a moderator declined the reader's anonymous post (decision 0091). */
   notice_anonymous_declined: "Stjórnandi hafnaði nafnlausri færslu frá þér.",
   /** A notification: the review the reader asked for upheld the action (decision 0115). */
-  notice_review_upheld: "Ákvörðun stjórnanda um efni frá þér stendur eftir endurskoðun.",
+  notice_review_upheld: "Ákvörðun stjórnanda stendur eftir endurskoðun.",
   /** A notification: the review the reader asked for overturned the action (decision 0115). */
-  notice_review_overturned: "Ákvörðun stjórnanda um efni frá þér var felld úr gildi eftir endurskoðun.",
+  notice_review_overturned: "Ákvörðun stjórnanda var felld úr gildi eftir endurskoðun.",
   /** A notification: a platform moderator cleared the reader's photo (decision 0115). */
   notice_account_photo_cleared: "Stjórnandi fjarlægði myndina af aðganginum þínum.",
   /** Title of the screen listing what moderators did to the reader's content and why (decision 0115). */
@@ -1030,8 +1030,8 @@ export const strings = {
   platform_review_overturn: "Fella ákvörðunina úr gildi",
   /** Confirmation before upholding. */
   platform_review_uphold_confirm: "Staðfesta ákvörðunina? Viðkomandi fær að vita það og getur ekki beðið aftur um endurskoðun.",
-  /** Confirmation before overturning; says that a cleared photo does not return. */
-  platform_review_overturn_confirm: "Fella ákvörðunina úr gildi? Efnið er birt aftur ef það er enn til. Mynd sem var fjarlægð kemur ekki aftur.",
+  /** Confirmation before overturning; says that a cleared photo does not return. A suspension is lifted too, unless a later one stands. */
+  platform_review_overturn_confirm: "Fella ákvörðunina úr gildi? Efnið er birt aftur ef það er enn til og banni aflétt nema nýrra bann standi. Mynd sem var fjarlægð kemur ekki aftur.",
   /** Why the buttons are off on a review the viewer acted on or asked for. */
   platform_review_not_yours: "Annar stjórnandi verður að svara þessari beiðni, því að þú tókst ákvörðunina eða baðst um endurskoðunina.",
   /** A review whose text was purged after its 90 days: it is decided without it (decision 0115). */
@@ -1044,4 +1044,41 @@ export const strings = {
   moderation_log_review_overturned: "Ákvörðun var felld úr gildi eftir endurskoðun.",
   /** Link from a removed post to reading it, for a moderator of its community. */
   post_tombstone_open: "Opna færsluna",
+  /** A notification: a platform moderator suspended the reader's account (decision 0115). */
+  notice_account_suspended: "Stjórnandi setti aðganginn þinn í bann. Þú getur enn lesið og sent skilaboð.",
+  /** A notification: a platform moderator lifted the suspension of the reader's account (decision 0115). */
+  notice_account_unsuspended: "Stjórnandi aflétti banni af aðganginum þínum.",
+  /** The decision recorded when a platform moderator suspends an account (decision 0115). */
+  moderation_decision_suspend_account: "Aðgangurinn var settur í bann.",
+  /** What a statement, the log and a review card say of a suspension decided with an end date (decision 0115). */
+  moderation_decision_suspend_account_until: (args: { date: string }): string =>
+    "Aðgangurinn var settur í bann til " + args.date + ".",
+  /** What a statement, the log and a review card say of a suspension decided with no end date: it stands until a moderator lifts it (decision 0115). */
+  moderation_decision_suspend_account_open: "Aðgangurinn var settur í bann þar til stjórnandi aflétti því.",
+  /** The decision recorded when a platform moderator lifts a suspension (decision 0115). */
+  moderation_decision_unsuspend_account: "Banni var aflétt af aðganginum.",
+  /** The platform moderator's action: suspend the reported account (decision 0115). */
+  platform_suspend: "Setja aðganginn í bann",
+  /** Confirmation before the platform moderator suspends an account. */
+  platform_suspend_confirm: "Setja aðganginn í bann? Viðkomandi fær að vita það. Aðgerðin er skráð í aðgerðaskrá Samtaks.",
+  /** The platform moderator's action: lift the suspension of the reported account (decision 0115). */
+  platform_unsuspend: "Aflétta banni",
+  /** Confirmation before the platform moderator lifts a suspension. */
+  platform_unsuspend_confirm: "Aflétta banni af aðganginum? Aðgerðin er skráð í aðgerðaskrá Samtaks.",
+  /** The duration a suspension has when it has no end date; beside the mute durations. */
+  platform_suspend_open: "Þar til banni er aflétt",
+  /** The server refused a write because the account is suspended, with no end date (decision 0115). */
+  problem_suspended: "Aðgangurinn þinn er í banni svo að þú getur ekki gert þetta. Þú getur enn lesið og sent skilaboð.",
+  /** The server refused a write because the account is suspended until the date (decision 0115). */
+  problem_suspended_until: (args: { date: string }): string =>
+    "Aðgangurinn þinn er í banni til " + args.date + " svo að þú getur ekki gert þetta. Þú getur enn lesið og sent skilaboð.",
+  /** The notice a suspended account sees on every signed-in screen, with no end date (decision 0115). */
+  suspended_notice: "Aðgangurinn þinn er í banni. Þú getur lesið og sent skilaboð, en ekki skrifað færslur eða athugasemdir, brugðist við, stofnað eða gengið í hóp né boðið öðrum.",
+  /** The notice a suspended account sees on every signed-in screen, with the end date (decision 0115). */
+  suspended_notice_until: (args: { date: string }): string =>
+    "Aðgangurinn þinn er í banni til " + args.date + ". Þú getur lesið og sent skilaboð, en ekki skrifað færslur eða athugasemdir, brugðist við, stofnað eða gengið í hóp né boðið öðrum.",
+  /** A statement's review of a suspension: overturned, and the suspension lifted (decision 0115). */
+  statement_review_overturned_lifted: "Ákvörðunin var felld úr gildi og banninu aflétt.",
+  /** A statement's review of a suspension: overturned, but a later suspension stands (decision 0115). */
+  statement_review_overturned_later_stands: "Ákvörðunin var felld úr gildi, en nýrra bann stendur.",
 } as const;

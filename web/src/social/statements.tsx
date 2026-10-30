@@ -8,7 +8,7 @@ import {
 import { strings } from "../generated/brand/strings.ts";
 import type { Problem } from "../problem.ts";
 import { Button, ProblemText, Status } from "../ui/kit.tsx";
-import { LOGGED } from "./moderation-log.tsx";
+import { decisionText } from "./moderation-log.tsx";
 import { outcome, when } from "./outcome.ts";
 import { usePaged, type Paged } from "./paged.ts";
 
@@ -61,9 +61,14 @@ export function StatementsView({ list }: Readonly<{ list: Paged<ModerationStatem
 }
 
 /** The sentence a review's state reads as. */
-export function reviewSentence(review: ModerationReview): string {
+export function reviewSentence(review: ModerationReview, action: string): string {
   if (review.state === "open") return strings.statement_review_open;
   if (review.state === "upheld") return strings.statement_review_upheld;
+  if (action === "suspend_account") {
+    return review.restored
+      ? strings.statement_review_overturned_lifted
+      : strings.statement_review_overturned_later_stands;
+  }
   return review.restored
     ? strings.statement_review_overturned
     : strings.statement_review_overturned_not_restored;
@@ -95,11 +100,11 @@ export function StatementCard({
 
   return (
     <article
-      aria-label={LOGGED[statement.action]}
+      aria-label={decisionText(statement)}
       className="flex flex-col gap-2 rounded-md border border-border p-4"
     >
       <header className="flex flex-wrap items-baseline justify-between gap-2">
-        <span className="font-semibold">{LOGGED[statement.action]}</span>
+        <span className="font-semibold">{decisionText(statement)}</span>
         <time
           dateTime={new Date(statement.createdAt).toISOString()}
           className="text-sm text-muted-fg"
@@ -121,7 +126,7 @@ export function StatementCard({
       )}
       {review !== null && (
         <div className="flex flex-col gap-1">
-          <p className="font-medium">{reviewSentence(review)}</p>
+          <p className="font-medium">{reviewSentence(review, statement.action)}</p>
           {review.reason !== null && (
             <p className="whitespace-pre-wrap">
               <span className="font-semibold">{strings.statement_review_reason}:</span>{" "}

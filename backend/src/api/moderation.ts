@@ -34,7 +34,11 @@ export type Action = keyof typeof ACTIONS;
  * What a platform moderator does to an account itself, with no community, by
  * the kind of thing it does it to (decision 0115).
  */
-export const PLATFORM_ACTIONS = { clear_account_photo: "account" } as const;
+export const PLATFORM_ACTIONS = {
+  clear_account_photo: "account",
+  suspend_account: "account",
+  unsuspend_account: "account",
+} as const;
 export type PlatformAction = keyof typeof PLATFORM_ACTIONS;
 
 /** How a review of an action ends, and what the log records of each (decision 0115). */
@@ -100,6 +104,10 @@ const Report = z
     target: Target,
     // Who wrote the post or comment, or the account reported; null once deleted.
     targetAccount: z.union([Author, z.null()]),
+    targetSuspended: z.boolean().openapi({
+      description:
+        "That account is suspended now, in the platform's queue; always false in a community's, which is not told (decision 0115)",
+    }),
     reason: z.enum(REPORT_REASONS),
     note: z.string(),
     state: z.enum(["open", "closed"]),
@@ -165,6 +173,10 @@ const LogEntry = z
     targetAccount: z.union([Author, z.null()]),
     reason: z.string(),
     createdAt: CreatedAt,
+    until: z.int().nullable().openapi({
+      description:
+        "The end a suspension was given when it was decided, in Unix milliseconds; null on any other action and on a suspension until a moderator lifts it",
+    }),
   })
   .openapi("ModerationLogEntry");
 
@@ -330,7 +342,7 @@ export const platformModerateRoute = createRoute({
   tags,
   summary: "Act as a platform moderator on an account, with no community",
   description:
-    "Samtak's platform moderators act on an account itself, never on another platform moderator; content in a community is acted on through that community's route. The action is logged with its reason and no community. With `reportId`, an open report on that account is closed by the same action; closing one with no action taken is `closeReport`.",
+    "Samtak's platform moderators act on an account itself, never on another platform moderator; content in a community is acted on through that community's route. The action is logged with its reason and no community. With `reportId`, an open report on that account is closed by the same action; closing one with no action taken is `closeReport`. `suspend_account` replaces any suspension that stands, and `until` is its end; with none it stands until lifted.",
   security: ACCOUNT,
   request: {
     body: body(
@@ -339,6 +351,10 @@ export const platformModerateRoute = createRoute({
         targetId: OpaqueId.openapi({ description: "The account's id" }),
         reason,
         reportId: OpaqueId.optional(),
+        until: z.int().optional().openapi({
+          description:
+            "With suspend_account only: when it ends, Unix milliseconds and in the future",
+        }),
       }),
     ),
   },

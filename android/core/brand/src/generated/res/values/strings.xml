@@ -1065,9 +1065,9 @@
     <!-- A notification: a moderator declined the reader's anonymous post (decision 0091). -->
     <string name="notice_anonymous_declined">Stjórnandi hafnaði nafnlausri færslu frá þér.</string>
     <!-- A notification: the review the reader asked for upheld the action (decision 0115). -->
-    <string name="notice_review_upheld">Ákvörðun stjórnanda um efni frá þér stendur eftir endurskoðun.</string>
+    <string name="notice_review_upheld">Ákvörðun stjórnanda stendur eftir endurskoðun.</string>
     <!-- A notification: the review the reader asked for overturned the action (decision 0115). -->
-    <string name="notice_review_overturned">Ákvörðun stjórnanda um efni frá þér var felld úr gildi eftir endurskoðun.</string>
+    <string name="notice_review_overturned">Ákvörðun stjórnanda var felld úr gildi eftir endurskoðun.</string>
     <!-- A notification: a platform moderator cleared the reader's photo (decision 0115). -->
     <string name="notice_account_photo_cleared">Stjórnandi fjarlægði myndina af aðganginum þínum.</string>
     <!-- Title of the screen listing what moderators did to the reader's content and why (decision 0115). -->
@@ -1100,4 +1100,38 @@
     <string name="moderation_log_review_overturned">Ákvörðun var felld úr gildi eftir endurskoðun.</string>
     <!-- Link from a removed post to reading it, for a moderator of its community. -->
     <string name="post_tombstone_open">Opna færsluna</string>
+    <!-- A notification: a platform moderator suspended the reader's account (decision 0115). -->
+    <string name="notice_account_suspended">Stjórnandi setti aðganginn þinn í bann. Þú getur enn lesið og sent skilaboð.</string>
+    <!-- A notification: a platform moderator lifted the suspension of the reader's account (decision 0115). -->
+    <string name="notice_account_unsuspended">Stjórnandi aflétti banni af aðganginum þínum.</string>
+    <!-- The decision recorded when a platform moderator suspends an account (decision 0115). -->
+    <string name="moderation_decision_suspend_account">Aðgangurinn var settur í bann.</string>
+    <!-- What a statement, the log and a review card say of a suspension decided with an end date (decision 0115). -->
+    <string name="moderation_decision_suspend_account_until">Aðgangurinn var settur í bann til %1$s.</string>
+    <!-- What a statement, the log and a review card say of a suspension decided with no end date: it stands until a moderator lifts it (decision 0115). -->
+    <string name="moderation_decision_suspend_account_open">Aðgangurinn var settur í bann þar til stjórnandi aflétti því.</string>
+    <!-- The decision recorded when a platform moderator lifts a suspension (decision 0115). -->
+    <string name="moderation_decision_unsuspend_account">Banni var aflétt af aðganginum.</string>
+    <!-- The platform moderator's action: suspend the reported account (decision 0115). -->
+    <string name="platform_suspend">Setja aðganginn í bann</string>
+    <!-- Confirmation before the platform moderator suspends an account. -->
+    <string name="platform_suspend_confirm">Setja aðganginn í bann? Viðkomandi fær að vita það. Aðgerðin er skráð í aðgerðaskrá Samtaks.</string>
+    <!-- The platform moderator's action: lift the suspension of the reported account (decision 0115). -->
+    <string name="platform_unsuspend">Aflétta banni</string>
+    <!-- Confirmation before the platform moderator lifts a suspension. -->
+    <string name="platform_unsuspend_confirm">Aflétta banni af aðganginum? Aðgerðin er skráð í aðgerðaskrá Samtaks.</string>
+    <!-- The duration a suspension has when it has no end date; beside the mute durations. -->
+    <string name="platform_suspend_open">Þar til banni er aflétt</string>
+    <!-- The server refused a write because the account is suspended, with no end date (decision 0115). -->
+    <string name="problem_suspended">Aðgangurinn þinn er í banni svo að þú getur ekki gert þetta. Þú getur enn lesið og sent skilaboð.</string>
+    <!-- The server refused a write because the account is suspended until the date (decision 0115). -->
+    <string name="problem_suspended_until">Aðgangurinn þinn er í banni til %1$s svo að þú getur ekki gert þetta. Þú getur enn lesið og sent skilaboð.</string>
+    <!-- The notice a suspended account sees on every signed-in screen, with no end date (decision 0115). -->
+    <string name="suspended_notice">Aðgangurinn þinn er í banni. Þú getur lesið og sent skilaboð, en ekki skrifað færslur eða athugasemdir, brugðist við, stofnað eða gengið í hóp né boðið öðrum.</string>
+    <!-- The notice a suspended account sees on every signed-in screen, with the end date (decision 0115). -->
+    <string name="suspended_notice_until">Aðgangurinn þinn er í banni til %1$s. Þú getur lesið og sent skilaboð, en ekki skrifað færslur eða athugasemdir, brugðist við, stofnað eða gengið í hóp né boðið öðrum.</string>
+    <!-- A statement's review of a suspension: overturned, and the suspension lifted (decision 0115). -->
+    <string name="statement_review_overturned_lifted">Ákvörðunin var felld úr gildi og banninu aflétt.</string>
+    <!-- A statement's review of a suspension: overturned, but a later suspension stands (decision 0115). -->
+    <string name="statement_review_overturned_later_stands">Ákvörðunin var felld úr gildi, en nýrra bann stendur.</string>
 </resources>

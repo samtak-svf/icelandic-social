@@ -44,6 +44,19 @@ export function noticeClientVersions(env: Env): Record<Client, string> {
 }
 
 /**
+ * The first version of each client that words a suspension's notice (decision
+ * 0115), the same shape as `noticeClientVersions`.
+ */
+export function suspensionNoticeClientVersions(env: Env): Record<Client, string> {
+  const floors = minClientVersions(env);
+  return {
+    android: env.SUSPENSION_NOTICE_CLIENT_VERSION,
+    ios: env.SUSPENSION_NOTICE_CLIENT_VERSION,
+    web: floors.web,
+  };
+}
+
+/**
  * Where a mobile client below its floor gets a current build (decision 0030):
  * the URL each platform's var names, else the brand's Android link and
  * TestFlight's scheme.

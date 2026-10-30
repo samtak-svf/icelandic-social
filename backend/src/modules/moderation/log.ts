@@ -40,6 +40,8 @@ export type Entry = {
   targetId: string;
   targetAccount: string | null;
   reason: string;
+  /** A suspension's end; absent on any other action and on one with no end date. */
+  suspendedUntil?: number | null;
 };
 
 /** The statement that appends `e`, for the batch of the action it records. */
@@ -48,13 +50,13 @@ export function entry(env: Env, e: Entry): D1PreparedStatement {
     .prepare(
       `INSERT INTO moderation_log
          (community_id, actor_id, as_platform, action, target_kind, target_id, target_account,
-          reason, created_at)
+          reason, created_at, suspended_until)
        VALUES (?1, ?2, ?3, ?4, ?5, ?6,
                -- An anonymous post's author is named in no entry (decision 0091).
                CASE WHEN ?5 = 'post' AND EXISTS (SELECT 1 FROM post_index x
                                                   WHERE x.post_id = ?6 AND x.anonymous = 1)
                     THEN NULL ELSE ?7 END,
-               ?8, ?9)`,
+               ?8, ?9, ?10)`,
     )
     .bind(
       e.communityId,
@@ -66,6 +68,7 @@ export function entry(env: Env, e: Entry): D1PreparedStatement {
       e.targetAccount,
       e.reason,
       Date.now(),
+      e.suspendedUntil ?? null,
     );
 }
 
@@ -80,6 +83,7 @@ type Row = {
   target_account: string | null;
   reason: string;
   created_at: number;
+  suspended_until: number | null;
 };
 
 /** A page of the log, newest first: one community's, or with null every community's. */
@@ -114,6 +118,7 @@ export async function logPage(
       targetAccount: named(r.target_account),
       reason: r.reason,
       createdAt: r.created_at,
+      until: r.suspended_until,
     })),
     next: results.length > limit ? String(page.at(-1)?.entry_id) : null,
   };

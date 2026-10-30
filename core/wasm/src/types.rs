@@ -52,6 +52,7 @@ export type CoreEvent =
 export interface Outcome { events: CoreEvent[]; frames: string[] }
 export interface Me {
   accountId: string; name: string | null; verified: boolean; photo: string | null;
+  suspension: { until: number | null } | null; platformModerator: boolean;
   devices: { deviceId: string; platform: "android" | "ios"; kind: "phone" | "web"; createdAt: number; current: boolean }[];
 }
 export interface DeviceLink { code: string; linkId: string; expiresAt: number }

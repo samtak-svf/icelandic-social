@@ -12,7 +12,7 @@ mod relay;
 use hosted::Phone;
 use serde_json::{Value, json};
 use spjall_client::api::{
-    Method, ModerationLogAction, ModerationReviewState, ModerationState, NotificationAction,
+    Me, Method, ModerationLogAction, ModerationReviewState, ModerationState, NotificationAction,
     ReviewOutcome,
 };
 
@@ -56,8 +56,10 @@ fn the_new_notices_read_as_themselves_with_no_community() {
                 row("n_3", "clear_account_photo", Value::Null),
                 row("n_2", "review_upheld", json!("cm_1")),
                 row("n_1", "review_overturned", Value::Null),
+                row("n_0", "suspend_account", Value::Null),
+                row("n_z", "unsuspend_account", Value::Null),
             ],
-            "unread": 3, "unseen": 3, "seenAt": null, "next": null,
+            "unread": 5, "unseen": 5, "seenAt": null, "next": null,
         }),
     );
     let page = phone.client.hosted().notifications(None, 50).unwrap();
@@ -72,6 +74,8 @@ fn the_new_notices_read_as_themselves_with_no_community() {
             (Some(NotificationAction::ClearAccountPhoto), true),
             (Some(NotificationAction::ReviewUpheld), false),
             (Some(NotificationAction::ReviewOverturned), true),
+            (Some(NotificationAction::SuspendAccount), true),
+            (Some(NotificationAction::UnsuspendAccount), true),
         ]
     );
 }
@@ -86,8 +90,8 @@ fn a_statement_reads_with_its_review_and_never_names_who_acted() {
                 {
                     "entryId": 7, "action": "remove_post",
                     "target": { "kind": "post", "id": "post_1" }, "communityId": "cm_1",
-                    "reason": "off topic", "createdAt": AT, "body": "the text", "canAsk": true,
-                    "review": null,
+                    "reason": "off topic", "createdAt": AT, "until": 1_800_000_000_000_u64,
+                    "body": "the text", "canAsk": true, "review": null,
                 },
                 {
                     "entryId": 6, "action": "clear_account_photo",
@@ -118,6 +122,8 @@ fn a_statement_reads_with_its_review_and_never_names_who_acted() {
     };
     assert_eq!(first.action, ModerationLogAction::RemovePost);
     assert_eq!(first.body.as_deref(), Some("the text"));
+    assert_eq!(first.until, Some(1_800_000_000_000));
+    assert_eq!(second.until, None, "a server before the field");
     assert!(first.can_ask && first.review.is_none());
     let review = second.review.as_ref().unwrap();
     assert_eq!(second.action, ModerationLogAction::ClearAccountPhoto);
@@ -177,4 +183,32 @@ fn a_decision_needs_a_reason_and_the_queue_reads() {
     };
     assert_eq!(review.post_id.as_deref(), Some("post_1"));
     assert!(review.body.is_none() && !review.can_decide);
+}
+
+/// `Me` reads the two fields of decision 0115, and a server before them reads
+/// as nobody suspended and no platform moderator. `/v1/me` goes to the relay in
+/// these tests, so this reads the body directly.
+#[test]
+fn me_reads_a_suspension_and_a_server_before_it_reads_as_none() {
+    let me = |more: Value| -> Me {
+        let mut body = json!({
+            "accountId": "acct_1", "name": null, "verified": true, "photo": null, "devices": [],
+        });
+        body.as_object_mut()
+            .unwrap()
+            .extend(more.as_object().unwrap().clone());
+        serde_json::from_value(body).unwrap()
+    };
+
+    let got = me(json!({ "suspension": { "until": AT }, "platformModerator": true }));
+    assert_eq!(got.suspension.map(|s| s.until), Some(Some(AT)));
+    assert!(got.platform_moderator);
+
+    let got = me(json!({ "suspension": { "until": null }, "platformModerator": false }));
+    assert_eq!(got.suspension.map(|s| s.until), Some(None));
+    assert!(!got.platform_moderator);
+
+    let got = me(json!({}));
+    assert_eq!(got.suspension, None);
+    assert!(!got.platform_moderator);
 }

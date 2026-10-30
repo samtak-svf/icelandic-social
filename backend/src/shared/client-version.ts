@@ -1,7 +1,12 @@
 import type { HonoRequest } from "hono";
 import { createMiddleware } from "hono/factory";
 import type { AppEnv } from "../http.ts";
-import { minClientVersions, noticeClientVersions, updateUrls } from "../env/index.ts";
+import {
+  minClientVersions,
+  noticeClientVersions,
+  suspensionNoticeClientVersions,
+  updateUrls,
+} from "../env/index.ts";
 import { fail } from "./errors.ts";
 
 // The client version floor (decision 0030): every request names its build in
@@ -29,6 +34,9 @@ export type FloorRefusal =
   | { error: "invalid_request" }
   | { error: "client_too_old"; minVersion: string; updateUrl?: string };
 
+/** What a build reads of the notifications; `noticeReach` says which. */
+export type NoticeReach = "frozen" | "decoding" | "all";
+
 /** Where each mobile platform gets a current build (decision 0030). */
 export type UpdateUrls = { android: string; ios: string };
 
@@ -44,6 +52,16 @@ export function belowFloor(env: Env, header: string | undefined): FloorRefusal |
  */
 export function decodesEveryNotice(env: Env, header: string | undefined): boolean {
   return belowFloorOf(noticeClientVersions(env), header) === null;
+}
+
+/**
+ * How much of the notifications the build with this Spjall-Client can read
+ * (decisions 0114, 0115): the frozen set, everything but a suspension's notice,
+ * or all of them.
+ */
+export function noticeReach(env: Env, header: string | undefined): NoticeReach {
+  if (!decodesEveryNotice(env, header)) return "frozen";
+  return belowFloorOf(suspensionNoticeClientVersions(env), header) === null ? "all" : "decoding";
 }
 
 /**
