@@ -40,6 +40,10 @@ export interface CoreLike {
   groupPhoto(conversation: string): Uint8Array | null | undefined;
   setGroupPhoto(conversation: string, bytes: Uint8Array): string;
   clearGroupPhoto(conversation: string): string;
+  addAccounts(conversation: string, accounts: string[]): void;
+  removeAccounts(conversation: string, accounts: string[]): void;
+  rename(conversation: string, name: string | null): string;
+  leave(conversation: string): void;
   me(): Me;
   wipe(): Promise<void>;
 }
@@ -289,6 +293,11 @@ export function chatHost(deps: HostDeps): Handlers {
     groupPhoto: (conversation) => onCore((c) => c.groupPhoto(conversation) ?? null),
     setGroupPhoto: (conversation, bytes) => onCore((c) => c.setGroupPhoto(conversation, bytes)),
     clearGroupPhoto: (conversation) => onCore((c) => c.clearGroupPhoto(conversation)),
+    addAccounts: (conversation, accounts) => onCore((c) => c.addAccounts(conversation, accounts)),
+    removeAccounts: (conversation, accounts) =>
+      onCore((c) => c.removeAccounts(conversation, accounts)),
+    rename: (conversation, name) => onCore((c) => c.rename(conversation, name)),
+    leave: (conversation) => onCore((c) => c.leave(conversation)),
     me: () => onCore((c) => c.me()),
 
     async wipe() {

@@ -37,6 +37,10 @@ function fakeCore(over: Partial<CoreLike> = {}): CoreLike {
     groupPhoto: () => null,
     setGroupPhoto: () => "env-2",
     clearGroupPhoto: () => "env-3",
+    addAccounts: () => undefined,
+    removeAccounts: () => undefined,
+    rename: () => "env-4",
+    leave: () => undefined,
     me: () => ({ accountId: "acc-1", name: null, verified: false, photo: null, devices: [] }),
     wipe: async () => undefined,
     ...over,
@@ -202,6 +206,27 @@ describe("the chat worker's key flow (decisions 0064, 0081)", () => {
     expect(setGroupPhoto).toHaveBeenCalledWith("c-1", bytes);
     expect(await host.groupPhoto("c-1")).toBeNull();
     expect(await host.clearGroupPhoto("c-1")).toBe("env-3");
+  });
+
+  it("passes the four changes of a group through to the core (0078)", async () => {
+    const addAccounts = vi.fn();
+    const removeAccounts = vi.fn();
+    const rename = vi.fn(() => "env-8");
+    const leave = vi.fn();
+    const { record, share } = await linked();
+    const core = fakeCore({ addAccounts, removeAccounts, rename, leave });
+    const host = chatHost(deps({ record, share: { deviceId: "dev-1", share }, core }).d);
+    await host.start();
+    await host.addAccounts("c-1", ["a-2", "a-3"]);
+    await host.removeAccounts("c-1", ["a-2"]);
+    expect(await host.rename("c-1", "Bókaklúbbur")).toBe("env-8");
+    expect(await host.rename("c-1", null)).toBe("env-8");
+    await host.leave("c-1");
+    expect(addAccounts).toHaveBeenCalledWith("c-1", ["a-2", "a-3"]);
+    expect(removeAccounts).toHaveBeenCalledWith("c-1", ["a-2"]);
+    expect(rename).toHaveBeenNthCalledWith(1, "c-1", "Bókaklúbbur");
+    expect(rename).toHaveBeenNthCalledWith(2, "c-1", null);
+    expect(leave).toHaveBeenCalledWith("c-1");
   });
 
   it("zeroes the share it was given", async () => {

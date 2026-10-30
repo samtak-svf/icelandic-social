@@ -52,6 +52,14 @@ export interface Ops {
   setGroupPhoto: { args: [conversation: string, bytes: Uint8Array]; result: string };
   /** Takes a group's photo away (0094); the envelope id. */
   clearGroupPhoto: { args: [conversation: string]; result: string };
+  /** Adds every device of these accounts to a group on the next sync (0078). */
+  addAccounts: { args: [conversation: string, accounts: string[]]; result: void };
+  /** Takes these accounts out of a group on the next sync (0078). */
+  removeAccounts: { args: [conversation: string, accounts: string[]]; result: void };
+  /** Names a group, or clears its name with null (0078); the envelope id. */
+  rename: { args: [conversation: string, name: string | null]; result: string };
+  /** Leaves a group (0078); leaving again is done already. */
+  leave: { args: [conversation: string]; result: void };
   me: { args: []; result: Me };
   wipe: { args: []; result: void };
 }

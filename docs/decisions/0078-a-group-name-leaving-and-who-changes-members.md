@@ -1,6 +1,6 @@
 # 0078. A group's name, leaving a group, and who may change its members
 
-- Status: accepted; implemented in the core, the backend and the apps' screens; amended by 0094
+- Status: accepted; implemented in the core, the backend, the apps' screens and the web; amended by 0094
 - Date: 2026-10-21
 - Decided by: Guðröður (all four: add, remove, leave and a name; no admins)
 - Amended by: [0094](0094-a-group-photo-end-to-end-encrypted.md) (a group may have a photo)

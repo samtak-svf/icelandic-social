@@ -16,8 +16,12 @@ export const strings = {
   conversations_catching_up: "Sæki samtölin þín…",
   /** The conversation pane beside the list on an expanded window while none is open (docs/decisions/0093). */
   conversations_pick: "Veldu samtal úr listanum.",
+  /** The new-conversation picker when nobody else has signed in yet; points at the invite link (docs/decisions/0022, 0036). */
+  people_empty: "Enginn annar er kominn inn enn. Deildu hlekknum þínum til að bjóða fólki.",
   /** Placeholder of the name search at the top of the new-conversation picker (docs/decisions/0036). */
   people_search: "Leita að nafni",
+  /** The new-conversation picker when no signed-in account's name matches the search (docs/decisions/0036). */
+  people_none_found: "Enginn fannst með þessu nafni.",
   /** Banner in a conversation this account was removed from; the conversation is read-only (docs/decisions/0022). */
   conversation_removed_banner: "Þú ert ekki lengur í þessu samtali.",
   /** Banner in a conversation no other account is in any more, as a 1:1 after a block; nothing can be sent there (docs/decisions/0024). */
@@ -705,6 +709,20 @@ export const strings = {
   testers_image_play_tester_alt: "Síða Google Play eftir að boðið er samþykkt, með hnappi til að sækja prófunarappið.",
   /** Alt text on /testers for the screenshot of the app's Play store listing marked unreviewed. */
   testers_image_play_listing_alt: "Síða appsins í Google Play, merkt óyfirfarið, með hnappinum „Setja upp“.",
+  /** Action on a group's info screen: add people to the group (docs/decisions/0078). */
+  add_people: "Bæta við",
+  /** Title of the people picker when opened to add people to an existing group (docs/decisions/0078). */
+  add_people_title: "Bæta við í hópinn",
+  /** Confirm button in the people picker when adding picked people to an existing group (docs/decisions/0078). */
+  add_people_confirm: "Bæta við",
+  /** Action on a group's info screen: set or change the group's name (docs/decisions/0078). */
+  group_name: "Nafn",
+  /** Title of the dialog or sheet that sets or changes a group's name (docs/decisions/0078). */
+  group_name_title: "Nafn hópsins",
+  /** Placeholder in the group name field when the group has no name (docs/decisions/0078). */
+  group_name_hint: "Nafn á hópinn",
+  /** Action in the group name dialog that clears the group's name (docs/decisions/0078). */
+  group_name_remove: "Fjarlægja",
   /** Confirm button that saves a change, such as a group's name (docs/decisions/0078). */
   save: "Vista",
   /** System card when a member names or renames the group (docs/decisions/0078). */
@@ -735,6 +753,15 @@ export const strings = {
   group_photo_failed: "Ekki tókst að breyta mynd hópsins. Reyndu aftur.",
   /** Alternative text of a group's photo, in the conversation list, the header and the information screen (docs/decisions/0094). */
   group_photo_alt: "Mynd hópsins",
+  /** Action on a member row in a group's info screen: remove the member from the group (docs/decisions/0078). */
+  remove_member: "Fjarlægja úr hópnum",
+  /** Confirmation prompt before removing {name} from the group (docs/decisions/0078). */
+  remove_member_confirm: (args: { name: string }): string =>
+    "Fjarlægja " + args.name + " úr hópnum?",
+  /** Destructive action at the foot of a group's info screen: leave the group (docs/decisions/0078). */
+  leave_group: "Yfirgefa hópinn",
+  /** Confirmation prompt before leaving the group (docs/decisions/0078). */
+  leave_group_confirm: "Yfirgefa hópinn? Þú færð ekki fleiri skilaboð úr honum.",
   /** Banner shown in a conversation the user has left (docs/decisions/0078). */
   left_banner: "Þú hefur yfirgefið þennan hóp.",
   /** Label of the file picker for a community's square picture, on the create screen and in Breyta samfélagi (decision 0080). */

@@ -4,6 +4,7 @@ import type { Content, Conversation, Item } from "../generated/core.d.ts";
 import {
   canSend,
   conversationBanner,
+  canChangeGroup,
   conversationTitle,
   isCard,
   isGroup,
@@ -139,9 +140,18 @@ test("who read the reader's message: the word in a 1:1, the count in a group", (
   expect(readLine(3, true)).toBe(strings.read_by_count({ count: 3 }));
 });
 
-test("a group is a conversation with more than one other member, as on the apps", () => {
+test("a group is a conversation with more than one other member, or a name, as on the apps", () => {
   expect(isGroup(conversation({ members: [person("Ása")] }))).toBe(false);
   expect(isGroup(conversation({ members: [person("Ása"), person("Bo")] }))).toBe(true);
+  expect(isGroup(conversation({ name: "Klúbbur", members: [person("Ása")] }))).toBe(true);
+});
+
+test("a group can be changed only while this device takes part in it", () => {
+  const two = [person("Ása"), person("Bo")];
+  expect(canChangeGroup(conversation({ members: two }))).toBe(true);
+  expect(canChangeGroup(conversation({ members: two, state: "left" }))).toBe(false);
+  expect(canChangeGroup(conversation({ members: two, state: "removed" }))).toBe(false);
+  expect(canChangeGroup(conversation({ members: [person("Ása")] }))).toBe(false);
 });
 
 test("a quiet conversation says why, in the apps' words, and takes no message", () => {
