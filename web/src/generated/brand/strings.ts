@@ -978,6 +978,14 @@ export const strings = {
   moderation_log_anonymous_off: "Nafnlausar færslur voru bannaðar.",
   /** Entry in the moderation log: a moderator revealed an anonymous post's author (decision 0091). */
   moderation_log_author_revealed: "Höfundur nafnlausrar færslu var sýndur.",
+  /** The platform moderators' page: Samtak's own report queue and log (decision 0115). */
+  platform_title: "Umsjón Samtaka",
+  /** Label of the account a platform report or log entry is about. */
+  platform_account: "Aðgangurinn",
+  /** Platform moderator's action: clear the profile photo of the reported account. */
+  platform_clear_photo: "Fjarlægja mynd aðgangsins",
+  /** Confirmation before the platform moderator clears an account's photo. */
+  platform_clear_photo_confirm: "Fjarlægja myndina af aðganginum? Aðgerðin er skráð í aðgerðaskrá Samtaka.",
   /** A notification: a moderator declined the reader's anonymous post (decision 0091). */
   notice_anonymous_declined: "Stjórnandi hafnaði nafnlausri færslu frá þér.",
 } as const;

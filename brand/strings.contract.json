@@ -2581,6 +2581,22 @@
       "surfaces": ["android", "ios", "web"],
       "description": "Entry in the moderation log: a moderator revealed an anonymous post's author (decision 0091)."
     },
+    "platform_title": {
+      "surfaces": ["web"],
+      "description": "The platform moderators' page: Samtak's own report queue and log (decision 0115)."
+    },
+    "platform_account": {
+      "surfaces": ["web"],
+      "description": "Label of the account a platform report or log entry is about."
+    },
+    "platform_clear_photo": {
+      "surfaces": ["web"],
+      "description": "Platform moderator's action: clear the profile photo of the reported account."
+    },
+    "platform_clear_photo_confirm": {
+      "surfaces": ["web"],
+      "description": "Confirmation before the platform moderator clears an account's photo."
+    },
     "notice_anonymous_declined": {
       "surfaces": ["android", "ios", "web"],
       "description": "A notification: a moderator declined the reader's anonymous post (decision 0091)."

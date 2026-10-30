@@ -635,5 +635,9 @@
   "moderation_log_anonymous_on": "Nafnlausar færslur voru leyfðar.",
   "moderation_log_anonymous_off": "Nafnlausar færslur voru bannaðar.",
   "moderation_log_author_revealed": "Höfundur nafnlausrar færslu var sýndur.",
+  "platform_title": "Umsjón Samtaka",
+  "platform_account": "Aðgangurinn",
+  "platform_clear_photo": "Fjarlægja mynd aðgangsins",
+  "platform_clear_photo_confirm": "Fjarlægja myndina af aðganginum? Aðgerðin er skráð í aðgerðaskrá Samtaka.",
   "notice_anonymous_declined": "Stjórnandi hafnaði nafnlausri færslu frá þér."
 }
