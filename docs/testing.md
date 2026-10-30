@@ -167,6 +167,28 @@ and opens an issue when one survives; `check:drills` in `pnpm check` keeps every
 applying. The first run found one: the retention tests aged rows by the constant they
 were checking, so 300 days passed as 30. Add a drill with each new critical rule.
 
+## The last store release against this Worker
+
+A phone keeps its core until its owner updates. `old-client.yml` compiles
+`tooling/old-client/old_client/` in a checkout of the core tag
+`tooling/old-client/release.json` names, starts the Worker of the PR's tree, and reads through that
+core's own decoding with that release's `Spjall-Client`, on an Android and an iOS device of one
+account. It runs on a PR that touches `backend/` or `api/`, with no emulator and no secret.
+
+**What it proves**, for notifications, the feed, a community's posts and a single post: every
+answer decodes (one field the release cannot read fails the job, as it fails the page on a phone);
+a notice with no community, a mute and a removed post's tombstone are withheld from that build, and
+the same reads as a current build show them, so the seed was real; what the release should see is
+still there, a removal notice included; the unread count leaves out what the list leaves out.
+
+**What it does not prove:** how an app draws any of it, its local store, push, or a screen. Those
+stay with [Checking by hand on a phone](#checking-by-hand-on-a-phone), on an installed store build.
+The check covers those four reads, not every route, and `release.json` carries the Android
+and iOS release as one, because both shipped the same core so far.
+
+Move `release.json` in the PR after a store release: its daily `recorded-release` job goes red when
+the last `android-play` build has another core, and never fails a PR for it.
+
 ## Coverage floor
 
 Coverage is not a goal here, but a drop in a module that holds a critical rule is a test
