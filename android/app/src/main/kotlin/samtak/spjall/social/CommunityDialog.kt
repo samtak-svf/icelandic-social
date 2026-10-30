@@ -334,6 +334,8 @@ private val logLabels =
         ModerationLogAction.ANONYMOUS_POSTS_ON to R.string.moderation_log_anonymous_on,
         ModerationLogAction.ANONYMOUS_POSTS_OFF to R.string.moderation_log_anonymous_off,
         ModerationLogAction.REVEAL_AUTHOR to R.string.moderation_log_author_revealed,
+        ModerationLogAction.REVIEW_UPHELD to R.string.moderation_log_review_upheld,
+        ModerationLogAction.REVIEW_OVERTURNED to R.string.moderation_log_review_overturned,
     )
 
 private fun ModerationLogAction.label(): Int = logLabels[this] ?: R.string.moderation_done

@@ -50,12 +50,25 @@ class BrandConventionPlugin : Plugin<Project> {
                         manifestPlaceholders["urlScheme"] = ids.string("store", "urlScheme")
                         manifestPlaceholders["linkHost"] = ids.string("hosts", "link")
                         manifestPlaceholders["linkPathPrefix"] = ids.string("hosts", "linkPathPrefix")
+                        buildConfigField("String", "CALLBACK_SCHEME", quoted(ids.string("store", "urlScheme")))
+                    }
+                    // A debug build installs beside the store app on one phone, under its own
+                    // id and scheme, so neither app can answer the other's sign-in.
+                    buildTypes.getByName("debug") {
+                        val scheme = ids.string("store", "urlScheme") + DEBUG_SUFFIX
+                        applicationIdSuffix = DEBUG_SUFFIX
+                        manifestPlaceholders["urlScheme"] = scheme
+                        buildConfigField("String", "CALLBACK_SCHEME", quoted(scheme))
                     }
                 }
             }
         }
 
     private fun quoted(value: String) = "\"$value\""
+
+    private companion object {
+        const val DEBUG_SUFFIX = ".debug"
+    }
 
     private class Ids(
         private val root: Any?,

@@ -66,6 +66,17 @@ final class SocialTests: XCTestCase {
         XCTAssertEqual(noticeRoute(makeNotice("n4", .joinApproved)), .community("k1"))
     }
 
+    func testAStatedDecisionOpensItsReasonsAndNothingElseDoes() {
+        let stated: [NotificationAction] = [
+            .hidePost, .removePost, .hideComment, .removeComment, .clearAccountPhoto, .reviewUpheld, .reviewOverturned,
+        ]
+        for action in stated {
+            XCTAssertEqual(noticeRoute(makeNotice("n", .moderated, community: nil, action: action)), .statements)
+        }
+        XCTAssertEqual(noticeRoute(makeNotice("n", .moderated, action: .muteMember)), .community("k1"))
+        XCTAssertEqual(noticeRoute(makeNotice("n", .comment, post: "p1", action: .hidePost)), .post("p1"))
+    }
+
     func testANotificationNamesWhoDidIt() {
         let comment = makeNotice("n1", .comment, actor: anna, post: "p1")
         XCTAssertEqual(noticeWording(comment).sentence, localized("notice_comment", "Anna"))

@@ -17,6 +17,7 @@ import org.junit.Before
 import org.junit.Test
 import samtak.spjall.account.Problem
 import samtak.spjall.account.unreachable
+import samtak.spjall.core.NotificationAction
 import samtak.spjall.core.NotificationLevel
 import samtak.spjall.core.SocialNotificationKind
 
@@ -252,6 +253,27 @@ class NotificationsViewModelTest {
         assertEquals(
             Opens.Community("k1"),
             notification("n", SocialNotificationKind.JOIN_APPROVED, 1uL, postId = null).opens(),
+        )
+    }
+
+    @Test
+    fun aStatedDecisionOpensItsReasonsAndNothingElseDoes() {
+        val moderated = SocialNotificationKind.MODERATED
+        listOf(
+            NotificationAction.HIDE_POST,
+            NotificationAction.REMOVE_POST,
+            NotificationAction.HIDE_COMMENT,
+            NotificationAction.REMOVE_COMMENT,
+            NotificationAction.REVIEW_UPHELD,
+            NotificationAction.REVIEW_OVERTURNED,
+        ).forEach { assertEquals(Opens.Statements, notification("n", moderated, 1uL, action = it).opens()) }
+        assertEquals(
+            Opens.Statements,
+            notification("n", moderated, 1uL, null, null, NotificationAction.CLEAR_ACCOUNT_PHOTO).opens(),
+        )
+        assertEquals(
+            Opens.Community("k1"),
+            notification("n", moderated, 1uL, action = NotificationAction.MUTE_MEMBER).opens(),
         )
     }
 

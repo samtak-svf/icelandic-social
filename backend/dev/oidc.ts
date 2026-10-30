@@ -198,7 +198,8 @@ async function authorize(url: URL, issuer: string, provider: FakeProvider): Prom
   back.searchParams.set("code", code);
   const state = q.get("state");
   if (state !== null) back.searchParams.set("state", state);
-  return new Response(null, { status: 302, headers: { location: back.toString() } });
+  const location = appRedirect(back.toString(), appScheme);
+  return new Response(null, { status: 302, headers: { location } });
 }
 
 async function token(request: Request): Promise<Response> {
@@ -260,6 +261,27 @@ async function fakeOidc(
     default:
       return new Response(null, { status: 404 });
   }
+}
+
+/** The scheme a debug app on a phone is called back at, once a walk has set it. */
+let appScheme: string | null = null;
+
+export function setAppScheme(scheme: string) {
+  appScheme = scheme;
+}
+
+/**
+ * Where a redirect to the app goes when `scheme` is set: straight to a debug
+ * build at its own scheme, so a fake's code never reaches a store install on
+ * the same phone, nor the real link host Google's redirect names. The grant
+ * keeps the redirect the app asked for, which the app's core compares.
+ */
+export function appRedirect(location: string, scheme: string | null): string {
+  if (scheme === null) return location;
+  const google = `https://${ids.hosts.link}/oauth/google?`;
+  if (location.startsWith(google)) return `${scheme}:/google?${location.slice(google.length)}`;
+  const store = `${ids.store.urlScheme}:`;
+  return location.startsWith(store) ? `${scheme}:${location.slice(store.length)}` : location;
 }
 
 /** The binding the Worker's `kenni(env)` or `google(env)` seam reaches a fake through. */

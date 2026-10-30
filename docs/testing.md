@@ -89,8 +89,16 @@ timestamp comes from a past year so the row stamp never moves.
 
 Some defects show only on a real screen: a long name that wraps, an icon that is the same for
 every row. Each release's hand checks are a list in the gitignored `private/e2e/`, with the
-screenshots of the run beside it. The checks run only on phones set aside for testing, and
-messages go only between test accounts.
+screenshots of the run beside it. Messages go only between test accounts.
+
+**A phone that holds a real account takes the debug build beside the store install, never over
+it.** The debug build type has its own application id (`.debug` suffix) and its own URL scheme,
+so neither app can answer the other's sign-in, and it talks only to a local Worker over
+`adb reverse`. Set the fakes' redirects to its scheme with a `POST` to
+`/dev/app-scheme?scheme=<store scheme>.debug` on that Worker. Before any install, read
+`adb shell pm list packages` and the APK's own id, and confirm they differ. The store install is
+never uninstalled, cleared, installed over, or opened to send anything. Such a walk does not
+prove push, the store update path or R8.
 
 - **Android over wireless debugging.** `adb mdns services` lists the phone as an
   `_adb-tls-connect._tcp` service, and `adb connect <ip:port>` joins it. The port changes each

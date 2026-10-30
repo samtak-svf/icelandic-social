@@ -761,6 +761,8 @@
     <string name="moderation_decision_unban_member">Meðlimnum var hleypt aftur inn.</string>
     <!-- A closed report's decision: closed without acting. -->
     <string name="moderation_decision_dismissed">Lokað án aðgerðar.</string>
+    <!-- A closed report's decision and a log entry: a platform moderator removed an account's photo (decision 0115). -->
+    <string name="moderation_decision_clear_account_photo">Myndin var fjarlægð.</string>
     <!-- A closed report's decision: the community's deletion closed it (decision 0070). -->
     <string name="moderation_decision_community_deleted">Lokað þegar hópnum var eytt.</string>
     <!-- A log entry: a moderator set the community's picture (decision 0080). -->
@@ -1062,4 +1064,40 @@
     <string name="moderation_log_author_revealed">Höfundur nafnlausrar færslu var sýndur.</string>
     <!-- A notification: a moderator declined the reader's anonymous post (decision 0091). -->
     <string name="notice_anonymous_declined">Stjórnandi hafnaði nafnlausri færslu frá þér.</string>
+    <!-- A notification: the review the reader asked for upheld the action (decision 0115). -->
+    <string name="notice_review_upheld">Ákvörðun stjórnanda um efni frá þér stendur eftir endurskoðun.</string>
+    <!-- A notification: the review the reader asked for overturned the action (decision 0115). -->
+    <string name="notice_review_overturned">Ákvörðun stjórnanda um efni frá þér var felld úr gildi eftir endurskoðun.</string>
+    <!-- A notification: a platform moderator cleared the reader's photo (decision 0115). -->
+    <string name="notice_account_photo_cleared">Stjórnandi fjarlægði myndina af aðganginum þínum.</string>
+    <!-- Title of the screen listing what moderators did to the reader's content and why (decision 0115). -->
+    <string name="statements_title">Ákvarðanir um efnið þitt</string>
+    <!-- The statements screen with nothing on it. -->
+    <string name="statements_empty">Engar ákvarðanir hafa verið teknar um efnið þitt.</string>
+    <!-- Link from a removed post of the reader's to its statement of reasons. -->
+    <string name="statement_open">Sjá ástæðuna</string>
+    <!-- A statement whose text was purged after its 90 days (decision 0063). -->
+    <string name="statement_text_gone">Textanum hefur verið eytt.</string>
+    <!-- Button: asks for the single review of a moderator's action. -->
+    <string name="statement_ask">Biðja um endurskoðun</string>
+    <!-- Under a statement: the review can be asked for once, and someone else decides. -->
+    <string name="statement_ask_once">Þú getur beðið einu sinni um endurskoðun. Annar stjórnandi en sá sem tók ákvörðunina svarar.</string>
+    <!-- Confirmation before asking for the single review. -->
+    <string name="statement_ask_confirm">Biðja um endurskoðun? Það er aðeins hægt einu sinni.</string>
+    <!-- A statement whose review waits for a decision. -->
+    <string name="statement_review_open">Þú baðst um endurskoðun. Svar hefur ekki borist.</string>
+    <!-- A statement whose review upheld the action. -->
+    <string name="statement_review_upheld">Ákvörðunin stendur eftir endurskoðun.</string>
+    <!-- A statement whose review overturned the action, and the content came back. -->
+    <string name="statement_review_overturned">Ákvörðunin var felld úr gildi og efnið birt aftur.</string>
+    <!-- A statement whose review overturned the action, and the content stays as it is: it no longer exists, as a cleared photo does not, or a later decision about it still stands. -->
+    <string name="statement_review_overturned_not_restored">Ákvörðunin var felld úr gildi, en efnið kemur ekki aftur.</string>
+    <!-- Label of the deciding moderator's reason on a statement. -->
+    <string name="statement_review_reason">Svar við endurskoðun</string>
+    <!-- A log entry: a review upheld an action. -->
+    <string name="moderation_log_review_upheld">Ákvörðun var staðfest eftir endurskoðun.</string>
+    <!-- A log entry: a review overturned an action. -->
+    <string name="moderation_log_review_overturned">Ákvörðun var felld úr gildi eftir endurskoðun.</string>
+    <!-- Link from a removed post to reading it, for a moderator of its community. -->
+    <string name="post_tombstone_open">Opna færsluna</string>
 </resources>

@@ -33,6 +33,14 @@ const BADGES = /** @type {Record<string, string>} */ ({
 /** The kinds that name their actors; the others name nobody. */
 const SOCIAL = new Set(["comment", "reply", "reaction"]);
 
+/** The moderator's actions with a sentence of their own (decision 0115); the others read `notice_moderated`. */
+const MODERATED = /** @type {Record<string, string>} */ ({
+  decline_anonymous_post: "notice_anonymous_declined",
+  review_upheld: "notice_review_upheld",
+  review_overturned: "notice_review_overturned",
+  clear_account_photo: "notice_account_photo_cleared",
+});
+
 /** A UTC instant written the one way every platform parses. */
 const INSTANT = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/;
 
@@ -93,8 +101,7 @@ function relativeProblems(c, keys, where) {
  * @returns {string}
  */
 function noticeKey(c) {
-  if (c.kind === "moderated")
-    return c.action === "decline_anonymous_post" ? "notice_anonymous_declined" : "notice_moderated";
+  if (c.kind === "moderated") return MODERATED[c.action] ?? "notice_moderated";
   if (!SOCIAL.has(c.kind)) return `notice_${c.kind}`;
   if (c.actorCount >= 3) return `notice_${c.kind}_many`;
   return c.actorCount === 2 ? `notice_${c.kind}_two` : `notice_${c.kind}`;

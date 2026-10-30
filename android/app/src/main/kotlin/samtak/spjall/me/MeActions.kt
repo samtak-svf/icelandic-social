@@ -34,6 +34,9 @@ interface MeActions {
     /** Opens the screen that scans a browser's link code (decisions 0064, 0077). */
     fun linkBrowser()
 
+    /** Opens what moderators decided about this account's content, and why (decision 0115). */
+    fun statements()
+
     /** The system's notification settings for the app. */
     fun notificationSettings()
 }

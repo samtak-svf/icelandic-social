@@ -20,6 +20,8 @@ struct SocialDestination: View {
         case .requests(let id):
             JoinRequestsView(model: models.model(for: route) { JoinRequestsModel(social: social, communityId: id) })
                 .id(route)
+        case .statements:
+            StatementsView(model: models.model(for: route) { StatementsModel(social: social) }).id(route)
         }
     }
 }

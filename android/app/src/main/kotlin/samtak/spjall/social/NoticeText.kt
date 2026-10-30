@@ -40,8 +40,8 @@ private val REPLY = Stem(R.string.notice_reply, R.string.notice_reply_two, R.plu
 private val REACTION = Stem(R.string.notice_reaction, R.string.notice_reaction_two, R.plurals.notice_reaction_many)
 
 /**
- * The line of a notification from its kind and newest actors (null for a deleted account). A moderated row reads
- * `notice_anonymous_declined` when the action is `DECLINE_ANONYMOUS_POST` and `notice_moderated` for every other.
+ * The line of a notification from its kind and newest actors (null for a deleted account). A moderated row reads by
+ * its action (0115), and `notice_moderated` for every action without a sentence of its own.
  */
 fun noticeLine(
     kind: SocialNotificationKind,
@@ -51,18 +51,19 @@ fun noticeLine(
 ): NoticeLine =
     when (kind) {
         SocialNotificationKind.JOIN_APPROVED -> fixed(R.string.notice_join_approved, NoticeBadge.APPROVED)
-        SocialNotificationKind.MODERATED ->
-            fixed(
-                if (action == NotificationAction.DECLINE_ANONYMOUS_POST) {
-                    R.string.notice_anonymous_declined
-                } else {
-                    R.string.notice_moderated
-                },
-                NoticeBadge.MODERATOR,
-            )
+        SocialNotificationKind.MODERATED -> fixed(moderatedLine(action), NoticeBadge.MODERATOR)
         SocialNotificationKind.COMMENT -> actors(COMMENT, NoticeBadge.COMMENT, names, actorCount)
         SocialNotificationKind.REPLY -> actors(REPLY, NoticeBadge.COMMENT, names, actorCount)
         SocialNotificationKind.REACTION -> actors(REACTION, NoticeBadge.EMOJI, names, actorCount)
+    }
+
+private fun moderatedLine(action: NotificationAction?): Int =
+    when (action) {
+        NotificationAction.DECLINE_ANONYMOUS_POST -> R.string.notice_anonymous_declined
+        NotificationAction.REVIEW_UPHELD -> R.string.notice_review_upheld
+        NotificationAction.REVIEW_OVERTURNED -> R.string.notice_review_overturned
+        NotificationAction.CLEAR_ACCOUNT_PHOTO -> R.string.notice_account_photo_cleared
+        else -> R.string.notice_moderated
     }
 
 private fun actors(

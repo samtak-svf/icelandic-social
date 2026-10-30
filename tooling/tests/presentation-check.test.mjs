@@ -53,6 +53,17 @@ describe("presentation-check", () => {
     ]);
   });
 
+  it("fails a moderated notice whose key does not follow its action", () => {
+    const edited = vectors();
+    const upheld = edited.notice.findIndex(
+      (/** @type {any} */ c) => c.key === "notice_review_upheld",
+    );
+    edited.notice[upheld].key = "notice_moderated";
+    expect(check(edited, contract())).toEqual([
+      `presentation.vectors.json notice[${upheld}]: moderated with 0 actors reads notice_review_upheld, not notice_moderated`,
+    ]);
+  });
+
   it("fails notice args that differ from the key's placeholders, a wrong count and a wrong badge", () => {
     const edited = vectors();
     const many = edited.notice.findIndex((/** @type {any} */ c) => c.key === "notice_reply_many");

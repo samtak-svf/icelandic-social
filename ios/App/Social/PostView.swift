@@ -34,7 +34,7 @@ struct PostView: View {
                     if model.muted {
                         SocialNote(text: "community_muted")
                     }
-                    comments
+                    if !isPostTombstone(post) { comments }
                 } else if !model.loaded {
                     ProgressView().frame(maxWidth: .infinity).padding(.top, 40)
                 }

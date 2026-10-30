@@ -12,6 +12,7 @@ struct SettingsSection: View {
     let levels: NotificationLevelsModel
     let communityNames: [String: String]
     let onLink: () -> Void
+    let onStatements: () -> Void
 
     @State private var revoking: String?
     @State private var deleting = false
@@ -46,6 +47,12 @@ struct SettingsSection: View {
                 NotificationsOff()
             }
             NotificationSettingsSection(levels: levels, names: communityNames)
+            Button(action: onStatements) {
+                PillLabel(text: "statements_title", filled: false, wide: false)
+            }
+            .buttonStyle(.plain)
+            .disabled(model.busy)
+            .frame(maxWidth: .infinity)
             // The design leaves these out; decision 0009 keeps them, in the same cards.
             if let settings = model.settings {
                 Panel { PrivacySection(settings: settings, model: model) }

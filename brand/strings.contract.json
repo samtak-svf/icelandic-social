@@ -1743,7 +1743,7 @@
       "description": "A closed report's decision: closed without acting."
     },
     "moderation_decision_clear_account_photo": {
-      "surfaces": ["web"],
+      "surfaces": ["android", "ios", "web"],
       "description": "A closed report's decision and a log entry: a platform moderator removed an account's photo (decision 0115)."
     },
     "moderation_decision_community_deleted": {
@@ -2606,63 +2606,63 @@
       "description": "A notification: a moderator declined the reader's anonymous post (decision 0091)."
     },
     "notice_review_upheld": {
-      "surfaces": ["web"],
+      "surfaces": ["android", "ios", "web"],
       "description": "A notification: the review the reader asked for upheld the action (decision 0115)."
     },
     "notice_review_overturned": {
-      "surfaces": ["web"],
+      "surfaces": ["android", "ios", "web"],
       "description": "A notification: the review the reader asked for overturned the action (decision 0115)."
     },
     "notice_account_photo_cleared": {
-      "surfaces": ["web"],
+      "surfaces": ["android", "ios", "web"],
       "description": "A notification: a platform moderator cleared the reader's photo (decision 0115)."
     },
     "statements_title": {
-      "surfaces": ["web"],
+      "surfaces": ["android", "ios", "web"],
       "description": "Title of the screen listing what moderators did to the reader's content and why (decision 0115)."
     },
     "statements_empty": {
-      "surfaces": ["web"],
+      "surfaces": ["android", "ios", "web"],
       "description": "The statements screen with nothing on it."
     },
     "statement_open": {
-      "surfaces": ["web"],
+      "surfaces": ["android", "ios", "web"],
       "description": "Link from a removed post of the reader's to its statement of reasons."
     },
     "statement_text_gone": {
-      "surfaces": ["web"],
+      "surfaces": ["android", "ios", "web"],
       "description": "A statement whose text was purged after its 90 days (decision 0063)."
     },
     "statement_ask": {
-      "surfaces": ["web"],
+      "surfaces": ["android", "ios", "web"],
       "description": "Button: asks for the single review of a moderator's action."
     },
     "statement_ask_once": {
-      "surfaces": ["web"],
+      "surfaces": ["android", "ios", "web"],
       "description": "Under a statement: the review can be asked for once, and someone else decides."
     },
     "statement_ask_confirm": {
-      "surfaces": ["web"],
+      "surfaces": ["android", "ios", "web"],
       "description": "Confirmation before asking for the single review."
     },
     "statement_review_open": {
-      "surfaces": ["web"],
+      "surfaces": ["android", "ios", "web"],
       "description": "A statement whose review waits for a decision."
     },
     "statement_review_upheld": {
-      "surfaces": ["web"],
+      "surfaces": ["android", "ios", "web"],
       "description": "A statement whose review upheld the action."
     },
     "statement_review_overturned": {
-      "surfaces": ["web"],
+      "surfaces": ["android", "ios", "web"],
       "description": "A statement whose review overturned the action, and the content came back."
     },
     "statement_review_overturned_not_restored": {
-      "surfaces": ["web"],
+      "surfaces": ["android", "ios", "web"],
       "description": "A statement whose review overturned the action, and the content stays as it is: it no longer exists, as a cleared photo does not, or a later decision about it still stands."
     },
     "statement_review_reason": {
-      "surfaces": ["web"],
+      "surfaces": ["android", "ios", "web"],
       "description": "Label of the deciding moderator's reason on a statement."
     },
     "platform_reviews": {
@@ -2702,15 +2702,15 @@
       "description": "Label of who acted, shown only to the deciding platform moderator."
     },
     "moderation_log_review_upheld": {
-      "surfaces": ["web"],
+      "surfaces": ["android", "ios", "web"],
       "description": "A log entry: a review upheld an action."
     },
     "moderation_log_review_overturned": {
-      "surfaces": ["web"],
+      "surfaces": ["android", "ios", "web"],
       "description": "A log entry: a review overturned an action."
     },
     "post_tombstone_open": {
-      "surfaces": ["web"],
+      "surfaces": ["android", "ios", "web"],
       "description": "Link from a removed post to reading it, for a moderator of its community."
     }
   }

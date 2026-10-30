@@ -85,5 +85,6 @@ final class LayoutTests: XCTestCase {
         XCTAssertTrue(SocialRoute.reports("c").wide)
         XCTAssertTrue(SocialRoute.requests("c").wide)
         XCTAssertFalse(SocialRoute.post("p").wide)
+        XCTAssertFalse(SocialRoute.statements.wide)
     }
 }

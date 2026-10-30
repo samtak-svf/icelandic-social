@@ -8,7 +8,7 @@
   "android/app/src/main/kotlin/samtak/spjall/social/CommunityManage.kt": 412,
   "android/app/src/main/kotlin/samtak/spjall/social/CommunityViewModel.kt": 713,
   "android/app/src/main/kotlin/samtak/spjall/social/Social.kt": 621,
-  "android/app/src/main/kotlin/samtak/spjall/social/SocialNav.kt": 454,
+  "android/app/src/main/kotlin/samtak/spjall/social/SocialNav.kt": 442,
   "android/app/src/test/kotlin/samtak/spjall/account/FakeAccount.kt": 594,
   "android/app/src/test/kotlin/samtak/spjall/conversation/ConversationInfoScreenshotTest.kt": 421,
   "android/app/src/test/kotlin/samtak/spjall/conversation/ConversationScreenshotTest.kt": 405,
@@ -49,9 +49,9 @@
   "ios/App/Social/CommunityModel.swift": 882,
   "ios/App/Social/CommunitySheets.swift": 572,
   "ios/App/Social/CommunityView.swift": 523,
-  "ios/App/Social/Social.swift": 683,
-  "ios/App/Social/SocialParts.swift": 1052,
+  "ios/App/Social/Social.swift": 656,
+  "ios/App/Social/SocialParts.swift": 1040,
   "ios/Tests/CommunityModelTests.swift": 667,
   "ios/Tests/FakeAccount.swift": 637,
-  "ios/Tests/FakeSocial.swift": 774
+  "ios/Tests/FakeSocial.swift": 773
 }

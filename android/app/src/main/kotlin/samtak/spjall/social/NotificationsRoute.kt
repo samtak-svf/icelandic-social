@@ -31,6 +31,7 @@ internal fun NotificationsRoute(
                 when (val opens = notification.opens()) {
                     is Opens.Post -> nav.navigate(SocialRoutes.post(opens.postId))
                     is Opens.Community -> nav.navigate(SocialRoutes.community(opens.communityId))
+                    Opens.Statements -> nav.navigate(SocialRoutes.STATEMENTS)
                     Opens.Nowhere -> Unit
                 }
             }

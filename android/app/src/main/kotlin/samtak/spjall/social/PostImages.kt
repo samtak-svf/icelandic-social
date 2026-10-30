@@ -17,9 +17,11 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
@@ -32,6 +34,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.withContext
 import samtak.spjall.brand.R
+import samtak.spjall.core.CoreException
 import samtak.spjall.core.Post
 import samtak.spjall.core.PostImage
 import samtak.spjall.media.LocalPhotoDecoding
@@ -54,6 +57,25 @@ fun interface PostImages {
 
 /** Null draws a plain box in each image's place, as in a screen test that provides none. */
 val LocalPostImages = staticCompositionLocalOf<PostImages?> { null }
+
+/** Provides where a post's images come from to [content]; one the core cannot fetch now shows as a plain box. */
+@Composable
+internal fun WithPostImages(
+    social: Social,
+    content: @Composable () -> Unit,
+) {
+    val images =
+        remember(social) {
+            PostImages { postId, mediaId ->
+                try {
+                    social.postImage(postId, mediaId)
+                } catch (_: CoreException) {
+                    null
+                }
+            }
+        }
+    CompositionLocalProvider(LocalPostImages provides images, content = content)
+}
 
 /** A post's images under its text: one at its own shape, more two to a row as squares. */
 @Composable

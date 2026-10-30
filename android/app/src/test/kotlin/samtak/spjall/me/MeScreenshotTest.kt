@@ -143,5 +143,7 @@ private class NoMeActions : MeActions {
 
     override fun linkBrowser() = Unit
 
+    override fun statements() = Unit
+
     override fun notificationSettings() = Unit
 }

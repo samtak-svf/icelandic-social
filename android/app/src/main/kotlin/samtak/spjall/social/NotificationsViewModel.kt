@@ -14,6 +14,7 @@ import samtak.spjall.account.Problem
 import samtak.spjall.account.problem
 import samtak.spjall.core.Community
 import samtak.spjall.core.CoreException
+import samtak.spjall.core.NotificationAction
 import samtak.spjall.core.NotificationKindLevel
 import samtak.spjall.core.NotificationLevel
 import samtak.spjall.core.SocialNotification
@@ -190,7 +191,10 @@ private fun Social.communitiesById(): Map<String, Community>? =
         null
     }
 
-/** Where a tap on [this] goes: the post, else its community when the post is not there to open, else nowhere. */
+/**
+ * Where a tap on [this] goes: the statements for what a moderator did with its reasons, the post, else its community
+ * when the post is not there to open, else nowhere.
+ */
 sealed interface Opens {
     data class Post(
         val postId: String,
@@ -200,18 +204,30 @@ sealed interface Opens {
         val communityId: String,
     ) : Opens
 
+    data object Statements : Opens
+
     data object Nowhere : Opens
 }
 
-/** A moderated post may be removed, so a moderation notice opens its community, as on the web. */
+/** The moderated rows a statement of reasons explains (0115). */
+private val STATED =
+    setOf(
+        NotificationAction.HIDE_POST,
+        NotificationAction.REMOVE_POST,
+        NotificationAction.HIDE_COMMENT,
+        NotificationAction.REMOVE_COMMENT,
+        NotificationAction.CLEAR_ACCOUNT_PHOTO,
+        NotificationAction.REVIEW_UPHELD,
+        NotificationAction.REVIEW_OVERTURNED,
+    )
+
+/** A moderated post may be removed, so a moderation notice opens its reasons or its community, as on the web. */
 fun SocialNotification.opens(): Opens {
     val post = postId
-    return if (post != null &&
-        kind != SocialNotificationKind.MODERATED
-    ) {
-        Opens.Post(post)
-    } else {
-        communityId?.let { Opens.Community(it) } ?: Opens.Nowhere
+    return when {
+        kind == SocialNotificationKind.MODERATED && action in STATED -> Opens.Statements
+        post != null && kind != SocialNotificationKind.MODERATED -> Opens.Post(post)
+        else -> communityId?.let { Opens.Community(it) } ?: Opens.Nowhere
     }
 }
 

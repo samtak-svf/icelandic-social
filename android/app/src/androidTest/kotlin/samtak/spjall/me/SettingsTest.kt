@@ -90,6 +90,10 @@ class SettingsTest {
             override fun linkBrowser() {
                 calls += "linkBrowser"
             }
+
+            override fun statements() {
+                calls += "statements"
+            }
         }
 
     private fun text(id: Int) = InstrumentationRegistry.getInstrumentation().targetContext.getString(id)

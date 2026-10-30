@@ -573,6 +573,33 @@
       "key": "notice_anonymous_declined",
       "args": {},
       "badge": "moderator"
+    },
+    {
+      "kind": "moderated",
+      "actors": [],
+      "actorCount": 0,
+      "action": "review_upheld",
+      "key": "notice_review_upheld",
+      "args": {},
+      "badge": "moderator"
+    },
+    {
+      "kind": "moderated",
+      "actors": [],
+      "actorCount": 0,
+      "action": "review_overturned",
+      "key": "notice_review_overturned",
+      "args": {},
+      "badge": "moderator"
+    },
+    {
+      "kind": "moderated",
+      "actors": [],
+      "actorCount": 0,
+      "action": "clear_account_photo",
+      "key": "notice_account_photo_cleared",
+      "args": {},
+      "badge": "moderator"
     }
   ]
 }

@@ -74,6 +74,10 @@ fun PostCard(
     reported: Boolean,
     callbacks: PostCardCallbacks,
 ) {
+    if (post.isTombstone()) {
+        PostTombstone(post, moderates = callbacks.onPin != null, onOpen = callbacks.onOpen)
+        return
+    }
     var sharing by rememberSaveable(post.postId) { mutableStateOf(false) }
     val inFeed = callbacks.onOpen != null
     SocialCard(

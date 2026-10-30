@@ -10,7 +10,7 @@ import kotlin.concurrent.thread
  * Debug builds only: runs what a push runs, so notifications can be tried
  * without Firebase, with the app closed:
  *
- *     adb shell am broadcast --include-stopped-packages -a samtak.spjall.debug.PUSH -p is.samtak.spjall
+ *     adb shell am broadcast --include-stopped-packages -a samtak.spjall.debug.PUSH -p is.samtak.spjall.debug
  */
 class DebugPushReceiver : BroadcastReceiver() {
     override fun onReceive(

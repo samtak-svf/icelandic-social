@@ -16,6 +16,12 @@ extension CoreAccount {
 
     func deleteNotification(_ id: String) throws { try core().deleteNotification(notificationId: id) }
 
+    func moderationStatements(before: String?, limit: UInt32) throws -> ModerationStatementPage {
+        try core().moderationStatements(before: before, limit: limit)
+    }
+
+    func askModerationReview(entryId: UInt64) throws { try core().askModerationReview(entryId: entryId) }
+
     func notificationSettings() throws -> NotificationSettings { try core().notificationSettings() }
 
     func setNotificationSettings(kinds: [NotificationKindLevel]) throws {
@@ -27,9 +33,17 @@ extension CoreAccount {
     }
 }
 
-/// Where a notification opens: its post, or its community when it has no post or the post was moderated away;
-/// nowhere when it has no community either (0114).
+/// The moderated rows a statement of reasons explains (0115).
+private let statedActions: [NotificationAction] = [
+    .hidePost, .removePost, .hideComment, .removeComment, .clearAccountPhoto, .reviewUpheld, .reviewOverturned,
+]
+
+/// Where a notification opens: the statements for what a moderator did with its reasons, its post, or its community
+/// when it has no post or the post was moderated away; nowhere when it has no community either (0114).
 func noticeRoute(_ notification: SocialNotification) -> SocialRoute? {
+    if notification.kind == .moderated, let action = notification.action, statedActions.contains(action) {
+        return .statements
+    }
     let target = noticeTarget(
         kind: notification.kind, postId: notification.postId, communityId: notification.communityId)
     if let post = target.post { return .post(post) }

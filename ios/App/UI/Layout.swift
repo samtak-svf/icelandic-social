@@ -69,9 +69,12 @@ let contentWidth: CGFloat = 640
 
 extension SocialRoute {
     /// Whether the screen lays out its own columns on an expanded window (decision 0087), as the web's wide pages
-    /// do: a community and its queues. A post is one column.
+    /// do: a community and its queues. A post and the statements are one column.
     var wide: Bool {
-        if case .post = self { false } else { true }
+        switch self {
+        case .post, .statements: false
+        case .community, .reports, .requests: true
+        }
     }
 }
 
