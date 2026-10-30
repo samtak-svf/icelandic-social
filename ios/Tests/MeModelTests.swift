@@ -81,10 +81,13 @@ final class MeModelTests: XCTestCase {
     }
 
     func testAFailedFirstLoadCanBeTriedAgain() async {
+        // The load asks three things at once and any of them may meet the failure, so
+        // `me` may already be there: the failure is what this test can rely on.
         account.failNext = unreachable
         let model = await model()
-        XCTAssertNil(model.me)
+        XCTAssertNotNil(model.problem)
         await model.retry()
+        XCTAssertNil(model.problem)
         XCTAssertEqual(model.me?.accountId, "a1")
     }
 
