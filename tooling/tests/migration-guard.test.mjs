@@ -2,10 +2,51 @@
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { auditMigrations, migrationProblems } from "../migration-guard.mjs";
+import { auditMigrations, migrationProblems, numberProblems } from "../migration-guard.mjs";
 import { copyRepo } from "./helpers.mjs";
 
 const CONTRACT = "-- contract: the posts tables left v1 with decision 0044\n";
+
+describe("numberProblems", () => {
+  const onBase = ["0040_a.sql", "0041_b.sql"];
+
+  it("passes a branch with no migration of its own", () => {
+    expect(numberProblems(onBase, onBase)).toEqual([]);
+  });
+
+  it("passes a new one above the base", () => {
+    expect(numberProblems(onBase, [...onBase, "0042_c.sql"])).toEqual([]);
+  });
+
+  it("refuses a number the base already took", () => {
+    expect(numberProblems(onBase, [...onBase, "0041_c.sql"])).toEqual([
+      "0041_c.sql: the base is already at 41",
+    ]);
+  });
+
+  it("refuses one below the top, which would run out of order on a fresh database", () => {
+    expect(numberProblems(onBase, [...onBase, "0039_c.sql"])).toEqual([
+      "0039_c.sql: the base is already at 41",
+    ]);
+  });
+
+  it("refuses two of the branch's own with one number", () => {
+    expect(numberProblems(onBase, [...onBase, "0042_c.sql", "0042_d.sql"])).toEqual([
+      "0042_d.sql: another migration on this branch has that number",
+    ]);
+  });
+
+  it("refuses a name without a number", () => {
+    expect(numberProblems(onBase, [...onBase, "friends.sql"])).toEqual([
+      "friends.sql: not named NNNN_what.sql",
+    ]);
+  });
+
+  it("does not read a duplicate that is already on the base: no PR could rename it", () => {
+    const landed = ["0041_a.sql", "0041_b.sql"];
+    expect(numberProblems(landed, [...landed, "0042_c.sql"])).toEqual([]);
+  });
+});
 
 describe("migration-guard", () => {
   it("passes on the repo as it is", () => {

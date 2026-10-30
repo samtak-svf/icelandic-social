@@ -62,6 +62,10 @@ jobs:
         if: github.event_name == 'pull_request'
         run: node tooling/critical-rules.mjs --base origin/${{ github.base_ref }}
 
+      - name: A new migration is numbered above the base
+        if: github.event_name == 'pull_request'
+        run: node tooling/migration-guard.mjs --base origin/${{ github.base_ref }}
+
       - name: Guard tests
         run: pnpm test
 

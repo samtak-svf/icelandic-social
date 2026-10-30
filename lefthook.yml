@@ -128,7 +128,8 @@ pre-push:
       run: node tooling/quarantine.mjs
 
     migrations:
-      run: node tooling/migration-guard.mjs && node tooling/migrations-freeze.mjs
+      # origin/main as last fetched: no network here, and CI reads the real tip.
+      run: node tooling/migration-guard.mjs --base origin/main && node tooling/migrations-freeze.mjs
 
     lines:
       run: node tooling/line-count.mjs

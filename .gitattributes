@@ -6,3 +6,9 @@ ios/Generated/** linguist-generated=true
 backend/src/brand.gen.ts linguist-generated=true
 **/*.gen.ts linguist-generated=true
 api/openapi.json linguist-generated=true
+# Written anew from the source after a rebase, so never a conflict there (#397). The driver is
+# defined by tooling/contract-rebase.mjs; until it is, these merge as ordinary text.
+api/openapi.json merge=generated
+web/src/generated/api.ts merge=generated
+web/src/generated/frames.ts merge=generated
+web/src/generated/size-classes.css merge=generated
