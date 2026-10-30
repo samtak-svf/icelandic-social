@@ -61,6 +61,12 @@ jobs:
     if: ${{ !cancelled() && needs.gate.outputs.run != 'false' }}
     runs-on: ${{ fromJSON(github.event.pull_request.head.repo.fork && '["ubuntu-latest"]' || vars.RUNNER_LABELS || '["ubuntu-latest"]') }}
     timeout-minutes: 20
+    # Playwright is 8 of the 10 minutes, on the two workers a hosted runner gets.
+    # Each shard has its own runner and its own Worker on fresh state.
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: ./.github/actions/node-workspace
@@ -89,14 +95,14 @@ jobs:
       # The Worker under cf dev on fresh local state, then Playwright; the
       # same script the Mac runs (tooling/mac-remote.mjs web).
       - name: Playwright
-        run: web/scripts/e2e.sh
+        run: web/scripts/e2e.sh --shard=${{ matrix.shard }}/2
         env:
           GITHUB_TOKEN: ${{ github.token }} # the script fetches the core again on a fresh checkout
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: failure()
         with:
-          name: playwright-report
+          name: playwright-report-${{ matrix.shard }}
           path: |
             web/playwright-report/
             web/test-results/
