@@ -154,6 +154,10 @@
       "reason": "Reports the wait, run and wall of CI from the GitHub API, before and after a change to the runner flow; it checks nothing."
     },
     {
+      "script": "core-release",
+      "reason": "Takes a merged core to a tag, a release and a branch for the apps PR; a person runs it, and it checks nothing."
+    },
+    {
       "script": "core-reuse",
       "reason": "Names and picks the cached core build for the app jobs in core.yml; it checks nothing."
     },
