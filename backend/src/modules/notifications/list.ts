@@ -36,7 +36,7 @@ const OLD_ACTIONS = [
  * row may still word a suspension that way, until its core knows the action.
  */
 export function shownTo(reach: NoticeReach): string {
-  if (reach === "all") return LIVE;
+  if (reach) return LIVE;
   if (reach === "decoding") {
     return `${LIVE} AND (n.action IS NULL OR n.action NOT IN ('suspend_account', 'unsuspend_account'))`;
   }
