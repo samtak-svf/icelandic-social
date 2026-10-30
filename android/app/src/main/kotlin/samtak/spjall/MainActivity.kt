@@ -129,10 +129,12 @@ class MainActivity : ComponentActivity() {
 
     private fun openLink(intent: Intent) {
         val uri = intent.data?.takeIf { intent.action == Intent.ACTION_VIEW } ?: return
-        val token = inviteToken(uri.toString())
+        // A debug build is called back at its own scheme; the core knows the store's.
+        val link = uri.toString().replaceFirst("${BuildConfig.CALLBACK_SCHEME}:", "${BuildConfig.URL_SCHEME}:")
+        val token = inviteToken(link)
         when {
             token != null -> signIn.openInvite(token)
-            uri.scheme == BuildConfig.URL_SCHEME -> signIn.complete(uri.toString())
+            uri.scheme == BuildConfig.CALLBACK_SCHEME -> signIn.complete(link)
         }
     }
 

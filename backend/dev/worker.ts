@@ -1,5 +1,5 @@
 import { web } from "spjall-web/server";
-import { withFakes } from "./oidc.ts";
+import { setAppScheme, withFakes } from "./oidc.ts";
 import { API_PATHS } from "../src/paths.ts";
 import worker, {
   Conversation as RealConversation,
@@ -28,8 +28,11 @@ import { OPERATOR_INVITE_PATH, operatorInvite } from "../scripts/operator-invite
 //   cf dev fires no cron, so a test sees its notification at once;
 // - a POST to /dev/platform-moderator?account=<id> makes that account a
 //   platform moderator (decision 0063), which in production is a row the
-//   maintainer writes by hand.
+//   maintainer writes by hand;
+// - a POST to /dev/app-scheme?scheme=<scheme> sends the fakes' redirects to a
+//   debug app at that scheme (dev/oidc.ts, docs/testing.md).
 
+const APP_SCHEME_PATH = "/dev/app-scheme";
 const JOBS_PATH = "/dev/jobs";
 const PLATFORM_MODERATOR_PATH = "/dev/platform-moderator";
 
@@ -93,6 +96,12 @@ export default {
       )
         .bind(account, Date.now())
         .run();
+      return new Response(null, { status: 204 });
+    }
+    if (url.pathname === APP_SCHEME_PATH && request.method === "POST") {
+      const scheme = url.searchParams.get("scheme");
+      if (scheme === null) return new Response(null, { status: 400 });
+      setAppScheme(scheme);
       return new Response(null, { status: 204 });
     }
     if (url.pathname === JOBS_PATH && request.method === "POST") {
