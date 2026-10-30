@@ -49,6 +49,7 @@ import samtak.spjall.ui.ProblemCard
 import samtak.spjall.ui.SpjallTheme
 import samtak.spjall.ui.Suspension
 import java.lang.reflect.Proxy
+import kotlin.math.abs
 
 /**
  * The controls a suspension turns off (decision 0115): like, comment, post, vote, join and create a group. Each is
@@ -152,14 +153,15 @@ class SuspensionControlsTest {
         assertEquals(1, reacted.size)
     }
 
-    /** Total brightness of what a node draws: a dimmed control sends less of it. */
-    private fun brightness(tag: String): Float {
+    /** How far what a node draws stands from its own background: a dimmed control stands out less, in any theme. */
+    private fun ink(tag: String): Float {
         val pixels = compose.onNodeWithTag(tag).captureToImage().toPixelMap()
+        val ground = pixels[0, 0]
         var sum = 0f
         for (x in 0 until pixels.width) {
             for (y in 0 until pixels.height) {
                 val c = pixels[x, y]
-                sum += c.alpha * (c.red + c.green + c.blue)
+                sum += abs(c.red - ground.red) + abs(c.green - ground.green) + abs(c.blue - ground.blue)
             }
         }
         return sum
@@ -175,10 +177,10 @@ class SuspensionControlsTest {
         }
         current.value = null
         compose.waitForIdle()
-        val lit = brightness("$POLL_OPTION-1")
+        val lit = ink("$POLL_OPTION-1")
         current.value = ended
         compose.waitForIdle()
-        assertTrue("a vote option stays as bright as when it works", brightness("$POLL_OPTION-1") < lit)
+        assertTrue("a vote option stands out as much as when it works", ink("$POLL_OPTION-1") < lit)
     }
 
     @Test
