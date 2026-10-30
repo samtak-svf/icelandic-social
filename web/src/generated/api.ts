@@ -806,7 +806,8 @@ export interface Notification {
   actors: Array<Author>;
   /** How many distinct accounts caused it; `actor` and `actors` are among them */
   actorCount: number;
-  communityId: string;
+  /** None for a notification about the account itself (decision 0114) */
+  communityId: string | null;
   postId: string | null;
   commentId: string | null;
   /** For `moderated`, the moderator's action (`hide_post`, `remove_comment`, ...) */

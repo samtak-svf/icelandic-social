@@ -34,6 +34,16 @@ export function minClientVersions(env: Env): Record<Client, string> {
 }
 
 /**
+ * The first version of each client that decodes every notification (decision
+ * 0114): for the apps `NOTICE_CLIENT_VERSION`, for the web the build this
+ * Worker serves, which is its floor.
+ */
+export function noticeClientVersions(env: Env): Record<Client, string> {
+  const floors = minClientVersions(env);
+  return { android: env.NOTICE_CLIENT_VERSION, ios: env.NOTICE_CLIENT_VERSION, web: floors.web };
+}
+
+/**
  * Where a mobile client below its floor gets a current build (decision 0030):
  * the URL each platform's var names, else the brand's Android link and
  * TestFlight's scheme.

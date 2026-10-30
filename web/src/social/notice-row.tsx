@@ -28,7 +28,7 @@ function Pictures({
     return (
       <Avatar
         kind="community"
-        id={n.communityId}
+        id={n.communityId ?? n.notificationId}
         name={community?.name ?? null}
         photo={community?.photo ?? null}
         className="size-10 rounded-lg"
@@ -93,7 +93,7 @@ export function NoticeRow({
       )}
     </>
   );
-  // A removed post is not there to open; its community is.
+  // A removed post is not there to open; its community is, when it has one.
   const toPost = n.postId !== null && n.kind !== "moderated";
   const onClick = () => actions.open(n);
   return (
@@ -104,7 +104,7 @@ export function NoticeRow({
         <Link to="/posts/$postId" params={{ postId: n.postId! }} className={link} onClick={onClick}>
           {body}
         </Link>
-      ) : (
+      ) : n.communityId !== null ? (
         <Link
           to="/communities/$communityId"
           params={{ communityId: n.communityId }}
@@ -113,6 +113,10 @@ export function NoticeRow({
         >
           {body}
         </Link>
+      ) : (
+        <button type="button" className={`${link} text-left`} onClick={onClick}>
+          {body}
+        </button>
       )}
       <Menu label={strings.notice_menu} icon={<DotsIcon />}>
         {(close) => {
@@ -133,9 +137,11 @@ export function NoticeRow({
                   <MenuItem onSelect={run(() => actions.kindInApp(n))}>
                     {strings.notice_menu_kind_in_app}
                   </MenuItem>
-                  <MenuItem onSelect={run(() => actions.communityOff(n))}>
-                    {strings.notice_menu_community_off}
-                  </MenuItem>
+                  {n.communityId !== null && (
+                    <MenuItem onSelect={run(() => actions.communityOff(n))}>
+                      {strings.notice_menu_community_off}
+                    </MenuItem>
+                  )}
                 </>
               )}
             </>

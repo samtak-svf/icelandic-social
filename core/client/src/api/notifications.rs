@@ -110,7 +110,8 @@ pub struct Notification {
     /// Whether the row is unread and its effective level is `Push` now
     /// (0106): only such a row may be announced (0107).
     pub announce: bool,
-    pub community_id: String,
+    /// None for a row about the account itself (0114): it is in no community.
+    pub community_id: Option<String>,
     pub post_id: Option<String>,
     pub comment_id: Option<String>,
     /// For `Moderated`, the moderator's action.
@@ -152,7 +153,7 @@ struct SentNotification {
     snippet: Option<String>,
     #[serde(default)]
     announce: bool,
-    community_id: String,
+    community_id: Option<String>,
     post_id: Option<String>,
     comment_id: Option<String>,
     action: Option<serde_json::Value>,

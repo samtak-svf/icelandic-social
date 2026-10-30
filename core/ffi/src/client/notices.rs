@@ -60,8 +60,9 @@ pub struct SocialNotice {
     pub actors: Vec<Author>,
     /// How many distinct accounts caused it, `actors` among them.
     pub actor_count: u64,
-    pub community_id: String,
-    /// The post to open on a tap; none opens the community.
+    /// None for a row about the account itself (0114).
+    pub community_id: Option<String>,
+    /// The post to open on a tap; none opens the community, if any.
     pub post_id: Option<String>,
     pub comment_id: Option<String>,
     /// For `Moderated`, what was done; `Unknown` for an action a later server

@@ -67,7 +67,8 @@ pub struct SocialNotification {
     /// Whether the row is unread and its effective level is `Push` now
     /// (0106).
     pub announce: bool,
-    pub community_id: String,
+    /// None for a row about the account itself (0114): it is in no community.
+    pub community_id: Option<String>,
     pub post_id: Option<String>,
     pub comment_id: Option<String>,
     /// For `Moderated`, what was done; `Unknown` for an action a later server

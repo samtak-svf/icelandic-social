@@ -21,7 +21,9 @@ const Notification = z
     actorCount: z.int().openapi({
       description: "How many distinct accounts caused it; `actor` and `actors` are among them",
     }),
-    communityId: OpaqueId,
+    communityId: OpaqueId.nullable().openapi({
+      description: "None for a notification about the account itself (decision 0114)",
+    }),
     postId: OpaqueId.nullable(),
     commentId: z.string().nullable(),
     action: z.string().nullable().openapi({

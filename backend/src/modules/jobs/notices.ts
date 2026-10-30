@@ -11,7 +11,8 @@ export type Notice = {
   kind: NoticeKind;
   accountId: string;
   actorId: string;
-  communityId: string;
+  /** None for a notice about the account itself (decision 0114). */
+  communityId: string | null;
   postId?: string;
   commentId?: string;
   /** For `reply`, the comment replied to: its author is told (decision 0103). */

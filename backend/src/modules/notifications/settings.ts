@@ -25,12 +25,12 @@ function effective(
   return kind === "moderated" && level === "off" ? "in_app" : level;
 }
 
-/** The level at which `accountId` is told of `kind` in `communityId` now. */
+/** The level at which `accountId` is told of `kind` in `communityId` now; with none, its kind's. */
 export async function levelFor(
   env: Env,
   accountId: string,
   kind: Kind,
-  communityId: string,
+  communityId: string | null,
 ): Promise<Level> {
   const row = await db(env)
     .prepare(
@@ -117,9 +117,11 @@ export async function setCommunityLevel(
 export async function announcer(
   env: Env,
   accountId: string,
-): Promise<(row: { kind: Kind; community_id: string }) => boolean> {
+): Promise<(row: { kind: Kind; community_id: string | null }) => boolean> {
   const stored = await settingsOf(env, accountId);
   const community = new Map(stored.communities.map((c) => [c.communityId, c.level]));
-  return (row) =>
-    effective(row.kind, stored.kinds[row.kind], community.get(row.community_id)) === "push";
+  return (row) => {
+    const level = row.community_id === null ? null : community.get(row.community_id);
+    return effective(row.kind, stored.kinds[row.kind], level) === "push";
+  };
 }

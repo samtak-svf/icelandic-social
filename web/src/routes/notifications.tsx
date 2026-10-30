@@ -50,7 +50,7 @@ function Notifications() {
                   <li key={n.notificationId}>
                     <NoticeRow
                       notification={n}
-                      community={byId.get(n.communityId)}
+                      community={n.communityId === null ? undefined : byId.get(n.communityId)}
                       actions={actions}
                     />
                   </li>

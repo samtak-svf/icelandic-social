@@ -1,6 +1,6 @@
 # 0114. Friendship is mutual, and a name opens a person
 
-- Status: accepted; designed, not yet implemented
+- Status: accepted; designed, not yet implemented; a notification with no community and its withholding from older clients implemented (#376), the kinds and everything else still to come
 - Date: 2026-10-30
 - Decided by: Guðröður Atli Jónsson
 - Amends: [0060](0060-a-social-platform-with-an-encrypted-messenger.md) (the graph holds friendships, not follows; feeds read friends),
