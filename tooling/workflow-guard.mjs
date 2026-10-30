@@ -40,6 +40,11 @@
 //    local actions those use, in each filter (`.github/actions/<name>/**`).
 //    Otherwise a change to a shared action alone runs none of its callers and
 //    merges untested.
+// 12. A job the tree-proof gate can skip runs unless the gate says "false", so a
+//    gate that failed runs everything, and the `proof` job waits on it by name,
+//    so a marker never says more than what passed (tooling/tree-proof.mjs). Both
+//    callers grant `actions: read`: GitHub checks the called file's every job
+//    against the caller, so a run without it fails to start at all.
 //
 // Line-based on purpose: the rules are about single lines, and the guard stays
 // dependency-free like the others (tooling/lib/repo.mjs).
@@ -70,7 +75,7 @@ const ENTRY = /^\s+-\s+["']?([^"'\s]+)["']?\s*$/;
 const SECRET = /\bsecrets\.(?!GITHUB_TOKEN\b)\w+/;
 
 /**
- * @typedef {{ file: string, line: number, rule: "pin" | "fork-runner" | "trigger" | "secret-runner" | "nohup" | "rust-toolchain" | "fixed-port" | "exclusive-lane" | "cargo-home" | "runner-expr" | "action-paths", message: string }} Problem
+ * @typedef {{ file: string, line: number, rule: "pin" | "fork-runner" | "trigger" | "secret-runner" | "nohup" | "rust-toolchain" | "fixed-port" | "exclusive-lane" | "cargo-home" | "runner-expr" | "action-paths" | "tree-proof", message: string }} Problem
  */
 
 /**
@@ -313,6 +318,80 @@ export function actionPathProblems(file, text, actionUses) {
 }
 
 /**
+ * The jobs of a workflow, each with its first line, its `if` and its `needs`.
+ * @param {string} text
+ * @returns {{ name: string, line: number, condition: string, needs: string[], canReadActions: boolean, callsProof: boolean }[]}
+ */
+function jobHeads(text) {
+  /** @type {ReturnType<typeof jobHeads>} */
+  const jobs = [];
+  let inJobs = false;
+  text.split("\n").forEach((raw, index) => {
+    if (/^\S/.test(raw)) inJobs = /^jobs:\s*$/.test(raw);
+    if (!inJobs) return;
+    const name = /^ {2}([\w-]+):\s*$/.exec(raw)?.[1];
+    if (name)
+      jobs.push({
+        name,
+        line: index + 1,
+        condition: "",
+        needs: [],
+        canReadActions: false,
+        callsProof: false,
+      });
+    const job = jobs.at(-1);
+    if (!job) return;
+    if (/^ {6}actions: read\b/.test(raw)) job.canReadActions = true;
+    if (/^ {4}uses: \.\/\.github\/workflows\/tree-proof\.yml\s*$/.test(raw)) job.callsProof = true;
+    const condition = /^ {4}if:\s*(.+)$/.exec(raw)?.[1];
+    if (condition) job.condition = condition;
+    const needs = /^ {4}needs:\s*(.+)$/.exec(raw)?.[1];
+    if (needs)
+      job.needs = needs
+        .replace(/[[\]]/g, "")
+        .split(",")
+        .map((n) => n.trim());
+  });
+  return jobs;
+}
+
+const GATE_OPEN = "!cancelled() && needs.gate.outputs.run != 'false'";
+
+/**
+ * Rule 12.
+ * @param {string} file repo-relative path
+ * @param {string} text
+ * @returns {Problem[]}
+ */
+export function treeProofProblems(file, text) {
+  const jobs = jobHeads(text);
+  const gated = jobs.filter((job) => job.needs.includes("gate"));
+  /** @type {Problem[]} */
+  const found = [];
+  const problem = (/** @type {number} */ line, /** @type {string} */ message) =>
+    found.push({ file, line, rule: "tree-proof", message });
+  const proof = jobs.find((job) => job.name === "proof");
+  if (!proof && gated[0]) problem(gated[0].line, "a workflow with a gate needs a proof job");
+  for (const job of gated) {
+    if (!job.condition.includes(GATE_OPEN)) {
+      problem(job.line, `${job.name} must run unless the gate says so: if: ${GATE_OPEN}`);
+    }
+    if (proof && !proof.needs.includes(job.name)) {
+      problem(proof.line, `proof must need ${job.name}, which the gate can skip`);
+    }
+    if (proof && !proof.condition.includes(`needs.${job.name}.result == 'success'`)) {
+      problem(proof.line, `proof must require needs.${job.name}.result == 'success'`);
+    }
+  }
+  for (const job of jobs) {
+    if (job.callsProof && !job.canReadActions) {
+      problem(job.line, `${job.name} calls tree-proof.yml and must grant actions: read`);
+    }
+  }
+  return found;
+}
+
+/**
  * @param {string} [root]
  * @returns {Problem[]}
  */
@@ -327,6 +406,7 @@ export function findProblems(root = ROOT) {
       .flatMap((f) => [
         ...findInWorkflow(f, read(f)),
         ...actionPathProblems(f, read(f), actionUses),
+        ...treeProofProblems(f, read(f)),
       ]),
     ...actions.flatMap((f) => findInAction(f, read(f))),
   ];
@@ -337,7 +417,7 @@ function main() {
   for (const p of problems) console.error(`::error file=${p.file},line=${p.line}::${p.message}`);
   if (problems.length > 0) process.exit(1);
   console.log(
-    "✓ workflows pin every action by SHA, keep fork PRs and secrets off the org runners, use no nohup, install Rust only through the action, no fixed dev port, the exclusive lane only for Android and the toolchain action before CARGO_HOME is written, one runs-on expression per runner variable, composite actions pinned too, every used local action in the path filters",
+    "✓ workflows pin every action by SHA, keep fork PRs and secrets off the org runners, use no nohup, install Rust only through the action, no fixed dev port, the exclusive lane only for Android and the toolchain action before CARGO_HOME is written, one runs-on expression per runner variable, composite actions pinned too, every used local action in the path filters, every job the tree-proof gate can skip proven",
   );
 }
 

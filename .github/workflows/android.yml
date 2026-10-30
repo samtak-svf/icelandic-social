@@ -39,6 +39,9 @@ on:
       - ".github/workflows/android.yml"
       - ".github/actions/core-artifact/**"
       - ".github/actions/rust-toolchain/**"
+  # Daily, because a merge the gate skips writes no cache, and PRs restore main's.
+  schedule:
+    - cron: "23 4 * * *"
 
 concurrency:
   group: android-${{ github.head_ref || github.ref }}
@@ -48,7 +51,20 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
+  # A merge whose tree a green PR run tested starts nothing (tooling/tree-proof.mjs).
+  gate:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    permissions:
+      contents: read
+      actions: read
+    uses: ./.github/workflows/tree-proof.yml
+    with:
+      workflow: android
+      mode: gate
+
   build:
+    needs: gate
+    if: ${{ !cancelled() && needs.gate.outputs.run != 'false' }}
     runs-on: ${{ fromJSON(github.event.pull_request.head.repo.fork && '["ubuntu-latest"]' || vars.RUNNER_LABELS || '["ubuntu-latest"]') }}
     timeout-minutes: 45
     steps:
@@ -97,6 +113,8 @@ jobs:
     # holds them (EXCLUSIVE_RUNNER_LABELS, docs/testing.md).
     # On a hosted Linux runner the emulator needs KVM; on the Mac it is the
     # arm64 AVD android/scripts/test.sh boots, the script mac-remote.mjs runs.
+    needs: gate
+    if: ${{ !cancelled() && needs.gate.outputs.run != 'false' }}
     runs-on: ${{ fromJSON(github.event.pull_request.head.repo.fork && '["ubuntu-latest"]' || vars.EXCLUSIVE_RUNNER_LABELS || '["ubuntu-latest"]') }}
     timeout-minutes: 45
     steps:
@@ -184,3 +202,15 @@ jobs:
         with:
           name: android-device-reports
           path: android/**/build/reports/androidTests/
+
+  # Named one by one: the default success() also reads the skipped gate above them.
+  proof:
+    needs: [build, device]
+    if: ${{ !cancelled() && github.event_name == 'pull_request' && needs.build.result == 'success' && needs.device.result == 'success' }}
+    permissions:
+      contents: read
+      actions: read # asked of the whole called file, though only its gate job reads
+    uses: ./.github/workflows/tree-proof.yml
+    with:
+      workflow: android
+      mode: prove

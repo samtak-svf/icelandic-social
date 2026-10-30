@@ -51,6 +51,9 @@ on:
       - ".github/workflows/core.yml"
       - ".github/actions/rust-toolchain/**"
     tags: ["core-v*"]
+  # Daily, because a merge the gate skips writes no cache, and PRs restore main's.
+  schedule:
+    - cron: "23 4 * * *"
 
 concurrency:
   group: core-${{ github.head_ref || github.ref }}
@@ -60,8 +63,20 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
+  # A merge whose tree a green PR run tested starts nothing (tooling/tree-proof.mjs).
+  gate:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    permissions:
+      contents: read
+      actions: read
+    uses: ./.github/workflows/tree-proof.yml
+    with:
+      workflow: core
+      mode: gate
+
   test:
-    if: ${{ !startsWith(github.ref, 'refs/tags/') }}
+    needs: gate
+    if: ${{ !cancelled() && needs.gate.outputs.run != 'false' && !startsWith(github.ref, 'refs/tags/') }}
     runs-on: ${{ fromJSON(github.event.pull_request.head.repo.fork && '["ubuntu-latest"]' || vars.RUNNER_LABELS || '["ubuntu-latest"]') }}
     timeout-minutes: 20
     defaults:
@@ -101,7 +116,8 @@ jobs:
         run: node tooling/coverage-floor.mjs core
 
   wasm:
-    if: ${{ !startsWith(github.ref, 'refs/tags/') }}
+    needs: gate
+    if: ${{ !cancelled() && needs.gate.outputs.run != 'false' && !startsWith(github.ref, 'refs/tags/') }}
     # sqlite-wasm-rs compiles SQLite with clang: ubuntu-latest has one with a
     # wasm32 backend, and on macOS the rust-toolchain action points it at
     # Homebrew's LLVM. A lane without either (the old GCP image) cannot run it.
@@ -127,7 +143,8 @@ jobs:
           cargo clippy --locked -p spjall-wasm --all-targets --target wasm32-unknown-unknown -- -D warnings
 
   store-opfs:
-    if: ${{ !startsWith(github.ref, 'refs/tags/') }}
+    needs: gate
+    if: ${{ !cancelled() && needs.gate.outputs.run != 'false' && !startsWith(github.ref, 'refs/tags/') }}
     # The browser's store (0081): the core's store on `opfs-sahpool` under
     # headless Chrome, in a dedicated Worker, through sqlite3mc's cipher. The
     # one suite that runs the real VFS, so it is where a cipher or journal
@@ -439,3 +456,15 @@ jobs:
             cat artifacts/*.sha256
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
+
+  # Named one by one: the default success() also reads the skipped gate above them.
+  proof:
+    needs: [test, wasm, store-opfs]
+    if: ${{ !cancelled() && github.event_name == 'pull_request' && needs.test.result == 'success' && needs.wasm.result == 'success' && needs.store-opfs.result == 'success' }}
+    permissions:
+      contents: read
+      actions: read # asked of the whole called file, though only its gate job reads
+    uses: ./.github/workflows/tree-proof.yml
+    with:
+      workflow: core
+      mode: prove

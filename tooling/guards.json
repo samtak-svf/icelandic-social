@@ -170,6 +170,10 @@
       "reason": "Prints a word's forms from BÍN for a term table; a person runs it when setting a term, and it checks nothing."
     },
     {
+      "script": "tree-proof",
+      "reason": "Names the marker a green PR run leaves for the merge that lands the same tree; the workflows call it, and it checks nothing."
+    },
+    {
       "script": "worker-secrets",
       "reason": "Copies the vault secrets into the deployed Worker; it checks nothing."
     }
