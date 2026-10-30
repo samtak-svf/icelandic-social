@@ -163,7 +163,7 @@ export async function notificationPage(
       commentId: r.comment_id,
       action: r.action,
       emoji: r.emoji,
-      createdAt: r.created_at,
+      created_at: r.created_at,
       read: r.read_at !== null,
       announce: r.read_at === null && announces(r),
       snippet: snippets[i] ?? null,
