@@ -3,6 +3,7 @@
 // names a database by id, and the config is the one place it is written.
 //
 //   node scripts/d1.ts migrate                         # production (migrate:remote)
+//   node scripts/d1.ts migrate --staging               # staging (migrate:staging)
 //   node scripts/d1.ts migrate --local --persist-to .cloudflare/state  # cf dev's D1
 //
 // Runs under plain `node`, like scripts/openapi.ts.
@@ -15,8 +16,8 @@ import { fileURLToPath } from "node:url";
 import { workerConfig } from "./worker-config.ts";
 
 /** The id of the one D1 database the Worker binds. */
-export async function databaseId(): Promise<string> {
-  const { env } = await workerConfig();
+export async function databaseId(mode?: string): Promise<string> {
+  const { env } = await workerConfig(mode);
   const ids = Object.values(env).flatMap((b) => (b.type === "d1" && b.id ? [b.id] : []));
   if (ids.length !== 1)
     throw new Error(`cloudflare.config.ts binds ${ids.length} D1 databases with an id, expected 1`);
@@ -59,10 +60,10 @@ export async function cfD1(
  * directory for what cf leaves there, both removed after it.
  * An exit before the result keeps its own status.
  */
-export async function migrate(args: string[]): Promise<number> {
+export async function migrate(args: string[], mode?: string): Promise<number> {
   const scratch = mkdtempSync(join(tmpdir(), "spjall-d1-"));
   const [node, bin] = cf();
-  const child = spawn(node, [bin, "d1", "migrations", "apply", await databaseId(), ...args], {
+  const child = spawn(node, [bin, "d1", "migrations", "apply", await databaseId(mode), ...args], {
     stdio: ["ignore", "pipe", "inherit"],
     env: { ...process.env, CLOUDFLARE_REGISTRY_PATH: join(scratch, "registry"), TMPDIR: scratch },
   });
@@ -100,8 +101,10 @@ function parseResult(out: string): { name: string; status: string }[] | undefine
 if (import.meta.main) {
   const [verb, ...rest] = process.argv.slice(2);
   if (verb !== "migrate") {
-    console.error("Usage: node scripts/d1.ts migrate [--local --persist-to DIR]");
+    console.error("Usage: node scripts/d1.ts migrate [--staging | --local --persist-to DIR]");
     process.exit(2);
   }
-  process.exit(await migrate(["--dir", "migrations", ...rest]));
+  const mode = rest.includes("--staging") ? "staging" : undefined;
+  const args = rest.filter((arg) => arg !== "--staging");
+  process.exit(await migrate(["--dir", "migrations", ...args], mode));
 }

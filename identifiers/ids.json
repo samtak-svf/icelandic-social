@@ -29,7 +29,15 @@
       "inbox": "Inbox",
       "space": "Space"
     },
-    "jurisdiction": "eu"
+    "jurisdiction": "eu",
+    "staging": {
+      "worker": "spjall-api-staging",
+      "d1": "spjall-db-staging",
+      "r2": {
+        "media": "spjall-media-staging",
+        "profiles": "spjall-profiles-staging"
+      }
+    }
   },
   "hosts": {
     "api": "spjall.samtak.is",

@@ -7,7 +7,13 @@
       "ignoreBinaries": ["gcloud", "cf"]
     },
     "backend": {
-      "entry": ["src/index.ts", "scripts/*.ts", "test/worker.ts", "dev/worker.ts"],
+      "entry": [
+        "src/index.ts",
+        "scripts/*.ts",
+        "test/worker.ts",
+        "dev/worker.ts",
+        "dev/staging.ts"
+      ],
       "project": ["src/**/*.ts", "scripts/**/*.ts", "test/**/*.ts", "dev/**/*.ts"],
       "ignoreDependencies": ["cloudflare", "@tanstack/react-router", "react", "react-dom"]
     },

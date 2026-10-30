@@ -25,6 +25,35 @@ is approved (`backend/README.md`). In order, it:
 Open the run's summary before anything else when a deploy has gone wrong: the ids there are
 the ones the rest of this page needs.
 
+## Staging
+
+Staging is a second Worker on Samtak's account, `spjall-api-staging`, for measuring what local
+workerd cannot ([decision 0118](decisions/0118-a-staging-worker.md)). It is the real Worker on
+its own D1, buckets and Durable Objects, all in the EU, with the fake Kenni and Google in place
+of real sign-in. `.github/workflows/staging.yml` deploys it from `main` with no approval, and
+stays skipped until the repository variable `STAGING_ON` is `true`. Its address is the secret
+`STAGING_ORIGIN`, so the public logs mask it.
+
+**How to reach it.** Every request without the gate gets an empty 404, static files included.
+A tool sends the secret as the header `x-staging-gate`. A browser opens
+`/__staging-gate?key=<secret>` once, which sets a cookie for 30 days. The secret is
+`STAGING_GATE`, in the repository's secrets and the Worker's. If it leaks, change it in both and
+deploy. A key in a URL can land in the Worker's logs, so prefer the header. The native apps
+cannot send the header; staging is for tools and browsers.
+
+Behind the gate, anyone signs in as anyone: `login_hint=<subject>` at the fake Google starts a
+session with no invite. `POST /dev/jobs` runs the minute cron, `POST /dev/operator-invite`
+writes an operator invite, and `POST /dev/platform-moderator?account=<id>` makes a moderator.
+
+**What it may not hold.** Nothing real: no real person, kennitala, address, photo or message,
+and nothing copied from production, since anyone with the gate can read all of it. No secret but
+`STAGING_GATE` and its own `KENNITALA_HMAC_KEY`; never production's. No push credential
+(`APNS_*`, `FCM_SERVICE_ACCOUNT`) and no `OPS_TOKEN`. `node tooling/jurisdiction-check.mjs`
+holds what the config declares.
+
+Sessions that sit idle expire as in production, and both crons run, so seeded data that a job
+expires does go away.
+
 ## Releasing a core
 
 Once the PR that sets the version in `core/Cargo.toml` has merged, from a clean checkout:

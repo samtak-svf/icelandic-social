@@ -37,6 +37,7 @@ const CONFIG_FILE = "backend/cloudflare.config.ts";
  *   crons: string[],
  *   queues: boolean,
  *   placement: unknown,
+ *   runWorkerFirst: unknown,
  * }} WorkerConfig
  */
 
@@ -55,6 +56,7 @@ const READ = new Set([
   "env",
   "exports",
   "placement",
+  "assets",
 ]);
 
 /**
@@ -167,6 +169,7 @@ export function normalise(raw, file = CONFIG_FILE) {
     crons: [],
     queues: false,
     placement: worker.placement,
+    runWorkerFirst: worker.assets?.runWorkerFirst,
   };
 
   const unknownTypes = Object.entries(worker.env ?? {})

@@ -2,8 +2,9 @@ import ids from "../../identifiers/ids.json" with { type: "json" };
 
 // Fake identity providers: Kenni (decision 0019) and Google (decision 0033),
 // each a real OpenID Connect provider for the Worker's clients. dev/worker.ts
-// and test/worker.ts mount them under `/dev/kenni` and `/dev/google`. Never
-// deployed: src/ does not import this, and `cf deploy` builds src/index.ts.
+// dev/staging-app.ts and test/worker.ts mount them under `/dev/kenni` and
+// `/dev/google`. Production never has them: src/ does not import this, and
+// `jurisdiction-check.mjs` holds production's entry to src/index.ts.
 //
 // Each serves discovery, authorize, token and JWKS, signs ID tokens RS256 with
 // a key made on first use, and checks PKCE (S256) and the redirect. There is
@@ -73,8 +74,38 @@ type Grant = {
   expires: number;
 };
 
-/** Issued codes, each redeemable once. */
-const grants = new Map<string, Grant>();
+/**
+ * The codes redeemed so far, until they expire. A code carries its own grant,
+ * because a deployed Worker runs in several isolates and the one that redeems
+ * a code need not be the one that issued it; so a code is single-use per
+ * isolate, which is enough for a fake behind staging's gate.
+ */
+const spent = new Map<string, number>();
+
+function issue(grant: Grant): string {
+  return encode({ ...grant, unique: base64url(crypto.getRandomValues(new Uint8Array(16))) });
+}
+
+/** The grant a code carries, or null when it is not one this fake issued. */
+function grantOf(code: string): Grant | null {
+  try {
+    const bytes = Uint8Array.from(atob(code.replaceAll("-", "+").replaceAll("_", "/")), (c) =>
+      c.charCodeAt(0),
+    );
+    const grant = JSON.parse(new TextDecoder().decode(bytes)) as Grant;
+    return typeof grant.expires === "number" ? grant : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Whether this redemption is a code's first here. */
+function spend(code: string, expires: number, now = Date.now()): boolean {
+  for (const [old, until] of spent) if (until < now) spent.delete(old);
+  if (spent.has(code)) return false;
+  spent.set(code, expires);
+  return true;
+}
 
 type Keys = { signing: CryptoKeyPair; wrong: CryptoKeyPair; jwk: JsonWebKey };
 let keys: Promise<Keys> | null = null;
@@ -185,8 +216,7 @@ async function authorize(url: URL, issuer: string, provider: FakeProvider): Prom
     ...overrides,
   };
 
-  const code = base64url(crypto.getRandomValues(new Uint8Array(32)));
-  grants.set(code, {
+  const code = issue({
     clientId,
     redirectUri,
     challenge,
@@ -208,10 +238,11 @@ async function token(request: Request): Promise<Response> {
     return oauthError("unsupported_grant_type");
   }
   const code = String(body.get("code") ?? "");
-  const grant = grants.get(code);
+  const grant = grantOf(code);
   // A code is spent on its first redemption, whatever the outcome.
-  grants.delete(code);
-  if (!grant || grant.expires < Date.now()) return oauthError("invalid_grant");
+  if (!grant || !spend(code, grant.expires) || grant.expires < Date.now()) {
+    return oauthError("invalid_grant");
+  }
   if (body.get("client_id") !== grant.clientId) return oauthError("invalid_client", 401);
   if (body.get("redirect_uri") !== grant.redirectUri) return oauthError("invalid_grant");
   const verifier = String(body.get("code_verifier") ?? "");

@@ -3,6 +3,7 @@
 - Status: accepted; implemented, step 1 in a158475 and step 2 in the PR that removed `wrangler.jsonc`
 - Date: 2026-10-09
 - Decided by: the maintainer, deciding #37
+- Amended by: [0118](0118-a-staging-worker.md) (a second deployed entry, `dev/staging.ts`, not production's)
 
 ## Decision
 
