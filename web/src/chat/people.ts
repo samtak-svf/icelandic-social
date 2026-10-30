@@ -25,9 +25,18 @@ function names(people: Person[]): string {
   return people.map(shownName).join(", ");
 }
 
-/** A group has more than one other member, as on the apps. */
+/**
+ * A group has more than one other member, or a name, as on the apps: a named
+ * group stays one whatever its size (0078), and a conversation of two never
+ * has a name.
+ */
 export function isGroup(conversation: Conversation): boolean {
-  return conversation.members.length > 1;
+  return conversation.name !== null || conversation.members.length > 1;
+}
+
+/** Whether a member can still change the group (0078): not once it is left, removed or stale. */
+export function canChangeGroup(conversation: Conversation): boolean {
+  return isGroup(conversation) && canSend(conversation);
 }
 
 /** Whether this device can take part: on the apps the composer shows only then. */

@@ -99,13 +99,14 @@ jobs:
         run: cargo test --locked -p spjall-client --test backend -- --ignored
 
       # A real browser links from a phone's account and replies through the
-      # core in its worker; the phone is backend.rs's a_phone_links_a_real_browser.
+      # core in its worker; the phone is browser.rs's a_phone_links_a_real_browser
+      # (chat.spec.ts) and a_browser_manages_a_group (group.spec.ts).
       - name: Chromium
         run: pnpm --filter spjall-web exec playwright install --with-deps chromium
       - name: A browser and a phone through the Worker
         env:
           SPJALL_BROWSER_PHONE: "1"
-        run: pnpm --filter spjall-web exec playwright test e2e/chat.spec.ts
+        run: pnpm --filter spjall-web exec playwright test e2e/chat.spec.ts e2e/group.spec.ts
 
       - name: Worker log
         if: failure() || cancelled()
