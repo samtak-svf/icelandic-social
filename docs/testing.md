@@ -168,16 +168,16 @@ out: their critical logic is in the core (0022), and UI coverage measures layout
 
 ## Where CI runs
 
-While the repository is private, a hosted job draws on the organisation's monthly Actions
-minutes, and macOS bills ten times Linux. So the PR checks run on Samtak's own Mac mini
-(`samtak-mac`, two organisation runner instances), chosen by four repository variables:
+The repository is public, so hosted Linux and macOS runners cost nothing. The build, test and guard
+jobs run hosted. Only two lanes stay on Samtak's own Mac mini (`samtak-mac`, two organisation runner
+instances), for its speed and its one AVD, each chosen by a repository variable:
 
-| Variable                  | Jobs                                                | Value on the Mac                                     |
+| Variable                  | Jobs                                                | Value                                                |
 | ------------------------- | --------------------------------------------------- | ---------------------------------------------------- |
-| `RUNNER_LABELS`           | the build and test jobs                             | `["self-hosted","macOS","ARM64","samtak-mac"]`       |
-| `GUARD_RUNNER_LABELS`     | the short guards (authorship, peer names, gitleaks) | the same                                             |
-| `EXCLUSIVE_RUNNER_LABELS` | the Android device job only                         | the same plus `spjall-exclusive`, held by one runner |
-| `MAC_RUNNER_LABELS`       | the iOS tests and the core's iOS build              | the same as `RUNNER_LABELS`                          |
+| `RUNNER_LABELS`           | the build and test jobs                             | unset (hosted)                                       |
+| `GUARD_RUNNER_LABELS`     | the short guards (authorship, peer names, gitleaks) | unset (hosted)                                       |
+| `EXCLUSIVE_RUNNER_LABELS` | the Android device job only                         | `["self-hosted","macOS","ARM64","samtak-mac","spjall-exclusive"]`, held by one runner |
+| `MAC_RUNNER_LABELS`       | the iOS tests and the core's iOS build              | `["self-hosted","macOS","ARM64","samtak-mac"]`       |
 
 - **Unset means hosted.** Every lane falls back to `ubuntu-latest`, so deleting a variable moves its
   jobs back to GitHub with no workflow change. A PR from a fork always runs hosted.
