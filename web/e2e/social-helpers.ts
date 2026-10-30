@@ -8,13 +8,20 @@ import { signInVerified } from "./accounts.ts";
 // a post card's menu and the founding of a community.
 
 /**
- * How far the page runs past its layout width. The layout width leaves out the
- * gutter `html` reserves: 15 px with classic scrollbars, as on Linux, and nothing
- * with overlay ones, as on macOS, so `innerWidth` would measure the platform.
+ * The page's layout width: the `html` box, which leaves out the gutter `html`
+ * reserves. That gutter is 15 px with classic scrollbars, as on Linux, and nothing
+ * with overlay ones, as on macOS. `innerWidth` and `clientWidth` both include it
+ * while no scrollbar shows, so either would measure the platform.
  */
+export function layoutWidth(page: Page) {
+  return page.evaluate(() => document.documentElement.getBoundingClientRect().width);
+}
+
+/** How far the page runs past its layout width. */
 export function pageOverflow(page: Page) {
   return page.evaluate(
-    () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    () =>
+      document.documentElement.scrollWidth - document.documentElement.getBoundingClientRect().width,
   );
 }
 

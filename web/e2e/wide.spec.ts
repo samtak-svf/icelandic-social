@@ -3,7 +3,7 @@ import { strings } from "../src/generated/brand/strings.ts";
 import { SIZE_CLASSES, sizeClassOf } from "../src/generated/frames.ts";
 import { layoutOf } from "../src/ui/layout.ts";
 import { expect, test } from "./origin.ts";
-import { found, pageOverflow, person, post, write } from "./social-helpers.ts";
+import { found, layoutWidth, pageOverflow, person, post, write } from "./social-helpers.ts";
 
 // The shell at the contract's size classes (decision 0087): a bar at the
 // bottom of a compact window, a rail down the left from medium up, at each
@@ -39,7 +39,7 @@ for (const width of WIDTHS) {
     const rail = await box(nav);
     const content = await box(main);
     if (sizeClassOf(width) === "compact") {
-      expect(rail.width).toBe(await member.evaluate(() => document.documentElement.clientWidth));
+      expect(rail.width).toBe(await layoutWidth(member));
       expect(rail.y + rail.height).toBeCloseTo(HEIGHT, 0);
       expect(rail.height).toBeLessThan(100);
     } else {
