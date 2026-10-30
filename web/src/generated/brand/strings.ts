@@ -990,4 +990,58 @@ export const strings = {
   platform_clear_photo_confirm: "Fjarlægja myndina af aðganginum? Aðgerðin er skráð í aðgerðaskrá Samtaks.",
   /** A notification: a moderator declined the reader's anonymous post (decision 0091). */
   notice_anonymous_declined: "Stjórnandi hafnaði nafnlausri færslu frá þér.",
+  /** A notification: the review the reader asked for upheld the action (decision 0115). */
+  notice_review_upheld: "Ákvörðun stjórnanda um efni frá þér stendur eftir endurskoðun.",
+  /** A notification: the review the reader asked for overturned the action (decision 0115). */
+  notice_review_overturned: "Ákvörðun stjórnanda um efni frá þér var felld úr gildi eftir endurskoðun.",
+  /** A notification: a platform moderator cleared the reader's photo (decision 0115). */
+  notice_account_photo_cleared: "Stjórnandi fjarlægði myndina af aðganginum þínum.",
+  /** Title of the screen listing what moderators did to the reader's content and why (decision 0115). */
+  statements_title: "Ákvarðanir um efnið þitt",
+  /** The statements screen with nothing on it. */
+  statements_empty: "Engar ákvarðanir hafa verið teknar um efnið þitt.",
+  /** Link from a removed post of the reader's to its statement of reasons. */
+  statement_open: "Sjá ástæðuna",
+  /** A statement whose text was purged after its 90 days (decision 0063). */
+  statement_text_gone: "Textanum hefur verið eytt.",
+  /** Button: asks for the single review of a moderator's action. */
+  statement_ask: "Biðja um endurskoðun",
+  /** Under a statement: the review can be asked for once, and someone else decides. */
+  statement_ask_once: "Þú getur beðið einu sinni um endurskoðun. Annar stjórnandi en sá sem tók ákvörðunina svarar.",
+  /** Confirmation before asking for the single review. */
+  statement_ask_confirm: "Biðja um endurskoðun? Það er aðeins hægt einu sinni.",
+  /** A statement whose review waits for a decision. */
+  statement_review_open: "Þú baðst um endurskoðun. Svar hefur ekki borist.",
+  /** A statement whose review upheld the action. */
+  statement_review_upheld: "Ákvörðunin stendur eftir endurskoðun.",
+  /** A statement whose review overturned the action, and the content came back. */
+  statement_review_overturned: "Ákvörðunin var felld úr gildi og efnið birt aftur.",
+  /** A statement whose review overturned the action, and the content stays as it is: it no longer exists, as a cleared photo does not, or a later decision about it still stands. */
+  statement_review_overturned_not_restored: "Ákvörðunin var felld úr gildi, en efnið kemur ekki aftur.",
+  /** Label of the deciding moderator's reason on a statement. */
+  statement_review_reason: "Svar við endurskoðun",
+  /** Heading of the reviews waiting on the platform moderation page. */
+  platform_reviews: "Beiðnir um endurskoðun",
+  /** The reviews section with nothing waiting. */
+  platform_reviews_empty: "Engin beiðni bíður.",
+  /** Button: a platform moderator upholds the action under review. */
+  platform_review_uphold: "Staðfesta ákvörðunina",
+  /** Button: a platform moderator overturns the action under review. */
+  platform_review_overturn: "Fella ákvörðunina úr gildi",
+  /** Confirmation before upholding. */
+  platform_review_uphold_confirm: "Staðfesta ákvörðunina? Viðkomandi fær að vita það og getur ekki beðið aftur um endurskoðun.",
+  /** Confirmation before overturning; says that a cleared photo does not return. */
+  platform_review_overturn_confirm: "Fella ákvörðunina úr gildi? Efnið er birt aftur ef það er enn til. Mynd sem var fjarlægð kemur ekki aftur.",
+  /** Why the buttons are off on a review the viewer acted on or asked for. */
+  platform_review_not_yours: "Annar stjórnandi verður að svara þessari beiðni, því að þú tókst ákvörðunina eða baðst um endurskoðunina.",
+  /** A review whose text was purged after its 90 days: it is decided without it (decision 0115). */
+  platform_review_text_gone: "Textanum hefur verið eytt. Ákvörðunin er tekin án hans.",
+  /** Label of who acted, shown only to the deciding platform moderator. */
+  platform_review_decider: "Stjórnandi sem tók ákvörðunina",
+  /** A log entry: a review upheld an action. */
+  moderation_log_review_upheld: "Ákvörðun var staðfest eftir endurskoðun.",
+  /** A log entry: a review overturned an action. */
+  moderation_log_review_overturned: "Ákvörðun var felld úr gildi eftir endurskoðun.",
+  /** Link from a removed post to reading it, for a moderator of its community. */
+  post_tombstone_open: "Opna færsluna",
 } as const;

@@ -166,11 +166,17 @@ describe("a notification with no community", () => {
 
 describe("what an old client is shown", () => {
   /** Whether a row of this kind and community passes the filter, asked of D1 itself. */
-  const passes = async (knows: boolean, kind: string, communityId: string | null) => {
+  const passes = async (
+    knows: boolean,
+    kind: string,
+    communityId: string | null,
+    action: string | null = null,
+  ) => {
     const row = await env.DB.prepare(
-      `SELECT 1 AS yes FROM (SELECT ?1 AS kind, ?2 AS community_id) n WHERE ${shownTo(knows)}`,
+      `SELECT 1 AS yes FROM (SELECT ?1 AS kind, ?2 AS community_id, ?3 AS action) n
+        WHERE ${shownTo(knows)}`,
     )
-      .bind(kind, communityId)
+      .bind(kind, communityId, action)
       .first();
     return row !== null;
   };
@@ -185,6 +191,17 @@ describe("what an old client is shown", () => {
     expect(await passes(false, "comment", null)).toBe(false);
     expect(await passes(true, "friend_request", id)).toBe(true);
     expect(await passes(true, "friend_request", null)).toBe(true);
+  });
+
+  // An old app reads a new action as unknown and words it as a removal (0115).
+  it("leaves out an action added after the release it knows", async () => {
+    const owner = await person("Eigandi");
+    const id = await community(owner, "open");
+    expect(await passes(false, "moderated", id, "remove_post")).toBe(true);
+    for (const action of ["review_upheld", "review_overturned", "clear_account_photo"]) {
+      expect(await passes(false, "moderated", id, action)).toBe(false);
+      expect(await passes(true, "moderated", id, action)).toBe(true);
+    }
   });
 });
 

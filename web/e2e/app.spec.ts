@@ -1,7 +1,7 @@
 import type { Page } from "@playwright/test";
 import { strings } from "../src/generated/brand/strings.ts";
 import { png } from "./images.ts";
-import { expect, serveOrigin, test, WEB } from "./origin.ts";
+import { CLIENT, expect, serveOrigin, test, WEB } from "./origin.ts";
 import { addMark, signIn, signInVerified } from "./accounts.ts";
 import { newGoogleSubject, newKennitala } from "./people.ts";
 
@@ -15,11 +15,11 @@ const NAME = "Prófa Prófsdóttir";
 
 /** The account, as the API describes it to this browser. */
 async function me(page: Page): Promise<unknown> {
-  return page.evaluate(async () => {
-    const answer = await fetch("/v1/me", { headers: { "spjall-client": "web/0.1.0" } });
+  return page.evaluate(async (headers) => {
+    const answer = await fetch("/v1/me", { headers });
     const body: unknown = await answer.json();
     return body;
-  });
+  }, CLIENT);
 }
 
 test("offers only Google to sign in: Kenni is no way in", async ({ page }) => {

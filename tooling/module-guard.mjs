@@ -81,6 +81,7 @@ export const OWNERS = {
   platform_moderators: "moderation",
   reports: "moderation",
   moderation_log: "moderation",
+  moderation_reviews: "moderation",
   jobs: "jobs",
   notifications: "notifications",
   notification_actors: "notifications",
@@ -121,7 +122,7 @@ export const READS = [
   {
     module: "moderation",
     table: "post_index",
-    why: "the log and a report never name the author of an anonymous post (decision 0091)",
+    why: "the log and a report never name the author of an anonymous post, whose statement of reasons is found by the post (decisions 0091, 0115)",
   },
   {
     module: "communities",

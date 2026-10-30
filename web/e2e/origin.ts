@@ -1,5 +1,9 @@
 import { test as base, type Page } from "@playwright/test";
 import ids from "../../identifiers/ids.json" with { type: "json" };
+import pkg from "../package.json" with { type: "json" };
+
+/** What a spec's own API call says it is: the floor refuses anything older (decision 0030). */
+export const CLIENT = { "spjall-client": `web/${pkg.version}` };
 
 /** Where `cf dev` listens: backend/scripts/dev-worker.sh exports its URL; 8787 when run by hand. */
 export const DEV = process.env.SPJALL_DEV_URL ?? "http://127.0.0.1:8787";

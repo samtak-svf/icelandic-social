@@ -107,6 +107,10 @@ export async function render(
   });
 }
 
+/** The posts a list holds: a client that knows a tombstone gets the removed too (0115). */
+const listed = (tombstones: boolean) =>
+  tombstones ? "p.state IN ('visible', 'removed')" : "p.state = 'visible'";
+
 const INDEXED = `p.post_id AS postId, p.community_id AS communityId, p.author_id AS authorId,
        p.created_at AS createdAt, p.state, p.anonymous`;
 
@@ -120,12 +124,13 @@ export function parseCursor(cursor: string | undefined): { t: number; id: string
 }
 
 /**
- * A community's visible posts, newest first, but those a block hides from the
- * viewer. With `query` (decision 0079) the community's own space names the
- * posts whose text matches it, so the index reads only those, and every page
- * and its `next` follow the same rule without the search: keyset pagination,
- * visibility and block filtering stay exact. Featured posts keep their place
- * in time (decision 0088).
+ * A community's visible posts, newest first, with `tombstones` the removed in
+ * their places, but those a block hides from the viewer. With `query` (decision
+ * 0079) the community's own space names the posts whose text matches it, so the
+ * index reads only those, and every page and its `next` follow the same rule
+ * without the search: keyset pagination, visibility and block filtering stay
+ * exact. Featured posts keep their place in time (decision 0088). A search finds
+ * only what can be read.
  */
 export async function communityPosts(
   env: Env,
@@ -133,6 +138,7 @@ export async function communityPosts(
   viewer: Viewer,
   before: string | undefined,
   limit: number,
+  tombstones: boolean,
   query?: string,
 ): Promise<{ rows: IndexedPost[]; next: string | null }> {
   const cursor = parseCursor(before);
@@ -142,7 +148,7 @@ export async function communityPosts(
   const { results } = await db(env)
     .prepare(
       `SELECT ${INDEXED} FROM post_index p
-        WHERE p.community_id = ?1 AND p.state = 'visible'
+        WHERE p.community_id = ?1 AND ${listed(tombstones && matched === null)}
           AND p.author_id NOT IN (SELECT value FROM json_each(?2))
           AND (?3 IS NULL OR p.created_at < ?3
                OR (p.created_at = ?3 AND (?4 IS NULL OR p.post_id < ?4)))
@@ -200,17 +206,19 @@ export async function featuredFor(
 }
 
 /**
- * One page of `viewer`'s feed: the visible posts of its communities, newest
- * first, read one time window at a time (the plan #275 measured). A page that
- * fills ends at its last post; one that does not ends at its window, and the
- * next page reads the window before it, until no community of the viewer's is
- * that old. `rowsRead` is D1's own count, for the budget test.
+ * One page of `viewer`'s feed: the visible posts of its communities, with
+ * `tombstones` the removed too, newest first, read one time window at a time
+ * (the plan #275 measured). A page that fills ends at its last post; one that
+ * does not ends at its window, and the next page reads the window before it,
+ * until no community of the viewer's is that old. `rowsRead` is D1's own count,
+ * for the budget test.
  */
 export async function feed(
   env: Env,
   viewer: string,
   before: string | undefined,
   limit: number,
+  tombstones: boolean,
   now = Date.now(),
 ): Promise<{ rows: IndexedPost[]; next: string | null; rowsRead: number }> {
   const cursor = parseCursor(before) ?? { t: now, id: null };
@@ -220,7 +228,7 @@ export async function feed(
          JOIN live_communities c ON c.community_id = m.community_id
          JOIN post_index p ON p.community_id = m.community_id
           AND p.created_at <= ?2 AND p.created_at > ?2 - ?3
-        WHERE m.account_id = ?1 AND p.state = 'visible'
+        WHERE m.account_id = ?1 AND ${listed(tombstones)}
           AND (p.created_at < ?2 OR ?4 IS NULL OR p.post_id < ?4)
           AND ${UNBLOCKED("?1", "p.author_id")}
         ORDER BY p.created_at DESC, p.post_id DESC LIMIT ?5`,

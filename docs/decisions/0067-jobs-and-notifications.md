@@ -1,6 +1,6 @@
 # 0067. Jobs are D1 rows written with their cause; notifications are rows for one account
 
-- Status: accepted; implemented in the backend (#32); amended by 0103, 0104, 0105, 0106 and 0107
+- Status: accepted; implemented in the backend (#32), the notices of a statement and a review (#374); amended by 0103, 0104, 0105, 0106 and 0107
 - Date: 2026-10-18
 - Decided by: Guðröður Atli Jónsson (phase 4, #306)
 - Builds on: [0025](0025-push-without-ids.md) (a push names nothing),
@@ -63,7 +63,7 @@
 
 ## Not built yet
 
-Mentions, follows, and the tombstone and single review of a moderated item (0066). The
+Mentions and follows. The
 notification for a reply to one's comment was built by
 [0071](0071-comment-replies-and-reactions.md) and given its own kind by 0103; grouping is 0103
 and per-kind settings are 0106.

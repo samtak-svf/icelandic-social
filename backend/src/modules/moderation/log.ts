@@ -6,6 +6,7 @@ import type {
   COMMUNITY_POLL_ACTIONS,
   PlatformAction,
   REPORT_KINDS,
+  REVIEW_ACTIONS,
 } from "../../api/moderation.ts";
 import { db } from "../../env/index.ts";
 import { authors, type Moderated } from "../social/index.ts";
@@ -26,7 +27,8 @@ type Logged =
   | (typeof COMMUNITY_IMAGE_ACTIONS)[number]
   | (typeof COMMUNITY_PIN_ACTIONS)[number]
   | (typeof COMMUNITY_POLL_ACTIONS)[number]
-  | (typeof COMMUNITY_ANONYMOUS_ACTIONS)[number];
+  | (typeof COMMUNITY_ANONYMOUS_ACTIONS)[number]
+  | (typeof REVIEW_ACTIONS)[number];
 type Kind = (typeof REPORT_KINDS)[number] | "report";
 
 export type Entry = {

@@ -21,6 +21,7 @@ import { likeCommentRoute, unlikeCommentRoute } from "../../api/social-hub.ts";
 import type { AppEnv } from "../../http.ts";
 import { space, withinLimit } from "../../env/index.ts";
 import { blockedEither } from "../../identity/index.ts";
+import { CLIENT_HEADER, decodesEveryNotice } from "../../shared/client-version.ts";
 import { fail } from "../../shared/errors.ts";
 import { log } from "../../shared/log.ts";
 import { markRead } from "../communities/index.ts";
@@ -28,6 +29,7 @@ import { notice } from "../jobs/index.ts";
 import { cardRoutes } from "./cards.ts";
 import { commentAccess, postAccess, refusal, replyRefusal, spaceAccess } from "./access.ts";
 import { authors, named } from "./bylines.ts";
+import { removedPost, renderListed } from "./tombstones.ts";
 import {
   communityImages,
   deleteCommentMedia,
@@ -136,14 +138,15 @@ export function socialRoutes(app: OpenAPIHono<AppEnv>): void {
     if (!access) return fail(c, 404, "not_found");
     // Featured posts keep their place in time, marked (decision 0088).
     const featured = new Set(await space(c.env, communityId).featured());
-    const page = await communityPosts(c.env, communityId, access.viewer, before, limit, q);
+    const knowing = decodesEveryNotice(c.env, c.req.header(CLIENT_HEADER));
+    const page = await communityPosts(c.env, communityId, access.viewer, before, limit, knowing, q);
     // Opening the feed (its first page, not a search) is what reading the
     // community means: the member's unread count goes to zero (decision 0080).
     if (before === undefined && !q?.trim() && access.standing.role !== null) {
       await markRead(c.env, c.var.session.accountId, communityId).run();
     }
     return c.json(
-      { posts: await render(c.env, page.rows, access.viewer, featured), next: page.next },
+      { posts: await renderListed(c.env, page.rows, access.viewer, featured), next: page.next },
       200,
     );
   });
@@ -160,16 +163,25 @@ export function socialRoutes(app: OpenAPIHono<AppEnv>): void {
   app.openapi(feedRoute, async (c) => {
     const { accountId } = c.var.session;
     const { before, limit } = c.req.valid("query");
-    const page = await feed(c.env, accountId, before, limit);
+    const knowing = decodesEveryNotice(c.env, c.req.header(CLIENT_HEADER));
+    const page = await feed(c.env, accountId, before, limit, knowing);
     // The feed's SQL left out the posts of the blocked; the spaces hide their comments and reactions.
     const hidden = await blockedEither(c.env, accountId);
     const viewer = { account: accountId, hidden, moderator: false };
-    return c.json({ posts: await render(c.env, page.rows, viewer), next: page.next }, 200);
+    return c.json({ posts: await renderListed(c.env, page.rows, viewer), next: page.next }, 200);
   });
 
   app.openapi(getPostRoute, async (c) => {
-    const found = await postAccess(c.env, c.var.session.accountId, c.req.valid("param").postId);
-    if (!found) return fail(c, 404, "not_found");
+    const { accountId } = c.var.session;
+    const { postId } = c.req.valid("param");
+    const found = await postAccess(c.env, accountId, postId);
+    if (!found) {
+      // A reader who cannot open a removed post learns that it was removed (0115).
+      const removed = decodesEveryNotice(c.env, c.req.header(CLIENT_HEADER))
+        ? await removedPost(c.env, accountId, postId)
+        : null;
+      return removed ? c.json(removed, 200) : fail(c, 404, "not_found");
+    }
     const featured = new Set(await space(c.env, found.post.communityId).featured());
     const [post] = await render(c.env, [found.post], found.access.viewer, featured);
     return post ? c.json(post, 200) : fail(c, 404, "not_found");

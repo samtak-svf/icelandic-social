@@ -1,9 +1,11 @@
 import { useCallback, useId, useState } from "react";
 import {
+  openModerationReviews,
   platformModerationLog,
   platformReports,
   type Card,
   type ModerationLogEntry,
+  type OpenModerationReview,
   type Report,
 } from "../generated/api.ts";
 import { strings } from "../generated/brand/strings.ts";
@@ -23,10 +25,11 @@ import {
 } from "./platform-moderation.ts";
 import { AuthorName } from "./post.tsx";
 import { Quoted, REASONS, useCards } from "./report-card.tsx";
+import { ReviewList } from "./platform-reviews.tsx";
 
 // Samtak's moderation page (decision 0115, step 2e): the open reports made to
-// the platform, with the actions a platform moderator has on an account, and
-// the log of what was done. Only the server knows who may; a person it
+// the platform, with the actions a platform moderator has on an account, the
+// reviews people asked for, and the log of what was done. Only the server knows who may; a person it
 // refuses sees the refusal and neither list.
 
 /** The page: both lists, and a refusal in place of them when the server gives one. */
@@ -52,21 +55,33 @@ export function PlatformModeration({ calls = live }: Readonly<{ calls?: Calls }>
     }, []),
     (entry) => String(entry.entryId),
   );
+  const reviews = usePaged<OpenModerationReview>(
+    useCallback(async (before) => {
+      const page = await outcome(openModerationReviews({ query: before ? { before } : {} }), 200);
+      return page.ok
+        ? { ok: true, data: { posts: page.data.reviews, next: page.data.next } }
+        : page;
+    }, []),
+    (review) => String(review.entryId),
+  );
   const done = () => {
     queue.reload();
+    reviews.reload();
     log.reload();
   };
-  return <PlatformView queue={queue} log={log} calls={calls} done={done} />;
+  return <PlatformView queue={queue} reviews={reviews} log={log} calls={calls} done={done} />;
 }
 
 /** What is drawn of the two lists as they have loaded. */
 export function PlatformView({
   queue,
+  reviews,
   log,
   calls,
   done,
 }: Readonly<{
   queue: Paged<Report>;
+  reviews: Paged<OpenModerationReview>;
   log: Paged<ModerationLogEntry>;
   calls: Calls;
   done: () => void;
@@ -84,6 +99,10 @@ export function PlatformView({
           <section aria-label={strings.moderation_queue} className="flex flex-col gap-2">
             <h2 className="text-xl font-semibold">{strings.moderation_queue}</h2>
             <Queue queue={queue} calls={calls} done={done} />
+          </section>
+          <section aria-label={strings.platform_reviews} className="flex flex-col gap-2">
+            <h2 className="text-xl font-semibold">{strings.platform_reviews}</h2>
+            <ReviewList reviews={reviews} calls={calls} done={done} />
           </section>
           <section aria-label={strings.moderation_log_title} className="flex flex-col gap-2">
             <h2 className="text-xl font-semibold">{strings.moderation_log_title}</h2>

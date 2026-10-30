@@ -4,14 +4,15 @@
 //! it goes into the store beside the conversations. A post's images (0065)
 //! are the one exception, kept as files beside the photos.
 
+mod moderation;
 mod notifications;
 
 use std::path::{Path, PathBuf};
 
 use crate::api::{
     Audience, Author, Card, Comment, CommentPage, Community, CommunityImagePage, CommunityMember,
-    CommunityPage, JoinRequest, JoinState, Moderation, ModerationAction, ModerationLogPage,
-    NewReport, Post, PostPage, Ref, ReportPage, ReportState, Role, SocialMedia, Transport,
+    CommunityPage, JoinRequest, JoinState, Moderation, ModerationAction, NewReport, Post, PostPage,
+    Ref, ReportPage, ReportState, Role, SocialMedia, Transport,
 };
 use crate::{Client, ClientError, Hosted, MediaError, authed, is_id};
 
@@ -483,20 +484,6 @@ impl<T: Transport> Hosted<T> {
         }
         let api = self.api()?;
         Ok(api.moderate(community, moderation)?)
-    }
-
-    /// A page of a community's moderation log, newest first, for its
-    /// moderators; `before` is the `next` of the page before. At most 100 a
-    /// page.
-    pub fn community_moderation_log(
-        &self,
-        community: &str,
-        before: Option<&str>,
-        size: u32,
-    ) -> Result<ModerationLogPage, ClientError> {
-        id(community, "community id")?;
-        let api = self.api()?;
-        Ok(api.community_moderation_log(community, before, size.clamp(1, 100))?)
     }
 
     /// Closes a report with what was done about it.

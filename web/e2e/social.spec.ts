@@ -11,19 +11,15 @@ import {
   person,
   platformModerator,
   post,
+  runJobs,
   write,
 } from "./social-helpers.ts";
-import { DEV, expect, test, WEB } from "./origin.ts";
+import { CLIENT, expect, test, WEB } from "./origin.ts";
 
 // The first social slice on the web (#291), through what a person sees: a
 // member finds and joins a community, posts, comments, reacts, is told of a
 // comment and reports a post; the owner, the community's moderator, reviews
 // the report and hides the post, and its author is told.
-
-/** Runs the jobs that are due, as the minute cron would (backend/dev/worker.ts). */
-async function runJobs() {
-  expect((await fetch(`${DEV}/dev/jobs`, { method: "POST" })).status).toBe(204);
-}
 
 /** Goes to Stjórna through the `⋯` menu. */
 test("a member joins, posts, comments, reacts, is told and reports; a moderator acts", async ({
@@ -433,19 +429,19 @@ test("the feed shows more than one page of posts after scrolling", async ({ brow
   const COUNT = 23;
   // Seeded through the API: the page size is 20, so a second page must be read.
   const made = await owner.evaluate(
-    async ({ id, count }) => {
+    async ({ id, count, client }) => {
       let ok = 0;
       for (let n = 1; n <= count; n++) {
         const answer = await fetch(`/v1/communities/${id}/posts`, {
           method: "POST",
-          headers: { "spjall-client": "web/0.1.0", "content-type": "application/json" },
+          headers: { ...client, "content-type": "application/json" },
           body: JSON.stringify({ body: `Færsla númer ${n}`, media: [] }),
         });
         if (answer.status === 200) ok++;
       }
       return ok;
     },
-    { id: communityId, count: COUNT },
+    { id: communityId, count: COUNT, client: CLIENT },
   );
   expect(made).toBe(COUNT);
 

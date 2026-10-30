@@ -10,9 +10,11 @@ export { deletePending, pendingAnonymous, pendingQueue, publishPending } from ".
 export { commentMedia, deleteUnattached } from "./media.ts";
 export {
   commentContent,
+  keptText,
   moderateComment,
   moderatePost,
   postContent,
+  postOfComment,
   purgeRemoved,
   type Content,
 } from "./moderation.ts";

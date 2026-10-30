@@ -41,6 +41,22 @@ const BADGE: Record<NoticeKind, NoticeBadge> = {
   moderated: "moderator",
 };
 
+/** The moderated rows with a sentence of their own; any other action reads `notice_moderated`. */
+const MODERATED: Partial<
+  Record<
+    string,
+    | "notice_anonymous_declined"
+    | "notice_review_upheld"
+    | "notice_review_overturned"
+    | "notice_account_photo_cleared"
+  >
+> = {
+  decline_anonymous_post: "notice_anonymous_declined",
+  review_upheld: "notice_review_upheld",
+  review_overturned: "notice_review_overturned",
+  clear_account_photo: "notice_account_photo_cleared",
+};
+
 /** The strings key, its arguments, the badge and the finished sentence of a row. */
 export function noticeText(n: NoticeSource): NoticeText {
   const badge = BADGE[n.kind];
@@ -48,13 +64,8 @@ export function noticeText(n: NoticeSource): NoticeText {
     return { key: "notice_join_approved", args: {}, badge, text: strings.notice_join_approved };
   }
   if (n.kind === "moderated") {
-    const declined = n.action === "decline_anonymous_post";
-    return {
-      key: declined ? "notice_anonymous_declined" : "notice_moderated",
-      args: {},
-      badge,
-      text: declined ? strings.notice_anonymous_declined : strings.notice_moderated,
-    };
+    const key = MODERATED[n.action ?? ""] ?? "notice_moderated";
+    return { key, args: {}, badge, text: strings[key] };
   }
   const names = n.actors.map((actor) => actor?.name ?? null);
   const name = names[0] ?? null;

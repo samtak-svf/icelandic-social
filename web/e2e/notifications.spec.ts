@@ -1,16 +1,11 @@
 import { strings } from "../src/generated/brand/strings.ts";
-import { found, join, person, post, write } from "./social-helpers.ts";
-import { DEV, expect, test, WEB } from "./origin.ts";
+import { found, join, person, post, runJobs, write } from "./social-helpers.ts";
+import { expect, test, WEB } from "./origin.ts";
 
 // Notifications v2 on the web (decisions 0103, 0104, 0106), through what a
 // person sees: two people react to one post and its author sees ONE row
 // naming both; opening the list clears the badge but not the row; and a
 // level set in Settings is still there after a reload.
-
-/** Runs the jobs that are due, as the minute cron would (backend/dev/worker.ts). */
-async function runJobs() {
-  expect((await fetch(`${DEV}/dev/jobs`, { method: "POST" })).status).toBe(204);
-}
 
 test("two reactions are one row; seen clears the badge, a click reads the row; a level persists", async ({
   browser,

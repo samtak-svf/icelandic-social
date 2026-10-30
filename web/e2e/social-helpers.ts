@@ -1,7 +1,7 @@
 import type { Browser, Locator, Page } from "@playwright/test";
 import { strings } from "../src/generated/brand/strings.ts";
 import { layoutOf } from "../src/ui/layout.ts";
-import { DEV, expect, serveOrigin } from "./origin.ts";
+import { CLIENT, DEV, expect, serveOrigin } from "./origin.ts";
 import { signInVerified } from "./accounts.ts";
 
 // What the social specs share: people in browsers of their own, the composer,
@@ -131,14 +131,19 @@ export async function titleOf(page: Page): Promise<string> {
 
 /** Makes the person in `page` a platform moderator, through the dev Worker. */
 export async function platformModerator(page: Page) {
-  const accountId = await page.evaluate(async () => {
-    const answer = await fetch("/v1/me", { headers: { "spjall-client": "web/0.1.0" } });
+  const accountId = await page.evaluate(async (headers) => {
+    const answer = await fetch("/v1/me", { headers });
     const body: unknown = await answer.json();
     return typeof body === "object" && body !== null && "accountId" in body
       ? String(body.accountId)
       : "";
-  });
+  }, CLIENT);
   expect(accountId).not.toBe("");
   const url = `${DEV}/dev/platform-moderator?account=${encodeURIComponent(accountId)}`;
   expect((await fetch(url, { method: "POST" })).status).toBe(204);
+}
+
+/** Runs the jobs that are due, as the minute cron would (backend/dev/worker.ts). */
+export async function runJobs() {
+  expect((await fetch(`${DEV}/dev/jobs`, { method: "POST" })).status).toBe(204);
 }
