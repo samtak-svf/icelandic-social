@@ -2,6 +2,7 @@ import { dropAccount, orphans, revokeAllDevices } from "../identity/index.ts";
 import { handOverCommunities, purgeWall } from "../modules/communities/index.ts";
 import { communityLifecycle } from "./community-lifecycle.ts";
 import { deleteAccountHistory } from "../modules/history/index.ts";
+import { deleteAccountFiles } from "../modules/imports/index.ts";
 import { forgetFriends } from "./friends.ts";
 import { leaveConversations } from "../modules/messaging/index.ts";
 import { deleteAccountPhoto } from "../modules/profiles/index.ts";
@@ -30,6 +31,8 @@ export async function deleteAccount(env: Env, accountId: string): Promise<void> 
   await forgetFriends(env, accountId);
   // A history transfer's row would go with the account, its bytes would not.
   await deleteAccountHistory(env, accountId);
+  // An import file's rows would go with the account, its bytes would not.
+  await deleteAccountFiles(env, accountId);
   await dropAccount(env, accountId);
 }
 

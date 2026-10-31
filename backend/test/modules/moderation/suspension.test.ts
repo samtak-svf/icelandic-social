@@ -117,6 +117,14 @@ const REFUSED: Record<string, { allowed: number; call: (s: Setting) => Promise<R
     call: (s) =>
       s.one.call("PUT", `/v1/communities/${s.owned}/invitations/${s.outsider.accountId}`),
   },
+  createImportFile: {
+    allowed: 201,
+    call: (s) => s.one.call("POST", "/v1/imports/file", { size: 10 }),
+  },
+  publishImport: {
+    allowed: 404,
+    call: (s) => s.one.call("POST", `/v1/imports/im_${"0".repeat(32)}/publish`, {}),
+  },
   createWallPost: {
     allowed: 200,
     call: (s) => s.one.call("POST", "/v1/wall/posts", { body: "Nýtt", audience: "friends" }),
@@ -185,6 +193,9 @@ const NOT_REFUSED: Record<string, readonly string[]> = {
     "deleteHistory",
     "putHistoryPart",
     "completeHistoryTransfer",
+    "putImportPart",
+    "completeImport",
+    "deleteImport",
     "setPhoto",
     "removePhoto",
     "setPhotoFrames",

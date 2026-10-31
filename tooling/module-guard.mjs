@@ -97,6 +97,9 @@ export const OWNERS = {
   person_snoozes: "friends",
   import_sources: "imports",
   imported_posts: "imports",
+  import_files: "imports",
+  import_file_parts: "imports",
+  import_file_items: "imports",
 };
 
 /** The reads of another module's table, each with its reason. */

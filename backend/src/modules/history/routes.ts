@@ -10,6 +10,7 @@ import {
 import type { AppEnv } from "../../http.ts";
 import { fail } from "../../shared/errors.ts";
 import { log } from "../../shared/log.ts";
+import { partRequest } from "../../shared/multipart.ts";
 import {
   completeTransfer,
   createTransfer,
@@ -55,12 +56,10 @@ export function historyRoutes(app: OpenAPIHono<AppEnv>): void {
     const body = c.req.raw.body;
     // A refusal cancels the body, so the client stops sending it.
     const refuse = async <T>(answer: T) => (await body?.cancel(), answer);
-    const length = Number(c.req.header("content-length") ?? Number.NaN);
-    if (!Number.isSafeInteger(length) || length < 1 || !body) {
-      return refuse(fail(c, 400, "invalid_request"));
-    }
+    const request = partRequest(c.req.raw);
+    if (!request) return refuse(fail(c, 400, "invalid_request"));
     try {
-      const stored = await putPart(c.env, c.var.device, linkId, part, length, body);
+      const stored = await putPart(c.env, c.var.device, linkId, part, request.length, request.body);
       if (stored !== "ok") return refuse(refusal(c, stored));
     } catch {
       // The body ended short of, or ran past, its Content-Length.

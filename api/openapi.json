@@ -3900,6 +3900,195 @@
           "push"
         ],
         "description": "`off` writes nothing, `in_app` writes the notification and sends no push, `push` also pushes (decision 0106)"
+      },
+      "ImportFileUpload": {
+        "type": "object",
+        "properties": {
+          "importId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,128}$",
+            "example": "c_9f3a1b"
+          },
+          "partSize": {
+            "type": "integer",
+            "description": "Every part but the last is this many bytes; the last is the remainder"
+          },
+          "parts": {
+            "type": "integer",
+            "description": "How many parts to upload, numbered from 1"
+          }
+        },
+        "required": [
+          "importId",
+          "partSize",
+          "parts"
+        ]
+      },
+      "CreateImportFile": {
+        "type": "object",
+        "properties": {
+          "size": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "The ZIP's length in bytes"
+          }
+        },
+        "required": [
+          "size"
+        ]
+      },
+      "ImportStatus": {
+        "type": "object",
+        "properties": {
+          "state": {
+            "type": "string",
+            "enum": [
+              "uploading",
+              "parsing",
+              "ready",
+              "publishing",
+              "done",
+              "failed",
+              "removing"
+            ]
+          },
+          "failure": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "With failed, why: truncated, zip64, encrypted, unsupported, too_big, corrupt or no_posts"
+          },
+          "counts": {
+            "type": "object",
+            "properties": {
+              "posts": {
+                "type": "integer"
+              },
+              "images": {
+                "type": "integer"
+              },
+              "videos": {
+                "type": "integer"
+              },
+              "skipped": {
+                "type": "integer",
+                "description": "Entries in a shape this does not read"
+              },
+              "earliest": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "description": "Milliseconds since the epoch"
+              },
+              "latest": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "description": "Milliseconds since the epoch"
+              }
+            },
+            "required": [
+              "posts",
+              "images",
+              "videos",
+              "skipped",
+              "earliest",
+              "latest"
+            ]
+          }
+        },
+        "required": [
+          "state",
+          "failure",
+          "counts"
+        ]
+      },
+      "ImportItemPage": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ImportItem"
+            }
+          },
+          "next": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^\\d{1,16}(-[A-Za-z0-9_-]{1,160})?$",
+            "description": "The `next` of the page before"
+          }
+        },
+        "required": [
+          "items",
+          "next"
+        ]
+      },
+      "ImportItem": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "at": {
+            "type": "integer",
+            "description": "The post's original date, milliseconds since the epoch"
+          },
+          "text": {
+            "type": "string"
+          },
+          "images": {
+            "type": "integer"
+          },
+          "hasVideo": {
+            "type": "boolean",
+            "description": "A video is not carried over (decision 0120)"
+          }
+        },
+        "required": [
+          "id",
+          "at",
+          "text",
+          "images",
+          "hasVideo"
+        ]
+      },
+      "PublishImport": {
+        "type": "object",
+        "properties": {
+          "audience": {
+            "type": "string",
+            "enum": [
+              "friends",
+              "everyone"
+            ],
+            "description": "Who reads the posts; friends when left out, since nothing is public unless chosen"
+          },
+          "from": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Only posts from this date on"
+          },
+          "to": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Only posts up to this date"
+          },
+          "excluded": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 64
+            },
+            "maxItems": 1000,
+            "description": "Ids of posts to leave out"
+          }
+        }
       }
     },
     "parameters": {}
@@ -17725,6 +17914,653 @@
           },
           "426": {
             "description": "client_too_old: Spjall-Client names a version below the floor; minVersion says which",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/imports/file": {
+      "post": {
+        "operationId": "createImportFile",
+        "tags": [
+          "imports"
+        ],
+        "summary": "Start uploading another platform's export file (a ZIP of at most 4 GiB less a byte)",
+        "security": [
+          {
+            "deviceToken": []
+          },
+          {
+            "session": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateImportFile"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Upload the parts, then complete",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportFileUpload"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request does not match the schema",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No device token or session the route takes, or one that is not valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "too_large: more than 4 GiB less a byte",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "426": {
+            "description": "client_too_old: Spjall-Client names a version below the floor; minVersion says which",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "rate_limited: too many requests in the last minute; try again later",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/imports/{importId}/parts/{part}": {
+      "put": {
+        "operationId": "putImportPart",
+        "tags": [
+          "imports"
+        ],
+        "summary": "Upload one part of an import file; a repeated part replaces the first",
+        "description": "The body is exactly the part's length, with a Content-Length.",
+        "security": [
+          {
+            "deviceToken": []
+          },
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,128}$",
+              "example": "c_9f3a1b"
+            },
+            "required": true,
+            "name": "importId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "required": true,
+            "name": "part",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/octet-stream": {
+              "schema": {
+                "type": "string",
+                "format": "binary"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Stored"
+          },
+          "400": {
+            "description": "invalid_request: no such part, no Content-Length, or a body of another length",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No device token or session the route takes, or one that is not valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "not_found: no such import of the caller's",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "conflict: the upload is complete",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "expired: the upload is past its 7 days",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "426": {
+            "description": "client_too_old: Spjall-Client names a version below the floor; minVersion says which",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/imports/{importId}/complete": {
+      "post": {
+        "operationId": "completeImport",
+        "tags": [
+          "imports"
+        ],
+        "summary": "Finish the upload once every part is stored; the file is then read",
+        "security": [
+          {
+            "deviceToken": []
+          },
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,128}$",
+              "example": "c_9f3a1b"
+            },
+            "required": true,
+            "name": "importId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "The file is being read; watch the import's state"
+          },
+          "400": {
+            "description": "The request does not match the schema",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No device token or session the route takes, or one that is not valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "not_found: no such import of the caller's",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "incomplete: a part is missing; conflict: the upload is complete",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "expired: the upload is past its 7 days",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "426": {
+            "description": "client_too_old: Spjall-Client names a version below the floor; minVersion says which",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/imports/{importId}": {
+      "get": {
+        "operationId": "getImport",
+        "tags": [
+          "imports"
+        ],
+        "summary": "Where an import stands, and what the file held",
+        "security": [
+          {
+            "deviceToken": []
+          },
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,128}$",
+              "example": "c_9f3a1b"
+            },
+            "required": true,
+            "name": "importId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The import",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportStatus"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request does not match the schema",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No device token or session the route takes, or one that is not valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "not_found: no such import of the caller's",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "426": {
+            "description": "client_too_old: Spjall-Client names a version below the floor; minVersion says which",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "deleteImport",
+        "tags": [
+          "imports"
+        ],
+        "summary": "Remove an import: the upload and preview at once, and every post it brought in",
+        "security": [
+          {
+            "deviceToken": []
+          },
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,128}$",
+              "example": "c_9f3a1b"
+            },
+            "required": true,
+            "name": "importId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Removal has begun"
+          },
+          "400": {
+            "description": "The request does not match the schema",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No device token or session the route takes, or one that is not valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "not_found: no such import of the caller's",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "426": {
+            "description": "client_too_old: Spjall-Client names a version below the floor; minVersion says which",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/imports/{importId}/items": {
+      "get": {
+        "operationId": "listImportItems",
+        "tags": [
+          "imports"
+        ],
+        "summary": "The posts the file held, oldest first, to choose from",
+        "security": [
+          {
+            "deviceToken": []
+          },
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,128}$",
+              "example": "c_9f3a1b"
+            },
+            "required": true,
+            "name": "importId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{1,16}(-[A-Za-z0-9_-]{1,160})?$",
+              "description": "The `next` of the page before"
+            },
+            "required": false,
+            "description": "The `next` of the page before",
+            "name": "cursor",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A page",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportItemPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request does not match the schema",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No device token or session the route takes, or one that is not valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "not_found: no such import of the caller's",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "426": {
+            "description": "client_too_old: Spjall-Client names a version below the floor; minVersion says which",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/imports/{importId}/publish": {
+      "post": {
+        "operationId": "publishImport",
+        "tags": [
+          "imports"
+        ],
+        "summary": "Publish the chosen posts to the caller's wall, under their original dates",
+        "security": [
+          {
+            "deviceToken": []
+          },
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,128}$",
+              "example": "c_9f3a1b"
+            },
+            "required": true,
+            "name": "importId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PublishImport"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Publishing has begun; watch the import's state"
+          },
+          "400": {
+            "description": "The request does not match the schema",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No device token or session the route takes, or one that is not valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "not_found: no such import of the caller's",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "conflict: the import is not ready",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "426": {
+            "description": "client_too_old: Spjall-Client names a version below the floor; minVersion says which",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "rate_limited: too many requests in the last minute; try again later",
             "content": {
               "application/json": {
                 "schema": {

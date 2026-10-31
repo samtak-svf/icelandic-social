@@ -16,7 +16,7 @@ export interface CallInit {
 }
 
 interface CallArgs {
-  path?: Record<string, string>;
+  path?: Record<string, string | number>;
   query?: Record<string, string | number | boolean | undefined>;
   body?: unknown;
 }
@@ -28,7 +28,7 @@ function url(template: string, args: CallArgs | undefined, baseUrl: string): str
   const path = template.replaceAll(/\{(\w+)\}/g, (_, name: string) => {
     const value = args?.path?.[name];
     if (value === undefined) throw new TypeError(`missing path parameter ${name}`);
-    return encodeURIComponent(value);
+    return encodeURIComponent(String(value));
   });
   const query = new URLSearchParams();
   for (const [name, value] of Object.entries(args?.query ?? {})) {
