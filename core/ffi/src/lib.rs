@@ -3,8 +3,7 @@
 //! the app drives over its own HTTP transport and WebSocket.
 //!
 //! The records here mirror `spjall-envelope` so that crate stays free of FFI
-//! concerns; `From` impls in both directions keep them in step, and the tests
-//! round-trip every kind through them.
+//! concerns; `From` impls both ways and round-trip tests keep them in step.
 
 use std::path::Path;
 use std::sync::{Arc, Mutex, PoisonError};
@@ -14,6 +13,7 @@ use spjall_envelope as envelope;
 pub mod client;
 mod foreign;
 pub mod frames;
+pub mod own_link;
 pub mod social;
 
 uniffi::setup_scaffolding!();
