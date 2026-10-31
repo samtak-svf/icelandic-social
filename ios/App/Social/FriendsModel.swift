@@ -57,7 +57,8 @@ final class FriendsModel {
 
     /// Asks a suggested person. They leave the section when it went through, and stay with the problem when not.
     func ask(_ account: String) async {
-        await act { _ = try $0.sendFriendRequest(account) }
+        let social = social
+        await run(again: { await self.ask(account) }) { _ = try social.sendFriendRequest(account) }
         if problem == nil { suggestions.drop(account) }
     }
 

@@ -115,4 +115,72 @@ final class SuggestionsTests: XCTestCase {
         XCTAssertTrue(social.server.includedInSuggestions)
         XCTAssertFalse(model.busy)
     }
+
+    func testTheSentinelWantsMoreOnlyWhenThereIsANextAndNoFailure() async {
+        social.pageSize = 2
+        suggest([bera, agust, cecil])
+        let model = await friends()
+        XCTAssertEqual(model.suggestions.next, "2")
+        XCTAssertTrue(model.suggestions.wantsMore)
+        await model.suggestions.more()
+        XCTAssertNil(model.suggestions.next)
+        XCTAssertEqual(model.suggestions.people.count, 3)
+        XCTAssertFalse(model.suggestions.wantsMore)
+    }
+
+    func testAFailedPageReadStopsTheSentinelUntilLoadStartsOver() async {
+        social.pageSize = 2
+        suggest([bera, agust, cecil])
+        let model = await friends()
+        XCTAssertTrue(model.suggestions.wantsMore)
+        social.failOn = "friendSuggestions"
+        await model.suggestions.more()
+        XCTAssertNotNil(model.suggestions.next)
+        XCTAssertFalse(model.suggestions.paging)
+        XCTAssertFalse(model.suggestions.wantsMore)
+        XCTAssertEqual(model.suggestions.people.count, 2)
+        social.failOn = nil
+        await model.suggestions.load()
+        XCTAssertTrue(model.suggestions.wantsMore)
+    }
+
+    func testARetryAfterAFailedAskDropsThePerson() async {
+        suggest([bera])
+        let model = await friends()
+        XCTAssertEqual(model.suggestions.people.count, 1)
+        social.failOn = "sendFriendRequest"
+        await model.ask("b1")
+        XCTAssertNotNil(model.problem)
+        XCTAssertEqual(model.suggestions.people.count, 1)
+        social.failOn = nil
+        await model.retry()
+        XCTAssertNil(model.problem)
+        XCTAssertTrue(model.suggestions.people.isEmpty)
+        XCTAssertEqual(model.requests.sent.map(\.person.accountId), ["b1"])
+    }
+
+    func testARetryAfterAFailedWriteReadsAgainWithoutWritingAndClearsTheProblem() async {
+        let model = SuggestionSettingsModel(social: social)
+        await model.load()
+        social.failOn = "setFriendSuggestionsIncluded"
+        await model.set(false)
+        XCTAssertNotNil(model.problem)
+        let writes = social.calls.filter { $0.hasPrefix("setFriendSuggestionsIncluded") }.count
+        XCTAssertEqual(writes, 1)
+        social.failOn = nil
+        await model.load()
+        XCTAssertNil(model.problem)
+        XCTAssertEqual(model.included, true)
+        XCTAssertEqual(social.calls.filter { $0.hasPrefix("setFriendSuggestionsIncluded") }.count, writes)
+    }
+
+    func testAFailedRetryKeepsTheLastKnownValueAndTheProblem() async {
+        let model = SuggestionSettingsModel(social: social)
+        await model.load()
+        XCTAssertEqual(model.included, true)
+        social.failOn = "friendSuggestionsIncluded"
+        await model.load()
+        XCTAssertNotNil(model.problem)
+        XCTAssertEqual(model.included, true)
+    }
 }

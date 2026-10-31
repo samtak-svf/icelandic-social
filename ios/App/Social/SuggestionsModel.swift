@@ -10,6 +10,12 @@ final class SuggestionsModel {
     private(set) var next: String?
     private(set) var loaded = false
     private(set) var paging = false
+    /// The last page read failed: the sentinel stops asking until `load` starts over.
+    private(set) var failed = false
+
+    /// The sentinel at the foot of the section should ask for the next page now: there is one, none is on its way
+    /// and the last try did not fail. It is the sentinel's task id, so it asks again once a busy call is over.
+    var wantsMore: Bool { next != nil && !paging && !failed }
 
     private let social: Social
     /// The newest first-page read; an older answer that arrives later is dropped.
@@ -23,6 +29,7 @@ final class SuggestionsModel {
         let social = social
         ticket += 1
         let mine = ticket
+        failed = false
         do {
             let first = try await offMain { () -> FriendSuggestions? in
                 try social.friendSuggestionsIncluded() ? try social.friendSuggestions(after: nil) : nil
@@ -45,7 +52,10 @@ final class SuggestionsModel {
         let mine = ticket
         paging = true
         defer { paging = false }
-        guard let page = try? await offMain({ try social.friendSuggestions(after: after) }), mine == ticket else {
+        let read = try? await offMain { try social.friendSuggestions(after: after) }
+        guard mine == ticket else { return }
+        guard let page = read else {
+            failed = true
             return
         }
         let seen = Set(people.map(\.accountId))
