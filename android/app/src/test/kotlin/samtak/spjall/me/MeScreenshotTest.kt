@@ -131,12 +131,6 @@ private class NoMeActions : MeActions {
 
     override fun deleteAccount() = Unit
 
-    override fun choosePhoto() = Unit
-
-    override fun reframePhoto() = Unit
-
-    override fun removePhoto() = Unit
-
     override fun retry() = Unit
 
     override fun verify() = Unit
@@ -144,6 +138,8 @@ private class NoMeActions : MeActions {
     override fun linkBrowser() = Unit
 
     override fun statements() = Unit
+
+    override fun friends() = Unit
 
     override fun notificationSettings() = Unit
 }

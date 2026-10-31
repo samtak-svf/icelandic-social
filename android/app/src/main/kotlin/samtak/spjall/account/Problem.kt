@@ -52,6 +52,15 @@ sealed interface Problem {
     /** A platform moderator holds this account's writing (`suspended`, 0115): trying again cannot help. */
     data object Suspended : Problem
 
+    /** The other account will not take this friend request (`request_refused`, 0114): trying again cannot help. */
+    data object RequestRefused : Problem
+
+    /** Too many requests today (`request_limit`, 0114): tomorrow may work. */
+    data object RequestLimit : Problem
+
+    /** One of the two has the most friends there may be (`friend_limit`, 0114). */
+    data object FriendLimit : Problem
+
     /** The community stopped allowing anonymous posts meanwhile (`anonymous_off`, 0091). */
     data object AnonymousOff : Problem
 
@@ -87,6 +96,9 @@ private val REFUSALS: Map<String?, Problem> =
         "anonymous_off" to Problem.AnonymousOff,
         "pin_limit" to Problem.PinFull,
         "suspended" to Problem.Suspended,
+        "request_refused" to Problem.RequestRefused,
+        "request_limit" to Problem.RequestLimit,
+        "friend_limit" to Problem.FriendLimit,
     )
 
 /**

@@ -10,7 +10,7 @@ import samtak.spjall.core.Person
 import java.io.File
 
 /** Whose image a [PhotoOf] is, and so which call fetches it (0039, 0080); a [GroupFile] is read from disk (0094). */
-enum class PhotoKind { Account, CommunityPicture, CommunityCover, GroupFile }
+enum class PhotoKind { Account, CommunityPicture, CommunityCover, GroupFile, WallCover }
 
 /** An image at the version the server named: an account's photo (0039), or a community's picture or cover (0080). */
 data class PhotoOf(
@@ -24,6 +24,12 @@ data class PhotoOf(
 
 /** The photo to draw for this person, or null when the server gave none. */
 fun Person.photoOf(): PhotoOf? = photo?.let { PhotoOf(account, it) }
+
+/** The cover of an account's wall (0115), or null when it has none. */
+fun wallCoverOf(
+    accountId: String,
+    version: String?,
+): PhotoOf? = version?.let { PhotoOf(accountId, it, PhotoKind.WallCover) }
 
 /** The photo to draw for the author of a post or comment, or null when the server gave none (0080). */
 fun Author.photoOf(): PhotoOf? = photo?.let { PhotoOf(accountId, it) }

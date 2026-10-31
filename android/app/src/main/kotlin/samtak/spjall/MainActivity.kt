@@ -52,6 +52,7 @@ import samtak.spjall.frames.FrameSession
 import samtak.spjall.frames.FrameSheet
 import samtak.spjall.frames.LocalFrameSession
 import samtak.spjall.me.MeRoute
+import samtak.spjall.me.OwnWallRoute
 import samtak.spjall.me.link.LinkRoute
 import samtak.spjall.onboarding.OnboardingRoute
 import samtak.spjall.onboarding.OnboardingViewModel
@@ -252,10 +253,13 @@ class MainActivity : ComponentActivity() {
         ) {
             NavHost(
                 navController = nav,
-                startDestination = AppRoutes.LIST,
+                startDestination = SocialRoutes.FEED,
             ) {
                 composable(AppRoutes.LIST) { ConversationsRoute(list, nav) }
-                composable(AppRoutes.ME) { MeRoute(signIns, nav, graph, this@MainActivity, ::signedOut) }
+                composable(AppRoutes.ME) { OwnWallRoute(signIns, nav, graph, this@MainActivity) }
+                composable(AppRoutes.SETTINGS) {
+                    MeRoute(signIns, nav, graph, this@MainActivity, ::signedOut, onBack = { nav.popBackStack() })
+                }
                 socialScreens(
                     graph.social,
                     graph.account,
@@ -306,11 +310,11 @@ class MainActivity : ComponentActivity() {
 
         // The notifications screen is no tab, but it is reached from every tab and keeps the tabs under it.
         private val TABS =
-            setOf(AppRoutes.LIST, SocialRoutes.COMMUNITIES, SocialRoutes.NOTIFICATIONS, AppRoutes.ME)
+            setOf(SocialRoutes.FEED, AppRoutes.LIST, SocialRoutes.COMMUNITIES, SocialRoutes.NOTIFICATIONS, AppRoutes.ME)
     }
 }
 
-private val TAB_ROOTS = setOf(AppRoutes.LIST, SocialRoutes.COMMUNITIES, AppRoutes.ME)
+private val TAB_ROOTS = setOf(SocialRoutes.FEED, AppRoutes.LIST, SocialRoutes.COMMUNITIES, AppRoutes.ME)
 
 /**
  * The tab last opened and the tap that opens one. The notifications sit over the tab they were opened from, so it
@@ -321,7 +325,7 @@ private fun activeTab(
     nav: NavController,
     route: String?,
 ): Pair<String, (String) -> Unit> {
-    var active by rememberSaveable { mutableStateOf(AppRoutes.LIST) }
+    var active by rememberSaveable { mutableStateOf(SocialRoutes.FEED) }
     LaunchedEffect(route) { route?.takeIf { it in TAB_ROOTS }?.let { active = it } }
     return active to { root ->
         nav.openTab(root, active)
@@ -329,7 +333,7 @@ private fun activeTab(
     }
 }
 
-/** The three tabs; notifications are behind the bell (decision 0109). */
+/** The four tabs: the feed first (decision 0116); notifications are behind the bell (decision 0109). */
 @Composable
 private fun tabs(
     active: String,
@@ -337,6 +341,7 @@ private fun tabs(
 ): List<Tab> {
     val communities = SocialRoutes.COMMUNITIES
     return listOf(
+        Tab(AppIcons.Feed, stringResource(R.string.tab_feed), active == SocialRoutes.FEED) { go(SocialRoutes.FEED) },
         Tab(AppIcons.Chat, stringResource(R.string.tab_conversations), active == AppRoutes.LIST) {
             go(AppRoutes.LIST)
         },

@@ -16,6 +16,9 @@ object AppIcons {
     /** The conversations tab: a speech bubble. */
     val Chat = outline("chat", 20f, 1.8f, "M3 6a3 3 0 013-3h8a3 3 0 013 3v5a3 3 0 01-3 3H8l-5 4V6z")
 
+    /** The feed tab: three lines of a stream of posts. */
+    val Feed = outline("feed", 20f, 1.8f, "M3 5h14M3 10h14M3 15h9")
+
     /** The Ég tab: head and shoulders. */
     val Person =
         outline(

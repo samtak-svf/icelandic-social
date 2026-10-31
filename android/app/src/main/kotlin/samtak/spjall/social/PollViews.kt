@@ -167,7 +167,7 @@ private fun PollFooter(
 @Composable
 internal fun PollFields(
     options: List<String>,
-    actions: CommunityActions,
+    actions: Attaching,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         options.forEachIndexed { index, text ->

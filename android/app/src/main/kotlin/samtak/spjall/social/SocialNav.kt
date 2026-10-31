@@ -13,7 +13,6 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavController
 import androidx.navigation.NavGraphBuilder
-import androidx.navigation.compose.composable
 import samtak.spjall.account.Account
 import samtak.spjall.core.CommunityAudience
 import samtak.spjall.core.CommunityRole
@@ -41,10 +40,9 @@ fun NavGraphBuilder.socialScreens(
     fun screen(
         route: String,
         content: @Composable (NavBackStackEntry) -> Unit,
-    ) = composable(route) { entry ->
-        WithSocialHost(social, openStatements = { nav.navigate(SocialRoutes.STATEMENTS) }) { content(entry) }
-    }
+    ) = hostedScreen(social, nav, route, content)
 
+    screen(SocialRoutes.FEED) { FeedRoute(social, files, nav, sharePost) }
     screen(SocialRoutes.COMMUNITIES) { Communities(social, account, nav, sharePost) }
     screen(SocialRoutes.NOTIFICATIONS) { NotificationsRoute(social, nav, read, dismissNotice) }
     screen(SocialRoutes.NEW_COMMUNITY) { NewCommunity(social, files, nav) }
@@ -66,6 +64,7 @@ fun NavGraphBuilder.socialScreens(
         entry.arguments?.getString("id")?.let { AnonymousQueue(it, social, nav) }
     }
     screen(SocialRoutes.STATEMENTS) { Statements(social, nav) }
+    friendScreens(social, nav, ::screen)
 }
 
 @Composable
@@ -389,47 +388,11 @@ private fun PostEntry(
         state,
         focusComment = focusComment,
         actions =
-            object : PostActions {
-                override fun community(communityId: String) = nav.leavePostForCommunity(communityId)
-
-                override fun vote(optionId: String) = model.vote(optionId)
-
-                override fun withdrawVote() = model.withdrawVote()
-
-                override fun closePoll() = model.closePoll()
-
-                override fun deletePost() = model.deletePost()
-
-                override fun deleteComment(commentId: String) = model.deleteComment(commentId)
-
-                override fun draft(text: String) = model.draft(text)
-
-                override fun send() = model.send()
-
-                override fun addImage() =
-                    image.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
-
-                override fun removeImage() = model.unpick()
-
-                override fun onReplyTo(comment: samtak.spjall.core.Comment?) = model.onReplyTo(comment)
-
-                override fun react(emoji: String) = model.react(emoji)
-
-                override fun likeComment(commentId: String) = model.likeComment(commentId)
-
-                override fun pin(pinned: Boolean) = model.pin(pinned)
-
-                override fun sendToConversation(postId: String) = sharePost(postId)
-
-                override fun report(
-                    target: ReportTarget,
-                    reason: ReportReason,
-                    note: String,
-                ) = model.report(target, reason, note)
-
-                override fun more() = model.more()
-
-                override fun retry() = model.retry()
-            },
+            postActions(
+                model,
+                nav,
+                sharePost,
+                add = { image.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
+            ),
     )
 }

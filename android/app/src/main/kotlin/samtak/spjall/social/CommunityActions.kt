@@ -7,7 +7,9 @@ import samtak.spjall.core.ReportTarget
 
 /** What [CommunityScreen] can ask for. */
 @Suppress("TooManyFunctions")
-interface CommunityActions : PollActions {
+interface CommunityActions :
+    PollActions,
+    Attaching {
     fun back()
 
     fun join()
@@ -34,18 +36,6 @@ interface CommunityActions : PollActions {
 
     /** The end of Myndir came into view: the next page of pictures. */
     fun moreGallery()
-
-    /** Turns the post being written into a poll (0090), or back. */
-    fun togglePoll()
-
-    fun pollOption(
-        index: Int,
-        text: String,
-    )
-
-    fun addPollOption()
-
-    fun removePollOption(index: Int)
 
     /** Whether the post being written goes without the author's name (0091). */
     fun setAnonymous(on: Boolean)
@@ -95,12 +85,6 @@ interface CommunityActions : PollActions {
     fun draft(text: String)
 
     fun publish()
-
-    /** Opens the picker for an image to go with the post, when another fits. */
-    fun addImage()
-
-    /** Takes a picked image out of the post. */
-    fun removeImage(path: String)
 
     /** Deletes this account's own post, once it confirmed. */
     fun delete(postId: String)

@@ -36,6 +36,42 @@ class NoticeTextTest {
     }
 
     @Test
+    fun aFriendRequestAndItsAnswerNameOnePersonAndWearTheFriendBadge() {
+        val asked = noticeLine(SocialNotificationKind.FRIEND_REQUEST, listOf("Anna"), 1)
+        assertEquals(resources.getString(R.string.notice_friend_request, "Anna"), asked.text(resources))
+        assertEquals(NoticeBadge.FRIEND, asked.badge)
+        val answered = noticeLine(SocialNotificationKind.FRIEND_ACCEPTED, listOf("Anna"), 1)
+        assertEquals(resources.getString(R.string.notice_friend_accepted, "Anna"), answered.text(resources))
+        assertEquals(NoticeBadge.FRIEND, answered.badge)
+        // Never grouped, whatever count arrives; a deleted account has its word.
+        assertEquals(asked.key, noticeLine(SocialNotificationKind.FRIEND_REQUEST, listOf("Anna", "Bo"), 5).key)
+        assertEquals(
+            resources.getString(R.string.notice_friend_request, resources.getString(R.string.person_deleted)),
+            noticeLine(SocialNotificationKind.FRIEND_REQUEST, listOf(null), 1).text(resources),
+        )
+    }
+
+    @Test
+    fun theFriendKindsAreSwitchesInTheSettingsToo() {
+        assertEquals(R.string.notification_kind_friend_request, SocialNotificationKind.FRIEND_REQUEST.settingLabel())
+        assertEquals(R.string.notification_kind_friend_accepted, SocialNotificationKind.FRIEND_ACCEPTED.settingLabel())
+    }
+
+    @Test
+    fun aClearedBioAndCoverHaveTheirOwnSentences() {
+        fun line(action: NotificationAction?) =
+            noticeLine(SocialNotificationKind.MODERATED, emptyList(), 0, action).text(resources)
+        assertEquals(
+            resources.getString(R.string.notice_account_bio_cleared),
+            line(NotificationAction.CLEAR_ACCOUNT_BIO),
+        )
+        assertEquals(
+            resources.getString(R.string.notice_account_cover_cleared),
+            line(NotificationAction.CLEAR_ACCOUNT_COVER),
+        )
+    }
+
+    @Test
     fun aReviewAndAClearedPhotoHaveTheirOwnSentences() {
         fun line(action: NotificationAction?) =
             noticeLine(SocialNotificationKind.MODERATED, emptyList(), 0, action).text(resources)

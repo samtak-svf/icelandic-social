@@ -163,7 +163,8 @@ private fun Badge(
                     when (badge) {
                         NoticeBadge.APPROVED -> AppIcons.Check
                         NoticeBadge.MODERATOR -> AppIcons.Shield
-                        else -> AppIcons.Chat
+                        NoticeBadge.FRIEND -> AppIcons.Person
+                        NoticeBadge.COMMENT, NoticeBadge.EMOJI -> AppIcons.Chat
                     }
                 Icon(icon, contentDescription = null, modifier = Modifier.size(ICON.dp), tint = Palette.primary)
             }

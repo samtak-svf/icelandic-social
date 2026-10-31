@@ -140,6 +140,26 @@ class StatementsViewModelTest {
     }
 
     @Test
+    fun theClearedBioAndCoverAndTheReadReportedHaveTheirOwnWords() {
+        assertEquals(
+            Wording(R.string.moderation_decision_clear_account_bio),
+            ModerationLogAction.CLEAR_ACCOUNT_BIO.statementLabel(),
+        )
+        assertEquals(
+            Wording(R.string.moderation_decision_clear_account_cover),
+            ModerationLogAction.CLEAR_ACCOUNT_COVER.statementLabel(),
+        )
+        assertEquals(
+            Wording(R.string.moderation_decision_read_reported),
+            ModerationLogAction.READ_REPORTED.statementLabel(),
+        )
+        // The community log words them as the statements do.
+        ModerationLogAction.entries
+            .filter { it.name in setOf("CLEAR_ACCOUNT_BIO", "CLEAR_ACCOUNT_COVER", "READ_REPORTED") }
+            .forEach { assertEquals(it.statementLabel(), it.logWording()) }
+    }
+
+    @Test
     fun aSuspensionSaysWhenItEndsOrThatItHasNoEnd() {
         assertEquals(
             Wording(R.string.moderation_decision_suspend_account_open),

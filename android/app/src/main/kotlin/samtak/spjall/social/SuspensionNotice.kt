@@ -46,12 +46,17 @@ fun WithSuspension(
 internal fun WithSocialHost(
     social: Social,
     openStatements: () -> Unit,
+    openPerson: ((String) -> Unit)? = null,
     content: @Composable () -> Unit,
 ) {
     WithNotificationLevels(social) {
         WithPostImages(social) {
             WithSuspension(social) {
-                CompositionLocalProvider(LocalOpenStatements provides openStatements, content = content)
+                CompositionLocalProvider(
+                    LocalOpenStatements provides openStatements,
+                    LocalOpenPerson provides openPerson,
+                    content = content,
+                )
             }
         }
     }

@@ -200,6 +200,7 @@ internal fun Wording.text(): String = if (date == null) stringResource(id) else 
  * moderator lifts it when it has no end (0115). Every action is named, so one a later lock adds does not compile
  * until it is worded; only a value this app cannot read reads as done.
  */
+@Suppress("CyclomaticComplexMethod") // One branch per action, each a sentence of its own.
 internal fun ModerationLogAction.statementLabel(until: ULong? = null): Wording =
     when (this) {
         ModerationLogAction.HIDE_POST -> Wording(R.string.moderation_decision_hide_post)
@@ -207,6 +208,9 @@ internal fun ModerationLogAction.statementLabel(until: ULong? = null): Wording =
         ModerationLogAction.HIDE_COMMENT -> Wording(R.string.moderation_decision_hide_comment)
         ModerationLogAction.REMOVE_COMMENT -> Wording(R.string.moderation_decision_remove_comment)
         ModerationLogAction.CLEAR_ACCOUNT_PHOTO -> Wording(R.string.moderation_decision_clear_account_photo)
+        ModerationLogAction.CLEAR_ACCOUNT_BIO -> Wording(R.string.moderation_decision_clear_account_bio)
+        ModerationLogAction.CLEAR_ACCOUNT_COVER -> Wording(R.string.moderation_decision_clear_account_cover)
+        ModerationLogAction.READ_REPORTED -> Wording(R.string.moderation_decision_read_reported)
         ModerationLogAction.SUSPEND_ACCOUNT ->
             if (until == null) {
                 Wording(R.string.moderation_decision_suspend_account_open)
