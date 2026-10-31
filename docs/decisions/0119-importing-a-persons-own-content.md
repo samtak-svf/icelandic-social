@@ -1,8 +1,9 @@
 # 0119. Importing a person's own content from another platform
 
-- Status: accepted; designed, not yet implemented (#461)
+- Status: accepted; amended by 0120; designed, not yet implemented (#461)
 - Date: 2026-10-31
 - Decided by: the overseer, on Guðröður Atli Jónsson's question of how people can bring their data here and how public content can sync; his to overturn
+- Amended by: [0120](0120-feeding-the-import-from-public-profiles-and-pages.md) (collection from a person's own public profile, with proof it is theirs, and a page through the source platform's API)
 
 ## Decision
 
@@ -14,8 +15,10 @@ feed it:
    file goes to EU storage (decision 0001), a job parses it, and the upload is deleted after the
    import.
 2. **Being a listed destination in another platform's export tool**, later. The platform pushes
-   over an HTTP API we expose, and a scheduled transfer there is what makes a sync recurring. We
-   poll nothing and scrape nothing.
+   over an HTTP API we expose, and a scheduled transfer there makes a sync recurring.
+
+Decision 0120 adds two more feeds to the same core: a person's own public profile and a page they
+administer.
 
 **What comes in is the person's own posts and media, and they go to their wall** (decision 0115).
 The default audience is the wall's own, and the person previews and selects before anything is
@@ -40,21 +43,22 @@ chat (decision 0060).
 **A person can undo it.** One action removes everything an import brought in. Our own export is at
 least as good as what we accept.
 
-**Organisation pages come later,** through the source platform's API and its app review.
+**Organisation pages come later,** through the source platform's API and its app review (decision
+0120).
 
 ## Why
 
 A new platform starts empty, and people do not move to an empty wall. An export file reaches
-everyone today and depends on no one's approval. A listed destination is what makes syncing possible
-without polling or scraping, and it uses the same core, so the second entry costs an API rather than
-a second importer.
+everyone today and depends on no one's approval. A listed destination makes syncing possible through the
+platform itself, and it uses the same core, so the second entry costs an API rather than a second
+importer.
 
 Keeping the source's id as the key is what makes the file route and the push route safe to repeat
 and safe to combine.
 
 ## What this rules out
 
-- Scraping another platform, or asking for a person's password there.
+- Asking for a person's password on another platform.
 - Publishing imported content publicly because the source seemed public.
 - Importing content a person did not write, or a private conversation.
 
