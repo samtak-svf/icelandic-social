@@ -170,6 +170,10 @@
       "reason": "Names and picks the cached core build for the app jobs in core.yml; it checks nothing."
     },
     {
+      "script": "design-system",
+      "reason": "Exports a brand as the files of the read-only design-system page into private/; a person runs it before a sync, it publishes nothing, and the brand it reads is already checked by brand-check."
+    },
+    {
       "script": "mac-remote",
       "reason": "Runs checks on the Mac from a Linux machine; it is a runner, not a check."
     },

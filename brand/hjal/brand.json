@@ -45,6 +45,12 @@
       "id": "support-site",
       "where": "Support and privacy pages linked from both store listings",
       "value": "Hjal"
+    },
+    {
+      "id": "design-system-page",
+      "where": "claude.ai Design System artifact; the URL is in private/design-system/url.txt",
+      "value": "Hjal design system",
+      "owner": "Guðröður"
     }
   ],
   "leakTerms": {
