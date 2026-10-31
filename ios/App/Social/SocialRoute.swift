@@ -25,7 +25,7 @@ enum SocialRoute: Hashable {
 }
 
 /// Opens a link to a screen with `open`, and leaves every other link to the system (decision 0121).
-func ownLinks(_ open: @escaping (SocialRoute) -> Void) -> OpenURLAction {
+@MainActor func ownLinks(_ open: @escaping (SocialRoute) -> Void) -> OpenURLAction {
     OpenURLAction { url in
         guard let route = SocialRoute(ownLink: url) else { return .systemAction }
         open(route)

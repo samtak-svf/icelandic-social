@@ -283,17 +283,7 @@ class MainActivity : ComponentActivity() {
                     )
                     composable(AppRoutes.VERIFY) { VerifyRoute(nav, signIn) }
                     composable(AppRoutes.LINK) { LinkRoute(nav, graph) }
-                    composable(AppRoutes.PEOPLE) { PeopleRoute(nav, graph) }
-                    // Adding to a group that exists (0078): the picker, for that conversation's members.
-                    composable("${AppRoutes.PEOPLE}/{id}") { entry ->
-                        entry.arguments?.getString("id")?.let { PeopleRoute(nav, graph, targetConversation = it) }
-                    }
-                    composable("${AppRoutes.CONVERSATION}/{id}") { entry ->
-                        entry.arguments?.getString("id")?.let { ConversationWithPostsRoute(it, nav, graph) }
-                    }
-                    composable("${AppRoutes.INFO}/{id}") { entry ->
-                        entry.arguments?.getString("id")?.let { ConversationInfoRoute(it, nav, graph) }
-                    }
+                    conversationRoutes(nav, graph)
                     sendingRoutes(nav)
                 }
             }
@@ -363,6 +353,24 @@ private fun tabs(
         },
         Tab(AppIcons.Person, stringResource(R.string.tab_me), active == AppRoutes.ME) { go(AppRoutes.ME) },
     )
+}
+
+/** The people to start with, a conversation and its details. */
+private fun NavGraphBuilder.conversationRoutes(
+    nav: NavController,
+    graph: AppGraph,
+) {
+    composable(AppRoutes.PEOPLE) { PeopleRoute(nav, graph) }
+    // Adding to a group that exists (0078): the picker, for that conversation's members.
+    composable("${AppRoutes.PEOPLE}/{id}") { entry ->
+        entry.arguments?.getString("id")?.let { PeopleRoute(nav, graph, targetConversation = it) }
+    }
+    composable("${AppRoutes.CONVERSATION}/{id}") { entry ->
+        entry.arguments?.getString("id")?.let { ConversationWithPostsRoute(it, nav, graph) }
+    }
+    composable("${AppRoutes.INFO}/{id}") { entry ->
+        entry.arguments?.getString("id")?.let { ConversationInfoRoute(it, nav, graph) }
+    }
 }
 
 /** The bell at the end of every full screen's header, with the unread count, red on the notifications screen. */
