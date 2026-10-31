@@ -1,4 +1,4 @@
-# 0121. Design tokens: type, radius and spacing beside colour
+# 0122. Design tokens: type, radius and spacing beside colour
 
 - Status: accepted; implemented in the generators and the web radii (#471), type and spacing not yet read by a screen
 - Date: 2026-10-31
