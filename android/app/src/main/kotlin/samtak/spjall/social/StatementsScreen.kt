@@ -1,5 +1,6 @@
 package samtak.spjall.social
 
+import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -41,6 +42,7 @@ import samtak.spjall.core.ModerationStatement
 import samtak.spjall.me.Confirm
 import samtak.spjall.ui.Palette
 import samtak.spjall.ui.ProblemCard
+import samtak.spjall.ui.dateTime
 import samtak.spjall.ui.listStamp
 
 /** The screen with its view model. */
@@ -106,7 +108,7 @@ private fun StatementCard(
 ) {
     SocialCard {
         Text(
-            text = stringResource(statement.action.statementLabel()),
+            text = statement.action.statementLabel(statement.until).text(),
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.SemiBold,
             modifier = Modifier.semantics { heading() },
@@ -118,7 +120,7 @@ private fun StatementCard(
             body != null -> Text(body, style = MaterialTheme.typography.bodyMedium)
             statement.target.kind != LogTargetKind.ACCOUNT -> Muted(stringResource(R.string.statement_text_gone))
         }
-        statement.review?.let { Review(it) }
+        statement.review?.let { Review(it, statement.action) }
         if (statement.canAsk) Ask(enabled, onAsk)
     }
 }
@@ -132,8 +134,11 @@ private fun Labelled(
 }
 
 @Composable
-private fun Review(review: ModerationReview) {
-    review.sentence()?.let { Text(stringResource(it), style = MaterialTheme.typography.bodyMedium) }
+private fun Review(
+    review: ModerationReview,
+    action: ModerationLogAction,
+) {
+    review.sentence(action)?.let { Text(stringResource(it), style = MaterialTheme.typography.bodyMedium) }
     review.reason?.let { Labelled(R.string.statement_review_reason, it) }
 }
 
@@ -161,25 +166,76 @@ private fun Ask(
     }
 }
 
-/** The sentence a review's state reads as; a state a later server adds reads as nothing. */
-internal fun ModerationReview.sentence(): Int? =
+/**
+ * The sentence a review's state reads as; a state a later server adds reads as nothing. What was overturned decides
+ * the words (0115): a lifted suspension is not content that came back.
+ */
+internal fun ModerationReview.sentence(action: ModerationLogAction): Int? =
     when (state) {
         ModerationReviewState.OPEN -> R.string.statement_review_open
         ModerationReviewState.UPHELD -> R.string.statement_review_upheld
-        ModerationReviewState.OVERTURNED ->
-            if (restored) R.string.statement_review_overturned else R.string.statement_review_overturned_not_restored
+        ModerationReviewState.OVERTURNED -> overturned(action)
         ModerationReviewState.UNKNOWN -> null
     }
 
-/** What a statement says was done; an action a later server adds reads as done. */
-internal fun ModerationLogAction.statementLabel(): Int =
+private fun ModerationReview.overturned(action: ModerationLogAction): Int =
+    when {
+        action == ModerationLogAction.SUSPEND_ACCOUNT && restored -> R.string.statement_review_overturned_lifted
+        action == ModerationLogAction.SUSPEND_ACCOUNT -> R.string.statement_review_overturned_later_stands
+        restored -> R.string.statement_review_overturned
+        else -> R.string.statement_review_overturned_not_restored
+    }
+
+/** A sentence of the brand's and, when it names a date, that date in epoch milliseconds. */
+internal data class Wording(
+    @StringRes val id: Int,
+    val date: ULong? = null,
+)
+
+@Composable
+internal fun Wording.text(): String = if (date == null) stringResource(id) else stringResource(id, dateTime(date))
+
+/**
+ * What a statement or a log entry says was done. A suspension says how long it was for, or that it stands until a
+ * moderator lifts it when it has no end (0115). Every action is named, so one a later lock adds does not compile
+ * until it is worded; only a value this app cannot read reads as done.
+ */
+internal fun ModerationLogAction.statementLabel(until: ULong? = null): Wording =
     when (this) {
-        ModerationLogAction.HIDE_POST -> R.string.moderation_decision_hide_post
-        ModerationLogAction.REMOVE_POST -> R.string.moderation_decision_remove_post
-        ModerationLogAction.HIDE_COMMENT -> R.string.moderation_decision_hide_comment
-        ModerationLogAction.REMOVE_COMMENT -> R.string.moderation_decision_remove_comment
-        ModerationLogAction.CLEAR_ACCOUNT_PHOTO -> R.string.moderation_decision_clear_account_photo
-        ModerationLogAction.REVIEW_UPHELD -> R.string.moderation_log_review_upheld
-        ModerationLogAction.REVIEW_OVERTURNED -> R.string.moderation_log_review_overturned
-        else -> R.string.moderation_done
+        ModerationLogAction.HIDE_POST -> Wording(R.string.moderation_decision_hide_post)
+        ModerationLogAction.REMOVE_POST -> Wording(R.string.moderation_decision_remove_post)
+        ModerationLogAction.HIDE_COMMENT -> Wording(R.string.moderation_decision_hide_comment)
+        ModerationLogAction.REMOVE_COMMENT -> Wording(R.string.moderation_decision_remove_comment)
+        ModerationLogAction.CLEAR_ACCOUNT_PHOTO -> Wording(R.string.moderation_decision_clear_account_photo)
+        ModerationLogAction.SUSPEND_ACCOUNT ->
+            if (until == null) {
+                Wording(R.string.moderation_decision_suspend_account_open)
+            } else {
+                Wording(R.string.moderation_decision_suspend_account_until, until)
+            }
+        ModerationLogAction.UNSUSPEND_ACCOUNT -> Wording(R.string.moderation_decision_unsuspend_account)
+        ModerationLogAction.REVIEW_UPHELD -> Wording(R.string.moderation_log_review_upheld)
+        ModerationLogAction.REVIEW_OVERTURNED -> Wording(R.string.moderation_log_review_overturned)
+        ModerationLogAction.RESTORE_POST,
+        ModerationLogAction.RESTORE_COMMENT,
+        ModerationLogAction.MUTE_MEMBER,
+        ModerationLogAction.UNMUTE_MEMBER,
+        ModerationLogAction.REMOVE_MEMBER,
+        ModerationLogAction.BAN_MEMBER,
+        ModerationLogAction.UNBAN_MEMBER,
+        ModerationLogAction.CLOSE_REPORT,
+        ModerationLogAction.DELETE_COMMUNITY,
+        ModerationLogAction.RESTORE_COMMUNITY,
+        ModerationLogAction.SET_COMMUNITY_PICTURE,
+        ModerationLogAction.REMOVE_COMMUNITY_PICTURE,
+        ModerationLogAction.SET_COMMUNITY_COVER,
+        ModerationLogAction.REMOVE_COMMUNITY_COVER,
+        ModerationLogAction.PIN_POST,
+        ModerationLogAction.UNPIN_POST,
+        ModerationLogAction.CLOSE_POLL,
+        ModerationLogAction.ANONYMOUS_POSTS_ON,
+        ModerationLogAction.ANONYMOUS_POSTS_OFF,
+        ModerationLogAction.REVEAL_AUTHOR,
+        ModerationLogAction.UNKNOWN,
+        -> Wording(R.string.moderation_done)
     }

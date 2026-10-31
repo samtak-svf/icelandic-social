@@ -63,7 +63,22 @@ private fun moderatedLine(action: NotificationAction?): Int =
         NotificationAction.REVIEW_UPHELD -> R.string.notice_review_upheld
         NotificationAction.REVIEW_OVERTURNED -> R.string.notice_review_overturned
         NotificationAction.CLEAR_ACCOUNT_PHOTO -> R.string.notice_account_photo_cleared
-        else -> R.string.notice_moderated
+        NotificationAction.SUSPEND_ACCOUNT -> R.string.notice_account_suspended
+        NotificationAction.UNSUSPEND_ACCOUNT -> R.string.notice_account_unsuspended
+        NotificationAction.HIDE_POST,
+        NotificationAction.REMOVE_POST,
+        NotificationAction.RESTORE_POST,
+        NotificationAction.HIDE_COMMENT,
+        NotificationAction.REMOVE_COMMENT,
+        NotificationAction.RESTORE_COMMENT,
+        NotificationAction.MUTE_MEMBER,
+        NotificationAction.UNMUTE_MEMBER,
+        NotificationAction.REMOVE_MEMBER,
+        NotificationAction.BAN_MEMBER,
+        NotificationAction.UNBAN_MEMBER,
+        NotificationAction.UNKNOWN,
+        null,
+        -> R.string.notice_moderated
     }
 
 private fun actors(

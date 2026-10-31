@@ -41,6 +41,7 @@ struct HomeView: View {
     @State private var mePath: [MeRoute] = []
     @State private var communities: CommunitiesModel
     @State private var notices: NotificationsModel
+    @State private var suspension: SuspensionModel
     @State private var levels: NotificationLevelsModel
     @State private var communitiesPath: [SocialRoute] = []
     @State private var noticesPath: [SocialRoute] = []
@@ -76,6 +77,7 @@ struct HomeView: View {
         _list = State(initialValue: ConversationsModel(account: signIn.account, live: socket))
         _me = State(initialValue: MeModel(account: signIn.account))
         _communities = State(initialValue: CommunitiesModel(social: social))
+        _suspension = State(initialValue: SuspensionModel(social: social))
         _levels = State(initialValue: NotificationLevelsModel(social: social))
         _notices = State(initialValue: NotificationsModel(social: social, cancel: push.notifier.cancel))
         _onboarding = State(initialValue: OnboardingModel(notifier: push.notifier))
@@ -337,6 +339,8 @@ struct HomeView: View {
         // Any screen in the stack can draw a post card, the hub's feed included.
         .environment(\.postImages, PostImages(social: social))
         .environment(\.postSharing, postSharing)
+        // The notice and the disabled controls belong to the hosted tabs; a conversation is never refused (0115).
+        .suspensionHost(suspension)
     }
 
     /// Whether the screen on top takes the whole width on an expanded window (decision 0087): the hub, a community
@@ -388,13 +392,5 @@ struct HomeView: View {
         Task {
             if let id = await list.openInvite(token: token) { path = [.conversation(id)] }
         }
-    }
-}
-
-private struct ConversationRoute: View {
-    let model: ConversationModel
-
-    var body: some View {
-        ConversationView(model: model)
     }
 }

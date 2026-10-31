@@ -4,7 +4,6 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.Lifecycle
@@ -43,13 +42,7 @@ fun NavGraphBuilder.socialScreens(
         route: String,
         content: @Composable (NavBackStackEntry) -> Unit,
     ) = composable(route) { entry ->
-        WithNotificationLevels(social) {
-            WithPostImages(social) {
-                CompositionLocalProvider(LocalOpenStatements provides { nav.navigate(SocialRoutes.STATEMENTS) }) {
-                    content(entry)
-                }
-            }
-        }
+        WithSocialHost(social, openStatements = { nav.navigate(SocialRoutes.STATEMENTS) }) { content(entry) }
     }
 
     screen(SocialRoutes.COMMUNITIES) { Communities(social, account, nav, sharePost) }

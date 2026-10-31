@@ -49,6 +49,17 @@ class NoticeTextTest {
     }
 
     @Test
+    fun aSuspensionAndItsLiftHaveTheirOwnSentences() {
+        fun line(action: NotificationAction?) =
+            noticeLine(SocialNotificationKind.MODERATED, emptyList(), 0, action).text(resources)
+        assertEquals(resources.getString(R.string.notice_account_suspended), line(NotificationAction.SUSPEND_ACCOUNT))
+        assertEquals(
+            resources.getString(R.string.notice_account_unsuspended),
+            line(NotificationAction.UNSUSPEND_ACCOUNT),
+        )
+    }
+
+    @Test
     fun oneActorReadsPlain() {
         assertEquals("Anna skrifaði athugasemd við póstinn þinn.", text(SocialNotificationKind.COMMENT, "Anna"))
     }

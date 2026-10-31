@@ -39,6 +39,8 @@ const MODERATED = /** @type {Record<string, string>} */ ({
   review_upheld: "notice_review_upheld",
   review_overturned: "notice_review_overturned",
   clear_account_photo: "notice_account_photo_cleared",
+  suspend_account: "notice_account_suspended",
+  unsuspend_account: "notice_account_unsuspended",
 });
 
 /** A UTC instant written the one way every platform parses. */

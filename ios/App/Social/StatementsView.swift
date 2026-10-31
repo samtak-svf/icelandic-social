@@ -68,7 +68,7 @@ private struct StatementCard: View {
     var body: some View {
         Panel {
             VStack(alignment: .leading, spacing: 8) {
-                Text(verbatim: statementLabel(statement.action))
+                Text(verbatim: statementLabel(statement.action, until: statement.until))
                     .font(.sans(14.5, black: true))
                     .accessibilityAddTraits(.isHeader)
                 muted(relativeTime(statement.createdAt))
@@ -78,7 +78,7 @@ private struct StatementCard: View {
                 } else if statement.target.kind != .account {
                     muted(localized("statement_text_gone"))
                 }
-                if let review = statement.review { reviewed(review) }
+                if let review = statement.review { reviewed(review, action: statement.action) }
                 if statement.canAsk { ask }
             }
             .padding(14)
@@ -86,8 +86,8 @@ private struct StatementCard: View {
         }
     }
 
-    @ViewBuilder private func reviewed(_ review: ModerationReview) -> some View {
-        if let sentence = reviewSentence(review) {
+    @ViewBuilder private func reviewed(_ review: ModerationReview, action: ModerationLogAction) -> some View {
+        if let sentence = reviewSentence(review, action: action) {
             Text(verbatim: sentence).font(.sans(14.5))
         }
         if let reason = review.reason {
@@ -113,11 +113,14 @@ private struct StatementCard: View {
     }
 }
 
-/// The sentence a review's state reads as; a state a later server adds reads as nothing.
-func reviewSentence(_ review: ModerationReview) -> String? {
+/// The sentence a review's state reads as; a state a later server adds reads as nothing. An overturned suspension
+/// lifts the ban, or leaves a later one standing (0115); other actions bring the content back or do not.
+func reviewSentence(_ review: ModerationReview, action: ModerationLogAction) -> String? {
     switch review.state {
     case .open: localized("statement_review_open")
     case .upheld: localized("statement_review_upheld")
+    case .overturned where action == .suspendAccount:
+        localized(review.restored ? "statement_review_overturned_lifted" : "statement_review_overturned_later_stands")
     case .overturned:
         localized(review.restored ? "statement_review_overturned" : "statement_review_overturned_not_restored")
     case .unknown: nil
@@ -125,7 +128,7 @@ func reviewSentence(_ review: ModerationReview) -> String? {
 }
 
 /// What a statement says was done; an action a later server adds reads as done.
-func statementLabel(_ action: ModerationLogAction) -> String {
+func statementLabel(_ action: ModerationLogAction, until: UInt64? = nil) -> String {
     if action == .clearAccountPhoto { return localized("moderation_decision_clear_account_photo") }
-    return logActionLabel(action) ?? localized("moderation_done")
+    return logActionLabel(action, until: until) ?? localized("moderation_done")
 }

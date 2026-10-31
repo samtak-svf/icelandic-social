@@ -72,7 +72,8 @@ internal fun PollCard(
     val open = !poll.closed
     Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.testTag(POLL_CARD)) {
         poll.options.forEachIndexed { index, option ->
-            PollOptionRow(option, index, poll, results, enabled = callbacks != null && !busy && open, callbacks)
+            val enabled = callbacks != null && !busy && open && !suspended()
+            PollOptionRow(option, index, poll, results, enabled = enabled, callbacks)
         }
         PollFooter(poll, busy, callbacks)
     }
@@ -96,6 +97,7 @@ private fun PollOptionRow(
                 .fillMaxWidth()
                 .heightIn(min = 44.dp)
                 .testTag("$POLL_OPTION-$index")
+                .dimmedWhenSuspended()
                 .border(
                     BorderStroke(if (mine) 2.dp else 1.dp, if (mine) Palette.primary else Palette.border),
                     RoundedCornerShape(8.dp),

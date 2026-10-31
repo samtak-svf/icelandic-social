@@ -2,7 +2,8 @@ import SpjallCore
 
 /// What a moderation log entry records (decision 0079). The log has no words of its own, so it borrows the past
 /// tense a closed report's decision uses; nil for a later server's action, or a platform moderator's: no surface here.
-func logActionLabel(_ action: ModerationLogAction) -> String? {
+/// A suspension says its end when it was given one (`until`), and that a moderator lifts it when it was not (0115).
+func logActionLabel(_ action: ModerationLogAction, until: UInt64? = nil) -> String? {
     switch action {
     case .hidePost: localized("moderation_decision_hide_post")
     case .removePost: localized("moderation_decision_remove_post")
@@ -30,6 +31,14 @@ func logActionLabel(_ action: ModerationLogAction) -> String? {
     case .revealAuthor: localized("moderation_log_author_revealed")
     case .reviewUpheld: localized("moderation_log_review_upheld")
     case .reviewOverturned: localized("moderation_log_review_overturned")
+    case .suspendAccount: suspensionLabel(until)
+    case .unsuspendAccount: localized("moderation_decision_unsuspend_account")
     case .clearAccountPhoto, .unknown: nil
     }
+}
+
+/// What a decision to suspend an account says: until the end it was given, or until a moderator lifts it.
+func suspensionLabel(_ until: UInt64?) -> String {
+    guard let until else { return localized("moderation_decision_suspend_account_open") }
+    return localized("moderation_decision_suspend_account_until", Dates.dateTime(Dates.at(until)))
 }

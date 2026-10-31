@@ -1,5 +1,7 @@
 package samtak.spjall.social
 
+import androidx.compose.foundation.layout.Column
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onRoot
 import com.github.takahirom.roborazzi.captureRoboImage
@@ -18,7 +20,10 @@ import samtak.spjall.core.ModerationReview
 import samtak.spjall.core.ModerationReviewState
 import samtak.spjall.core.ModerationState
 import samtak.spjall.core.ModerationStatement
+import samtak.spjall.ui.IcelandZone
+import samtak.spjall.ui.LocalSuspension
 import samtak.spjall.ui.SpjallTheme
+import samtak.spjall.ui.Suspension
 
 /**
  * The statements of reasons in each state a review can be in, their empty state, and what stands in a removed post's
@@ -30,6 +35,8 @@ import samtak.spjall.ui.SpjallTheme
 class StatementsScreenshotTest {
     @get:Rule val compose = createComposeRule()
 
+    @get:Rule val zone = IcelandZone()
+
     private fun statement(
         id: ULong,
         action: ModerationLogAction = ModerationLogAction.REMOVE_POST,
@@ -38,6 +45,7 @@ class StatementsScreenshotTest {
         canAsk: Boolean = false,
         state: ModerationReviewState? = null,
         restored: Boolean = false,
+        until: ULong? = null,
     ) = ModerationStatement(
         entryId = id,
         action = action,
@@ -47,6 +55,7 @@ class StatementsScreenshotTest {
         createdAt = 1_600_000_000_000uL,
         body = body,
         canAsk = canAsk,
+        until = until,
         review =
             state?.let {
                 ModerationReview(
@@ -99,6 +108,60 @@ class StatementsScreenshotTest {
     @Config(qualifiers = "+night")
     fun everyStateAtNight() {
         compose.setContent { SpjallTheme { StatementsScreen(every, none) } }
+        compose.onRoot().captureRoboImage()
+    }
+
+    /** A suspension with an end, one without, and one overturned (0115). */
+    @Test
+    fun suspensions() {
+        val suspensions =
+            StatementsViewModel.State(
+                loaded = true,
+                statements =
+                    listOf(
+                        statement(
+                            1uL,
+                            action = ModerationLogAction.SUSPEND_ACCOUNT,
+                            kind = LogTargetKind.ACCOUNT,
+                            body = null,
+                            until = 1_800_000_000_000uL,
+                            canAsk = true,
+                        ),
+                        statement(
+                            2uL,
+                            action = ModerationLogAction.SUSPEND_ACCOUNT,
+                            kind = LogTargetKind.ACCOUNT,
+                            body = null,
+                            state = ModerationReviewState.OPEN,
+                        ),
+                        statement(
+                            3uL,
+                            action = ModerationLogAction.SUSPEND_ACCOUNT,
+                            kind = LogTargetKind.ACCOUNT,
+                            body = null,
+                            until = 1_800_000_000_000uL,
+                            state = ModerationReviewState.OVERTURNED,
+                            restored = true,
+                        ),
+                    ),
+            )
+        compose.setContent { SpjallTheme { StatementsScreen(suspensions, none) } }
+        compose.onRoot().captureRoboImage()
+    }
+
+    /** The notice under a social screen's header, with an end and without. */
+    @Test
+    fun suspendedNotice() {
+        compose.setContent {
+            SpjallTheme {
+                Column {
+                    CompositionLocalProvider(LocalSuspension provides Suspension(1_800_000_000_000uL)) {
+                        SuspendedNotice()
+                    }
+                    CompositionLocalProvider(LocalSuspension provides Suspension(null)) { SuspendedNotice() }
+                }
+            }
+        }
         compose.onRoot().captureRoboImage()
     }
 

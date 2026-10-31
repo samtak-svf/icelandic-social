@@ -111,20 +111,60 @@ class StatementsViewModelTest {
             state: ModerationReviewState,
             restored: Boolean = false,
         ) = ModerationReview(state, 1uL, null, null, restored)
-        assertEquals(R.string.statement_review_open, review(ModerationReviewState.OPEN).sentence())
-        assertEquals(R.string.statement_review_upheld, review(ModerationReviewState.UPHELD).sentence())
-        assertEquals(R.string.statement_review_overturned, review(ModerationReviewState.OVERTURNED, true).sentence())
+        val removed = ModerationLogAction.REMOVE_POST
+        assertEquals(R.string.statement_review_open, review(ModerationReviewState.OPEN).sentence(removed))
+        assertEquals(R.string.statement_review_upheld, review(ModerationReviewState.UPHELD).sentence(removed))
+        assertEquals(
+            R.string.statement_review_overturned,
+            review(ModerationReviewState.OVERTURNED, true).sentence(removed),
+        )
         assertEquals(
             R.string.statement_review_overturned_not_restored,
-            review(ModerationReviewState.OVERTURNED).sentence(),
+            review(ModerationReviewState.OVERTURNED).sentence(removed),
         )
-        assertNull(review(ModerationReviewState.UNKNOWN).sentence())
+        assertNull(review(ModerationReviewState.UNKNOWN).sentence(removed))
+    }
+
+    @Test
+    fun anOverturnedSuspensionIsLiftedOrStillStandsLater() {
+        val suspended = ModerationLogAction.SUSPEND_ACCOUNT
+
+        fun overturned(restored: Boolean) =
+            ModerationReview(ModerationReviewState.OVERTURNED, 1uL, null, null, restored)
+        assertEquals(R.string.statement_review_overturned_lifted, overturned(true).sentence(suspended))
+        assertEquals(R.string.statement_review_overturned_later_stands, overturned(false).sentence(suspended))
+        assertEquals(
+            R.string.statement_review_open,
+            ModerationReview(ModerationReviewState.OPEN, 1uL, null, null, false).sentence(suspended),
+        )
+    }
+
+    @Test
+    fun aSuspensionSaysWhenItEndsOrThatItHasNoEnd() {
+        assertEquals(
+            Wording(R.string.moderation_decision_suspend_account_open),
+            ModerationLogAction.SUSPEND_ACCOUNT.statementLabel(null),
+        )
+        assertEquals(
+            Wording(R.string.moderation_decision_suspend_account_until, 1_800_000_000_000uL),
+            ModerationLogAction.SUSPEND_ACCOUNT.statementLabel(1_800_000_000_000uL),
+        )
+        assertEquals(
+            Wording(R.string.moderation_decision_unsuspend_account),
+            ModerationLogAction.UNSUSPEND_ACCOUNT.statementLabel(),
+        )
+        // The log words a suspension as its statement is worded.
+        assertEquals(
+            ModerationLogAction.SUSPEND_ACCOUNT.statementLabel(5uL),
+            ModerationLogAction.SUSPEND_ACCOUNT.logWording(5uL),
+        )
     }
 
     @Test
     fun anActionALaterServerAddsReadsAsDone() {
-        assertEquals(R.string.moderation_decision_remove_post, ModerationLogAction.REMOVE_POST.statementLabel())
-        assertEquals(R.string.moderation_done, ModerationLogAction.UNKNOWN.statementLabel())
+        assertEquals(R.string.moderation_decision_remove_post, ModerationLogAction.REMOVE_POST.statementLabel().id)
+        assertEquals(R.string.moderation_done, ModerationLogAction.UNKNOWN.statementLabel().id)
+        assertEquals(R.string.moderation_done, ModerationLogAction.UNKNOWN.logWording().id)
     }
 
     private fun StatementsViewModel.ids() = state.value.statements.map { it.entryId }

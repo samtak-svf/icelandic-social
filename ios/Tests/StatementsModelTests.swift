@@ -64,11 +64,38 @@ final class StatementsModelTests: XCTestCase {
         func review(_ state: ModerationReviewState, restored: Bool = false) -> ModerationReview {
             ModerationReview(state: state, askedAt: 1, decidedAt: nil, reason: nil, restored: restored)
         }
-        XCTAssertEqual(reviewSentence(review(.open)), localized("statement_review_open"))
-        XCTAssertEqual(reviewSentence(review(.upheld)), localized("statement_review_upheld"))
-        XCTAssertEqual(reviewSentence(review(.overturned, restored: true)), localized("statement_review_overturned"))
-        XCTAssertEqual(reviewSentence(review(.overturned)), localized("statement_review_overturned_not_restored"))
-        XCTAssertNil(reviewSentence(review(.unknown)))
+        XCTAssertEqual(reviewSentence(review(.open), action: .removePost), localized("statement_review_open"))
+        XCTAssertEqual(reviewSentence(review(.upheld), action: .removePost), localized("statement_review_upheld"))
+        XCTAssertEqual(
+            reviewSentence(review(.overturned, restored: true), action: .removePost),
+            localized("statement_review_overturned"))
+        XCTAssertEqual(
+            reviewSentence(review(.overturned), action: .removePost),
+            localized("statement_review_overturned_not_restored"))
+        XCTAssertNil(reviewSentence(review(.unknown), action: .removePost))
+    }
+
+    func testAnOverturnedSuspensionSaysWhetherItIsLiftedOrStillStands() {
+        func overturned(restored: Bool) -> ModerationReview {
+            ModerationReview(state: .overturned, askedAt: 1, decidedAt: nil, reason: nil, restored: restored)
+        }
+        XCTAssertEqual(
+            reviewSentence(overturned(restored: true), action: .suspendAccount),
+            localized("statement_review_overturned_lifted"))
+        XCTAssertEqual(
+            reviewSentence(overturned(restored: false), action: .suspendAccount),
+            localized("statement_review_overturned_later_stands"))
+    }
+
+    func testASuspensionStatementNamesItsEndOrSaysItHasNone() {
+        let end: UInt64 = 1_800_000_000_000
+        XCTAssertEqual(
+            statementLabel(.suspendAccount, until: end),
+            localized("moderation_decision_suspend_account_until", Dates.dateTime(Dates.at(end))))
+        XCTAssertEqual(
+            statementLabel(.suspendAccount, until: nil), localized("moderation_decision_suspend_account_open"))
+        XCTAssertEqual(
+            statementLabel(.unsuspendAccount), localized("moderation_decision_unsuspend_account"))
     }
 
     func testAnActionALaterServerAddsReadsAsDone() {

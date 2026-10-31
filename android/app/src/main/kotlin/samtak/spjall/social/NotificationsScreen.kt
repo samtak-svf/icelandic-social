@@ -54,6 +54,7 @@ fun NotificationsScreen(
                     }
                 }
             }
+            SuspendedNotice()
             if (state.busy && !state.loaded) LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
             Box(modifier = Modifier.weight(1f)) {
                 if (state.loaded && state.problem == null && state.notifications.isEmpty()) {

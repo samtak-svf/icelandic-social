@@ -299,7 +299,7 @@ private fun ModerationLogDialog(
 internal fun LogEntries(entries: List<ModerationLogEntry>) {
     entries.forEach { entry ->
         Text(
-            "${entry.actor.shownName()} · ${stringResource(entry.action.label())} · " +
+            "${entry.actor.shownName()} · ${entry.action.logWording(entry.until).text()} · " +
                 calendarDate(entry.createdAt),
             style = MaterialTheme.typography.titleSmall,
         )
@@ -308,37 +308,49 @@ internal fun LogEntries(entries: List<ModerationLogEntry>) {
     }
 }
 
-/** What a log entry records; an action a later server adds reads as done. */
-private val logLabels =
-    mapOf(
-        ModerationLogAction.HIDE_POST to R.string.moderation_hide,
-        ModerationLogAction.HIDE_COMMENT to R.string.moderation_hide,
-        ModerationLogAction.REMOVE_POST to R.string.moderation_remove,
-        ModerationLogAction.REMOVE_COMMENT to R.string.moderation_remove,
-        ModerationLogAction.REMOVE_MEMBER to R.string.moderation_remove,
-        ModerationLogAction.RESTORE_POST to R.string.moderation_restore,
-        ModerationLogAction.RESTORE_COMMENT to R.string.moderation_restore,
-        ModerationLogAction.RESTORE_COMMUNITY to R.string.moderation_restore,
-        ModerationLogAction.MUTE_MEMBER to R.string.moderation_mute,
-        ModerationLogAction.UNMUTE_MEMBER to R.string.moderation_unmute,
-        ModerationLogAction.BAN_MEMBER to R.string.moderation_ban,
-        ModerationLogAction.UNBAN_MEMBER to R.string.moderation_unban,
-        ModerationLogAction.DELETE_COMMUNITY to R.string.community_delete,
-        ModerationLogAction.SET_COMMUNITY_PICTURE to R.string.moderation_log_community_picture_set,
-        ModerationLogAction.REMOVE_COMMUNITY_PICTURE to R.string.moderation_log_community_picture_removed,
-        ModerationLogAction.SET_COMMUNITY_COVER to R.string.moderation_log_community_cover_set,
-        ModerationLogAction.REMOVE_COMMUNITY_COVER to R.string.moderation_log_community_cover_removed,
-        ModerationLogAction.PIN_POST to R.string.moderation_log_post_pinned,
-        ModerationLogAction.UNPIN_POST to R.string.moderation_log_post_unpinned,
-        ModerationLogAction.CLOSE_POLL to R.string.moderation_log_poll_closed,
-        ModerationLogAction.ANONYMOUS_POSTS_ON to R.string.moderation_log_anonymous_on,
-        ModerationLogAction.ANONYMOUS_POSTS_OFF to R.string.moderation_log_anonymous_off,
-        ModerationLogAction.REVEAL_AUTHOR to R.string.moderation_log_author_revealed,
-        ModerationLogAction.REVIEW_UPHELD to R.string.moderation_log_review_upheld,
-        ModerationLogAction.REVIEW_OVERTURNED to R.string.moderation_log_review_overturned,
-    )
-
-private fun ModerationLogAction.label(): Int = logLabels[this] ?: R.string.moderation_done
+/**
+ * What a log entry records. Every action is named, so one a later lock adds does not compile until it is worded; a
+ * suspension is worded as its statement is, with its end (0115). Only a value this app cannot read reads as done.
+ */
+@Suppress("CyclomaticComplexMethod") // One branch per action, each a sentence of its own.
+internal fun ModerationLogAction.logWording(until: ULong? = null): Wording =
+    when (this) {
+        ModerationLogAction.HIDE_POST,
+        ModerationLogAction.HIDE_COMMENT,
+        -> Wording(R.string.moderation_hide)
+        ModerationLogAction.REMOVE_POST,
+        ModerationLogAction.REMOVE_COMMENT,
+        ModerationLogAction.REMOVE_MEMBER,
+        -> Wording(R.string.moderation_remove)
+        ModerationLogAction.RESTORE_POST,
+        ModerationLogAction.RESTORE_COMMENT,
+        ModerationLogAction.RESTORE_COMMUNITY,
+        -> Wording(R.string.moderation_restore)
+        ModerationLogAction.MUTE_MEMBER -> Wording(R.string.moderation_mute)
+        ModerationLogAction.UNMUTE_MEMBER -> Wording(R.string.moderation_unmute)
+        ModerationLogAction.BAN_MEMBER -> Wording(R.string.moderation_ban)
+        ModerationLogAction.UNBAN_MEMBER -> Wording(R.string.moderation_unban)
+        ModerationLogAction.DELETE_COMMUNITY -> Wording(R.string.community_delete)
+        ModerationLogAction.SET_COMMUNITY_PICTURE -> Wording(R.string.moderation_log_community_picture_set)
+        ModerationLogAction.REMOVE_COMMUNITY_PICTURE -> Wording(R.string.moderation_log_community_picture_removed)
+        ModerationLogAction.SET_COMMUNITY_COVER -> Wording(R.string.moderation_log_community_cover_set)
+        ModerationLogAction.REMOVE_COMMUNITY_COVER -> Wording(R.string.moderation_log_community_cover_removed)
+        ModerationLogAction.PIN_POST -> Wording(R.string.moderation_log_post_pinned)
+        ModerationLogAction.UNPIN_POST -> Wording(R.string.moderation_log_post_unpinned)
+        ModerationLogAction.CLOSE_POLL -> Wording(R.string.moderation_log_poll_closed)
+        ModerationLogAction.ANONYMOUS_POSTS_ON -> Wording(R.string.moderation_log_anonymous_on)
+        ModerationLogAction.ANONYMOUS_POSTS_OFF -> Wording(R.string.moderation_log_anonymous_off)
+        ModerationLogAction.REVEAL_AUTHOR -> Wording(R.string.moderation_log_author_revealed)
+        ModerationLogAction.REVIEW_UPHELD -> Wording(R.string.moderation_log_review_upheld)
+        ModerationLogAction.REVIEW_OVERTURNED -> Wording(R.string.moderation_log_review_overturned)
+        ModerationLogAction.SUSPEND_ACCOUNT,
+        ModerationLogAction.UNSUSPEND_ACCOUNT,
+        -> statementLabel(until)
+        ModerationLogAction.CLEAR_ACCOUNT_PHOTO,
+        ModerationLogAction.CLOSE_REPORT,
+        ModerationLogAction.UNKNOWN,
+        -> Wording(R.string.moderation_done)
+    }
 
 @Composable
 private fun DeleteCommunityConfirm(

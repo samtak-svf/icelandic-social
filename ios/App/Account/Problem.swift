@@ -29,6 +29,8 @@ enum Problem: Equatable, Sendable {
     case groupPhotoUnsupported
     /// The group photo could not be set or removed.
     case groupPhotoFailed
+    /// The account is suspended and this action is refused until the suspension ends (decision 0115).
+    case suspended
     /// Anything else.
     case generic(requestId: String? = nil, code: String? = nil)
 
@@ -43,6 +45,7 @@ enum Problem: Equatable, Sendable {
         case CoreError.Refused(_, "pin_limit", _): self = .pinFull
         case CoreError.Refused(_, "anonymous_off", _): self = .anonymousOff
         case CoreError.Refused(_, "poll_closed", _): self = .pollClosed
+        case CoreError.Refused(_, "suspended", _): self = .suspended
         case CoreError.Refused(_, _, let requestId): self = .generic(requestId: requestId)
         case let error as CoreError: self = .generic(code: error.code())
         default: self = .generic()
@@ -64,7 +67,7 @@ enum Problem: Equatable, Sendable {
         switch self {
         case let .identityTaken(requestId), let .generic(requestId, _): requestId
         case .unreachable, .tooLarge, .notPermitted, .notFound, .joinDeclined, .noMaster, .pinFull, .anonymousOff,
-            .pollClosed, .groupPhotoUnsupported, .groupPhotoFailed:
+            .pollClosed, .suspended, .groupPhotoUnsupported, .groupPhotoFailed:
             nil
         }
     }
@@ -79,7 +82,7 @@ enum Problem: Equatable, Sendable {
     var canRetry: Bool {
         switch self {
         case .identityTaken, .tooLarge, .notPermitted, .notFound, .joinDeclined, .noMaster, .pinFull, .anonymousOff,
-            .pollClosed, .groupPhotoUnsupported:
+            .pollClosed, .suspended, .groupPhotoUnsupported:
             false
         case .unreachable, .generic, .groupPhotoFailed: true
         }

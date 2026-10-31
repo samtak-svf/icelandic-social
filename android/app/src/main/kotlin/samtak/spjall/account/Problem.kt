@@ -49,6 +49,9 @@ sealed interface Problem {
     /** Three posts are already featured (`pin_limit`, 0088): unpin one first, trying again cannot help. */
     data object PinFull : Problem
 
+    /** A platform moderator holds this account's writing (`suspended`, 0115): trying again cannot help. */
+    data object Suspended : Problem
+
     /** The community stopped allowing anonymous posts meanwhile (`anonymous_off`, 0091). */
     data object AnonymousOff : Problem
 
@@ -83,6 +86,7 @@ private val REFUSALS: Map<String?, Problem> =
         "poll_closed" to Problem.PollClosed,
         "anonymous_off" to Problem.AnonymousOff,
         "pin_limit" to Problem.PinFull,
+        "suspended" to Problem.Suspended,
     )
 
 /**

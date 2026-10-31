@@ -16,6 +16,7 @@ struct PostView: View {
     /// The own comment waiting for the delete to be confirmed.
     @State private var deletingComment: String?
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.suspension) private var suspension
 
     var body: some View {
         ScrollView {
@@ -51,6 +52,7 @@ struct PostView: View {
                 ProblemCard(problem: problem) { Task { await model.retry() } }.padding(16)
             }
         }
+        .safeAreaInset(edge: .top) { SuspendedNotice() }
         .safeAreaInset(edge: .bottom) {
             if model.writes {
                 VStack(spacing: 0) {
@@ -116,7 +118,8 @@ struct PostView: View {
             onReport: { reporting = Reporting(target: ReportTarget(kind: .comment, id: comment.commentId)) },
             onDelete: model.mine(comment.author) ? { deletingComment = comment.commentId } : nil,
             onReply: replyable ? { model.reply(to: comment) } : nil,
-            onLike: model.writes ? { Task<Void, Never> { await model.like(comment.commentId) } } : nil,
+            onLike: mayWrite(suspension, model.writes)
+                ? { Task<Void, Never> { await model.like(comment.commentId) } } : nil,
             replies: replies)
     }
 
@@ -169,6 +172,7 @@ private struct CommentComposer: View {
     let onSend: () -> Void
 
     @FocusState private var focused: Bool
+    @Environment(\.suspension) private var suspension
     @State private var picking = false
     @State private var selection: PhotosPickerItem?
 
@@ -190,12 +194,13 @@ private struct CommentComposer: View {
                     .padding(.bottom, 3)
                 RoundButton(
                     systemImage: "photo", label: "comment_add_image", fill: BrandTokens.Colors.muted,
-                    tint: BrandTokens.Colors.fg, size: 40, enabled: !busy && image == nil
+                    tint: BrandTokens.Colors.fg, size: 40, enabled: mayWrite(suspension, !busy && image == nil)
                 ) { picking = true }
                 TextField("post_write_comment", text: $draft, axis: .vertical)
                     .font(.sans(14))
                     .lineLimit(1...5)
                     .focused($focused)
+                    .disabled(!mayWrite(suspension))
                     .padding(.horizontal, 16)
                     .padding(.vertical, 10)
                     .frame(minHeight: 40)
@@ -218,7 +223,7 @@ private struct CommentComposer: View {
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
-                .disabled(!enabled)
+                .disabled(!mayWrite(suspension, enabled))
                 .accessibilityLabel(Text("comment_publish"))
             }
             .padding(.horizontal, 12)

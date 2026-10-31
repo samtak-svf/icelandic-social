@@ -111,6 +111,7 @@ internal fun CommunityScreen(
                     Icon(AppIcons.Info, contentDescription = stringResource(R.string.community_info))
                 }
             }
+            SuspendedNotice()
             if (searchVisible) SearchRow(state.searchQuery, actions)
             if (state.busy) LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
             CommunityBody(state, actions, slots, managing, onDeleteCommunity = { dialog = CommunityDialog.DELETE }) {
@@ -277,7 +278,11 @@ private fun JoinPart(
                 Muted(stringResource(R.string.community_join_again, calendarDate(state.declinedUntil)))
             }
         community.role == null ->
-            Button(onClick = actions::join, enabled = !state.busy, modifier = Modifier.heightIn(min = 44.dp)) {
+            Button(
+                onClick = actions::join,
+                enabled = !state.busy && !suspended(),
+                modifier = Modifier.heightIn(min = 44.dp),
+            ) {
                 Text(
                     stringResource(
                         if (community.audience == CommunityAudience.OPEN) {

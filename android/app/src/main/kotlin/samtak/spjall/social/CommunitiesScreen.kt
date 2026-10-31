@@ -76,6 +76,7 @@ fun CommunitiesScreen(
                     size = NEW_BUTTON.dp,
                 )
             }
+            SuspendedNotice()
             if (state.busy || state.searching) LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
             if (currentLayout().hub == HubLayout.COLUMN) {
                 // The feed in the middle, the reader's communities in a column beside it (decision 0087).
@@ -246,7 +247,12 @@ private fun HubColumn(
 /** `community_create` at the top of the list (0080): only a verified account is offered it. */
 @Composable
 private fun CreateRow(onCreate: () -> Unit) {
-    SocialCard(modifier = Modifier.clickable(role = Role.Button, onClick = onCreate)) {
+    SocialCard(
+        modifier =
+            Modifier
+                .dimmedWhenSuspended()
+                .clickable(enabled = !suspended(), role = Role.Button, onClick = onCreate),
+    ) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             Box(
                 modifier = Modifier.size(40.dp).background(Palette.primary, CircleShape),

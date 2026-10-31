@@ -214,8 +214,9 @@ private fun LikeAction(
             active = mine != null,
             modifier =
                 Modifier
+                    .dimmedWhenSuspended()
                     .combinedClickable(
-                        enabled = !busy,
+                        enabled = !busy && !suspended(),
                         role = Role.Button,
                         onClick = { onReact(post.myEmoji ?: LIKE_EMOJI) },
                         onLongClick = { picker = true },

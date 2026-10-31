@@ -264,6 +264,7 @@ class NotificationsViewModelTest {
             NotificationAction.REMOVE_POST,
             NotificationAction.HIDE_COMMENT,
             NotificationAction.REMOVE_COMMENT,
+            NotificationAction.SUSPEND_ACCOUNT,
             NotificationAction.REVIEW_UPHELD,
             NotificationAction.REVIEW_OVERTURNED,
         ).forEach { assertEquals(Opens.Statements, notification("n", moderated, 1uL, action = it).opens()) }
@@ -274,6 +275,11 @@ class NotificationsViewModelTest {
         assertEquals(
             Opens.Community("k1"),
             notification("n", moderated, 1uL, action = NotificationAction.MUTE_MEMBER).opens(),
+        )
+        // A lifted suspension has no statement of its own (0115): the notice is the whole news.
+        assertEquals(
+            Opens.Community("k1"),
+            notification("n", moderated, 1uL, action = NotificationAction.UNSUSPEND_ACCOUNT).opens(),
         )
     }
 
