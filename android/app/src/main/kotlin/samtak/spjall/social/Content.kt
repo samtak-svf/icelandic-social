@@ -65,7 +65,7 @@ const val POST_LIMIT = 5000
 const val COMMENT_LIMIT = 2000
 
 /** The longest report note the server takes. */
-const val NOTE_LIMIT = 1000
+const val NOTE_LIMIT = 500
 
 /** The longest moderator's reason the server takes. */
 const val REASON_LIMIT = 500
