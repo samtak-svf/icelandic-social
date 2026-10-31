@@ -471,6 +471,8 @@ export const strings = {
   community_leave: "Yfirgefa hópinn",
   /** Shown to a muted member in place of the composer. */
   community_muted: "Stjórnandi þaggaði niður í þér hér. Þú getur lesið en ekki skrifað.",
+  /** Shown to a member in place of the composer when nobody can write in the community any more: its owner's account was deleted and it had no moderator to inherit it. */
+  community_read_only: "Ekki er lengur hægt að skrifa hér en þú getur enn lesið.",
   /** Label of the field where a member writes a new post. */
   post_compose: "Skrifa póst",
   /** The one-line prompt in a feed that opens the post composer when it is tapped (decision 0079). */

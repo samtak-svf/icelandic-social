@@ -4,7 +4,7 @@ import { listCommunityPosts, type Community, type Post } from "../generated/api.
 import { strings } from "../generated/brand/strings.ts";
 import { useCommunityTab } from "../social/community-frame.tsx";
 import { emptyFeedClass, FeaturedStrip, feedItemClass } from "../social/featured.tsx";
-import { mayPostIn, moderatesAs } from "../social/roles.tsx";
+import { mayPostIn, moderatesAs, noPostNotice } from "../social/roles.tsx";
 import { PostComposer } from "../social/composer.tsx";
 import { outcome, useLoad, type Outcome } from "../social/outcome.ts";
 import { PostView } from "../social/post.tsx";
@@ -52,17 +52,17 @@ function Posts({ community, refresh }: Readonly<{ community: Community; refresh:
       [communityId, searched],
     ),
   );
-  const may = mayPostIn(community);
+  const notice = noPostNotice(community);
   return (
     <section className="mt-6 flex flex-col gap-4">
-      {may && (
+      {mayPostIn(community) && (
         <PostComposer
           communityId={communityId}
           posted={reload}
           anonymousAllowed={community.anonymousPosts}
         />
       )}
-      {community.role !== null && !may && <p>{strings.community_muted}</p>}
+      {notice !== null && <p>{notice}</p>}
       {searched === "" && <FeaturedStrip featured={community.featured} />}
       {open && <SearchBox query={query} onQuery={setQuery} />}
       <Results
