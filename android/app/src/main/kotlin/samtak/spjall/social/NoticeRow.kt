@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -107,10 +106,13 @@ private fun NoticePicture(
 ) {
     val people = notification.actors.ifEmpty { listOfNotNull(notification.actor) }
     val second = people.getOrNull(1).takeIf { notification.actorCount >= 2uL }
-    Box(modifier = Modifier.width(if (second != null) PICTURE_TWO.dp else PICTURE.dp)) {
-        if (second != null) PersonAvatar(second, Modifier.offset(x = OVERLAP.dp))
-        val first = people.firstOrNull()
-        if (first != null) {
+    val first = people.firstOrNull()
+    Box(modifier = Modifier.size(PICTURE.dp)) {
+        if (first != null && second != null) {
+            // Two smaller faces on a diagonal, as on iOS: the newest on top at the top left.
+            PersonAvatar(second, Modifier.offset(PAIR_SHIFT.dp, PAIR_SHIFT.dp), PAIR.dp)
+            PersonAvatar(first, Modifier.border(2.dp, Palette.surface, CircleShape), PAIR.dp)
+        } else if (first != null) {
             PersonAvatar(first, Modifier.border(2.dp, Palette.surface, CircleShape))
         } else {
             Avatar(
@@ -121,7 +123,9 @@ private fun NoticePicture(
                 shape = communityTile(PICTURE.dp),
             )
         }
-        Badge(notification.line().badge, notification.emoji, Modifier.align(Alignment.BottomEnd))
+        // On a pair the bottom corner holds the second face's initials, so the badge takes the free top corner.
+        val corner = if (second != null && first != null) Alignment.TopEnd else Alignment.BottomEnd
+        Badge(notification.line().badge, notification.emoji, Modifier.align(corner))
     }
 }
 
@@ -176,8 +180,8 @@ private val ROW_SHAPE =
     androidx.compose.foundation.shape
         .RoundedCornerShape(12.dp)
 private const val PICTURE = 44
-private const val PICTURE_TWO = 60
-private const val OVERLAP = 16
+private const val PAIR = 28
+private const val PAIR_SHIFT = 16
 private const val BADGE = 20
 private const val ICON = 12
 private const val EMOJI_SIZE = 12
