@@ -65,7 +65,7 @@ async function invitePage(env: Env, token: string): Promise<Response> {
   );
 }
 
-/** Digital Asset Links: the Android app may open this host's /l/ links. */
+/** Digital Asset Links: the Android app may open this host's links, those its manifest claims (decisions 0019, 0121). */
 function assetLinks(env: Env): Response {
   const { androidFingerprints } = appLinks(env);
   return Response.json([
@@ -80,12 +80,27 @@ function assetLinks(env: Env): Response {
   ]);
 }
 
-/** The apple-app-site-association file: the iOS apps may open /l/ links. */
+/**
+ * The apple-app-site-association file: the iOS apps may open /l/ links and the links to a post or a community
+ * (decision 0121). The first match decides, so each page deeper than those comes first, and stays in the browser.
+ */
 function appleAppSiteAssociation(env: Env): Response {
   const { appleAppIds } = appLinks(env);
   return Response.json({
     applinks: {
-      details: [{ appIDs: appleAppIds, components: [{ "/": `${ids.hosts.linkPathPrefix}*` }] }],
+      details: [
+        {
+          appIDs: appleAppIds,
+          components: [
+            { "/": `${ids.hosts.linkPathPrefix}*` },
+            { "/": "/posts/*/*", exclude: true },
+            { "/": "/posts/?*" },
+            { "/": "/communities/new", exclude: true },
+            { "/": "/communities/*/*", exclude: true },
+            { "/": "/communities/?*" },
+          ],
+        },
+      ],
     },
   });
 }

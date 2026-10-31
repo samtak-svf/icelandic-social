@@ -12,11 +12,6 @@ struct HomeView: View {
     enum Tab { case feed, conversations, communities, notifications, me }
     static let launchTab = Tab.feed
 
-    enum Route: Hashable {
-        case people
-        case conversation(String)
-    }
-
     enum MeRoute: Hashable {
         case verify
         case link
@@ -38,7 +33,7 @@ struct HomeView: View {
     @State private var me: MeModel
     @State private var onboarding: OnboardingModel
     @State private var tab = HomeView.launchTab
-    @State private var path: [Route] = []
+    @State private var path: [SocialRoute] = []
     @State private var mePath: [MeRoute] = []
     @State private var communities: CommunitiesModel
     @State private var feed: HomeModel
@@ -128,6 +123,7 @@ struct HomeView: View {
             openInvite()
             openTapped()
             openTappedSocial()
+            openOwnLink()
             await push.start()
         }
         // The count on the bell, as the server has it.
@@ -178,6 +174,7 @@ struct HomeView: View {
         .onChange(of: signIn.signedInInvite) { _, token in
             if token != nil { openInvite() }
         }
+        .onChange(of: signIn.openedRoute) { openOwnLink() }
         .onChange(of: me.signedOut) { _, signedOut in
             guard signedOut else { return }
             socket.stop()
@@ -279,24 +276,18 @@ struct HomeView: View {
                 onNew: { path.append(.people) },
                 onInvite: { tab = .me }
             )
-            .navigationDestination(for: Route.self) { route in
-                switch route {
-                case .people:
-                    PeopleRoute(account: signIn.account, live: socket, onInvite: { tab = .me }) {
-                        path = [.conversation($0)]
-                    }
-                case .conversation(let id):
-                    let model = routeModels.model(for: route) {
-                        ConversationModel(id: id, account: signIn.account, live: socket, drafts: drafts)
-                    }
-                    ConversationRoute(model: model)
-                        .task(id: id) { await push.dismiss(id) }
-                }
+            .navigationDestination(for: SocialRoute.self) { route in
+                ConversationsDestination(
+                    route: route, account: signIn.account, live: socket, drafts: drafts, push: push, social: social,
+                    models: routeModels, onInvite: { tab = .me }, onOpen: { path = [.conversation($0)] }
+                )
             }
         }
         // On the stack, not its root, so the screens pushed onto it draw the bell too (decision 0111).
-        .environment(\.bell, bell)
+        .hosted(bell: bell, social: social, sharing: postSharing, suspension: suspension)
         .environment(\.sharedPosts, sharedPosts)
+        // A link to a post or a community opens on this stack, so back returns to the conversation (decision 0121).
+        .environment(\.openURL, ownLinks { path.append($0) })
     }
 
     private var meStack: some View {
@@ -352,7 +343,8 @@ struct HomeView: View {
         switch tab {
         case .communities: communitiesPath.last?.wide ?? true
         case .notifications: noticesPath.last?.wide ?? false
-        case .feed, .conversations, .me: false
+        case .conversations: path.last?.wide ?? false
+        case .feed, .me: false
         }
     }
 
@@ -387,6 +379,13 @@ struct HomeView: View {
         noticesOver = NoticesOver()
         tab = .notifications
         noticesPath = [tap.post.map(SocialRoute.post) ?? tap.community.map(SocialRoute.community)].compactMap { $0 }
+    }
+
+    /// A link to a post or a community opened from outside (decision 0121), on the feed: "Ég" holds routes of its own.
+    private func openOwnLink() {
+        guard let route = signIn.takeRoute() else { return }
+        tab = .feed
+        feedPath.append(route)
     }
 
     /// An invite link opened while signed in: into the 1:1 with whoever made it.

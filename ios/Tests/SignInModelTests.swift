@@ -25,6 +25,16 @@ final class SignInModelTests: XCTestCase {
         return model
     }
 
+    func testAnOpenedRouteIsTakenOnceAndForgottenOnSignOut() async {
+        let model = await model()
+        model.openRoute(.post("p1"))
+        XCTAssertEqual(model.takeRoute(), .post("p1"))
+        XCTAssertNil(model.takeRoute())
+        model.openRoute(.community("c1"))
+        model.signedOut()
+        XCTAssertNil(model.takeRoute())
+    }
+
     func testASignedInDeviceGoesStraightInAndTopsUpItsKeyPackages() async {
         let account = FakeAccount(signedIn: true)
         let model = SignInModel(account: account, defaults: defaults)

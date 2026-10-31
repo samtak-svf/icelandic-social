@@ -194,7 +194,8 @@ describe("the link host", () => {
         target: {
           namespace: "android_app",
           package_name: ids.store.androidApplicationId,
-          sha256_cert_fingerprints: [],
+          // Google Play's app-signing certificate, in the one spelling Android compares.
+          sha256_cert_fingerprints: [expect.stringMatching(/^[0-9A-F]{2}(:[0-9A-F]{2}){31}$/)],
         },
       },
     ]);
@@ -221,7 +222,7 @@ describe("the link host", () => {
     expect(remaining).toBeLessThan(366 * 24 * 60 * 60 * 1000);
   });
 
-  it("hands /l/ links to the iOS app of the interim team", async () => {
+  it("hands /l/ links and those to a post or a community to the iOS app of the interim team", async () => {
     const response = await fetch("/.well-known/apple-app-site-association");
     expect(response.status).toBe(200);
     expect(response.headers.get("content-type")).toContain("application/json");
@@ -230,7 +231,14 @@ describe("the link host", () => {
         details: [
           {
             appIDs: [`${ids.appleInterim.teamId}.${ids.appleInterim.iosBundleId}`],
-            components: [{ "/": `${ids.hosts.linkPathPrefix}*` }],
+            components: [
+              { "/": `${ids.hosts.linkPathPrefix}*` },
+              { "/": "/posts/*/*", exclude: true },
+              { "/": "/posts/?*" },
+              { "/": "/communities/new", exclude: true },
+              { "/": "/communities/*/*", exclude: true },
+              { "/": "/communities/?*" },
+            ],
           },
         ],
       },

@@ -151,7 +151,12 @@ export function checkApns(config, ids) {
   const own = ids.services.appleTeamId;
   const pairs = [{ team: ids.appleInterim.teamId, topic: ids.appleInterim.iosBundleId }];
   if (own) pairs.push({ team: own, topic: ids.store.iosBundleId });
-  const { APNS_TEAM_ID: team, APNS_TOPIC: topic, APPLE_TEAM_ID: linkTeam } = config.vars;
+  const {
+    APNS_TEAM_ID: team,
+    APNS_TOPIC: topic,
+    APPLE_TEAM_ID: linkTeam,
+    ANDROID_CERT_SHA256: certs,
+  } = config.vars;
   const pair = pairs.find((p) => p.team === team);
   if (!pair) {
     const teams = pairs.map((p) => JSON.stringify(p.team)).join(" or ");
@@ -165,6 +170,13 @@ export function checkApns(config, ids) {
   // which only Samtak's own team signs.
   if (linkTeam !== "" && linkTeam !== own) {
     problems.push(`APPLE_TEAM_ID is ${JSON.stringify(linkTeam)}, expected "" or ${own}`);
+  }
+  // Android compares these byte for byte, so any other spelling fails verification without a word.
+  const fingerprint = /^[0-9A-F]{2}(:[0-9A-F]{2}){31}$/;
+  for (const cert of String(certs ?? "")
+    .split(",")
+    .filter(Boolean)) {
+    if (!fingerprint.test(cert)) problems.push(`ANDROID_CERT_SHA256 holds ${JSON.stringify(cert)}`);
   }
   return problems;
 }
@@ -403,6 +415,7 @@ function stagingSecretsAndFakes(config) {
   expect(sortedNames(config.secrets), sortedNames(STAGING_SECRETS), "declares the secrets");
   expect(config.vars.APNS_TEAM_ID, "", "APNS_TEAM_ID");
   expect(config.vars.APNS_TOPIC, "", "APNS_TOPIC");
+  expect(config.vars.ANDROID_CERT_SHA256, "", "ANDROID_CERT_SHA256");
   for (const [name, path] of [
     ["KENNI_ISSUER", "/dev/kenni"],
     ["GOOGLE_ISSUER", "/dev/google"],

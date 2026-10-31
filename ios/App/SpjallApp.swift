@@ -23,8 +23,8 @@ struct SpjallApp: App {
     nonisolated static let account = CoreAccount(open: CoreStore.open)
 }
 
-/// Sign-in until the device is signed in, then "Ég". Invite links arrive
-/// through `onOpenURL`; the providers' redirects come back to the browser session.
+/// Sign-in until the device is signed in, then "Ég". Invite links and links to a post or a
+/// community arrive through `onOpenURL`; the providers' redirects come back to the browser session.
 struct RootView: View {
     let signIn: SignInModel
     let push: PushModel
@@ -34,6 +34,7 @@ struct RootView: View {
 
     @Environment(\.webAuthenticationSession) private var webAuthenticationSession
     @Environment(\.openURL) private var openURL
+    @State private var handoff = BrowserHandoff()
 
     var body: some View {
         Group {
@@ -52,8 +53,13 @@ struct RootView: View {
         }
         .task { await signIn.check() }
         .onOpenURL { url in
-            guard let token = inviteToken(link: url.absoluteString) else { return }
-            Task { await signIn.openInvite(token: token) }
+            if let token = inviteToken(link: url.absoluteString) {
+                Task { await signIn.openInvite(token: token) }
+            } else if let route = SocialRoute(ownLink: url) {
+                signIn.openRoute(route)
+            } else if handoff.opens(url) {
+                openURL(url)
+            }
         }
     }
 
