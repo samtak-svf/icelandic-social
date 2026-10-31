@@ -83,7 +83,7 @@ export function ReportForm({
       <textarea
         id={note}
         value={text}
-        maxLength={1000}
+        maxLength={500}
         onChange={(event) => setText(event.target.value)}
         className="rounded-md border border-border-strong bg-surface p-2"
       />

@@ -20,6 +20,20 @@ final class ReportModelTests: XCTestCase {
         XCTAssertFalse(model.sendable)
     }
 
+    func testANoteStopsWhereTheServerDoes() {
+        let model = ReportModel(social: social, target: ReportTarget(kind: .post, id: "p1"))
+        model.reason = .spam
+        let limit = ReportModel.noteLimit
+        model.note = String(repeating: "a", count: limit)
+        XCTAssertTrue(model.sendable)
+        model.note += "a"
+        XCTAssertFalse(model.sendable)
+        // An emoji is one character here and two units on the server.
+        model.note = String(repeating: "\u{1F600}", count: limit / 2 + 1)
+        XCTAssertFalse(model.sendable)
+        XCTAssertEqual(ReportModel.capped(model.note).utf16.count, limit)
+    }
+
     func testAFailedReportCanBeSentAgain() async {
         let model = ReportModel(social: social, target: ReportTarget(kind: .comment, id: "c1"))
         model.reason = .spam

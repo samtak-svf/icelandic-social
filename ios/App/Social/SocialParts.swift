@@ -748,9 +748,8 @@ struct ReportSheet: View {
                         )
                         .lineLimit(2...6)
                         .onChange(of: model.note) { _, text in
-                            if text.count > ReportModel.noteLimit {
-                                model.note = String(text.prefix(ReportModel.noteLimit))
-                            }
+                            let capped = ReportModel.capped(text)
+                            if capped != text { model.note = capped }
                         }
                     }
                     if let problem = model.problem {
