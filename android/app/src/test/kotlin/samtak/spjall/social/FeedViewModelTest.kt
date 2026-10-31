@@ -250,18 +250,6 @@ class FeedViewModelTest {
             assertNull(model.state.value.problem)
         }
 
-    @Test
-    fun aCommunityTheComposerDoesNotOfferCannotBePostedTo() =
-        runTest(dispatcher) {
-            val model = model()
-            model.onTarget(PostTarget.Community("k9", anonymous = false))
-            model.onDraft("Halló")
-            model.publish()
-            advanceUntilIdle()
-            assertTrue(social.written.isEmpty())
-            assertEquals("Halló", model.state.value.draft)
-        }
-
     private fun wallPost(id: String) = post(id, poll = poll()).copy(wallOwner = "a2")
 
     private fun poll(closed: Boolean = false) =

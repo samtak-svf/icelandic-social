@@ -54,6 +54,8 @@ class FeedViewModel(
         val mine: List<Community> = emptyList(),
         val target: PostTarget,
         val draft: String = "",
+        /** The composer's sheet is open. A post sent closes it; a refusal or a dismissal keeps the draft. */
+        val composing: Boolean = false,
         val reacting: Set<String> = emptySet(),
         val answering: Set<String> = emptySet(),
         val reported: Set<String> = emptySet(),
@@ -114,6 +116,8 @@ class FeedViewModel(
             } catch (_: CoreException) {
                 // The headings fall back to the author and the picker to the own wall; the feed itself says why.
             }
+            // A remembered community no longer on offer: the row names the wall, so the wall is where it goes.
+            if (!_state.value.let { it.offers(it.target) }) onTarget(PostTarget.Wall(WallAudience.FRIENDS))
         }
     }
 
@@ -128,7 +132,6 @@ class FeedViewModel(
 
     private fun fetch(refresh: Boolean) {
         if (busy) return
-        retrying = { fetch(refresh) }
         _state.update { it.copy(loading = true, refreshing = refresh, problem = null) }
         viewModelScope.launch {
             try {
@@ -138,6 +141,7 @@ class FeedViewModel(
                 }
                 finished(ok = true)
             } catch (e: CoreException) {
+                retrying = { fetch(refresh) }
                 _state.update { it.copy(loading = false, refreshing = false, problem = e.problem()) }
                 finished(ok = false)
             }
@@ -152,7 +156,6 @@ class FeedViewModel(
             return
         }
         skipped = false
-        retrying = ::more
         _state.update { it.copy(loading = true, problem = null) }
         viewModelScope.launch {
             try {
@@ -160,6 +163,7 @@ class FeedViewModel(
                 _state.update { it.copy(posts = it.posts.followedBy(posts), next = next, loading = false) }
                 finished(ok = true)
             } catch (e: CoreException) {
+                retrying = ::more
                 _state.update { it.copy(loading = false, problem = e.problem()) }
                 finished(ok = false)
             }
@@ -203,6 +207,10 @@ class FeedViewModel(
 
     // The composer.
 
+    fun openComposer() = _state.update { it.copy(composing = true) }
+
+    fun closeComposer() = _state.update { it.copy(composing = false) }
+
     fun onDraft(text: String) = _state.update { it.copy(draft = text) }
 
     /** Another place sends the images again, since an upload belongs to its target. */
@@ -232,7 +240,6 @@ class FeedViewModel(
         if (s.publishing || s.loading || !ready) return
         _state.update { it.copy(publishing = true, problem = null) }
         attachments.clearNotice()
-        retrying = ::publish
         viewModelScope.launch {
             try {
                 val post =
@@ -242,7 +249,12 @@ class FeedViewModel(
                     }
                 attachments.spent()
                 _state.update {
-                    it.copy(posts = listOf(post) + it.posts.without(post.postId), draft = "", publishing = false)
+                    it.copy(
+                        posts = listOf(post) + it.posts.without(post.postId),
+                        draft = "",
+                        publishing = false,
+                        composing = false,
+                    )
                 }
                 finished(ok = true)
             } catch (e: CoreException) {
@@ -250,7 +262,7 @@ class FeedViewModel(
                 if ((e as? CoreException.Refused)?.code == "invalid_media") attachments.forgetUploads()
                 notice?.let(attachments::showNotice)
                 _state.update { it.copy(publishing = false, problem = if (notice == null) e.problem() else null) }
-                if (notice != null) retrying = null
+                retrying = ::publish.takeIf { notice == null }
                 finished(ok = false)
             }
         }
@@ -270,7 +282,8 @@ class FeedViewModel(
                 val changed = withContext(io) { social.toggle(post, emoji) }
                 _state.update { it.copy(posts = it.posts.replacing(changed), reacting = it.reacting - postId) }
             } catch (e: CoreException) {
-                _state.update { it.copy(reacting = it.reacting - postId, problem = e.problem()) }
+                cardFailed(e.problem())
+                _state.update { it.copy(reacting = it.reacting - postId) }
             }
         }
     }
@@ -295,8 +308,9 @@ class FeedViewModel(
     ) { changed, problem ->
         _state.update { s ->
             val done = s.copy(answering = s.answering - postId)
-            if (changed != null) done.copy(posts = done.posts.replacing(changed)) else done.copy(problem = problem)
+            if (changed != null) done.copy(posts = done.posts.replacing(changed)) else done
         }
+        problem?.let(::cardFailed)
     }
 
     /** The post is held and this account may write on it; a post no longer in the list is not answered. */
@@ -309,7 +323,7 @@ class FeedViewModel(
                 withContext(io) { social.deletePost(postId) }
                 _state.update { it.copy(posts = it.posts.without(postId)) }
             } catch (e: CoreException) {
-                _state.update { it.copy(problem = e.problem()) }
+                cardFailed(e.problem())
             }
         }
     }
@@ -326,9 +340,15 @@ class FeedViewModel(
                 }
                 _state.update { it.copy(reported = it.reported + postId) }
             } catch (e: CoreException) {
-                _state.update { it.copy(problem = e.problem()) }
+                cardFailed(e.problem())
             }
         }
+    }
+
+    /** A card's call has nothing to repeat, and what failed before it is not what this problem offers to retry. */
+    private fun cardFailed(problem: Problem) {
+        retrying = null
+        _state.update { it.copy(problem = problem) }
     }
 
     private companion object {

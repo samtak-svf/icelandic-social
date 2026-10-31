@@ -34,6 +34,7 @@ import samtak.spjall.brand.R
 import samtak.spjall.core.PostTarget
 import samtak.spjall.core.WallAudience
 import samtak.spjall.ui.Palette
+import samtak.spjall.ui.ProblemCard
 
 /** The test tags of the feed's composer: the prompt that opens it, the target row and its entries, the switch. */
 internal const val FEED_COMPOSE_PROMPT = "feed-compose-prompt"
@@ -63,11 +64,10 @@ internal fun FeedComposerSheet(
     state: FeedViewModel.State,
     attached: Attached,
     actions: FeedActions,
-    onDismiss: () -> Unit,
 ) {
     // Opened whole: the send button is at the foot, and a half-open sheet would hide it.
     ModalBottomSheet(
-        onDismissRequest = onDismiss,
+        onDismissRequest = actions::closeComposer,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
         containerColor = Palette.surface,
     ) {
@@ -75,6 +75,8 @@ internal fun FeedComposerSheet(
             modifier = Modifier.navigationBarsPadding().verticalScroll(rememberScrollState()).padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
+            // A refusal shows here too: the list behind the sheet is out of sight.
+            state.problem?.let { ProblemCard(it, actions::retry) }
             Composer(
                 label = stringResource(R.string.post_compose_prompt),
                 action = stringResource(R.string.post_publish),

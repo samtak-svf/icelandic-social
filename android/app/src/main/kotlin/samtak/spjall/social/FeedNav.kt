@@ -57,6 +57,10 @@ private fun feedActions(
 
     override fun sendToConversation(postId: String) = sharePost(postId)
 
+    override fun openComposer() = model.openComposer()
+
+    override fun closeComposer() = model.closeComposer()
+
     override fun react(
         postId: String,
         emoji: String,

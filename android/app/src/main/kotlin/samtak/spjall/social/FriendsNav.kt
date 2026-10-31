@@ -8,6 +8,7 @@ import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavController
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.composable
+import samtak.spjall.account.Problem
 import samtak.spjall.core.FriendSort
 import samtak.spjall.core.ReportReason
 import samtak.spjall.core.ReportTarget
@@ -94,6 +95,7 @@ internal fun PersonRoute(
     choosePhoto: () -> Unit = {},
     reframePhoto: () -> Unit = {},
     removePhoto: () -> Unit = {},
+    photoProblem: Problem? = null,
     chooseCover: () -> Unit = {},
     reframeCover: () -> Unit = {},
     addImage: () -> Unit = {},
@@ -204,5 +206,6 @@ internal fun PersonRoute(
         },
         tab = tab,
         attached = attached,
+        photoProblem = photoProblem,
     )
 }

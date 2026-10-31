@@ -22,7 +22,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -49,17 +48,6 @@ fun FeedScreen(
     actions: FeedActions,
 ) {
     var reporting by rememberSaveable { mutableStateOf<String?>(null) }
-    var composing by rememberSaveable { mutableStateOf(false) }
-    // The sheet closes once a post it sent is in; a refusal or a dismissal keeps it, and the draft, as it was.
-    var sent by remember { mutableStateOf(false) }
-    LaunchedEffect(state.publishing) {
-        if (state.publishing) {
-            sent = true
-        } else if (sent) {
-            sent = false
-            if (state.draft.isEmpty()) composing = false
-        }
-    }
     // Nothing held while a cursor remains: the screen goes on asking, a go at a time, until a post or the end comes.
     LaunchedEffect(state.next, state.loading, state.problem) {
         if (state.keepsAsking) actions.more()
@@ -79,7 +67,7 @@ fun FeedScreen(
                     contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    item(key = "composer") { ComposePrompt { composing = true } }
+                    item(key = "composer") { ComposePrompt(actions::openComposer) }
                     state.problem?.let { problem -> item(key = "problem") { ProblemCard(problem, actions::retry) } }
                     when (state.phase) {
                         FeedPhase.LOADING -> item(key = "loading") { Progress() }
@@ -92,7 +80,7 @@ fun FeedScreen(
             }
         }
     }
-    if (composing) FeedComposerSheet(state, attached, actions) { composing = false }
+    if (state.composing) FeedComposerSheet(state, attached, actions)
     reporting?.let { postId ->
         ReportDialog(
             onSend = { reason, note ->

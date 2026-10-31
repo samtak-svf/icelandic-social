@@ -10,6 +10,7 @@ import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onLast
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -22,6 +23,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
+import samtak.spjall.account.Problem
 import samtak.spjall.brand.R
 import samtak.spjall.conversations.SCREENSHOT_DEVICE
 import samtak.spjall.conversations.SCREENSHOT_SDK
@@ -113,10 +115,17 @@ class FeedScreenTest {
     }
 
     @Test
-    fun theComposerOpensFromThePromptOnTheWallWithItsAudienceAndNoAnonymousSwitch() {
-        show(feedState(mine = listOf(memberOf("k1", anonymousPosts = true))))
-        compose.onAllNodesWithTag(FEED_COMPOSER).assertCountEquals(0)
+    fun thePromptAsksForTheComposerAndNothingOpensUntilTheStateSaysSo() {
+        show(feedState())
         compose.onNodeWithTag(FEED_COMPOSE_PROMPT).performClick()
+        settle()
+        assertEquals(listOf("openComposer"), calls)
+        compose.onAllNodesWithTag(FEED_COMPOSER).assertCountEquals(0)
+    }
+
+    @Test
+    fun theComposerOnTheWallHasItsAudienceAndNoAnonymousSwitch() {
+        show(feedState(mine = listOf(memberOf("k1", anonymousPosts = true)), composing = true))
         settle()
         compose.onNodeWithTag(FEED_COMPOSER).assertExists()
         compose.onNodeWithText(text(R.string.wall_not_encrypted_notice)).assertExists()
@@ -126,8 +135,7 @@ class FeedScreenTest {
     @Test
     fun aCommunityThatAllowsItOffersTheAnonymousSwitchAndNoAudience() {
         val k1 = memberOf("k1", anonymousPosts = true)
-        show(feedState(mine = listOf(k1), target = PostTarget.Community("k1", anonymous = false)))
-        compose.onNodeWithTag(FEED_COMPOSE_PROMPT).performClick()
+        show(feedState(mine = listOf(k1), target = PostTarget.Community("k1", anonymous = false), composing = true))
         settle()
         compose.onNodeWithTag(FEED_ANONYMOUS).assertExists()
         compose.onAllNodesWithText(text(R.string.wall_not_encrypted_notice)).assertCountEquals(0)
@@ -135,12 +143,22 @@ class FeedScreenTest {
 
     @Test
     fun theTargetRowNamesTheCommunityAndPicksFromTheOfferedOnes() {
-        show(feedState(mine = listOf(memberOf("k1"))))
-        compose.onNodeWithTag(FEED_COMPOSE_PROMPT).performClick()
+        show(feedState(mine = listOf(memberOf("k1")), composing = true))
         settle()
         compose.onNodeWithTag(FEED_TARGET).performClick()
         settle()
         compose.onNodeWithTag("feed-target-k1").performClick()
         assertEquals(listOf("target Community(communityId=k1, anonymous=false)"), calls)
+    }
+
+    @Test
+    fun aRefusalShowsInsideTheSheetWithItsRetry() {
+        show(feedState(composing = true).copy(problem = Problem.Generic()))
+        settle()
+        // Once in the list behind the sheet and once in the sheet, which is the one above the scrim.
+        val tryAgain = compose.onAllNodesWithText(text(R.string.try_again))
+        tryAgain.assertCountEquals(2)
+        tryAgain.onLast().performClick()
+        assertEquals(listOf("retry"), calls)
     }
 }

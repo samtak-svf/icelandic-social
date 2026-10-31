@@ -25,6 +25,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
+import samtak.spjall.account.Problem
 import samtak.spjall.brand.R
 import samtak.spjall.conversations.SCREENSHOT_DEVICE
 import samtak.spjall.conversations.SCREENSHOT_SDK
@@ -32,6 +33,7 @@ import samtak.spjall.core.Relation
 import samtak.spjall.core.WallAudience
 import samtak.spjall.frames.FakeFrameRules
 import samtak.spjall.frames.LocalFrameRules
+import samtak.spjall.me.OwnWallPending
 import samtak.spjall.ui.LocalSuspension
 import samtak.spjall.ui.SpjallTheme
 import samtak.spjall.ui.Suspension
@@ -133,10 +135,11 @@ class WallActionsTest {
         state: PersonViewModel.State,
         actions: PersonActions,
         suspended: Boolean = false,
+        photoProblem: Problem? = null,
     ) = compose.setContent {
         val suspension = if (suspended) Suspension(null) else null
         CompositionLocalProvider(LocalFrameRules provides FakeFrameRules, LocalSuspension provides suspension) {
-            SpjallTheme { PersonScreen(state, actions, tab = true) }
+            SpjallTheme { PersonScreen(state, actions, tab = true, photoProblem = photoProblem) }
         }
     }
 
@@ -190,6 +193,35 @@ class WallActionsTest {
         assertEquals("nothing is removed on one tap", emptyList<String>(), rec.calls)
         compose.onAllNodesWithText(str(R.string.photo_remove)).onLast().performClick()
         assertEquals(listOf("removePhoto"), rec.calls)
+    }
+
+    @Test
+    fun aFailedRemovalShowsOnTheWallAndItsRetryRemovesAgain() {
+        val rec = Recorder()
+        show(withPhoto(), rec, photoProblem = Problem.Generic())
+        compose.onNodeWithText(str(R.string.try_again)).performClick()
+        assertEquals(listOf("removePhoto"), rec.calls)
+    }
+
+    @Test
+    fun theWallsOwnProblemComesBeforeThePhotos() {
+        val rec = Recorder()
+        show(withPhoto().copy(problem = Problem.Generic()), rec, photoProblem = Problem.Generic())
+        compose.onAllNodesWithText(str(R.string.try_again)).assertCountEquals(1)
+        compose.onNodeWithText(str(R.string.try_again)).performClick()
+        assertEquals(emptyList<String>(), rec.calls)
+    }
+
+    @Test
+    fun theOwnWallBeforeTheAccountLoadedOffersARetry() {
+        var retried = 0
+        compose.setContent {
+            CompositionLocalProvider(LocalFrameRules provides FakeFrameRules) {
+                SpjallTheme { OwnWallPending(Problem.Generic()) { retried++ } }
+            }
+        }
+        compose.onNodeWithText(str(R.string.try_again)).performClick()
+        assertEquals(1, retried)
     }
 
     private fun withPhoto() = state(self, Relation.ONESELF).let { it.copy(profile = it.profile?.copy(photo = "v1")) }

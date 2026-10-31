@@ -38,6 +38,7 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
+import samtak.spjall.account.Problem
 import samtak.spjall.brand.R
 import samtak.spjall.core.Author
 import samtak.spjall.core.PersonProfile
@@ -64,6 +65,7 @@ fun PersonScreen(
     actions: PersonActions,
     tab: Boolean = false,
     attached: Attached = Attached(),
+    photoProblem: Problem? = null,
 ) {
     val profile = state.profile
     val own = profile?.relation == Relation.ONESELF
@@ -83,6 +85,10 @@ fun PersonScreen(
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
                 state.problem?.let { problem -> item(key = "problem") { ProblemCard(problem) { actions.retry() } } }
+                // The one thing that fills it is a failed removal, so that is what its retry repeats.
+                photoProblem.takeIf { state.problem == null }?.let { problem ->
+                    item(key = "photo-problem") { ProblemCard(problem, actions::removePhoto) }
+                }
                 if (state.reported) item(key = "reported") { Muted(stringResource(R.string.report_sent)) }
                 profile?.let { item(key = "profile") { ProfileCard(it, state, !state.busy, actions) } }
                 profile?.let { wallTabs(it, state, attached, own, actions) { reportingPost = it } }

@@ -5,7 +5,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onRoot
-import androidx.compose.ui.test.performClick
 import com.github.takahirom.roborazzi.captureRoboImage
 import org.junit.Rule
 import org.junit.Test
@@ -44,8 +43,7 @@ class FeedScreenshotTest {
             mine = listOf(memberOf("k1")),
         )
 
-    private fun openComposer() {
-        compose.onNodeWithTag(FEED_COMPOSE_PROMPT).performClick()
+    private fun composerFrames() {
         // The sheet slides in; its window needs its frames one at a time.
         repeat(40) { compose.mainClock.advanceTimeByFrame() }
         compose.waitForIdle()
@@ -65,16 +63,16 @@ class FeedScreenshotTest {
 
     @Test
     fun composerForTheWall() {
-        show(listState())
-        openComposer()
+        show(listState().copy(composing = true))
+        composerFrames()
         compose.onNodeWithTag(FEED_COMPOSER).captureRoboImage()
     }
 
     @Test
     fun composerForACommunity() {
         val k1 = memberOf("k1", anonymousPosts = true)
-        show(feedState(mine = listOf(k1), target = PostTarget.Community("k1", anonymous = false)))
-        openComposer()
+        show(feedState(mine = listOf(k1), target = PostTarget.Community("k1", anonymous = false), composing = true))
+        composerFrames()
         compose.onNodeWithTag(FEED_COMPOSER).captureRoboImage()
     }
 }

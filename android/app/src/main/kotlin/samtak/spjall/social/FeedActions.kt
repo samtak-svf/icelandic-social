@@ -37,6 +37,11 @@ interface FeedActions :
 
     fun retry()
 
+    fun openComposer()
+
+    /** The sheet was dismissed: the draft stays for the next time it opens. */
+    fun closeComposer()
+
     fun draft(text: String)
 
     fun target(target: PostTarget)

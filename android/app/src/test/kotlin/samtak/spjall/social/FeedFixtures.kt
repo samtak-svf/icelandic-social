@@ -21,12 +21,14 @@ internal fun feedState(
     mine: List<Community> = emptyList(),
     offered: List<Community> = mine,
     target: PostTarget = PostTarget.Wall(WallAudience.FRIENDS),
+    composing: Boolean = false,
 ) = FeedViewModel.State(
     posts = posts,
     loaded = true,
     communities = offered,
     mine = mine,
     target = target,
+    composing = composing,
 )
 
 internal fun memberOf(
