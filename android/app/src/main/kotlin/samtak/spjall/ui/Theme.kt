@@ -2,6 +2,7 @@ package samtak.spjall.ui
 
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.ColorScheme
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Typography
 import androidx.compose.material3.lightColorScheme
@@ -296,8 +297,12 @@ fun SpjallTheme(
             MaterialTheme(
                 colorScheme = if (dark) darkScheme else lightScheme,
                 typography = brandType,
-                content = content,
-            )
+            ) {
+                // Material finds a content colour only for a background that is one of its
+                // roles; on the band and the washes a Text or Icon with none of its own would
+                // otherwise take Compose's default, which is unreadable in the dark mode.
+                CompositionLocalProvider(LocalContentColor provides palette.fg, content = content)
+            }
         }
     }
 }
