@@ -56,7 +56,7 @@ export async function removedPost(env: Env, viewer: string, postId: string): Pro
   const row = await db(env)
     .prepare(
       `SELECT post_id AS postId, community_id AS communityId, author_id AS authorId,
-              created_at AS createdAt, state, anonymous, audience
+              created_at AS createdAt, state, anonymous, audience, imported
          FROM post_index WHERE post_id = ? AND state = 'removed'`,
     )
     .bind(postId)

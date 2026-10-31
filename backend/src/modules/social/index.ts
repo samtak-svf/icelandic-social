@@ -2,12 +2,12 @@
 // reactions in each community's Space object, the index the feed reads in D1,
 // and the images in R2. The tables it owns are written only here.
 
-export { featuredFor, viewPost } from "./posts.ts";
+export { createPost, featuredFor, newPostId, viewPost } from "./posts.ts";
 export { MAX_FEATURED } from "./do/space-schema.ts";
-export { dropSpace, forgetAccount } from "./lifecycle.ts";
+export { deletePosts, deleteUnlessModerated, dropSpace, forgetAccount } from "./lifecycle.ts";
 export { commentAccess, postAccess } from "./access.ts";
 export { deletePending, pendingAnonymous, pendingQueue, publishPending } from "./anonymous.ts";
-export { commentMedia, deleteUnattached, postMedia, readImage } from "./media.ts";
+export { commentMedia, deleteUnattached, postMedia, readImage, upload } from "./media.ts";
 export {
   commentContent,
   keptText,

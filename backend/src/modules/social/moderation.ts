@@ -2,8 +2,8 @@ import { db, space } from "../../env/index.ts";
 import type { IndexedPost } from "./access.ts";
 import type { ContentState } from "./do/space.ts";
 import { REMOVED_KEPT_MS } from "./do/space-schema.ts";
-import { deleteKeys, purgeRemovedCommentMedia } from "./media.ts";
-import { unindex } from "./posts.ts";
+import { deletePosts } from "./lifecycle.ts";
+import { purgeRemovedCommentMedia } from "./media.ts";
 
 // What moderation does to a community's content (decisions 0063, 0066): it
 // hides, removes and restores posts and comments, and the moderation log's
@@ -127,9 +127,11 @@ export async function purgeRemoved(env: Env, now = Date.now()): Promise<number> 
     .bind(now - REMOVED_KEPT_MS)
     .all<{ communityId: string; postId: string }>();
   for (const [communityId, posts] of Map.groupBy(results, (r) => r.communityId)) {
-    const ids = posts.map((p) => p.postId);
-    for (const postId of ids) await space(env, communityId).deletePost(postId);
-    await deleteKeys(env, await unindex(env, communityId, ids));
+    await deletePosts(
+      env,
+      communityId,
+      posts.map((p) => p.postId),
+    );
   }
   return results.length;
 }

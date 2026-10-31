@@ -38,15 +38,10 @@ import {
   spaceAccess,
 } from "./access.ts";
 import { authors, named } from "./bylines.ts";
+import { deletePosts } from "./lifecycle.ts";
 import { removedPost, renderListed } from "./tombstones.ts";
-import {
-  communityImages,
-  deleteCommentMedia,
-  deleteKeys,
-  postImageOwner,
-  readImage,
-} from "./media.ts";
-import { createPost, feed, noteAuthor, render, viewPost, unindex, writeComment } from "./posts.ts";
+import { communityImages, deleteCommentMedia, postImageOwner, readImage } from "./media.ts";
+import { createPost, feed, noteAuthor, render, viewPost, writeComment } from "./posts.ts";
 import { storedUpload } from "./upload.ts";
 import { invalidPost, wallRoutes } from "./wall-routes.ts";
 
@@ -182,8 +177,7 @@ export function socialRoutes(app: OpenAPIHono<AppEnv>): void {
     if (!found) return fail(c, 404, "not_found");
     const { postId, communityId, authorId } = found.post;
     if (authorId !== accountId) return fail(c, 403, "not_author");
-    await space(c.env, communityId).deletePost(postId);
-    await deleteKeys(c.env, await unindex(c.env, communityId, [postId]));
+    await deletePosts(c.env, communityId, [postId]);
     log("post.deleted", { accountId, communityId, postId });
     return c.body(null, 204);
   });

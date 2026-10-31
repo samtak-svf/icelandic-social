@@ -7,6 +7,7 @@ export {
   drainJobs,
   expireJobs,
   type Handler,
+  job,
   jobHealth,
   jobsOverview,
   MAX_ATTEMPTS,

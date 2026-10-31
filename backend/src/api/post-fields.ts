@@ -5,7 +5,10 @@ import { POLL_OPTIONS } from "./poll-schema.ts";
 // What a post is made of, shared by the routes of a community and of a wall.
 
 /** How many images a post holds. */
-const MAX_POST_MEDIA = 4;
+export const MAX_POST_MEDIA = 4;
+
+/** How long a post's text is, in characters. */
+export const MAX_POST_BODY = 5000;
 
 /** The longest bio, in characters (decision 0115). */
 export const MAX_BIO = 120;
@@ -17,7 +20,7 @@ export const WallAudience = z.enum(["friends", "everyone"]).openapi("WallAudienc
 
 /** What a post is made of, in a community and on a wall. */
 export const POST_FIELDS = {
-  body: z.string().trim().max(5000).default(""),
+  body: z.string().trim().max(MAX_POST_BODY).default(""),
   media: z.array(MediaId).max(MAX_POST_MEDIA).default([]),
   poll: z
     .object({

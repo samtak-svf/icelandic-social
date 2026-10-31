@@ -22,6 +22,8 @@ export type IndexedPost = {
   anonymous: number;
   /** Who reads a wall post (decision 0115); null on a community's, and only there. */
   audience: "friends" | "everyone" | null;
+  /** How a post came from another platform (decisions 0119, 0120); null on one written here. */
+  imported: "backlog" | "sync" | null;
 };
 
 /**
@@ -178,7 +180,7 @@ export async function postAccess(
   const post = await db(env)
     .prepare(
       `SELECT post_id AS postId, community_id AS communityId, author_id AS authorId,
-              created_at AS createdAt, state, anonymous, audience
+              created_at AS createdAt, state, anonymous, audience, imported
          FROM post_index WHERE post_id = ?`,
     )
     .bind(postId)
@@ -218,7 +220,7 @@ export async function ownWallComment(
   const post = await db(env)
     .prepare(
       `SELECT post_id AS postId, community_id AS communityId, author_id AS authorId,
-              created_at AS createdAt, state, anonymous, audience
+              created_at AS createdAt, state, anonymous, audience, imported
          FROM post_index WHERE post_id = ? AND audience IS NOT NULL`,
     )
     .bind(postId)

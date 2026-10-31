@@ -113,6 +113,10 @@ export const Post = z
     poll: Poll.optional().openapi({
       description: "Present when the post is a poll (decision 0090)",
     }),
+    imported: z.boolean().optional().openapi({
+      description:
+        "It came from another platform under its original date (decisions 0119, 0120). Absent on a post written here",
+    }),
     pinned: z.boolean().openapi({
       description:
         "A moderator features it (decision 0088); it is also in the community's `featured`. The API keeps it in its place in the feed, marked; on an expanded screen a client leaves it out of the community feed because the aside shows it (decision 0092). `getFeed` never marks it",
