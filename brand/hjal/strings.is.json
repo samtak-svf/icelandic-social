@@ -364,7 +364,7 @@
   "posts_empty": "Engir póstar enn.",
   "feed_empty": "Hér birtast póstar úr [[group.dat.pl.def]] þínum, frá [[friend.dat.pl]] þínum og af [[wall.dat.def]] þínum. Skrifaðu fyrsta póstinn eða finndu [[group.acc]].",
   "feed_compose_target": "Hvert á pósturinn að fara?",
-  "feed_target_wall": "Minn [[wall.nom]]",
+  "feed_target_wall": "[[Wall.nom.def]] minn",
   "post_comments": {
     "one": "{count} athugasemd",
     "other": "{count} athugasemdir"

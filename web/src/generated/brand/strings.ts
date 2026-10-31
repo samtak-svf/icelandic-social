@@ -484,7 +484,7 @@ export const strings = {
   /** Label of the picker in the feed composer: the own wall or a community the viewer may post in (decision 0116). */
   feed_compose_target: "Hvert á pósturinn að fara?",
   /** Option of the feed composer's picker: the viewer's own wall (decision 0116). */
-  feed_target_wall: "Minn veggur",
+  feed_target_wall: "Veggurinn minn",
   /** How many comments a post has; opens the post. */
   post_comments: (args: { count: number }): string =>
     plural.select(args.count) === "one"
