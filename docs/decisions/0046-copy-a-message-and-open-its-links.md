@@ -1,6 +1,6 @@
 # 0046. A message can be copied, and its web links open on a tap
 
-- Status: accepted; implemented in the apps (0cb8a6f), released as 0.6.1
+- Status: accepted; implemented in the apps (0cb8a6f), released as 0.6.1; links amended by 0121
 - Date: 2026-10-11
 - Decided by: the maintainer, reporting after 0.6.0 that text cannot be copied and links do
   not open
@@ -8,6 +8,7 @@
   screen-reader actions), [0045](0045-times-between-messages-and-one-reaction-pill.md) (a tap
   on a bubble shows its time)
 - Amends: 0009 (message actions: copy)
+- Amended by: [0121](0121-the-apps-own-links-open-in-the-app.md) (the app's own links open in the app)
 
 ## Decision
 
@@ -27,7 +28,8 @@
 
 ### Links
 
-- **Web links in a text message are underlined and open on a tap**, in the default browser.
+- **Web links in a text message are underlined and open on a tap**, in the default browser
+  (a link to the app's own post or community opens in the app: 0121).
   A web link is a run of non-space characters starting with `http://`, `https://` or
   `www.` (opened as `https://`). Trailing punctuation that ends the sentence, `.,;:!?` and a
   closing bracket or quote without its opening one, is not part of it.
