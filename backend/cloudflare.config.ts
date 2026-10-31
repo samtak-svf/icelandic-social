@@ -118,6 +118,10 @@ export default defineConfig(({ mode }) => {
         // no community and a tombstone (decisions 0114, 0115). 0.4.0 is the first
         // to word reports waiting; an older tab would fail on that row.
         MIN_CLIENT_VERSION_WEB: bindings.text("0.4.0"),
+        // The first app version whose core has the reply kind. Below it a reply is withheld
+        // from the list and the counts, though such an app still decodes the rest (decision
+        // 0114). Not a floor: an older app goes on working.
+        REPLY_NOTICE_CLIENT_VERSION: bindings.text("0.17.0"),
         // The first app version that decodes a notification with no community and
         // any kind, and draws a tombstone and a review's notice. Below it, those are
         // withheld, and it is not a floor: an older app goes on working (decisions

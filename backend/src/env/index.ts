@@ -44,6 +44,19 @@ export function noticeClientVersions(env: Env): Record<Client, string> {
 }
 
 /**
+ * The first version of each client whose core has the reply kind (decision
+ * 0114), the same shape as `noticeClientVersions`.
+ */
+export function replyNoticeClientVersions(env: Env): Record<Client, string> {
+  const floors = minClientVersions(env);
+  return {
+    android: env.REPLY_NOTICE_CLIENT_VERSION,
+    ios: env.REPLY_NOTICE_CLIENT_VERSION,
+    web: floors.web,
+  };
+}
+
+/**
  * The first version of each client that words a suspension's notice (decision
  * 0115), the same shape as `noticeClientVersions`.
  */

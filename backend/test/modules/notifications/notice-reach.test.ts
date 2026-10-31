@@ -2,7 +2,7 @@ import { env } from "cloudflare:workers";
 import { describe, expect, it } from "vitest";
 import { CLIENT_HEADER } from "../../../src/shared/client-version.ts";
 import { worker } from "../../main.ts";
-import { ok, person, type Person } from "../../people.ts";
+import { community, ok, person, type Person } from "../../people.ts";
 import { wallPost } from "../social/wall-support.ts";
 import { recorder, run } from "./support.ts";
 
@@ -56,6 +56,33 @@ describe("the notice seams", () => {
         expect(page.unread).toBe(0);
         expect(page.unseen).toBe(0);
       }
+    },
+  );
+
+  // An app below the first core with the reply kind drops those rows from its list,
+  // while the counters would still count them.
+  it.each(["0.16.2", "0.16.9"])(
+    "keep a reply from an app at %s, in its list and its counts",
+    async (version) => {
+      const owner = await person("eigandi");
+      const id = await community(owner, "open");
+      for (const kind of ["comment", "reply"]) {
+        await env.DB.prepare(
+          `INSERT INTO notifications (notification_id, account_id, kind, community_id, created_at)
+           VALUES (?, ?, ?, ?, ?)`,
+        )
+          .bind(`${kind}-${owner.accountId}`, owner.accountId, kind, id, Date.now())
+          .run();
+      }
+      for (const platform of ["android", "ios"]) {
+        const page = await read(owner, `${platform}/${version}`);
+        expect(page.notifications.map((n) => n.kind)).toEqual(["comment"]);
+        expect(page.unread).toBe(1);
+        expect(page.unseen).toBe(1);
+      }
+      const knowing = await read(owner, `android/${env.REPLY_NOTICE_CLIENT_VERSION}`);
+      expect(knowing.notifications.map((n) => n.kind).sort()).toEqual(["comment", "reply"]);
+      expect(knowing.unread).toBe(2);
     },
   );
 
