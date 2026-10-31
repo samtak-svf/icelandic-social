@@ -96,7 +96,7 @@ measured.** The first step of the plan extends the spike.
   A cold sample is after an idle gap, not proof that every Durable Object had been evicted.
 - **Rows read stay under the 3,000 at the size this record assumes.** D1's own `rows_read` on staging for the window statement
   of that viewer: 2,412 with 380 posts in the window, the assumed day, in line with the local 2,400. With the 880 posts the
-  first seeding day holds, it is 3,411, so a viewer with more than about 680 posts a day in its sources passes the 3,000; that is
+  first seeding day holds, it is 3,411, so a viewer with more than about 670 posts a day in its sources passes the 3,000; that is
   a heavier viewer than this record assumes, and the milliseconds above were measured at that heavier day.
 - **Multi-image layout stays as it is**: one image alone, several in two columns (`post.tsx:403`), each opening the
   viewer. A mosaic would need a per-image crop that no editor produces.
