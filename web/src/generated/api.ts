@@ -3433,6 +3433,7 @@ export function createImportFile(args: {
   | { status: 201; data: ImportFileUpload }
   | { status: 400; data: ApiError }
   | { status: 401; data: ApiError }
+  | { status: 403; data: ApiError }
   | { status: 413; data: ApiError }
   | { status: 426; data: ApiError }
   | { status: 429; data: ApiError }
@@ -3539,6 +3540,7 @@ export function publishImport(args: {
   | { status: 204; data: undefined }
   | { status: 400; data: ApiError }
   | { status: 401; data: ApiError }
+  | { status: 403; data: ApiError }
   | { status: 404; data: ApiError }
   | { status: 409; data: ApiError }
   | { status: 426; data: ApiError }

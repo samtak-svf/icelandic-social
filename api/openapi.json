@@ -17981,6 +17981,16 @@
               }
             }
           },
+          "403": {
+            "description": "suspended: the account is suspended now, with `until` when it ends (decision 0115)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
           "413": {
             "description": "too_large: more than 4 GiB less a byte",
             "content": {
@@ -18521,6 +18531,16 @@
           },
           "401": {
             "description": "No device token or session the route takes, or one that is not valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "suspended: the account is suspended now, with `until` when it ends (decision 0115)",
             "content": {
               "application/json": {
                 "schema": {
