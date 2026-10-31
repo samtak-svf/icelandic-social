@@ -8,6 +8,8 @@ struct PersonView: View {
     let social: Social
     /// Opens the settings: set on this account's own wall, which is the Me tab's root (decision 0115).
     var onSettings: (() -> Void)?
+    /// This account's own record, set on its own wall, where the photo is chosen, framed and removed as on the web.
+    var own: MeModel?
     @State private var wall: WallModel?
     @State private var ending = false
     @State private var reporting = false
@@ -19,6 +21,7 @@ struct PersonView: View {
             VStack(alignment: .leading, spacing: 12) {
                 if let person = model.person {
                     PersonHeader(person: person)
+                    if let own { PhotoControls(model: own, hasPhoto: person.photo != nil) }
                     PersonActions(model: model, person: person)
                     if let wall { WallView(model: wall, person: person) }
                 } else if !model.loaded {
@@ -61,6 +64,7 @@ struct PersonView: View {
             Button("block", role: .destructive) { Task { await model.block() } }
             Button("cancel", role: .cancel) {}
         }
+        .onChange(of: own?.me?.photo) { _, _ in Task { await model.load() } }
         .onChange(of: model.blocked) { _, blocked in
             if blocked { dismiss() }
         }

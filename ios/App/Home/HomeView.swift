@@ -207,7 +207,7 @@ struct HomeView: View {
     /// The tabs of the bar, in order; the first is the one the app opens on (`launchTab`), and none carries a count.
     static var tabItems: [TabBar<Tab>.Item] {
         [
-            .init(tab: .feed, label: localized(FeedStrings.tab), systemImage: "house"),
+            .init(tab: .feed, label: localized("tab_feed"), systemImage: "house"),
             .init(tab: .conversations, label: localized("tab_conversations"), systemImage: "bubble.left"),
             .init(tab: .communities, label: localized("tab_communities"), systemImage: "person.3"),
             .init(tab: .me, label: localized("tab_me"), systemImage: "person"),

@@ -2,16 +2,6 @@ import Foundation
 import Observation
 import SpjallCore
 
-/// The strings the feed shows. The brand's own `tab_feed`, `feed_empty`, `feed_compose_target` and
-/// `feed_target_wall` are listed for the web alone in `brand/strings.contract.json`, so the iOS catalogue has none of
-/// them; these are the nearest keys the catalogue does have. Point each at its own once the contract lists `ios`.
-enum FeedStrings {
-    static let tab = "communities_tab_feed"
-    static let empty = "communities_feed_empty"
-    static let target = "post_compose"
-    static let wall = "moderation_report_on_wall"
-}
-
 /// Fljótið (decision 0116): what is new in this account's communities, among its friends and on its own wall, newest
 /// first, and the composer on top, which writes on the own wall unless another place is picked. The server reads a
 /// window of time at a time, so an empty page is no end: only `End` ends the list.
@@ -89,7 +79,23 @@ final class HomeModel {
         busy = false
     }
 
+    /// Pull to refresh: the first page and the communities again. The list is replaced only once the page is in, so a
+    /// failed refresh leaves what was shown with the problem above it. The web reloads on mount and after a post
+    /// alone (`web/src/social/paged.ts:7`), so coming back to the app does not reload.
+    func refresh() async { await load() }
+
     func retry() async { await failed?() }
+
+    /// There is nothing to show and nothing more to ask for: the first page came in and the list has ended. An
+    /// empty list with a cursor is a quiet stretch, not an empty feed (decision 0116).
+    var isEmptyForGood: Bool { loaded && posts.isEmpty && next == nil }
+
+    /// The list is empty but the server has more to read through.
+    var isSearching: Bool { loaded && posts.isEmpty && next != nil && problem == nil }
+
+    /// The sentinel at the foot of the list should ask for the next page now: there is one, nothing is on its way,
+    /// and the last try did not fail. It is the sentinel's task id, so it asks again once a busy call is over.
+    var wantsMore: Bool { next != nil && !busy && problem == nil }
 
     /// The next, older page, if there is one and none is on its way.
     func more() async {

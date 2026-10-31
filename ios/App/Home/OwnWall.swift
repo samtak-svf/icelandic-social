@@ -14,7 +14,7 @@ struct OwnWall: View {
                 let route = SocialRoute.person(id)
                 PersonView(
                     model: models.model(for: route) { PersonModel(social: social, accountId: id) }, social: social,
-                    onSettings: onSettings
+                    onSettings: onSettings, own: me
                 )
                 .id(id)
             } else {

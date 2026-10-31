@@ -11,7 +11,7 @@ struct FeedView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            ScreenHeader(title: localized(FeedStrings.tab))
+            ScreenHeader(title: localized("tab_feed"))
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 12) {
                     SuspendedNotice()
@@ -19,8 +19,8 @@ struct FeedView: View {
                     if let problem = model.problem {
                         ProblemCard(problem: problem) { Task { await model.retry() } }
                     }
-                    if model.loaded && model.posts.isEmpty && model.problem == nil {
-                        EmptyState(systemImage: "text.bubble", text: LocalizedStringKey(FeedStrings.empty))
+                    if model.isEmptyForGood && model.problem == nil {
+                        EmptyState(systemImage: "text.bubble", text: "feed_empty")
                     }
                     ForEach(model.posts, id: \.postId) { post in
                         PostCard(
@@ -31,15 +31,18 @@ struct FeedView: View {
                             onWithdrawVote: { Task { await model.withdrawVote(post.postId) } },
                             onClosePoll: model.canClose(post) ? { Task { await model.closePoll(post.postId) } } : nil)
                     }
-                    if model.next != nil {
-                        Color.clear.frame(height: 1).task(id: model.next) { await model.more() }
-                    } else if !model.loaded {
+                    if model.isSearching || !model.loaded {
                         ProgressView().frame(maxWidth: .infinity)
+                    }
+                    if model.next != nil {
+                        Color.clear.frame(height: 1)
+                            .task(id: model.wantsMore) { if model.wantsMore { await model.more() } }
                     }
                 }
                 .padding(.horizontal, 16)
                 .padding(.vertical, 12)
             }
+            .refreshable { await model.refresh() }
         }
         .background(BrandTokens.Colors.bg)
         .toolbar(.hidden, for: .navigationBar)

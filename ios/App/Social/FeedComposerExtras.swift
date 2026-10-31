@@ -38,13 +38,13 @@ struct FeedComposerExtras: View {
 
     private var placePicker: some View {
         HStack {
-            Text(LocalizedStringKey(FeedStrings.target)).font(.sans(14, black: true))
+            Text("feed_compose_target").font(.sans(14, black: true))
             Spacer(minLength: 8)
             Picker(
-                LocalizedStringKey(FeedStrings.target),
+                "feed_compose_target",
                 selection: Binding(get: { model.place }, set: { model.place = $0 })
             ) {
-                Text(LocalizedStringKey(FeedStrings.wall)).tag(HomeModel.Place.wall)
+                Text("feed_target_wall").tag(HomeModel.Place.wall)
                 ForEach(model.targets, id: \.communityId) { community in
                     Text(verbatim: community.name).tag(HomeModel.Place.community(community.communityId))
                 }

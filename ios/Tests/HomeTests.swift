@@ -67,6 +67,42 @@ final class HomeTests: XCTestCase {
         XCTAssertNil(model.problem)
     }
 
+    func testAnEmptyListWithMoreBehindItIsSearchingNotEmpty() async {
+        let model = await home(pages: (1...20).map { .more(posts: [], next: String($0)) })
+        XCTAssertTrue(model.posts.isEmpty)
+        XCTAssertFalse(model.isEmptyForGood, "a cursor is left: not an empty feed")
+        XCTAssertTrue(model.isSearching)
+        let ended = await home(pages: [.end(posts: [])])
+        XCTAssertTrue(ended.isEmptyForGood)
+        XCTAssertFalse(ended.isSearching)
+    }
+
+    func testTheSentinelAsksOnlyWhenNothingIsOnItsWayAndTheLastTryDidNotFail() async {
+        let model = await home(pages: [.more(posts: [makePost("p1", "c1")], next: "1"), .end(posts: [])])
+        XCTAssertTrue(model.wantsMore)
+        social.failOn = "home"
+        await model.more()
+        XCTAssertFalse(model.wantsMore, "a failed page waits for Retry, it does not loop")
+        let done = await home(pages: [.end(posts: [makePost("p1", "c1")])])
+        XCTAssertFalse(done.wantsMore, "no cursor, nothing to ask")
+    }
+
+    func testRefreshReplacesTheListAndAFailedOneKeepsIt() async {
+        let model = await home(pages: [.end(posts: [makePost("p1", "c1")]), .end(posts: [makePost("p2", "c1")])])
+        await model.refresh()
+        XCTAssertEqual(model.posts.map(\.postId), ["p2"], "replaced, not appended")
+        social.failOn = "home"
+        await model.refresh()
+        XCTAssertEqual(model.posts.map(\.postId), ["p2"], "a failure does not wipe the list")
+        XCTAssertNotNil(model.problem)
+        social.failOn = nil
+        social.feed.asked = 0
+        social.feed.pages = [.end(posts: [makePost("p3", "c1")])]
+        await model.refresh()
+        XCTAssertEqual(model.posts.map(\.postId), ["p3"])
+        XCTAssertNil(model.problem)
+    }
+
     // MARK: Headings
 
     func testAWallPostShowsItsAuthorAloneAndACommunityPostItsCommunity() async {
@@ -188,7 +224,7 @@ final class HomeTests: XCTestCase {
     // MARK: Tabs
 
     func testEveryStringTheFeedShowsIsInTheCatalogue() {
-        let keys = [FeedStrings.tab, FeedStrings.empty, FeedStrings.target, FeedStrings.wall]
+        let keys = ["tab_feed", "feed_empty", "feed_compose_target", "feed_target_wall"]
         for key in keys + ["wall_audience_label", "wall_audience_friends", "wall_audience_everyone"] {
             XCTAssertNotEqual(localized(key), key, "\(key) has no iOS string")
         }
@@ -197,8 +233,9 @@ final class HomeTests: XCTestCase {
     func testTheFeedIsTheFirstTabAndTheAppOpensOnIt() {
         let items = HomeView.tabItems
         XCTAssertEqual(items.map(\.tab), [.feed, .conversations, .communities, .me])
-        let keys = [FeedStrings.tab, "tab_conversations", "tab_communities", "tab_me"]
+        let keys = ["tab_feed", "tab_conversations", "tab_communities", "tab_me"]
         XCTAssertEqual(items.map(\.label), keys.map { localized($0) })
+        XCTAssertEqual(items.first?.label, "Fljótið")
         XCTAssertEqual(HomeView.launchTab, .feed)
     }
 
