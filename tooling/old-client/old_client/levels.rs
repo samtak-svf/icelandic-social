@@ -49,19 +49,11 @@ pub fn grouped_and_levelled_on_the_release(
         "no level is stored for the community yet: {levels:?}"
     );
 
-    hosted
-        .set_notification_settings(&[(NotificationKind::Reaction, NotificationLevel::InApp)])
-        .unwrap();
+    // The community alone is lowered, so nothing but its level can silence the row.
     hosted
         .set_community_notification_level(community, NotificationLevel::InApp)
         .unwrap();
     let levels = hosted.notification_settings().unwrap();
-    assert!(
-        levels
-            .kinds
-            .contains(&(NotificationKind::Reaction, NotificationLevel::InApp)),
-        "{levels:?}"
-    );
     assert!(
         levels
             .communities
@@ -77,4 +69,15 @@ pub fn grouped_and_levelled_on_the_release(
         .find(|n| n.kind == NotificationKind::Reaction && n.post_id.as_deref() == Some(post))
         .expect("the row stays in the list at a lower level");
     assert!(!row.announce, "a lowered level is not announced: {row:?}");
+
+    hosted
+        .set_notification_settings(&[(NotificationKind::Reaction, NotificationLevel::InApp)])
+        .unwrap();
+    let levels = hosted.notification_settings().unwrap();
+    assert!(
+        levels
+            .kinds
+            .contains(&(NotificationKind::Reaction, NotificationLevel::InApp)),
+        "{levels:?}"
+    );
 }
