@@ -160,6 +160,39 @@ jobs:
             -exportOptionsPlist Generated/ExportOptions.Interim.plist \
             | xcpretty
 
+      # The upload action refuses an app with no Test Information since v5.8.0.
+      # This writes .apple-actions/test-information.json with the action's own
+      # script, at the commit the upload step below is pinned to. Keep the two
+      # the same: Dependabot rewrites only the `uses:` line.
+      - name: Upload action's scripts
+        if: inputs.upload
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: apple-actions/upload-testflight-build
+          ref: 958b2fe4969e2ab1824f79f07c270b950f06bb3a
+          path: build/upload-testflight-build
+          persist-credentials: false
+
+      - name: Test Information
+        if: inputs.upload
+        env:
+          BUNDLE_ID: ${{ needs.preflight.outputs.app }}
+          KEY_ID: ${{ secrets.ASC_API_KEY_ID }}
+          ISSUER: ${{ secrets.ASC_API_ISSUER_ID }}
+          KEY: ${{ secrets.ASC_API_KEY_P8 }}
+        run: |
+          key="$RUNNER_TEMP/asc-key.p8"
+          trap 'rm -f "$key"' EXIT
+          (umask 077; printf '%s' "$KEY" > "$key")
+          build/upload-testflight-build/scripts/populate-test-information.sh \
+            --dir . \
+            --config .apple-actions/test-information.json \
+            --bundle-id "$BUNDLE_ID" \
+            --apply \
+            --issuer-id "$ISSUER" \
+            --api-key-id "$KEY_ID" \
+            --api-private-key-path "$key"
+
       - name: Upload to TestFlight
         if: inputs.upload
         uses: apple-actions/upload-testflight-build@958b2fe4969e2ab1824f79f07c270b950f06bb3a # v5.8.0
