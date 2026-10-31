@@ -3925,8 +3925,10 @@
               "unproven",
               "checking",
               "importing",
+              "preview",
               "connected"
-            ]
+            ],
+            "description": "preview: the first collection waits to be chosen from, under the import's routes"
           },
           "outcome": {
             "type": [

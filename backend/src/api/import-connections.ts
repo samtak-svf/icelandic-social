@@ -23,7 +23,10 @@ const ImportConnection = z
     code: z.string().nullable().openapi({
       description: "What the person publishes on the profile; null once it has been found",
     }),
-    state: z.enum(["unproven", "checking", "importing", "connected"]),
+    state: z.enum(["unproven", "checking", "importing", "preview", "connected"]).openapi({
+      description:
+        "preview: the first collection waits to be chosen from, under the import's routes",
+    }),
     outcome: z.enum(["not_found", "capped", "failed", "ok"]).nullable().openapi({
       description: "How the last run ended; not_found means the code was not on the profile",
     }),

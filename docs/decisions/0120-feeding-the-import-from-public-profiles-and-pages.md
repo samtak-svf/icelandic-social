@@ -1,6 +1,6 @@
 # 0120. Feeding the import from public profiles and pages
 
-- Status: accepted; designed, not yet implemented (#461)
+- Status: accepted; implemented for the file and the profile feed, not yet the page feed (#461)
 - Date: 2026-10-31
 - Decided by: Guðröður Atli Jónsson (collection from public profiles is allowed in the product, and page sync runs on Samtak svf.'s own developer app); the design is the overseer's
 - Amends: [0119](0119-importing-a-persons-own-content.md)
@@ -30,22 +30,28 @@ it. Off, no run starts, and what was already imported stays. This is because the
 terms restrict automated collection, and the same platform decides on our developer app and on any
 place as a listed destination. If collection costs us that standing, it is the part we give up.
 
-**Collection has a monthly cost cap in the Worker's configuration.** At the cap no new run starts,
-and the job health report says so.
+**Collection has a monthly cost cap in the Worker's configuration.** At the cap no new run starts, and
+a daily log line reports the month's spend and whether the cap stops the next run. The job health
+report is about jobs that failed, and a capped month is not one.
 
 **The provider's address, its job, and the source hosts it may read are secrets,** read by an adapter
 with a generic name. Tests use synthetic items.
 
 **A connection's first collection goes through the same preview as a file,** and later runs publish
-without one, to the audience the person chose for the connection.
+without one, to the audience the person chose for the connection. A post left out of the preview
+stays out: later runs bring in only what is newer than the newest post the person was shown, however
+far back the provider answers. A preview left unpublished for 7 days is dropped, the connection with
+it, and the person starts again.
 
 **Public here only because the person chose it,** on that connection, as 0119 says. That a post was
-public at the source does not make it public here, so a connection's default is the wall's own
-audience.
+public at the source does not make it public here, so a connection's default is friends. A wall has
+no audience of its own, since audience is set per post.
 
 **Media is copied when imported,** through the existing upload (WebP, no metadata, EU bucket),
-because source addresses expire within hours. The first version takes images. A post with a video
-imports its text and a link to the original, and the preview says so.
+because source addresses expire within hours. A preview may wait for days, so its images are fetched
+when it is collected and held in the same EU bucket under the import's key, and they are deleted when
+it is published, removed or dropped. The first version takes images. A post with a video imports its
+text and a link to the original, and the preview says so.
 
 ## Why
 

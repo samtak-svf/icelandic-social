@@ -7,6 +7,8 @@ import {
   listConnections,
   removeConnection,
 } from "../../../src/modules/imports/connections.ts";
+import { mediaBucket } from "../../../src/env/index.ts";
+import { expireFiles, publishFile, type Choice } from "../../../src/modules/imports/file.ts";
 import { jobHandlers } from "../../../src/modules/imports/index.ts";
 import { scrapeHealth, startDueScrapes } from "../../../src/modules/imports/scrape-jobs.ts";
 import { profileAddress, scrapeSettings } from "../../../src/modules/imports/scrape.ts";
@@ -18,7 +20,8 @@ import { euEnv } from "../../support.ts";
 // A connection to a public profile (decision 0120), against a fake provider. The bug
 // each test names: someone else's posts coming in, a post coming in twice, a run paid
 // for past the cap or with the feed off, an address the Worker should never fetch, or
-// a removal that leaves the connection running.
+// a removal that leaves the connection running, or a post the person left out of the
+// first collection coming in after all.
 
 const API = "https://provider.example/v2";
 const PROFILE = "https://www.source.example/somebody";
@@ -125,7 +128,7 @@ async function connect(owner: Person, audience?: "friends" | "everyone") {
   return made;
 }
 
-/** A connection whose code has been found and whose first posts have come in. */
+/** A connection whose code has been found and whose first posts wait in the preview. */
 async function proven(owner: Person, posts: Item[], audience?: "friends" | "everyone") {
   const connection = await connect(owner, audience);
   const shown = [item("code", `Staðfesting ${connection.code}`), ...posts];
@@ -135,6 +138,22 @@ async function proven(owner: Person, posts: Item[], audience?: "friends" | "ever
   await tick();
   return { importId: connection.importId, fake, shown };
 }
+
+/** Publishes the preview as the person would. */
+async function choose(owner: Person, importId: string, choice: Choice = {}) {
+  expect(await publishFile(E, owner.accountId, importId, choice)).toBe("ok");
+  await drain();
+}
+
+/** A connection whose first posts have been chosen and have come in. */
+async function imported(owner: Person, posts: Item[], audience?: "friends" | "everyone") {
+  const made = await proven(owner, posts, audience);
+  await choose(owner, made.importId);
+  return made;
+}
+
+const stored = async (importId: string) =>
+  (await mediaBucket(E).list({ prefix: `imports/${importId}` })).objects.map((o) => o.key);
 
 const wall = async (owner: Person) =>
   (
@@ -237,7 +256,7 @@ describe("proving a profile", () => {
 describe("importing from a proven profile", () => {
   it("brings the author's posts in under their dates, and only theirs", async () => {
     const owner = await person("Sigga");
-    const { importId } = await proven(owner, [
+    const { importId } = await imported(owner, [
       item("a", "Gömul færsla: þ, ð, æ, ö"),
       item("b", "Einhver annar", { user: { id: "someone-else" } }),
     ]);
@@ -268,17 +287,18 @@ describe("importing from a proven profile", () => {
     await askForCheck(E, owner.accountId, importId);
     await tick();
     await tick();
+    await choose(owner, importId);
     expect((await wall(owner)).map((p) => p.body)).toEqual(["Sá sem setti kóðann"]);
   });
 
   it("makes each post once when a run repeats, and asks only for what is new", async () => {
     const owner = await person("Sigga");
-    const { fake, importId, shown } = await proven(owner, [item("a", "Fyrsta")]);
+    const { fake, importId, shown } = await imported(owner, [item("a", "Fyrsta")]);
     await tick(E, DAY_MS + 1000);
     expect((await wall(owner)).map((p) => p.body)).toEqual(["Fyrsta"]);
     expect(await connectionOf(owner, importId)).toMatchObject({ posts: 1, state: "connected" });
     expect(fake.started.at(-1)).toMatchObject({ onlyPostsNewerThan: expect.any(String) });
-    shown.push(item("n", "Ný færsla", { timestamp: Date.now() / 1000 }));
+    shown.push(item("n", "Ný færsla", { timestamp: (Date.now() + DAY_MS + 5000) / 1000 }));
     await tick(E, 2 * DAY_MS + 2000);
     expect((await wall(owner)).map((p) => p.body).sort()).toEqual(["Fyrsta", "Ný færsla"]);
   });
@@ -286,7 +306,7 @@ describe("importing from a proven profile", () => {
   it("keeps a post to friends unless the person chose otherwise", async () => {
     const owner = await person("Sigga");
     const reader = await person("Jón");
-    await proven(owner, [item("a", "Aðeins vinir")]);
+    await imported(owner, [item("a", "Aðeins vinir")]);
     const seen = await ok<{ posts: unknown[] }>(
       await reader.call("GET", `/v1/accounts/${owner.accountId}/wall/posts`),
     );
@@ -296,7 +316,7 @@ describe("importing from a proven profile", () => {
   it("shows a post to everyone when the person chose that", async () => {
     const owner = await person("Sigga");
     const reader = await person("Jón");
-    await proven(owner, [item("a", "Öllum opið")], "everyone");
+    await imported(owner, [item("a", "Öllum opið")], "everyone");
     const seen = await ok<{ posts: unknown[] }>(
       await reader.call("GET", `/v1/accounts/${owner.accountId}/wall/posts`),
     );
@@ -305,7 +325,7 @@ describe("importing from a proven profile", () => {
 
   it("carries an image over and leaves out one that has gone", async () => {
     const owner = await person("Sigga");
-    await proven(owner, [
+    await imported(owner, [
       item("a", "Með myndum", {
         media: [{ photo_image: { uri: `${MEDIA}/here.png` } }, { image: `${MEDIA}/gone.png` }],
       }),
@@ -316,7 +336,7 @@ describe("importing from a proven profile", () => {
 
   it("never fetches an image from a host outside the list", async () => {
     const owner = await person("Sigga");
-    const { fake } = await proven(owner, [
+    const { fake } = await imported(owner, [
       item("a", "Vond mynd", {
         media: [
           { image: "https://169.254.169.254/latest/meta-data" },
@@ -333,13 +353,248 @@ describe("importing from a proven profile", () => {
 
   it("brings a video post's text with a link to the original", async () => {
     const owner = await person("Sigga");
-    await proven(owner, [
+    await imported(owner, [
       item("a", "Myndband", { isVideo: true, media: [{ is_playable: true, thumbnail: "x" }] }),
     ]);
     const [post] = await wall(owner);
     expect(post?.body).toContain("Myndband");
     expect(post?.body).toContain(`${PROFILE}/posts/a`);
     expect(post?.media).toEqual([]);
+  });
+});
+
+describe("the first collection", () => {
+  const photo = { media: [{ image: `${MEDIA}/here.png` }] };
+  const noMediaFetched = (asked: string[]) => asked.filter((url) => url.startsWith(MEDIA));
+
+  it("puts nothing on the wall until the person publishes, and shows what it holds", async () => {
+    const owner = await person("Sigga");
+    const { importId } = await proven(owner, [
+      item("a", "Með mynd", photo),
+      item("b", "Myndband", { isVideo: true, media: [{ is_playable: true }] }),
+    ]);
+    expect(await wall(owner)).toEqual([]);
+    expect(await connectionOf(owner, importId)).toMatchObject({ state: "preview", posts: 0 });
+    const status = await ok<{ state: string; counts: Record<string, number> }>(
+      await owner.call("GET", `/v1/imports/${importId}`),
+    );
+    expect(status.state).toBe("ready");
+    expect(status.counts).toMatchObject({ posts: 2, images: 1, videos: 1 });
+    const { items } = await ok<{ items: { id: string; hasVideo: boolean }[] }>(
+      await owner.call("GET", `/v1/imports/${importId}/items`),
+    );
+    expect(items.map((i) => [i.id, i.hasVideo]).sort()).toEqual([
+      ["a", false],
+      ["b", true],
+    ]);
+  });
+
+  it("starts no daily run while the preview waits", async () => {
+    const owner = await person("Sigga");
+    const { fake } = await proven(owner, [item("a", "Bíður")]);
+    const before = fake.started.length;
+    await tick(E, 3 * DAY_MS);
+    expect(fake.started).toHaveLength(before);
+  });
+
+  it("never brings in a post the person left out, even from a provider that returns all", async () => {
+    const owner = await person("Sigga");
+    const { importId } = await proven(owner, [item("a", "Með"), item("b", "Ekki með")]);
+    await choose(owner, importId, { excluded: ["b"] });
+    expect((await wall(owner)).map((p) => p.body)).toEqual(["Með"]);
+    await tick(E, DAY_MS + 1000);
+    expect((await wall(owner)).map((p) => p.body)).toEqual(["Með"]);
+  });
+
+  it("keeps a post out that was written while the run ran", async () => {
+    const owner = await person("Sigga");
+    const during = { timestamp: (Date.now() + 60 * 60 * 1000) / 1000 };
+    const { importId } = await proven(owner, [item("a", "Með"), item("b", "Nýleg", during)]);
+    await choose(owner, importId, { excluded: ["b"] });
+    await tick(E, DAY_MS + 1000);
+    expect((await wall(owner)).map((p) => p.body)).toEqual(["Með"]);
+  });
+
+  it("asks at each run from when the last one began, so a post written during it comes", async () => {
+    const owner = await person("Sigga");
+    const { importId, shown } = await imported(owner, [item("a", "Fyrsta")]);
+    const { lastSyncAt } = await connectionOf(owner, importId);
+    expect(lastSyncAt).toBeLessThan(Date.now());
+    shown.push(item("n", "Rétt á eftir", { timestamp: (Number(lastSyncAt) + 1) / 1000 }));
+    await tick(E, DAY_MS + 1000);
+    expect((await wall(owner)).map((p) => p.body).sort()).toEqual(["Fyrsta", "Rétt á eftir"]);
+  });
+
+  it("asks each later run from when the one before it began", async () => {
+    const owner = await person("Sigga");
+    const { fake, importId, shown } = await imported(owner, [item("a", "Fyrsta")]);
+    const began = Date.now() + DAY_MS + 1000;
+    const { lastSyncAt: first } = await connectionOf(owner, importId);
+    await tick(E, DAY_MS + 1000);
+    const { lastSyncAt: second } = await connectionOf(owner, importId);
+    expect(second).toBeGreaterThan(Number(first));
+    shown.push(item("n", "Skrifuð í keyrslunni", { timestamp: (began + 1000) / 1000 }));
+    await tick(E, 2 * DAY_MS + 2000);
+    expect((await wall(owner)).map((p) => p.body)).toContain("Skrifuð í keyrslunni");
+    expect(fake.started.length).toBeGreaterThan(2);
+  });
+
+  it("leaves an empty post out of the preview, and keeps a bare video", async () => {
+    const owner = await person("Sigga");
+    const { importId } = await proven(owner, [
+      item("a", "   "),
+      item("b", "", { isVideo: true, media: [{ is_playable: true }] }),
+      item("c", "Texti"),
+    ]);
+    const { items } = await ok<{ items: { id: string }[] }>(
+      await owner.call("GET", `/v1/imports/${importId}/items`),
+    );
+    expect(items.map((i) => i.id).sort()).toEqual(["b", "c"]);
+  });
+
+  it("publishes a video's link from the preview", async () => {
+    const owner = await person("Sigga");
+    await imported(owner, [
+      item("v", "Myndband", { isVideo: true, media: [{ is_playable: true }] }),
+    ]);
+    const [post] = await wall(owner);
+    expect(post?.body).toContain(`${PROFILE}/posts/v`);
+  });
+
+  it("brings a video's link on a later run too", async () => {
+    const owner = await person("Sigga");
+    const { shown } = await imported(owner, [item("a", "Fyrsta")]);
+    shown.push(
+      item("v", "Nýtt myndband", {
+        isVideo: true,
+        media: [{ is_playable: true }],
+        timestamp: (Date.now() + DAY_MS + 5000) / 1000,
+      }),
+    );
+    await tick(E, DAY_MS + 1000);
+    const posts = await wall(owner);
+    expect(posts.find((p) => p.body.startsWith("Nýtt myndband"))?.body).toContain(
+      `${PROFILE}/posts/v`,
+    );
+  });
+
+  it("deletes every page of what an import holds", async () => {
+    const owner = await person("Sigga");
+    const { importId } = await proven(owner, [item("a", "Mörg")]);
+    const bucket = mediaBucket(E);
+    // One more than a listing returns at a time.
+    await Promise.all(
+      Array.from({ length: 1001 }, (_, at) =>
+        bucket.put(`imports/${importId}/many/${at}`, new Uint8Array([1])),
+      ),
+    );
+    expect(await removeConnection(E, owner.accountId, importId)).toBe("ok");
+    expect(await stored(importId)).toEqual([]);
+  });
+
+  it("refuses to publish a connection that has nothing waiting", async () => {
+    const owner = await person("Sigga");
+    const { importId } = await imported(owner, [item("a", "Fyrsta")]);
+    expect(await publishFile(E, owner.accountId, importId, {})).toBe("conflict");
+  });
+
+  it("stops the runs when removed by the file route too", async () => {
+    const owner = await person("Sigga");
+    const { fake, importId } = await imported(owner, [item("a", "Fyrsta")]);
+    const res = await owner.call("DELETE", `/v1/imports/${importId}`);
+    expect(res.status).toBe(204);
+    const before = fake.started.length;
+    await startDueScrapes(E, Date.now() + 3 * DAY_MS);
+    const pending = await env.DB.prepare(
+      "SELECT COUNT(*) AS n FROM import_connections WHERE import_id = ? AND next_run_at IS NOT NULL",
+    )
+      .bind(importId)
+      .first<{ n: number }>();
+    expect(pending?.n ?? 0).toBe(0);
+    await drain();
+    expect(fake.started).toHaveLength(before);
+  });
+
+  it("holds the images itself, so publishing fetches none and keeps none", async () => {
+    const owner = await person("Sigga");
+    const { fake, importId } = await proven(owner, [item("a", "Með mynd", photo)]);
+    expect(noMediaFetched(fake.asked)).toHaveLength(1);
+    expect(await stored(importId)).toHaveLength(1);
+    await choose(owner, importId);
+    expect(noMediaFetched(fake.asked)).toHaveLength(1);
+    const [post] = await wall(owner);
+    expect(post?.media).toHaveLength(1);
+    expect(await stored(importId)).toEqual([]);
+  });
+
+  it("drops the images and the rows when the person removes it", async () => {
+    const owner = await person("Sigga");
+    const { importId } = await proven(owner, [item("a", "Með mynd", photo)]);
+    expect(await removeConnection(E, owner.accountId, importId)).toBe("ok");
+    expect(await stored(importId)).toEqual([]);
+    const rows = await env.DB.prepare(
+      "SELECT COUNT(*) AS n FROM import_file_items WHERE import_id = ?",
+    )
+      .bind(importId)
+      .first<{ n: number }>();
+    expect(rows?.n).toBe(0);
+    await drain();
+    expect(await listConnections(E, owner.accountId)).toEqual([]);
+  });
+
+  it("removes images a collection stored after the removal was asked for", async () => {
+    const owner = await person("Sigga");
+    const { importId } = await proven(owner, [item("a", "Með mynd", photo)]);
+    await removeConnection(E, owner.accountId, importId);
+    await mediaBucket(E).put(`imports/${importId}/late/0`, new Uint8Array([1]));
+    await drain();
+    expect(await stored(importId)).toEqual([]);
+  });
+
+  it("drops the connection and its images when it waits past its time", async () => {
+    const owner = await person("Sigga");
+    const { importId } = await proven(owner, [item("a", "Með mynd", photo)]);
+    await expireFiles(E, Date.now() + 8 * DAY_MS);
+    expect(await stored(importId)).toEqual([]);
+    expect(await listConnections(E, owner.accountId)).toEqual([]);
+  });
+
+  it("goes straight to daily runs when there is nothing to choose from", async () => {
+    const owner = await person("Sigga");
+    const { importId } = await proven(owner, []);
+    expect((await connectionOf(owner, importId)).state).toBe("connected");
+    expect(
+      await env.DB.prepare("SELECT 1 FROM import_files WHERE import_id = ?").bind(importId).first(),
+    ).toBeNull();
+  });
+
+  it("applies the audience chosen at publishing to the later runs", async () => {
+    const owner = await person("Sigga");
+    const reader = await person("Jón");
+    const { importId, shown } = await proven(owner, [item("a", "Fyrsta")]);
+    await choose(owner, importId, { audience: "everyone" });
+    shown.push(item("n", "Ný", { timestamp: (Date.now() + DAY_MS + 5000) / 1000 }));
+    await tick(E, DAY_MS + 1000);
+    const seen = await ok<{ posts: unknown[] }>(
+      await reader.call("GET", `/v1/accounts/${owner.accountId}/wall/posts`),
+    );
+    expect(seen.posts).toHaveLength(2);
+  });
+
+  it("publishes later runs without a preview, and goes on after a preview expires mid-publish", async () => {
+    const owner = await person("Sigga");
+    const { importId, shown } = await imported(owner, [item("a", "Fyrsta")]);
+    shown.push(item("n", "Ný", { timestamp: (Date.now() + DAY_MS + 5000) / 1000 }));
+    await tick(E, DAY_MS + 1000);
+    expect(await wall(owner)).toHaveLength(2);
+    expect((await connectionOf(owner, importId)).state).toBe("connected");
+    const other = await person("Jón");
+    const stuck = await proven(other, [item("c", "Föst")]);
+    await env.DB.prepare("UPDATE import_files SET state = 'publishing' WHERE import_id = ?")
+      .bind(stuck.importId)
+      .run();
+    await expireFiles(E, Date.now() + 8 * DAY_MS);
+    expect((await connectionOf(other, stuck.importId)).state).toBe("connected");
   });
 });
 
@@ -389,7 +644,7 @@ describe("the off switch", () => {
 
   it("starts no run, and a connection picks up when it comes back on", async () => {
     const owner = await person("Sigga");
-    const { fake, importId } = await proven(owner, [item("a", "Fyrsta")]);
+    const { fake, importId } = await imported(owner, [item("a", "Fyrsta")]);
     const before = fake.asked.length;
     await tick(off, DAY_MS + 1000);
     expect(fake.asked.length).toBe(before);
@@ -515,7 +770,7 @@ describe("recovery", () => {
 describe("removing a connection", () => {
   it("removes what it brought in and starts no more runs", async () => {
     const owner = await person("Sigga");
-    const { fake, importId } = await proven(owner, [item("a", "Fyrsta")]);
+    const { fake, importId } = await imported(owner, [item("a", "Fyrsta")]);
     expect(await wall(owner)).toHaveLength(1);
     expect(await removeConnection(E, owner.accountId, importId)).toBe("ok");
     expect(await listConnections(E, owner.accountId)).toEqual([]);

@@ -2,9 +2,9 @@ import { db, mediaBucket } from "../../env/index.ts";
 import { MAX_SOCIAL_UPLOAD } from "../../api/social.ts";
 import { log } from "../../shared/log.ts";
 import { type Handler, job } from "../jobs/index.ts";
-import { importPost, type ImportSource } from "./core.ts";
+import { deleteBytes, importPost, keyOf, type ImportSource } from "./core.ts";
 import { type ParsedItem, parseExportFile, POSTS_FILE } from "./export-file.ts";
-import { keyOf, PARSE, PUBLISH } from "./file.ts";
+import { beginSync, PARSE, PUBLISH } from "./file.ts";
 import { r2Source, readDirectory, readEntry, type ZipEntry, ZipError } from "./zip.ts";
 
 // The two jobs of a file import: the parse, which reads the ZIP into preview rows,
@@ -37,6 +37,19 @@ const insertItem = (env: Env, importId: string, item: ParsedItem) =>
       JSON.stringify(item.images),
       item.hasVideo ? 1 : 0,
     );
+
+/** The preview rows are all written: the import shows what it holds, to choose from. */
+export const previewReady = (env: Env, importId: string, skipped: number) =>
+  db(env)
+    .prepare(
+      `UPDATE import_files SET state = 'ready', skipped = ?2,
+              (posts, images, videos, earliest, latest) =
+                (SELECT COUNT(*), COALESCE(SUM(json_array_length(images)), 0),
+                        COALESCE(SUM(has_video), 0), MIN(at), MAX(at)
+                   FROM import_file_items WHERE import_id = ?1)
+        WHERE import_id = ?1 AND state = 'parsing'`,
+    )
+    .bind(importId, skipped);
 
 /** Marks the parse failed with a code, and drops the bytes: nothing will read them. */
 async function failParse(env: Env, importId: string, failure: string): Promise<void> {
@@ -75,17 +88,7 @@ async function parseFile(env: Env, importId: string): Promise<void> {
       );
     }
   }
-  await db(env)
-    .prepare(
-      `UPDATE import_files SET state = 'ready', skipped = ?2,
-              (posts, images, videos, earliest, latest) =
-                (SELECT COUNT(*), COALESCE(SUM(json_array_length(images)), 0),
-                        COALESCE(SUM(has_video), 0), MIN(at), MAX(at)
-                   FROM import_file_items WHERE import_id = ?1)
-        WHERE import_id = ?1 AND state = 'parsing'`,
-    )
-    .bind(importId, skipped)
-    .run();
+  await previewReady(env, importId, skipped).run();
 }
 
 const parse: Handler = async (env, _key, payload) => {
@@ -106,8 +109,9 @@ const parse: Handler = async (env, _key, payload) => {
 
 /** Everything is brought in: the bytes go, then the preview rows, then the state. */
 async function finish(env: Env, importId: string): Promise<void> {
-  await mediaBucket(env).delete(keyOf(importId));
+  await deleteBytes(env, importId);
   await db(env).batch([
+    beginSync(env, importId, Date.now()),
     db(env).prepare("DELETE FROM import_file_items WHERE import_id = ?").bind(importId),
     db(env)
       .prepare(
@@ -124,6 +128,7 @@ type Chosen = {
   body: string;
   images: string;
   hasVideo: number;
+  link: string | null;
 };
 
 /** The image loaders of a post: those whose entry is in the ZIP, and within what a post takes. */
@@ -140,11 +145,27 @@ function loadersOf(
   });
 }
 
+/** The image loaders of a file: a post's images are paths in the ZIP. */
+async function zipImages(env: Env, importId: string) {
+  const head = await mediaBucket(env).head(keyOf(importId));
+  if (!head) throw new Error(`import ${importId}: the upload is gone`);
+  const source = r2Source(mediaBucket(env), keyOf(importId), head.size);
+  const entries = new Map((await readDirectory(source)).map((e) => [e.name, e]));
+  return (paths: string[]) => loadersOf(source, entries, paths);
+}
+
+/** The image loaders of a connection's preview: a post's images are keys in the bucket. */
+const storedImages = (env: Env) => (keys: string[]) =>
+  keys.map((key) => async () => {
+    const stored = await mediaBucket(env).get(key);
+    return stored ? new Uint8Array(await stored.arrayBuffer()) : new Uint8Array();
+  });
+
 const publish: Handler = async (env, _key, payload) => {
   const { importId, part } = payload as { importId: string; part: number };
   const row = await db(env)
     .prepare(
-      `SELECT s.account_id AS accountId, s.source, s.audience, f.from_at AS fromAt,
+      `SELECT s.account_id AS accountId, s.kind, s.source, s.audience, f.from_at AS fromAt,
               f.to_at AS toAt, f.excluded
          FROM import_files f JOIN import_sources s ON s.import_id = f.import_id
         WHERE f.import_id = ? AND f.state = 'publishing' AND s.removing_at IS NULL`,
@@ -152,6 +173,7 @@ const publish: Handler = async (env, _key, payload) => {
     .bind(importId)
     .first<{
       accountId: string;
+      kind: string;
       source: string;
       audience: "friends" | "everyone";
       fromAt: number | null;
@@ -161,7 +183,7 @@ const publish: Handler = async (env, _key, payload) => {
   if (!row) return;
   const { results } = await db(env)
     .prepare(
-      `SELECT item_id AS id, at, body, images, has_video AS hasVideo
+      `SELECT item_id AS id, at, body, images, has_video AS hasVideo, link
          FROM import_file_items
         WHERE import_id = ?1 AND published = 0
           AND (?2 IS NULL OR at >= ?2) AND (?3 IS NULL OR at <= ?3)
@@ -172,10 +194,7 @@ const publish: Handler = async (env, _key, payload) => {
     .all<Chosen>();
   if (results.length === 0) return finish(env, importId);
 
-  const head = await mediaBucket(env).head(keyOf(importId));
-  if (!head) throw new Error(`import ${importId}: the upload is gone`);
-  const source = r2Source(mediaBucket(env), keyOf(importId), head.size);
-  const entries = new Map((await readDirectory(source)).map((e) => [e.name, e]));
+  const imagesOf = row.kind === "profile" ? storedImages(env) : await zipImages(env, importId);
   const owner: ImportSource = {
     importId,
     accountId: row.accountId,
@@ -190,7 +209,8 @@ const publish: Handler = async (env, _key, payload) => {
         id: item.id,
         createdAt: item.at,
         body: item.body,
-        images: loadersOf(source, entries, JSON.parse(item.images) as string[]),
+        images: imagesOf(JSON.parse(item.images) as string[]),
+        link: item.link ?? undefined,
       },
       "backlog",
     );
