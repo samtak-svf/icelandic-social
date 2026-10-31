@@ -10,8 +10,12 @@ import { r2Source, readDirectory, readEntry, type ZipEntry, ZipError } from "./z
 // The two jobs of a file import: the parse, which reads the ZIP into preview rows,
 // and the publish, which brings the chosen posts in a few at a time.
 
-/** What one posts file may inflate to; a larger one is a bomb or not an export. */
-const MAX_JSON = 64 * 1024 * 1024;
+/**
+ * What one posts file may inflate to. A Worker holds it as bytes, text and parsed
+ * objects at once, so a larger one is refused with a code rather than ending the
+ * isolate; the export splits a long history across several files.
+ */
+const MAX_JSON = 32 * 1024 * 1024;
 /** Preview rows written in one D1 batch. */
 const INSERT_BATCH = 50;
 /** Posts one publish run brings in, within a run's subrequests. */

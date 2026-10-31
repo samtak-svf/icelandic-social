@@ -255,7 +255,8 @@ describe("a file that cannot be read", () => {
 
   it("fails a zip bomb whose header lies about its size, rather than inflating it", async () => {
     const owner = await person("eigandi");
-    const bomb = new Uint8Array(65 * 1024 * 1024);
+    // Past what a Worker can hold as bytes, text and parsed objects at once.
+    const bomb = new Uint8Array(33 * 1024 * 1024);
     const zip = await buildZip([
       { name: "posts/your_posts_1.json", data: bomb, method: "deflate", declaredSize: 10 },
     ]);
