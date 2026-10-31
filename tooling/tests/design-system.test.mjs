@@ -225,6 +225,9 @@ describe("README", () => {
     expect(md.startsWith("#")).toBe(false);
     expect(md).toContain(brand.manifest.displayName);
     expect(md).toMatch(/read-only/);
+    expect(md).toContain("open a pull request against");
+    // A comment on the page reaches nobody: it is not a route for a change.
+    expect(md).not.toMatch(/comment on the page/i);
     for (const heading of ["## Contrast", "## Wired status", "## Components", "## Ad hoc sizes"])
       expect(md).toContain(heading);
     expect(md).toContain("Component previews are not on this page yet");

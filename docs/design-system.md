@@ -13,7 +13,7 @@ exporter publishes nothing; a person hands its output to claude.ai.
 
 | File                                        | What it is                                                                                                                                                |
 | ------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `project/design-system.json`                | The page's index: editing is `code`, so the page cannot be edited in place.                                                                               |
+| `project/design-system.json`                | The page's index: editing is `code`, so the page is not a place to edit (see "Proposing a change").                                                       |
 | `project/tokens.json`, `project/tokens.css` | Colours in both themes (resolved, no aliases), type, spacing and radius, with the source commit and the SHA-256 of `tokens.json`.                         |
 | `project/README.md`                         | Usage rules, the contrast table, the wired status, the component inventory and the ad hoc sizes. Contrast and wiring are measured, never written by hand. |
 | `project/components/Cover/preview.html`     | The cover: colour blocks, a pattern and the name, chosen by measurement.                                                                                  |
@@ -34,7 +34,9 @@ block would vanish against the ground in either mode, or when the brand itself f
 
 1. Run the export from `main`: `node tooling/design-system.mjs`.
 2. Read the live page's index right before publishing and keep its keys (the blob ids of assets
-   already uploaded), so a sync does not orphan them.
+   already uploaded), so a sync does not orphan them. Compare the page's `project/tokens.json`
+   with the last export too: someone invited as an Editor may have changed the page, and a publish
+   can collide with that edit. Bring a difference back as a pull request before publishing.
 3. Upload `icon/<file>` as an asset of the artifact, then run the export again with
    `--icon-blob <id>` so the Logos group names it.
 4. Publish with one Artifact call that passes `publish.json`'s `files` map.
@@ -43,7 +45,10 @@ block would vanish against the ground in either mode, or when the brand itself f
 
 ## Proposing a change
 
-A designer comments on the page, or opens a pull request that edits
-`brand/<name>/tokens.json`. The pull request is guarded by `pnpm check`: contrast pairs, the
-scales and the generated platform files must all still pass. After the merge, the next sync
-carries the change to the page.
+A change is a pull request that edits `brand/<name>/tokens.json`. The pull request is guarded by
+`pnpm check`: contrast pairs, the scales and the generated platform files must all still pass.
+After the merge, the next sync carries the change to the page.
+
+Commenting on the page is not a route: the Share dialog says "People you invited to comment can
+only view right now" (measured 2026-10-31). What an invited Editor can do on the page has not been
+measured. Either way, an edit made there reaches neither `tokens.json` nor the apps.

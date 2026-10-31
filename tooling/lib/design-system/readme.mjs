@@ -81,7 +81,7 @@ export function readme(brand, pairs, scan) {
 
   return (
     [
-      `This page is the read-only design system of ${name}, generated from the brand's tokens. To propose a change, comment on the page or open a pull request against \`brand/${brand.name}/tokens.json\`; the repository's checks guard it.`,
+      `This page is the read-only design system of ${name}, generated from the brand's tokens. To propose a change, open a pull request against \`brand/${brand.name}/tokens.json\`; the repository's checks guard it.`,
       [
         "## Content fundamentals",
         "- Write every user-facing sentence in Icelandic, as a whole sentence per string, never a name interpolated into a template.",
