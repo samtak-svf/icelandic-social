@@ -106,7 +106,10 @@ final class PresentationVectorsTests: XCTestCase {
                 case "reply": .reply
                 case "reaction": .reaction
                 case "join_approved": .joinApproved
-                default: .moderated
+                case "friend_request": .friendRequest
+                case "friend_accepted": .friendAccepted
+                case "moderated": .moderated
+                default: preconditionFailure("unknown kind in \(vector)")
                 }
             let names = (vector["actors"] as! [Any]).map { $0 as? String }
             let action: NotificationAction? =
@@ -116,6 +119,8 @@ final class PresentationVectorsTests: XCTestCase {
                 case "review_upheld": .reviewUpheld
                 case "review_overturned": .reviewOverturned
                 case "clear_account_photo": .clearAccountPhoto
+                case "clear_account_bio": .clearAccountBio
+                case "clear_account_cover": .clearAccountCover
                 case "suspend_account": .suspendAccount
                 case "unsuspend_account": .unsuspendAccount
                 default: nil

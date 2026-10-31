@@ -118,10 +118,9 @@ struct ManageButton: View {
     }
 }
 
-/// Who wrote it, with the verified mark, a badge when they own or moderate the community, and when; `community`
-/// names the community a post from the hub's feed is in, with its picture, and `menu` is what the card offers at
-/// the end of the row. `short` writes the age as the groups readers know do ("6 klst.") rather than the clock
-/// (decision 0080).
+/// Who wrote it (their photo and name open their person screen), the verified mark, a badge for an owner or a
+/// moderator, and when; `community` names the community a post from the hub's feed is in, with its picture, and
+/// `menu` is what the card offers at the row's end. `short` writes the age as "6 klst." (decision 0080).
 struct Byline<Menu: View>: View {
     let author: Author?
     /// The name an anonymous post shows in place of its author's (decision 0091).
@@ -155,12 +154,13 @@ struct Byline<Menu: View>: View {
         HStack(spacing: 10) {
             Avatar(
                 name: author?.name, kind: author?.verified == true ? .verified : .unverified, size: 34,
-                photo: author?.photoOf)
+                photo: author?.photoOf
+            ).personLink(author, anonymous: anonymousName != nil)
             VStack(alignment: .leading, spacing: 2) {
                 ViewThatFits(in: .horizontal) {
                     HStack(spacing: 4) { byline }
                     VStack(alignment: .leading, spacing: 2) { byline }
-                }
+                }.personLink(author, anonymous: anonymousName != nil)
                 Text(verbatim: short ? relativeTime(createdAt) : postedAt(createdAt))
                     .font(TypeStyle.meta)
                     .foregroundStyle(BrandTokens.Colors.mutedFg)

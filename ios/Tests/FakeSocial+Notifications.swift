@@ -7,6 +7,7 @@ struct NoticeServer {
     var seenAt: UInt64?
     var settings = NotificationSettings(kinds: [], communities: [])
     var statements: [ModerationStatement] = []
+    var friends = FriendServer()
 }
 
 /// The notification calls of `FakeSocial`: the list, what was seen and read, the levels and the statements.

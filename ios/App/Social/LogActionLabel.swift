@@ -1,7 +1,7 @@
 import SpjallCore
 
 /// What a moderation log entry records (decision 0079). The log has no words of its own, so it borrows the past
-/// tense a closed report's decision uses; nil for a later server's action, or a platform moderator's: no surface here.
+/// tense a closed report's decision uses; nil for a later server's action, or a platform moderator's on an account or a wall: `statementLabel` words those.
 /// A suspension says its end when it was given one (`until`), and that a moderator lifts it when it was not (0115).
 func logActionLabel(_ action: ModerationLogAction, until: UInt64? = nil) -> String? {
     switch action {
@@ -33,7 +33,7 @@ func logActionLabel(_ action: ModerationLogAction, until: UInt64? = nil) -> Stri
     case .reviewOverturned: localized("moderation_log_review_overturned")
     case .suspendAccount: suspensionLabel(until)
     case .unsuspendAccount: localized("moderation_decision_unsuspend_account")
-    case .clearAccountPhoto, .unknown: nil
+    case .clearAccountPhoto, .clearAccountBio, .clearAccountCover, .readReported, .unknown: nil
     }
 }
 

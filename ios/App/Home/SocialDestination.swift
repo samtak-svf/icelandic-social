@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// A community, a post or a report queue, with the model the root keeps for it while its route is open.
+/// A community, a post, a report queue or a person, with the model the root keeps for it while its route is open.
 struct SocialDestination: View {
     let route: SocialRoute
     let social: Social
@@ -22,6 +22,9 @@ struct SocialDestination: View {
                 .id(route)
         case .statements:
             StatementsView(model: models.model(for: route) { StatementsModel(social: social) }).id(route)
+        case .person(let id):
+            PersonView(model: models.model(for: route) { PersonModel(social: social, accountId: id) }, social: social)
+                .id(route)
         }
     }
 }

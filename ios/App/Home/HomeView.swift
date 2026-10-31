@@ -20,6 +20,7 @@ struct HomeView: View {
         case verify
         case link
         case statements
+        case friends
     }
 
     let signIn: SignInModel
@@ -305,7 +306,7 @@ struct HomeView: View {
                 model: me, push: push, levels: levels,
                 communityNames: Dictionary(communities.mine.map { ($0.communityId, $0.name) }) { first, _ in first },
                 onVerify: { mePath.append(.verify) }, onLink: { mePath.append(.link) },
-                onStatements: { mePath.append(.statements) }
+                onStatements: { mePath.append(.statements) }, onFriends: { mePath.append(.friends) }
             )
             .navigationDestination(for: MeRoute.self) { route in
                 switch route {
@@ -313,6 +314,8 @@ struct HomeView: View {
                     LinkView(model: LinkModel(account: signIn.account))
                 case .statements:
                     OwnStatementsView(social: social)
+                case .friends:
+                    OwnFriendsView(social: social)
                 case .verify:
                     VerifyView(
                         model: signIn, onVerify: { Task { await signIn.verify(browser: browser) } },
@@ -321,8 +324,11 @@ struct HomeView: View {
                     )
                 }
             }
+            .navigationDestination(for: SocialRoute.self) { route in
+                SocialDestination(route: route, social: social, models: routeModels)
+            }
         }
-        .environment(\.bell, bell)
+        .hosted(bell: bell, social: social, sharing: postSharing, suspension: suspension)
     }
 
     /// A hosted tab's stack: its root, then communities, posts and report queues, each with a model of its own.
@@ -335,12 +341,7 @@ struct HomeView: View {
                     SocialDestination(route: route, social: social, models: routeModels)
                 }
         }
-        .environment(\.bell, bell)
-        // Any screen in the stack can draw a post card, the hub's feed included.
-        .environment(\.postImages, PostImages(social: social))
-        .environment(\.postSharing, postSharing)
-        // The notice and the disabled controls belong to the hosted tabs; a conversation is never refused (0115).
-        .suspensionHost(suspension)
+        .hosted(bell: bell, social: social, sharing: postSharing, suspension: suspension)
     }
 
     /// Whether the screen on top takes the whole width on an expanded window (decision 0087): the hub, a community
