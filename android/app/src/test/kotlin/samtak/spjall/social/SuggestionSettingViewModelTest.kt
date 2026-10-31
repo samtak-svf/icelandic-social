@@ -88,4 +88,34 @@ class SuggestionSettingViewModelTest {
             assertNull(model.state.value.included)
             assertNotNull(model.state.value.problem)
         }
+
+    @Test
+    fun aRetryAfterAFailedWriteReadsTheServerAndDoesNotWriteAgain() =
+        runTest(dispatcher) {
+            val model = model()
+            social.failOn = "setFriendSuggestionsIncluded false"
+            model.set(false)
+            advanceUntilIdle()
+            assertNotNull(model.state.value.problem)
+            val writes = social.calls.count { it.startsWith("setFriendSuggestionsIncluded") }
+            assertEquals(1, writes)
+            social.calls.clear()
+            model.load()
+            advanceUntilIdle()
+            assertEquals(listOf("friendSuggestionsIncluded"), social.calls)
+            assertNull(model.state.value.problem)
+            assertEquals(true, model.state.value.included)
+        }
+
+    @Test
+    fun aSecondLoadWithNoProblemReadsNothing() =
+        runTest(dispatcher) {
+            val model = model()
+            assertEquals(true, model.state.value.included)
+            assertNull(model.state.value.problem)
+            social.calls.clear()
+            model.load()
+            advanceUntilIdle()
+            assertTrue(social.calls.isEmpty())
+        }
 }

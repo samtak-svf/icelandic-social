@@ -39,9 +39,10 @@ class SuggestionSettingViewModel(
     private val _state = MutableStateFlow(State())
     val state: StateFlow<State> = _state.asStateFlow()
 
-    /** Reads the setting; asked again after a failure, not while it is held. */
+    /** Reads the setting; read again after a problem (the retry), never repeated once it is known, never while held. */
     fun load() {
-        if (_state.value.included != null || _state.value.busy) return
+        val now = _state.value
+        if (now.busy || (now.included != null && now.problem == null)) return
         run { }
     }
 
