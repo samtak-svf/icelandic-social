@@ -7,11 +7,11 @@ import { importPost, type ImportSource } from "./core.ts";
 import { previewReady } from "./file-jobs.ts";
 import { dropFile, SYNC_AFTER_MS } from "./file.ts";
 import {
-  loadImage,
   readItems,
   readRun,
   runCeiling,
   scrapeSettings,
+  sourcePost,
   startRun,
   type ScrapedItem,
 } from "./scrape.ts";
@@ -289,16 +289,6 @@ async function giveBackFirstCollection(env: Env, row: Row, micros: number): Prom
     nextRunAt: null,
   });
   log("imports.scrape_failed", { code: "first_collection" });
-}
-
-function sourcePost(item: ScrapedItem) {
-  return {
-    id: item.id,
-    createdAt: item.createdAt,
-    body: item.body,
-    images: item.images.map((url) => () => loadImage(url)),
-    link: item.videoLink ?? undefined,
-  };
 }
 
 /** Stages or imports one part's posts by the connection's phase; how many came in. */

@@ -102,6 +102,8 @@ export const OWNERS = {
   import_file_items: "imports",
   import_connections: "imports",
   import_scrape_spend: "imports",
+  import_page_connections: "imports",
+  import_page_offers: "imports",
 };
 
 /** The reads of another module's table, each with its reason. */

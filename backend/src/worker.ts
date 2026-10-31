@@ -9,8 +9,10 @@ import { expireCommunities } from "./modules/communities/index.ts";
 import { expireHistory } from "./modules/history/index.ts";
 import {
   expireFiles,
+  expirePageOffers,
   expireUnproven,
   scrapeHealth,
+  startDuePages,
   startDueScrapes,
 } from "./modules/imports/index.ts";
 import { expireJobs, jobHealth, runJobs } from "./modules/jobs/index.ts";
@@ -43,6 +45,7 @@ export default {
       const ran = await runJobs(env, jobHandlers(env));
       if (ran.done + ran.retried + ran.failed > 0) log("jobs.ran", { count: ran.done });
       await startDueScrapes(env);
+      await startDuePages(env);
       const expired = await expireHistory(env);
       if (expired > 0) log("history.expired", { count: expired });
       return;
@@ -61,6 +64,7 @@ export default {
     log("moderation_log.expired", { count: await expireLog(env) });
     log("import_files.expired", { count: await expireFiles(env) });
     log("import_connections.expired", { count: await expireUnproven(env) });
+    log("import_page_offers.expired", { count: await expirePageOffers(env) });
     const scrape = await scrapeHealth(env);
     if (scrape) {
       log("imports.scrape_spend", { count: scrape.spentMicros });

@@ -195,6 +195,9 @@ type Secrets = {
   OPS_TOKEN?: string;
   IMPORT_SCRAPE_TOKEN?: string;
   IMPORT_SCRAPE_CONFIG?: string;
+  IMPORT_PAGE_CONFIG?: string;
+  IMPORT_PAGE_APP_SECRET?: string;
+  IMPORT_PAGE_KEY?: string;
 };
 
 /**
@@ -218,6 +221,21 @@ export function importScrape(
   const monthlyCapUsd = Number(env.IMPORT_SCRAPE_MONTHLY_USD);
   if (!token || !config || !Number.isFinite(monthlyCapUsd)) return null;
   return { token, config, monthlyCapUsd };
+}
+
+/**
+ * The page feed's settings as JSON, the platform app's secret and the key its tokens
+ * are sealed under (decision 0120), or null while it is off here or not fully set.
+ */
+export function importPage(env: Env): { config: string; appSecret: string; key: string } | null {
+  if ((env.IMPORT_PAGE as string) !== "on") return null;
+  const {
+    IMPORT_PAGE_CONFIG: config,
+    IMPORT_PAGE_APP_SECRET: appSecret,
+    IMPORT_PAGE_KEY: key,
+  } = env as Env & Secrets;
+  if (!config || !appSecret || !key) return null;
+  return { config, appSecret, key };
 }
 
 /**

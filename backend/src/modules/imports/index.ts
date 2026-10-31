@@ -6,9 +6,14 @@ import type { Handler } from "../jobs/index.ts";
 import { connectionJobHandlers } from "./scrape-jobs.ts";
 import { jobHandlers as coreJobs } from "./core.ts";
 import { fileJobHandlers } from "./file-jobs.ts";
+import { pageJobHandlers } from "./page-jobs.ts";
 
 export { connectionRoutes } from "./connection-routes.ts";
 export { expireUnproven } from "./connections.ts";
+export { startDuePages } from "./page-jobs.ts";
+export { pageRoutes } from "./page-routes.ts";
+export { pageSignInRoutes } from "./page-sign-in.ts";
+export { expirePageOffers } from "./pages.ts";
 export { scrapeHealth, startDueScrapes } from "./scrape-jobs.ts";
 export { importPost, openImport, requestRemoval, type SourcePost } from "./core.ts";
 export { deleteAccountFiles, expireFiles } from "./file.ts";
@@ -19,4 +24,5 @@ export const jobHandlers = (): Record<string, Handler> => ({
   ...coreJobs(),
   ...fileJobHandlers(),
   ...connectionJobHandlers(),
+  ...pageJobHandlers(),
 });

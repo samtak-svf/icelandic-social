@@ -113,6 +113,10 @@ export default defineConfig(({ mode }) => {
         IMPORT_SCRAPE: bindings.text(mode === "staging" ? "on" : "off"),
         // What its runs may cost in a calendar month. At the cap no new run starts.
         IMPORT_SCRAPE_MONTHLY_USD: bindings.text("5"),
+        // The feed from a page through the platform's own API (decision 0120): "on"
+        // offers it and lets its runs start. Without its three secrets below it is
+        // off whatever this says.
+        IMPORT_PAGE: bindings.text("off"),
         // Raised when a protocol change would break older builds; the apps read
         // it from /health and ask the user to update. 0.5.0: builds before it
         // open on Fljótið, whose routes are gone (decision 0044).
@@ -237,6 +241,9 @@ export default defineConfig(({ mode }) => {
         //   OPS_TOKEN            the maintainer's token for /ops (decision 0068)
         //   IMPORT_SCRAPE_TOKEN  the scraping provider's token (decision 0120), and
         //   IMPORT_SCRAPE_CONFIG its address, actor, allowed hosts and prices, as JSON
+        //   IMPORT_PAGE_CONFIG   the platform's addresses, app id, scopes and hosts, as JSON
+        //   IMPORT_PAGE_APP_SECRET the platform app's secret
+        //   IMPORT_PAGE_KEY      what the stored page tokens are sealed under
         // Staging sets none of them (`jurisdiction-check.mjs`, docs/operations.md).
       },
       // Durable Object classes, declared (decision 0032). Conversation and Inbox

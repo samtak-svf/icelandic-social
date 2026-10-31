@@ -42,10 +42,10 @@ export function scrapeSettings(env: Env): ScrapeSettings | null {
   };
 }
 
-const onHost = (host: string, hosts: string[]) =>
+export const onHost = (host: string, hosts: string[]) =>
   hosts.some((h) => host === h || host.endsWith(`.${h}`));
 
-function parsedUrl(input: string): URL | null {
+export function parsedUrl(input: string): URL | null {
   try {
     const url = new URL(input);
     return url.protocol === "https:" && !url.username && !url.password && !url.port ? url : null;
@@ -256,4 +256,15 @@ export async function loadImage(url: string): Promise<Uint8Array> {
   }
   const bytes = new Uint8Array(await response.arrayBuffer());
   return bytes.byteLength > MAX_SOCIAL_UPLOAD ? nothing : bytes;
+}
+
+/** A post read from a source, as the core takes it; its images are fetched when asked for. */
+export function sourcePost(item: ScrapedItem) {
+  return {
+    id: item.id,
+    createdAt: item.createdAt,
+    body: item.body,
+    images: item.images.map((url) => () => loadImage(url)),
+    link: item.videoLink ?? undefined,
+  };
 }

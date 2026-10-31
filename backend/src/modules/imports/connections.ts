@@ -9,8 +9,8 @@ import { profileAddress, scrapeSettings } from "./scrape.ts";
 // the author of that post is pinned, and only that author's posts come in afterwards.
 // This file is what the person does; scrape-jobs.ts is the runs.
 
-/** Connections per person, and checks per connection: each check is a paid run. */
-const MAX_CONNECTIONS = 3;
+/** Connections per person, of either kind, and checks per connection: each check is a paid run. */
+export const MAX_CONNECTIONS = 3;
 const MAX_CHECKS = 10;
 /** A connection never proven is dropped after this. */
 const UNPROVEN_KEPT_MS = 30 * 24 * 60 * 60 * 1000;
@@ -92,6 +92,20 @@ async function connectionOf(env: Env, row: Row): Promise<Connection> {
   };
 }
 
+/** How many connections the person holds, of either kind. */
+export async function connectionsHeld(env: Env, accountId: string): Promise<number> {
+  const held = await db(env)
+    .prepare(
+      `SELECT COUNT(*) AS held FROM import_sources
+        WHERE account_id = ? AND removing_at IS NULL AND import_id IN (
+          SELECT import_id FROM import_connections
+          UNION ALL SELECT import_id FROM import_page_connections)`,
+    )
+    .bind(accountId)
+    .first<{ held: number }>();
+  return held?.held ?? 0;
+}
+
 /** Starts a connection, unproven. Nothing is public unless the person chose it. */
 export async function createConnection(
   env: Env,
@@ -102,14 +116,7 @@ export async function createConnection(
   if (!settings) return "unavailable";
   const profileUrl = profileAddress(settings, input.profileUrl);
   if (!profileUrl) return "invalid_request";
-  const held = await db(env)
-    .prepare(
-      `SELECT COUNT(*) AS held FROM import_connections c JOIN import_sources s USING (import_id)
-        WHERE s.account_id = ? AND s.removing_at IS NULL`,
-    )
-    .bind(accountId)
-    .first<{ held: number }>();
-  if ((held?.held ?? 0) >= MAX_CONNECTIONS) return "conflict";
+  if ((await connectionsHeld(env, accountId)) >= MAX_CONNECTIONS) return "conflict";
   // The export file's source key, so that a post both routes name exists once.
   const opened = await openImport(env, accountId, {
     kind: "profile",

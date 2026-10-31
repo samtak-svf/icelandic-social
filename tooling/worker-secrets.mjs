@@ -73,6 +73,14 @@ export const SECRETS = [
   // actor, allowed hosts and prices as JSON. Unset, the feed stays off.
   { name: "IMPORT_SCRAPE_TOKEN", vault: "scrape-token", when: "now" },
   { name: "IMPORT_SCRAPE_CONFIG", vault: "scrape-config", when: "now" },
+  // The page feed (decision 0120): nothing to send until the platform app exists and
+  // the business behind it is verified. Unset, the feed stays off.
+  ...["IMPORT_PAGE_CONFIG", "IMPORT_PAGE_APP_SECRET", "IMPORT_PAGE_KEY"].map((name) => ({
+    name,
+    vault: name.slice("IMPORT_".length).replaceAll("_", "-").toLowerCase(),
+    when: /** @type {const} */ ("later"),
+    reason: "the platform app does not exist yet",
+  })),
 ];
 
 /**

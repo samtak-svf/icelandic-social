@@ -111,7 +111,7 @@ const parse: Handler = async (env, _key, payload) => {
 async function finish(env: Env, importId: string): Promise<void> {
   await deleteBytes(env, importId);
   await db(env).batch([
-    beginSync(env, importId, Date.now()),
+    ...beginSync(env, importId, Date.now()),
     db(env).prepare("DELETE FROM import_file_items WHERE import_id = ?").bind(importId),
     db(env)
       .prepare(
@@ -194,7 +194,7 @@ const publish: Handler = async (env, _key, payload) => {
     .all<Chosen>();
   if (results.length === 0) return finish(env, importId);
 
-  const imagesOf = row.kind === "profile" ? storedImages(env) : await zipImages(env, importId);
+  const imagesOf = row.kind !== "file" ? storedImages(env) : await zipImages(env, importId);
   const owner: ImportSource = {
     importId,
     accountId: row.accountId,
