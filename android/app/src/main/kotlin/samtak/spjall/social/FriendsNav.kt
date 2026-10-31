@@ -71,6 +71,10 @@ internal fun Friends(
             override fun cancel(accountId: String) = model.cancel(accountId)
 
             override fun unsnooze(accountId: String) = model.unsnooze(accountId)
+
+            override fun ask(accountId: String) = model.ask(accountId)
+
+            override fun moreSuggestions() = model.moreSuggestions()
         },
     )
 }

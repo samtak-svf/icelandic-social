@@ -6,6 +6,7 @@ import samtak.spjall.core.FriendPage
 import samtak.spjall.core.FriendRequest
 import samtak.spjall.core.FriendRequests
 import samtak.spjall.core.FriendSort
+import samtak.spjall.core.FriendSuggestions
 import samtak.spjall.core.PersonProfile
 import samtak.spjall.core.Relation
 import samtak.spjall.core.Snooze
@@ -47,6 +48,15 @@ open class FakeSocialFriends :
 
     /** Who ends a snooze at what time. */
     val snoozedUntil = mutableMapOf<String, ULong>()
+
+    /** The people the server suggests, in order; each needs an entry in [people] to be asked. */
+    val suggested = mutableListOf<Author>()
+
+    /** Whether the account takes part in suggestions. */
+    var suggestionsIncluded = true
+
+    /** How many suggestions a page holds at most. */
+    var suggestionPageSize = 2
 
     private fun author(id: String) = people.getValue(id).let { Author(it.accountId, it.name, it.verified) }
 
@@ -133,6 +143,27 @@ open class FakeSocialFriends :
     override fun blockPerson(accountId: String) {
         call("blockPerson $accountId")
         people.remove(accountId)
+    }
+
+    override fun friendSuggestions(
+        after: String?,
+        limit: UInt,
+    ): FriendSuggestions {
+        call("friendSuggestions ${after.orEmpty()}".trim())
+        val left = suggested.filter { people[it.accountId]?.relation == Relation.NONE }
+        val start = after?.toInt() ?: 0
+        val end = minOf(left.size, start + minOf(limit.toInt(), suggestionPageSize))
+        return FriendSuggestions(left.subList(start, end).toList(), if (end < left.size) "$end" else null)
+    }
+
+    override fun friendSuggestionsIncluded(): Boolean {
+        call("friendSuggestionsIncluded")
+        return suggestionsIncluded
+    }
+
+    override fun setFriendSuggestionsIncluded(included: Boolean) {
+        call("setFriendSuggestionsIncluded $included")
+        suggestionsIncluded = included
     }
 
     private companion object {

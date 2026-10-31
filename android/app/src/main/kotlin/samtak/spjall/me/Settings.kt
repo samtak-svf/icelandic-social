@@ -93,6 +93,7 @@ internal fun ColumnScope.Settings(
     )
     if (notificationsOff) NotificationsOff(actions::notificationSettings)
     NotificationLevelsSection()
+    SuggestionSettingSection()
     Links(!state.busy, actions)
     // The design leaves these out; decision 0009 keeps them, in the same cards.
     state.settings?.let { Panel { PrivacySection(it, !state.busy, actions) } }

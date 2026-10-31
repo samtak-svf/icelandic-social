@@ -35,6 +35,7 @@ import samtak.spjall.social.PersonViewModel
 import samtak.spjall.social.SocialRoutes
 import samtak.spjall.social.WithNotificationLevels
 import samtak.spjall.social.WithSocialHost
+import samtak.spjall.social.WithSuggestionSetting
 import samtak.spjall.ui.AppRoutes
 import samtak.spjall.ui.ProblemCard
 import samtak.spjall.ui.notificationsOff
@@ -104,7 +105,9 @@ internal fun MeRoute(
             coreVersion(),
         )
     WithNotificationLevels(graph.social) {
-        MeScreen(state, actions, notificationsOff = notificationsOff, version = version, onBack = onBack)
+        WithSuggestionSetting(graph.social) {
+            MeScreen(state, actions, notificationsOff = notificationsOff, version = version, onBack = onBack)
+        }
     }
 }
 
