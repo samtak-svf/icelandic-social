@@ -41,7 +41,7 @@ import samtak.spjall.ui.Suspension
  */
 @Suppress("TooManyFunctions")
 class FakeSocial :
-    FakeSocialNotifications(),
+    FakeSocialFriends(),
     Social {
     /** Every community, by id. */
     val communities = linkedMapOf<String, Community>()

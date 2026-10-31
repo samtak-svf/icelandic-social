@@ -110,6 +110,9 @@ internal fun Problem.message(): Int =
         Problem.AnonymousOff -> R.string.problem_anonymous_off
         Problem.PinFull -> R.string.post_pin_full
         Problem.Suspended -> R.string.problem_suspended
+        Problem.RequestRefused -> R.string.problem_request_refused
+        Problem.RequestLimit -> R.string.problem_request_limit
+        Problem.FriendLimit -> R.string.problem_friend_limit
         Problem.GroupPhotoUnsupported -> R.string.group_photo_unsupported
         Problem.GroupPhotoFailed -> R.string.group_photo_failed
         is Problem.Generic -> R.string.error_generic

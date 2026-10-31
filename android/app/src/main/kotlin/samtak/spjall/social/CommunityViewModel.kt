@@ -317,29 +317,17 @@ class CommunityViewModel(
      */
     fun pick(picked: List<Picked>) {
         if (picked.isEmpty() || _state.value.poll != null || !roomForImage()) return
-        val fits = picked.take(room())
-        val taken = fits.filter { (it.size ?: 0L) <= IMAGE_LIMIT }
-        val notice =
-            when {
-                taken.size < fits.size -> ImageNotice.TooLarge
-                fits.size < picked.size -> ImageNotice.TooMany
-                else -> null
-            }
+        val (taken, notice) = fitting(picked, room())
         _state.update { it.copy(imageNotice = notice) }
         if (taken.isEmpty()) return
         viewModelScope.launch {
-            for (one in taken) {
-                try {
-                    val file = withContext(io) { one.read() }
-                    if (_state.value.images.size < IMAGES) {
-                        _state.update { it.copy(images = it.images + file.path) }
-                    } else {
-                        withContext(io) { file.delete() }
-                    }
-                } catch (_: java.io.IOException) {
-                    _state.update { it.copy(imageNotice = ImageNotice.Invalid) }
-                }
-            }
+            copyPicked(
+                taken,
+                io,
+                have = { _state.value.images.size },
+                add = { path -> _state.update { it.copy(images = it.images + path) } },
+                failed = { _state.update { it.copy(imageNotice = ImageNotice.Invalid) } },
+            )
         }
     }
 
@@ -409,7 +397,7 @@ class CommunityViewModel(
         viewModelScope.launch {
             try {
                 withContext(io) { social.deletePost(postId) }
-                _state.update { s -> s.copy(posts = s.posts.filterNot { it.postId == postId }) }
+                _state.update { s -> s.copy(posts = s.posts.without(postId)) }
             } catch (e: CoreException) {
                 _state.update { it.copy(problem = e.problem()) }
             }
@@ -512,40 +500,17 @@ class CommunityViewModel(
     }
 
     /** Turns the post being written into a poll with two empty options, or back into a plain post. */
-    fun togglePoll() {
-        _state.update {
-            when {
-                it.poll != null -> it.copy(poll = null)
-                it.images.isNotEmpty() -> it
-                else -> it.copy(poll = PollDraft.empty())
-            }
-        }
-    }
+    fun togglePoll() = _state.update { it.copy(poll = PollDraft.toggled(it.poll, it.images.isNotEmpty())) }
 
     fun pollOption(
         index: Int,
         text: String,
-    ) {
-        if (text.length > PollDraft.OPTION_MAX) return
-        _state.update { s ->
-            s.poll?.let { p -> s.copy(poll = p.mapIndexed { i, old -> if (i == index) text else old }) } ?: s
-        }
-    }
+    ) = _state.update { s -> s.poll?.let { s.copy(poll = PollDraft.withOption(it, index, text)) } ?: s }
 
-    fun addPollOption() {
-        _state.update { s ->
-            s.poll?.takeIf { it.size < PollDraft.MAX_OPTIONS }?.let { s.copy(poll = it + "") } ?: s
-        }
-    }
+    fun addPollOption() = _state.update { s -> s.poll?.let { s.copy(poll = PollDraft.added(it)) } ?: s }
 
-    fun removePollOption(index: Int) {
-        _state.update { s ->
-            s.poll
-                ?.takeIf { it.size > PollDraft.MIN_OPTIONS }
-                ?.let { p -> s.copy(poll = p.filterIndexed { i, _ -> i != index }) }
-                ?: s
-        }
-    }
+    fun removePollOption(index: Int) =
+        _state.update { s -> s.poll?.let { s.copy(poll = PollDraft.removed(it, index)) } ?: s }
 
     fun setAnonymous(on: Boolean) {
         _state.update { it.copy(anonymous = on) }

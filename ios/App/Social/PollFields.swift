@@ -4,7 +4,7 @@ import SwiftUI
 /// The poll's option fields in the composer (decision 0090): two to six, each up to 80 characters, with a way to add
 /// one and to take one out once there are more than two. The post's text above is the question.
 struct PollFields: View {
-    let model: CommunityModel
+    let model: PostAttachments
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {

@@ -35,6 +35,7 @@ import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import samtak.spjall.brand.R
+import samtak.spjall.core.Community
 import samtak.spjall.core.Post
 import samtak.spjall.ui.AppIcons
 import samtak.spjall.ui.Palette
@@ -73,6 +74,8 @@ fun PostCard(
     reacting: Boolean,
     reported: Boolean,
     callbacks: PostCardCallbacks,
+    /** The community to put first in the heading, for a post shown outside it; null for the author first. */
+    community: Community? = null,
 ) {
     if (post.isTombstone()) {
         PostTombstone(post, moderates = callbacks.onPin != null, onOpen = callbacks.onOpen)
@@ -89,7 +92,7 @@ fun PostCard(
             },
     ) {
         StateMark(post.state)
-        AuthorRow(post.author, post.anonymousBylineRes(), post.createdAt) {
+        val actions: @Composable () -> Unit = {
             CardActions(
                 reported = reported,
                 onReport = callbacks.onReport,
@@ -97,6 +100,11 @@ fun PostCard(
                 pinned = post.pinned,
                 onPin = callbacks.onPin,
             )
+        }
+        if (community != null) {
+            CommunityHeading(community, post.author, post.anonymousBylineRes(), post.createdAt, actions)
+        } else {
+            AuthorRow(post.author, post.anonymousBylineRes(), post.createdAt, actions)
         }
         if (post.pinned) PinnedMarker()
         if (post.body.isNotBlank()) PostBody(post.postId, post.body, clamp = inFeed)

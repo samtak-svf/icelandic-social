@@ -49,6 +49,7 @@ import samtak.spjall.ui.Avatar
 import samtak.spjall.ui.AvatarKind
 import samtak.spjall.ui.CoverImage
 import samtak.spjall.ui.Palette
+import samtak.spjall.ui.PhotoOf
 import samtak.spjall.ui.communityTile
 import samtak.spjall.ui.coverOf
 import samtak.spjall.ui.currentLayout
@@ -65,7 +66,7 @@ internal fun CommunityHeader(
     onInfo: () -> Unit,
 ) {
     Box(modifier = Modifier.fillMaxWidth().padding(bottom = PICTURE_OVERLAP.dp)) {
-        CoverBand(community)
+        CoverBand(community.coverOf(), stringResource(R.string.community_cover_alt))
         Avatar(
             name = community.name,
             kind = AvatarKind.Group,
@@ -113,7 +114,10 @@ internal fun CommunityHeader(
 
 /** The cover across the top: a plain band when the community has none. */
 @Composable
-private fun CoverBand(community: Community) {
+internal fun CoverBand(
+    photo: PhotoOf?,
+    alt: String,
+) {
     val rules = LocalFrameRules.current
     val band = RoundedCornerShape(COVER_RADIUS.dp)
     val frame = rules.frameForWidth(FrameKind.COVER, windowWidthDp())
@@ -126,7 +130,7 @@ private fun CoverBand(community: Community) {
                 .clip(band)
                 .background(Palette.secondarySubtle, band),
     ) {
-        CoverImage(community.coverOf(), stringResource(R.string.community_cover_alt), Modifier.fillMaxSize())
+        CoverImage(photo, alt, Modifier.fillMaxSize())
     }
 }
 

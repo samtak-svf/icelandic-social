@@ -67,6 +67,8 @@ internal fun SocialNotificationKind.settingLabel(): Int =
         SocialNotificationKind.REACTION -> R.string.notification_kind_reaction
         SocialNotificationKind.JOIN_APPROVED -> R.string.notification_kind_join_approved
         SocialNotificationKind.MODERATED -> R.string.notification_kind_moderated
+        SocialNotificationKind.FRIEND_REQUEST -> R.string.notification_kind_friend_request
+        SocialNotificationKind.FRIEND_ACCEPTED -> R.string.notification_kind_friend_accepted
     }
 
 /** A title with the current level, a tap on which opens the [allowed] ones. */

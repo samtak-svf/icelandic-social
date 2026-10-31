@@ -8,7 +8,9 @@ import SpjallCore
 @MainActor @Observable
 final class NotificationLevelsModel {
     /// The kinds a person can set, in the order the settings list them.
-    static let kinds: [SocialNotificationKind] = [.comment, .reply, .reaction, .joinApproved, .moderated]
+    static let kinds: [SocialNotificationKind] = [
+        .comment, .reply, .reaction, .joinApproved, .moderated, .friendRequest, .friendAccepted,
+    ]
 
     private(set) var settings: NotificationSettings?
     private(set) var problem: Problem?

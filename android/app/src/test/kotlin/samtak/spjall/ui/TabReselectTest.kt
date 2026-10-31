@@ -27,14 +27,15 @@ class TabReselectTest {
     @get:Rule val compose = createComposeRule()
 
     private lateinit var nav: NavController
-    private var current = AppRoutes.LIST
+    private var current = SocialRoutes.FEED
 
     private fun host() {
-        current = AppRoutes.LIST
+        current = SocialRoutes.FEED
         compose.setContent {
             val controller = rememberNavController()
             nav = controller
-            NavHost(controller, startDestination = AppRoutes.LIST) {
+            NavHost(controller, startDestination = SocialRoutes.FEED) {
+                page(SocialRoutes.FEED)
                 page(AppRoutes.LIST)
                 page("${AppRoutes.CONVERSATION}/{id}")
                 page(SocialRoutes.NOTIFICATIONS)
@@ -43,6 +44,7 @@ class TabReselectTest {
             }
         }
         compose.waitForIdle()
+        tap(AppRoutes.LIST)
     }
 
     private fun NavGraphBuilder.page(route: String) = composable(route) { Text(route) }
@@ -73,9 +75,9 @@ class TabReselectTest {
         onUi { openNotifications() }
         tap(SocialRoutes.COMMUNITIES)
         tap(AppRoutes.LIST)
-        assertEquals(listOf("conversations", "conversation/c1"), stack())
+        assertEquals(listOf("feed", "conversations", "conversation/c1"), stack())
         tap(AppRoutes.LIST)
-        assertEquals(listOf("conversations"), stack())
+        assertEquals(listOf("feed", "conversations"), stack())
     }
 
     @Test
@@ -84,9 +86,9 @@ class TabReselectTest {
         tap(AppRoutes.ME)
         onUi { openNotifications() }
         tap(AppRoutes.LIST)
-        assertEquals(listOf("conversations"), stack())
+        assertEquals(listOf("feed", "conversations"), stack())
         tap(AppRoutes.ME)
-        assertEquals(listOf("conversations", "me"), stack())
+        assertEquals(listOf("feed", "me"), stack())
     }
 
     @Test
@@ -94,7 +96,7 @@ class TabReselectTest {
         host()
         onUi { navigate(conversationRoute("c1")) }
         tap(AppRoutes.LIST)
-        assertEquals(listOf("conversations"), stack())
+        assertEquals(listOf("feed", "conversations"), stack())
     }
 
     @Test
@@ -103,6 +105,38 @@ class TabReselectTest {
         onUi { navigate(conversationRoute("c1")) }
         tap(SocialRoutes.COMMUNITIES)
         tap(AppRoutes.LIST)
-        assertEquals(listOf("conversations", "conversation/c1"), stack())
+        assertEquals(listOf("feed", "conversations", "conversation/c1"), stack())
+    }
+
+    @Test
+    fun theFeedIsTheStartAndTheTabsSitAboveIt() {
+        host()
+        assertEquals(listOf("feed", "conversations"), stack())
+        tap(AppRoutes.ME)
+        assertEquals(listOf("feed", "me"), stack())
+    }
+
+    @Test
+    fun backFromATabReturnsToTheFeed() {
+        host()
+        onUi { popBackStack() }
+        assertEquals(listOf("feed"), stack())
+    }
+
+    @Test
+    fun reselectingTheFeedReturnsToItsRoot() {
+        host()
+        tap(SocialRoutes.FEED)
+        assertEquals(listOf("feed"), stack())
+    }
+
+    @Test
+    fun aNotificationOpenedOnTheFeedLandsOnTopOfIt() {
+        host()
+        tap(SocialRoutes.FEED)
+        onUi { openNotifications() }
+        assertEquals(listOf("feed", "notifications"), stack())
+        onUi { popBackStack() }
+        assertEquals(listOf("feed"), stack())
     }
 }

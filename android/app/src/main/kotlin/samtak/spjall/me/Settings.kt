@@ -43,6 +43,28 @@ import samtak.spjall.ui.SansFamily
 import samtak.spjall.ui.calendarDate
 import samtak.spjall.ui.capitals
 
+/** The ways on to the friends and to the statements of reasons. */
+@Composable
+private fun ColumnScope.Links(
+    enabled: Boolean,
+    actions: MeActions,
+) {
+    Pill(
+        text = stringResource(R.string.person_friends),
+        filled = false,
+        onClick = actions::friends,
+        enabled = enabled,
+        modifier = Modifier.align(Alignment.CenterHorizontally),
+    )
+    Pill(
+        text = stringResource(R.string.statements_title),
+        filled = false,
+        onClick = actions::statements,
+        enabled = enabled,
+        modifier = Modifier.align(Alignment.CenterHorizontally),
+    )
+}
+
 /**
  * The settings on Ég, under the person and the link (decision 0044): the
  * account's devices, the read-marker and typing toggles, who the person
@@ -71,13 +93,7 @@ internal fun ColumnScope.Settings(
     )
     if (notificationsOff) NotificationsOff(actions::notificationSettings)
     NotificationLevelsSection()
-    Pill(
-        text = stringResource(R.string.statements_title),
-        filled = false,
-        onClick = actions::statements,
-        enabled = !state.busy,
-        modifier = Modifier.align(Alignment.CenterHorizontally),
-    )
+    Links(!state.busy, actions)
     // The design leaves these out; decision 0009 keeps them, in the same cards.
     state.settings?.let { Panel { PrivacySection(it, !state.busy, actions) } }
     Label(R.string.blocked_title)

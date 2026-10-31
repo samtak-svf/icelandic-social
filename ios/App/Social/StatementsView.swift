@@ -129,6 +129,11 @@ func reviewSentence(_ review: ModerationReview, action: ModerationLogAction) -> 
 
 /// What a statement says was done; an action a later server adds reads as done.
 func statementLabel(_ action: ModerationLogAction, until: UInt64? = nil) -> String {
-    if action == .clearAccountPhoto { return localized("moderation_decision_clear_account_photo") }
-    return logActionLabel(action, until: until) ?? localized("moderation_done")
+    switch action {
+    case .clearAccountPhoto: return localized("moderation_decision_clear_account_photo")
+    case .clearAccountBio: return localized("moderation_decision_clear_account_bio")
+    case .clearAccountCover: return localized("moderation_decision_clear_account_cover")
+    case .readReported: return localized("moderation_decision_read_reported")
+    default: return logActionLabel(action, until: until) ?? localized("moderation_done")
+    }
 }

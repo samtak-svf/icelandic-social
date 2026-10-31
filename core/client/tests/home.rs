@@ -306,14 +306,14 @@ fn the_contract_has_every_field_the_client_reads() {
     }
 }
 
-/// The notices the client now shows: each case the contract's vectors hold for
-/// a kind the released core cannot read, as this core reads it.
+/// The notices the client shows: each case the contract's vectors hold, as this
+/// core reads it.
 #[test]
-fn every_next_notice_vector_reads_as_a_known_kind_and_action() {
+fn every_notice_vector_reads_as_a_known_kind_and_action() {
     let vectors: Value =
         serde_json::from_str(include_str!("../../../api/presentation.vectors.json")).unwrap();
-    let cases = vectors["noticeNext"].as_array().unwrap();
-    assert_eq!(cases.len(), 6);
+    let cases = vectors["notice"].as_array().unwrap();
+    assert_eq!(cases.len(), 27);
     for case in cases {
         let _: NotificationKind = serde_json::from_value(case["kind"].clone()).unwrap();
         if let Some(action) = case.get("action") {

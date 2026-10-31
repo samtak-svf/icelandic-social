@@ -44,15 +44,8 @@ final class CommunityModel {
     private(set) var loadingGallery = false
     /// The post being written.
     var draft = ""
-    /// The poll's option fields while the post is a poll (decision 0090): nil for a plain post. The draft is the
-    /// question.
-    var pollFields: [String]?
     /// The post is written without the author's name and waits for a moderator (decision 0091).
     var anonymous = false
-    /// The images picked for it, as local copies, in their order.
-    private(set) var images: [String] = []
-    /// Why the last image picked or sent was not taken, until the next is picked or the post goes.
-    private(set) var imageNotice: ImageNotice?
     /// This account's id: its own posts can be deleted. Nil until it is known, when none is.
     private(set) var me: String?
     /// This account's name and photo, for the composer row's own picture (decision 0080).
@@ -67,13 +60,7 @@ final class CommunityModel {
     private let now: @Sendable () -> UInt64
     private let sleep: @Sendable (Duration) async throws -> Void
     private var failed: (() async -> Void)?
-    /// The posts whose reaction is on its way, so a second tap waits for the first.
-    private var reacting: Set<String> = []
-    /// The media id of each picked image already uploaded, by its local copy, so a retry does not send it again.
-    private var uploaded: [String: String] = [:]
     private var loadingMembers = false
-    /// The polls whose vote is on its way, so a second tap waits for the first.
-    private var voting: Set<String> = []
 
     /// The community page's tabs (decision 0089), in the order the row shows them.
     enum Tab: String, CaseIterable, Sendable {
@@ -175,6 +162,23 @@ final class CommunityModel {
         return query.isEmpty ? nil : query
     }
 
+    /// The images and poll of the post being written, shared with the wall's composer.
+    let attachments = PostAttachments()
+    var pollFields: [String]? {
+        get { attachments.pollFields }
+        set { attachments.pollFields = newValue }
+    }
+    var images: [String] { attachments.images }
+    var imageNotice: ImageNotice? { attachments.imageNotice }
+    var isPoll: Bool { attachments.isPoll }
+    func setPoll(_ on: Bool) { attachments.setPoll(on) }
+    func addPollOption() { attachments.addPollOption() }
+    func removePollOption(at index: Int) { attachments.removePollOption(at: index) }
+    func roomForImage() -> Bool { attachments.roomForImage() }
+    var imagesLeft: Int { attachments.imagesLeft }
+    func pick(_ picked: Picked) async { await attachments.pick(picked) }
+    func unpick(_ path: String) { attachments.unpick(path) }
+
     /// The draft may be sent: something written, an image picked, or both, and the text not over the limit.
     var sendable: Bool {
         let body = draft.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -185,33 +189,8 @@ final class CommunityModel {
         return writes && (!body.isEmpty || !images.isEmpty)
     }
 
-    /// The post is a poll, which takes no images (decision 0090).
-    var isPoll: Bool { pollFields != nil }
-
     /// This community lets members post without a name (decision 0091).
     var allowsAnonymous: Bool { community?.anonymousPosts ?? false }
-
-    /// Starts a poll with two empty options, or drops it. A post with images takes none.
-    func setPoll(_ on: Bool) {
-        if on {
-            guard images.isEmpty else { return }
-            pollFields = pollFields ?? Array(repeating: "", count: Self.pollMinOptions)
-        } else {
-            pollFields = nil
-        }
-    }
-
-    func addPollOption() {
-        guard let pollFields, pollFields.count < Self.pollMaxOptions else { return }
-        self.pollFields = pollFields + [""]
-    }
-
-    func removePollOption(at index: Int) {
-        guard var fields = pollFields, fields.count > Self.pollMinOptions, fields.indices.contains(index)
-        else { return }
-        fields.remove(at: index)
-        pollFields = fields
-    }
 
     /// A poll needs its question, two to six options, none empty or over 80 characters, none the same as another
     /// when case is ignored (the API's `POLL_OPTIONS`, as the web's `canPublishPoll`).
@@ -587,35 +566,6 @@ final class CommunityModel {
         loadingGallery = false
     }
 
-    /// Whether another image fits in the post; when none does, says so instead of opening the picker.
-    func roomForImage() -> Bool {
-        guard !isPoll else { return false }
-        let room = images.count < Self.imageCount
-        if !room { imageNotice = .tooMany }
-        return room
-    }
-
-    /// How many more images the post takes.
-    var imagesLeft: Int { max(0, Self.imageCount - images.count) }
-
-    /// Adds the image picked to the post, as a local copy that can be shown and sent. One over 10 MB, or past
-    /// the fourth, is refused with a sentence and its copy deleted.
-    func pick(_ picked: Picked) async {
-        guard roomForImage() else { return }
-        imageNotice = nil
-        switch await Self.readImage(picked) {
-        case .failure(let notice):
-            imageNotice = notice
-        case .success(let file):
-            guard images.count < Self.imageCount else {
-                try? FileManager.default.removeItem(at: file)
-                imageNotice = .tooMany
-                return
-            }
-            images.append(file.path)
-        }
-    }
-
     /// Reads a picked image into a local copy, or says why it is not taken: over 10 MB (by what the picker says
     /// first, then by the copy's size) or unreadable. Posts and comments take their images through this one door.
     nonisolated static func readImage(_ picked: Picked) async -> Result<URL, ImageNotice> {
@@ -634,14 +584,6 @@ final class CommunityModel {
         }
     }
 
-    /// Takes a picked image out of the post, and deletes its copy.
-    func unpick(_ path: String) {
-        images.removeAll { $0 == path }
-        uploaded[path] = nil
-        imageNotice = nil
-        try? FileManager.default.removeItem(atPath: path)
-    }
-
     /// Uploads each picked image not yet uploaded, then publishes the draft with them at the top of the posts;
     /// the box empties. An image the server refuses is named, and nothing is posted. True once it is posted, so
     /// the composer that opened for it closes (decision 0079).
@@ -651,36 +593,30 @@ final class CommunityModel {
         let social = social
         let id = communityId
         let body = draft.trimmingCharacters(in: .whitespacesAndNewlines)
-        let picked = images
         var posted = false
         busy = true
         problem = nil
-        imageNotice = nil
+        attachments.imageNotice = nil
         do {
-            for path in picked where uploaded[path] == nil {
-                uploaded[path] = try await offMain { try social.uploadPostImage(id, path: path).mediaId }
+            let media = try await attachments.mediaIds { path in
+                try await offMain { try social.uploadPostImage(id, path: path).mediaId }
             }
-            let media = picked.compactMap { uploaded[$0] }
             let poll = pollFields.map { $0.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) } }
             let secret = anonymous && allowsAnonymous
             let post = try await offMain {
                 try social.createPost(id, body: body, media: media, anonymous: secret, poll: poll)
             }
-            for path in picked { try? FileManager.default.removeItem(atPath: path) }
-            uploaded = [:]
-            images = []
+            attachments.finish()
             posts.insert(post, at: 0)
             draft = ""
-            pollFields = nil
             anonymous = false
             failed = nil
             posted = true
         } catch {
-            // A media id the server no longer knows (over a day old): the next try uploads again.
-            if case CoreError.Refused(_, "invalid_media", _) = error { uploaded = [:] }
+            if case CoreError.Refused(_, "invalid_media", _) = error { attachments.forgetUploads() }
             if let notice = Self.notice(for: error) {
                 failed = nil
-                imageNotice = notice
+                attachments.imageNotice = notice
             } else {
                 failed = { _ = await self.publish() }
                 problem = Problem(error)
@@ -736,68 +672,40 @@ final class CommunityModel {
         }
     }
 
-    /// Sets this account's reaction on a post to `kind`, or takes it off when it is `kind` already. The post
+    /// Sets this account's reaction on a post to `emoji`, or takes it off when it is `emoji` already. The post
     /// shows the change at once and goes back to what it was if the server refuses.
-    func react(_ postId: String, _ emoji: String) async {
-        guard writes, !reacting.contains(postId), let index = posts.firstIndex(where: { $0.postId == postId })
-        else { return }
-        let before = posts[index]
-        let off = before.myEmoji == emoji
-        posts[index] = reacted(before, off ? nil : emoji)
-        reacting.insert(postId)
-        let social = social
-        problem = nil
-        do {
-            try await offMain {
-                if off { try social.unreact(postId) } else { try social.react(postId, emoji: emoji) }
-            }
-            failed = nil
-        } catch {
-            if let index = posts.firstIndex(where: { $0.postId == postId }) { posts[index] = before }
-            failed = nil
-            problem = Problem(error)
-        }
-        reacting.remove(postId)
+    func react(_ postId: String, _ emoji: String) async { await actions.react(postId, emoji, actionsHost) }
+
+    /// Votes for `option` in the poll on a post, or changes the vote (decision 0090); the post then reads as the
+    /// server sent it back. A poll closed meanwhile shows its results and says so.
+    func vote(_ postId: String, option: String) async { await actions.vote(postId, option: option, actionsHost) }
+
+    /// Takes this account's vote back.
+    func withdrawVote(_ postId: String) async { await actions.withdrawVote(postId, actionsHost) }
+
+    /// Closes the poll: no more votes, and everyone sees the results.
+    func closePoll(_ postId: String) async { await actions.closePoll(postId, actionsHost) }
+
+    private let actions = PostActions()
+
+    private var actionsHost: PostActions.Host {
+        PostActions.Host(
+            social: social,
+            read: { id in self.posts.first { $0.postId == id } },
+            write: { post in
+                if let at = self.posts.firstIndex(where: { $0.postId == post.postId }) { self.posts[at] = post }
+            },
+            may: { _ in self.writes },
+            settle: {
+                self.failed = nil
+                self.problem = $0
+            })
     }
 
     /// This account may close the poll on `post`: its author, the owner or a moderator, while it is open.
     func canClose(_ post: Post) -> Bool {
         guard let poll = post.poll, !poll.closed else { return false }
         return post.mine || moderates
-    }
-
-    /// Votes for `option` in the poll on a post, or changes the vote (decision 0090); the post then reads as the
-    /// server sent it back. A poll closed meanwhile shows its results and says so.
-    func vote(_ postId: String, option: String) async {
-        let social = social
-        await pollAction(postId) { try social.votePoll(postId, option: option) }
-    }
-
-    /// Takes this account's vote back.
-    func withdrawVote(_ postId: String) async {
-        let social = social
-        await pollAction(postId) { try social.withdrawVote(postId) }
-    }
-
-    /// Closes the poll: no more votes, and everyone sees the results.
-    func closePoll(_ postId: String) async {
-        let social = social
-        await pollAction(postId) { try social.closePoll(postId) }
-    }
-
-    private func pollAction(_ postId: String, _ act: @escaping @Sendable () throws -> Post) async {
-        guard writes, !voting.contains(postId) else { return }
-        voting.insert(postId)
-        problem = nil
-        let outcome = await runPollAction(social, postId: postId, act)
-        if let post = outcome.post { replace(post) }
-        failed = nil
-        problem = outcome.problem
-        voting.remove(postId)
-    }
-
-    private func replace(_ post: Post) {
-        if let index = posts.firstIndex(where: { $0.postId == post.postId }) { posts[index] = post }
     }
 
     /// The newest page again, once a post opened from here is closed: the posts on it take their reactions and

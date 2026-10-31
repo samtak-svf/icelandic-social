@@ -39,25 +39,25 @@ describe("presentation-check", () => {
     ]);
   });
 
-  it("holds a notice the released core cannot read yet to the same rules", () => {
+  it("fails a friend notice with the wrong badge", () => {
     const edited = vectors();
-    const accepted = edited.noticeNext.findIndex(
+    const accepted = edited.notice.findIndex(
       (/** @type {any} */ c) => c.kind === "friend_accepted",
     );
-    edited.noticeNext[accepted].badge = "comment";
+    edited.notice[accepted].badge = "comment";
     expect(check(edited, contract())).toEqual([
-      `presentation.vectors.json noticeNext[${accepted}]: friend_accepted's badge is friend, not comment`,
+      `presentation.vectors.json notice[${accepted}]: friend_accepted's badge is friend, not comment`,
     ]);
   });
 
   it("fails a cleared cover that reads as any other moderator's action", () => {
     const edited = vectors();
-    const cover = edited.noticeNext.findIndex(
+    const cover = edited.notice.findIndex(
       (/** @type {any} */ c) => c.action === "clear_account_cover",
     );
-    edited.noticeNext[cover].key = "notice_moderated";
+    edited.notice[cover].key = "notice_moderated";
     expect(check(edited, contract())).toEqual([
-      `presentation.vectors.json noticeNext[${cover}]: moderated with 0 actors reads notice_account_cover_cleared, not notice_moderated`,
+      `presentation.vectors.json notice[${cover}]: moderated with 0 actors reads notice_account_cover_cleared, not notice_moderated`,
     ]);
   });
 

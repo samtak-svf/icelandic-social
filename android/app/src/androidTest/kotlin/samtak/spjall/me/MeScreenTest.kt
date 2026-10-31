@@ -2,8 +2,6 @@ package samtak.spjall.me
 
 import androidx.compose.ui.test.getBoundsInRoot
 import androidx.compose.ui.test.junit4.createComposeRule
-import androidx.compose.ui.test.onAllNodesWithText
-import androidx.compose.ui.test.onLast
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -61,18 +59,6 @@ class MeScreenTest {
                 calls += "deleteAccount"
             }
 
-            override fun choosePhoto() {
-                calls += "choosePhoto"
-            }
-
-            override fun reframePhoto() {
-                calls += "reframePhoto"
-            }
-
-            override fun removePhoto() {
-                calls += "removePhoto"
-            }
-
             override fun retry() {
                 calls += "retry"
             }
@@ -91,6 +77,10 @@ class MeScreenTest {
 
             override fun statements() {
                 calls += "statements"
+            }
+
+            override fun friends() {
+                calls += "friends"
             }
         }
 
@@ -127,51 +117,11 @@ class MeScreenTest {
     }
 
     @Test
-    fun withNoPhotoOneCanBeSetAndTheScreenSaysWhoSeesIt() {
-        show()
-        compose.onNodeWithText(text(R.string.photo_seen_by_all)).assertExists()
+    fun thePhotoIsChangedOnTheOwnWallNotHere() {
+        show(photo = "v1")
+        compose.onNodeWithText(text(R.string.photo_seen_by_all)).assertDoesNotExist()
         compose.onNodeWithText(text(R.string.photo_remove)).assertDoesNotExist()
-        compose.onNodeWithText(text(R.string.photo_choose)).performClick()
-        assertEquals(listOf("choosePhoto"), calls)
-    }
-
-    @Test
-    fun aTapOnTheEmptyCircleOpensThePickerToo() {
-        show()
-        compose.onNodeWithContentDescription(text(R.string.photo_choose)).performClick()
-        assertEquals(listOf("choosePhoto"), calls)
-    }
-
-    @Test
-    fun aTapOnThePhotoOpensThePickerToReplaceIt() {
-        show(photo = "v1")
-        compose.onNodeWithContentDescription(text(R.string.photo_change)).performClick()
-        assertEquals(listOf("choosePhoto"), calls)
-    }
-
-    @Test
-    fun anEmptyCircleOffersNoFraming() {
-        show()
-        compose.onNodeWithText(text(R.string.image_frames_title)).assertDoesNotExist()
-    }
-
-    @Test
-    fun aPhotoCanBeFramedAgainFromItsMaster() {
-        show(photo = "v1")
-        compose.onNodeWithText(text(R.string.image_frames_title)).performClick()
-        assertEquals(listOf("reframePhoto"), calls)
-    }
-
-    @Test
-    fun aPhotoCanBeReplacedOrRemovedAndRemovingAsksFirst() {
-        show(photo = "v1")
-        compose.onNodeWithText(text(R.string.photo_change)).performClick()
-        assertEquals(listOf("choosePhoto"), calls)
-        compose.onNodeWithText(text(R.string.photo_remove)).performClick()
-        compose.onNodeWithText(text(R.string.photo_remove_confirm)).assertExists()
-        assertEquals("nothing is removed on one tap", listOf("choosePhoto"), calls)
-        compose.onAllNodesWithText(text(R.string.photo_remove)).onLast().performClick()
-        assertEquals(listOf("choosePhoto", "removePhoto"), calls)
+        compose.onNodeWithContentDescription(text(R.string.photo_change)).assertDoesNotExist()
     }
 
     @Test

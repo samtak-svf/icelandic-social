@@ -157,7 +157,7 @@ class CommunitiesViewModel(
                 val changed = withContext(io) { social.toggle(post, emoji) }
                 _state.update { s ->
                     s.copy(
-                        feed = s.feed.map { if (it.postId == postId) changed else it },
+                        feed = s.feed.replacing(changed),
                         reacting = s.reacting - postId,
                     )
                 }
@@ -188,7 +188,7 @@ class CommunitiesViewModel(
         _state.update { s ->
             val done = s.copy(answering = s.answering - postId)
             if (changed != null) {
-                done.copy(feed = done.feed.map { if (it.postId == changed.postId) changed else it })
+                done.copy(feed = done.feed.replacing(changed))
             } else {
                 done.copy(problem = problem)
             }

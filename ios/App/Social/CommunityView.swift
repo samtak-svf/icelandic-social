@@ -1,4 +1,3 @@
-import PhotosUI
 import SpjallCore
 import SwiftUI
 
@@ -97,7 +96,24 @@ struct CommunityView: View {
                 CommunityManageSheet(model: model, social: social)
             }
             .sheet(isPresented: $composing) {
-                ComposerSheet(model: model)
+                PostComposerSheet(
+                    draft: Binding(get: { model.draft }, set: { model.draft = $0 }),
+                    attachments: model.attachments, sendable: model.sendable, busy: model.busy,
+                    problem: model.problem, retry: { await model.retry() }, publish: { await model.publish() }
+                ) {
+                    if model.allowsAnonymous {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Toggle(isOn: Binding(get: { model.anonymous }, set: { model.anonymous = $0 })) {
+                                Text("composer_anonymous").font(.sans(14, black: true))
+                            }
+                            Text("composer_anonymous_hint")
+                                .font(TypeStyle.meta)
+                                .foregroundStyle(BrandTokens.Colors.mutedFg)
+                        }
+                        .padding(.horizontal, 12)
+                        .padding(.top, 8)
+                    }
+                }
             }
             .task { await model.load() }
             .task(id: model.reads) {
@@ -358,115 +374,6 @@ struct MemberFaces: View {
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(Text("community_members_stack"))
-    }
-}
-
-/// The full composer, opened by the feed's prompt and closed again once the post is published or the reader
-/// leaves it (decision 0079).
-private struct ComposerSheet: View {
-    let model: CommunityModel
-
-    @Environment(\.dismiss) private var dismiss
-    @State private var picking = false
-    @State private var photos: [PhotosPickerItem] = []
-
-    var body: some View {
-        NavigationStack {
-            VStack(spacing: 0) {
-                Spacer(minLength: 0)
-                if let problem = model.problem {
-                    ProblemCard(problem: problem) { Task { await model.retry() } }.padding(16)
-                }
-                SocialComposer(
-                    placeholder: "post_compose", send: "post_publish",
-                    draft: Binding(get: { model.draft }, set: { model.draft = $0 }),
-                    limit: CommunityModel.postLimit, enabled: model.sendable && !model.busy,
-                    onSend: {
-                        Task {
-                            if await model.publish() { dismiss() }
-                        }
-                    },
-                    beginsFocused: true,
-                    above: { composerImages },
-                    leading: {
-                        HStack(spacing: 6) {
-                            RoundButton(
-                                systemImage: "photo.badge.plus", label: "post_add_images",
-                                fill: BrandTokens.Colors.muted, tint: BrandTokens.Colors.fg, size: 40,
-                                enabled: !model.busy && !model.isPoll
-                            ) {
-                                if model.roomForImage() { picking = true }
-                            }
-                            RoundButton(
-                                systemImage: "chart.bar", label: "composer_poll",
-                                fill: model.isPoll ? BrandTokens.Colors.primary : BrandTokens.Colors.muted,
-                                tint: model.isPoll ? BrandTokens.Colors.bg : BrandTokens.Colors.fg, size: 40,
-                                enabled: !model.busy && (model.isPoll || model.images.isEmpty)
-                            ) {
-                                model.setPoll(!model.isPoll)
-                            }
-                        }
-                    })
-            }
-            .background(BrandTokens.Colors.bg)
-            .navigationTitle(Text("post_compose"))
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button {
-                        dismiss()
-                    } label: {
-                        Text("cancel")
-                    }
-                }
-            }
-            .photosPicker(
-                isPresented: $picking, selection: $photos, maxSelectionCount: max(1, model.imagesLeft),
-                matching: .images
-            )
-            .onChange(of: photos) { _, picked in
-                guard !picked.isEmpty else { return }
-                photos = []
-                Task {
-                    for item in picked { await model.pick(Picked(photo: item)) }
-                }
-            }
-        }
-        .presentationDetents([.medium, .large])
-    }
-
-    /// The images picked for the post, and why the last one was not taken.
-    @ViewBuilder private var composerImages: some View {
-        if model.isPoll { PollFields(model: model) }
-        if model.allowsAnonymous {
-            VStack(alignment: .leading, spacing: 2) {
-                Toggle(isOn: Binding(get: { model.anonymous }, set: { model.anonymous = $0 })) {
-                    Text("composer_anonymous").font(.sans(14, black: true))
-                }
-                Text("composer_anonymous_hint")
-                    .font(TypeStyle.meta)
-                    .foregroundStyle(BrandTokens.Colors.mutedFg)
-            }
-            .padding(.horizontal, 12)
-            .padding(.top, 8)
-        }
-        if !model.images.isEmpty {
-            PickedImages(paths: model.images) { path in model.unpick(path) }
-        }
-        if let notice = model.imageNotice {
-            SocialNote(text: noticeText(notice))
-                .padding(.horizontal, 12)
-                .padding(.top, 8)
-                .frame(maxWidth: .infinity, alignment: .leading)
-        }
-    }
-
-    private func noticeText(_ notice: CommunityModel.ImageNotice) -> LocalizedStringKey {
-        switch notice {
-        case .tooMany: "post_images_too_many"
-        case .tooLarge: "post_image_too_large"
-        case .invalid: "post_image_failed"
-        }
     }
 }
 

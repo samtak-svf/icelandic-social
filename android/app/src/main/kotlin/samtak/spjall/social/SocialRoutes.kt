@@ -4,6 +4,7 @@ import androidx.navigation.NavController
 
 /** The routes of the community screens (decision 0063); the two tabs are [COMMUNITIES] and [NOTIFICATIONS]. */
 object SocialRoutes {
+    const val FEED = "feed"
     const val COMMUNITIES = "communities"
     const val NOTIFICATIONS = "notifications"
     const val NEW_COMMUNITY = "community-new"
@@ -13,6 +14,8 @@ object SocialRoutes {
     const val REQUESTS = "requests"
     const val ANONYMOUS = "anonymous"
     const val STATEMENTS = "statements"
+    const val FRIENDS = "friends"
+    const val PERSON = "person"
 
     fun community(id: String) = "$COMMUNITY/$id"
 
@@ -23,6 +26,8 @@ object SocialRoutes {
         id: String,
         focus: Boolean = false,
     ) = if (focus) "$POST/$id?focus=true" else "$POST/$id"
+
+    fun person(accountId: String) = "$PERSON/$accountId"
 
     fun reports(id: String) = "$REPORTS/$id"
 
@@ -35,7 +40,7 @@ object SocialRoutes {
      * pages.
      */
     val WIDE =
-        setOf(COMMUNITIES, NEW_COMMUNITY, "$COMMUNITY/{id}", "$REPORTS/{id}", "$REQUESTS/{id}", "$ANONYMOUS/{id}")
+        setOf(FEED, COMMUNITIES, NEW_COMMUNITY, "$COMMUNITY/{id}", "$REPORTS/{id}", "$REQUESTS/{id}", "$ANONYMOUS/{id}")
 }
 
 /**
