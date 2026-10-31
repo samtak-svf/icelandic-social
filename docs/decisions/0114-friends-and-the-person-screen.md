@@ -1,6 +1,6 @@
 # 0114. Friendship is mutual, and a name opens a person
 
-- Status: accepted; implemented on the server and the web (#375): requests, friendships, the person screen, the own lists, snooze and the two notification kinds, withheld from older clients since #376. Still to come: the kinds in the apps, the cover and bio with the wall (0115), and suggestions on the web and in the apps (their server side is built: `GET /v1/friend-suggestions`, `/v1/friend-suggestion-settings`). Snooze takes effect on the server in `GET /v1/home` (0116)
+- Status: accepted; implemented on the server and the web (#375): requests, friendships, the person screen, the own lists, snooze and the two notification kinds, withheld from older clients since #376. The kinds in the apps shipped with 0.21.0 (#442), the cover and bio with the wall (0115), suggestions on the web with #445 and over FFI with #446. Still to come: suggestions in the apps, 0.22.0. Snooze takes effect on the server in `GET /v1/home` (0116)
 - Date: 2026-10-30
 - Decided by: Guðröður Atli Jónsson
 - Amends: [0060](0060-a-social-platform-with-an-encrypted-messenger.md) (the graph holds friendships, not follows; feeds read friends),
