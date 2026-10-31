@@ -36,6 +36,8 @@ export type SourcePost = {
   createdAt: number;
   body: string;
   images: (() => Promise<Uint8Array>)[];
+  /** The original's address, for what does not come over; outside the fingerprint. */
+  link?: string | undefined;
 };
 
 export type ImportResult = {
@@ -85,9 +87,9 @@ async function fingerprintOf(createdAt: number, body: string): Promise<string | 
 }
 
 /** The text within what a post holds, not cutting a character in two. */
-function withinLength(body: string): string {
-  if (body.length <= MAX_POST_BODY) return body;
-  const cut = body.slice(0, MAX_POST_BODY);
+function withinLength(body: string, room = MAX_POST_BODY): string {
+  if (body.length <= room) return body;
+  const cut = body.slice(0, room);
   return /[\uD800-\uDBFF]$/.test(cut) ? cut.slice(0, -1) : cut;
 }
 
@@ -190,7 +192,7 @@ export async function importPost(
   mark: "backlog" | "sync",
 ): Promise<ImportResult> {
   const body = post.body.trim();
-  if (body === "" && post.images.length === 0) return nothing("empty");
+  if (body === "" && !post.link && post.images.length === 0) return nothing("empty");
   const open = await db(env)
     .prepare("SELECT 1 FROM import_sources WHERE import_id = ? AND removing_at IS NULL")
     .bind(source.importId)
@@ -208,13 +210,14 @@ export async function importPost(
     await release(env, source, postId);
     throw error;
   }
-  if (body === "" && media.length === 0) {
+  if (body === "" && !post.link && media.length === 0) {
     await release(env, source, postId);
     return nothing("empty");
   }
-  const text = withinLength(body);
+  const link = post.link ? `\n\n${post.link}` : "";
+  const text = withinLength(body, MAX_POST_BODY - link.length);
   const written = await createPost(env, communityId, source.accountId, {
-    body: text,
+    body: `${text}${link}`.trim(),
     media,
     audience: source.audience,
     postId,

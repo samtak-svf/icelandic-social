@@ -3901,6 +3901,103 @@
         ],
         "description": "`off` writes nothing, `in_app` writes the notification and sends no push, `push` also pushes (decision 0106)"
       },
+      "ImportConnection": {
+        "type": "object",
+        "properties": {
+          "importId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,128}$",
+            "example": "c_9f3a1b"
+          },
+          "profileUrl": {
+            "type": "string"
+          },
+          "code": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "What the person publishes on the profile; null once it has been found"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "unproven",
+              "checking",
+              "importing",
+              "connected"
+            ]
+          },
+          "outcome": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "not_found",
+              "capped",
+              "failed",
+              "ok",
+              null
+            ],
+            "description": "How the last run ended; not_found means the code was not on the profile"
+          },
+          "posts": {
+            "type": "integer",
+            "description": "Posts brought in so far"
+          },
+          "lastSyncAt": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "description": "Milliseconds since the epoch"
+          }
+        },
+        "required": [
+          "importId",
+          "profileUrl",
+          "code",
+          "state",
+          "outcome",
+          "posts",
+          "lastSyncAt"
+        ]
+      },
+      "CreateImportConnection": {
+        "type": "object",
+        "properties": {
+          "profileUrl": {
+            "type": "string",
+            "maxLength": 2048
+          },
+          "audience": {
+            "type": "string",
+            "enum": [
+              "friends",
+              "everyone"
+            ],
+            "description": "Who reads the posts; friends when left out, since nothing is public unless chosen"
+          }
+        },
+        "required": [
+          "profileUrl"
+        ]
+      },
+      "ImportConnectionList": {
+        "type": "object",
+        "properties": {
+          "connections": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ImportConnection"
+            }
+          }
+        },
+        "required": [
+          "connections"
+        ]
+      },
       "ImportFileUpload": {
         "type": "object",
         "properties": {
@@ -17904,6 +18001,357 @@
           },
           "404": {
             "description": "not_found: no such community the caller can see",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "426": {
+            "description": "client_too_old: Spjall-Client names a version below the floor; minVersion says which",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/imports/connections": {
+      "post": {
+        "operationId": "createImportConnection",
+        "tags": [
+          "imports"
+        ],
+        "summary": "Connect a public profile of the caller's; nothing comes in until the code is found",
+        "security": [
+          {
+            "deviceToken": []
+          },
+          {
+            "session": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateImportConnection"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Publish the code on the profile, then ask for a check",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportConnection"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request does not match the schema",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No device token or session the route takes, or one that is not valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "suspended: the account is suspended now, with `until` when it ends (decision 0115)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "conflict: the caller has as many connections as one person may",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "426": {
+            "description": "client_too_old: Spjall-Client names a version below the floor; minVersion says which",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "rate_limited: too many requests in the last minute; try again later",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "unavailable: this feed is switched off here",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "operationId": "listImportConnections",
+        "tags": [
+          "imports"
+        ],
+        "summary": "The caller's connections",
+        "security": [
+          {
+            "deviceToken": []
+          },
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The connections, oldest first",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportConnectionList"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No device token or session the route takes, or one that is not valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "426": {
+            "description": "client_too_old: Spjall-Client names a version below the floor; minVersion says which",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/imports/connections/{importId}/check": {
+      "post": {
+        "operationId": "checkImportConnection",
+        "tags": [
+          "imports"
+        ],
+        "summary": "Look for the code on the profile",
+        "security": [
+          {
+            "deviceToken": []
+          },
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,128}$",
+              "example": "c_9f3a1b"
+            },
+            "required": true,
+            "name": "importId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "The check has begun; watch the connection's state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportConnection"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request does not match the schema",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No device token or session the route takes, or one that is not valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "suspended: the account is suspended now, with `until` when it ends (decision 0115)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "not_found: no such connection of the caller's",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "conflict: already proven, a check is out, or too many checks",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "426": {
+            "description": "client_too_old: Spjall-Client names a version below the floor; minVersion says which",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "rate_limited: too many requests in the last minute; try again later",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "unavailable: this feed is switched off here",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/imports/connections/{importId}": {
+      "delete": {
+        "operationId": "deleteImportConnection",
+        "tags": [
+          "imports"
+        ],
+        "summary": "Stop a connection and remove every post it brought in",
+        "security": [
+          {
+            "deviceToken": []
+          },
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,128}$",
+              "example": "c_9f3a1b"
+            },
+            "required": true,
+            "name": "importId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Removal has begun"
+          },
+          "400": {
+            "description": "The request does not match the schema",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No device token or session the route takes, or one that is not valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "not_found: no such connection of the caller's",
             "content": {
               "application/json": {
                 "schema": {

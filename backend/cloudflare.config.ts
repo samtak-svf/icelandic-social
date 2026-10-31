@@ -107,6 +107,12 @@ export default defineConfig(({ mode }) => {
         // the Worker runs; every other path reaches src/index.ts.
         ASSETS: bindings.assets(),
         // The oldest client build that may talk to this Worker, per platform.
+        // The scraping feed of decision 0120: "on" lets its runs start, anything else
+        // stops them, with one setting per environment. Without its two secrets
+        // below it is off whatever this says.
+        IMPORT_SCRAPE: bindings.text(mode === "staging" ? "on" : "off"),
+        // What its runs may cost in a calendar month. At the cap no new run starts.
+        IMPORT_SCRAPE_MONTHLY_USD: bindings.text("5"),
         // Raised when a protocol change would break older builds; the apps read
         // it from /health and ask the user to update. 0.5.0: builds before it
         // open on Fljótið, whose routes are gone (decision 0044).
@@ -229,6 +235,8 @@ export default defineConfig(({ mode }) => {
         //   FCM_SERVICE_ACCOUNT  the FCM service account's JSON key (decision 0025)
         //   APNS_KEY_P8          the APNs auth key (.p8), and APNS_KEY_ID its key id
         //   OPS_TOKEN            the maintainer's token for /ops (decision 0068)
+        //   IMPORT_SCRAPE_TOKEN  the scraping provider's token (decision 0120), and
+        //   IMPORT_SCRAPE_CONFIG its address, actor, allowed hosts and prices, as JSON
         // Staging sets none of them (`jurisdiction-check.mjs`, docs/operations.md).
       },
       // Durable Object classes, declared (decision 0032). Conversation and Inbox

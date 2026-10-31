@@ -7,7 +7,12 @@ import { log } from "./shared/log.ts";
 import { expireKeyPackages, expireLinkedDevices, expireSessions } from "./identity/index.ts";
 import { expireCommunities } from "./modules/communities/index.ts";
 import { expireHistory } from "./modules/history/index.ts";
-import { expireFiles } from "./modules/imports/index.ts";
+import {
+  expireFiles,
+  expireUnproven,
+  scrapeHealth,
+  startDueScrapes,
+} from "./modules/imports/index.ts";
 import { expireJobs, jobHealth, runJobs } from "./modules/jobs/index.ts";
 import { expireMedia } from "./modules/messaging/index.ts";
 import { expireLog, expireReports } from "./modules/moderation/index.ts";
@@ -37,6 +42,7 @@ export default {
     if (controller.cron === JOBS_SCHEDULE) {
       const ran = await runJobs(env, jobHandlers(env));
       if (ran.done + ran.retried + ran.failed > 0) log("jobs.ran", { count: ran.done });
+      await startDueScrapes(env);
       const expired = await expireHistory(env);
       if (expired > 0) log("history.expired", { count: expired });
       return;
@@ -54,6 +60,12 @@ export default {
     log("person_snoozes.expired", { count: await expireSnoozes(env) });
     log("moderation_log.expired", { count: await expireLog(env) });
     log("import_files.expired", { count: await expireFiles(env) });
+    log("import_connections.expired", { count: await expireUnproven(env) });
+    const scrape = await scrapeHealth(env);
+    if (scrape) {
+      log("imports.scrape_spend", { count: scrape.spentMicros });
+      if (scrape.capped) log("imports.scrape_at_cap", { count: scrape.spentMicros });
+    }
     log("jobs.expired", { count: await expireJobs(env) });
     log("notifications.expired", { count: await expireNotifications(env) });
     const health = await jobHealth(env);

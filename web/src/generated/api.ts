@@ -1032,6 +1032,30 @@ export interface NotificationSettings {
 /** `off` writes nothing, `in_app` writes the notification and sends no push, `push` also pushes (decision 0106) */
 export type NotificationLevel = "off" | "in_app" | "push";
 
+export interface ImportConnection {
+  importId: string;
+  profileUrl: string;
+  /** What the person publishes on the profile; null once it has been found */
+  code: string | null;
+  state: "unproven" | "checking" | "importing" | "connected";
+  /** How the last run ended; not_found means the code was not on the profile */
+  outcome: "not_found" | "capped" | "failed" | "ok" | null;
+  /** Posts brought in so far */
+  posts: number;
+  /** Milliseconds since the epoch */
+  lastSyncAt: number | null;
+}
+
+export interface CreateImportConnection {
+  profileUrl: string;
+  /** Who reads the posts; friends when left out, since nothing is public unless chosen */
+  audience?: "friends" | "everyone";
+}
+
+export interface ImportConnectionList {
+  connections: Array<ImportConnection>;
+}
+
 export interface ImportFileUpload {
   importId: string;
   /** Every part but the last is this many bytes; the last is the remainder */
@@ -3424,6 +3448,65 @@ export function setCommunityNotificationLevel(args: {
   | { status: 426; data: ApiError }
 > {
   return call("PUT", "/v1/communities/{communityId}/notification-level", args, init);
+}
+
+/** The caller's connections */
+export function listImportConnections(init?: CallInit): Promise<
+  | { status: 200; data: ImportConnectionList }
+  | { status: 401; data: ApiError }
+  | { status: 426; data: ApiError }
+> {
+  return call("GET", "/v1/imports/connections", undefined, init);
+}
+
+/** Connect a public profile of the caller's; nothing comes in until the code is found */
+export function createImportConnection(args: {
+  body: CreateImportConnection;
+}, init?: CallInit): Promise<
+  | { status: 201; data: ImportConnection }
+  | { status: 400; data: ApiError }
+  | { status: 401; data: ApiError }
+  | { status: 403; data: ApiError }
+  | { status: 409; data: ApiError }
+  | { status: 426; data: ApiError }
+  | { status: 429; data: ApiError }
+  | { status: 503; data: ApiError }
+> {
+  return call("POST", "/v1/imports/connections", args, init);
+}
+
+/** Look for the code on the profile */
+export function checkImportConnection(args: {
+  path: {
+    importId: string;
+  };
+}, init?: CallInit): Promise<
+  | { status: 202; data: ImportConnection }
+  | { status: 400; data: ApiError }
+  | { status: 401; data: ApiError }
+  | { status: 403; data: ApiError }
+  | { status: 404; data: ApiError }
+  | { status: 409; data: ApiError }
+  | { status: 426; data: ApiError }
+  | { status: 429; data: ApiError }
+  | { status: 503; data: ApiError }
+> {
+  return call("POST", "/v1/imports/connections/{importId}/check", args, init);
+}
+
+/** Stop a connection and remove every post it brought in */
+export function deleteImportConnection(args: {
+  path: {
+    importId: string;
+  };
+}, init?: CallInit): Promise<
+  | { status: 204; data: undefined }
+  | { status: 400; data: ApiError }
+  | { status: 401; data: ApiError }
+  | { status: 404; data: ApiError }
+  | { status: 426; data: ApiError }
+> {
+  return call("DELETE", "/v1/imports/connections/{importId}", args, init);
 }
 
 /** Start uploading another platform's export file (a ZIP of at most 4 GiB less a byte) */

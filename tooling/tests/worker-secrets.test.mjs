@@ -38,6 +38,8 @@ describe("worker-secrets", () => {
       "APNS_KEY_P8",
       "APNS_KEY_ID",
       "OPS_TOKEN",
+      "IMPORT_SCRAPE_TOKEN",
+      "IMPORT_SCRAPE_CONFIG",
     ]);
   });
 
