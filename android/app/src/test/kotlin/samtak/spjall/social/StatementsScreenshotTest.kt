@@ -20,6 +20,7 @@ import samtak.spjall.core.ModerationReview
 import samtak.spjall.core.ModerationReviewState
 import samtak.spjall.core.ModerationState
 import samtak.spjall.core.ModerationStatement
+import samtak.spjall.ui.IcelandZone
 import samtak.spjall.ui.LocalSuspension
 import samtak.spjall.ui.SpjallTheme
 import samtak.spjall.ui.Suspension
@@ -33,6 +34,8 @@ import samtak.spjall.ui.Suspension
 @Config(sdk = [SCREENSHOT_SDK], qualifiers = SCREENSHOT_DEVICE, fontScale = 1f)
 class StatementsScreenshotTest {
     @get:Rule val compose = createComposeRule()
+
+    @get:Rule val zone = IcelandZone()
 
     private fun statement(
         id: ULong,
