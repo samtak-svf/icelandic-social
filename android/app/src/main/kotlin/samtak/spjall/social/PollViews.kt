@@ -6,6 +6,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -135,28 +136,34 @@ private fun PollFooter(
     busy: Boolean,
     callbacks: PollCallbacks?,
 ) {
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+    // The actions move down together when they do not fit beside the count, which keeps its line.
+    FlowRow(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        itemVerticalAlignment = Alignment.CenterVertically,
+    ) {
         val total = poll.total.toInt()
         val count = pluralStringResource(R.plurals.poll_votes, total, total)
         Text(
             text = if (poll.closed) "$count \u00B7 ${stringResource(R.string.poll_closed)}" else count,
             style = MaterialTheme.typography.bodyMedium,
             color = Palette.mutedFg,
-            modifier = Modifier.weight(1f),
         )
         if (callbacks != null && !poll.closed) {
-            if (poll.mine != null) {
-                TextButton(
-                    onClick = callbacks.onWithdraw,
-                    enabled = !busy,
-                    modifier = Modifier.testTag(POLL_WITHDRAW),
-                ) {
-                    Text(stringResource(R.string.poll_withdraw))
+            FlowRow(itemVerticalAlignment = Alignment.CenterVertically) {
+                if (poll.mine != null) {
+                    TextButton(
+                        onClick = callbacks.onWithdraw,
+                        enabled = !busy,
+                        modifier = Modifier.testTag(POLL_WITHDRAW),
+                    ) {
+                        Text(stringResource(R.string.poll_withdraw))
+                    }
                 }
-            }
-            callbacks.onClose?.let { close ->
-                TextButton(onClick = close, enabled = !busy, modifier = Modifier.testTag(POLL_CLOSE)) {
-                    Text(stringResource(R.string.poll_close))
+                callbacks.onClose?.let { close ->
+                    TextButton(onClick = close, enabled = !busy, modifier = Modifier.testTag(POLL_CLOSE)) {
+                        Text(stringResource(R.string.poll_close))
+                    }
                 }
             }
         }
