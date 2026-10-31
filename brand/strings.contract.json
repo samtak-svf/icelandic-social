@@ -3010,6 +3010,22 @@
       "surfaces": ["android", "ios", "web"],
       "description": "Sort friends by name."
     },
+    "friends_suggested": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "Heading of the suggested people on the friends list (decision 0114)."
+    },
+    "suggestions_setting_title": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "Heading of the friend suggestions section in Settings (decision 0114)."
+    },
+    "suggestions_setting_label": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "Switch: take part in friend suggestions, which works both ways."
+    },
+    "suggestions_setting_hint": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "Under the switch: off means nobody sees the reader suggested and the reader sees no suggestions."
+    },
     "notice_friend_request": {
       "surfaces": ["android", "ios", "web"],
       "description": "A notification: someone asked the reader to be friends. {name} is that person.",

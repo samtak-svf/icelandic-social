@@ -16,6 +16,7 @@ import { strings } from "../generated/brand/strings.ts";
 import { formatIsDate } from "../lib/is-format.ts";
 import { FriendRow } from "../social/friend-row.tsx";
 import { outcome, useLoad, type Outcome } from "../social/outcome.ts";
+import { SuggestedPeople } from "../social/suggestions.tsx";
 import { useAct } from "../social/use-act.ts";
 import { Button, ProblemText, Status } from "../ui/kit.tsx";
 
@@ -68,6 +69,7 @@ function Friends() {
         <List page={page} searched={query !== ""} />
       </section>
       {requests?.ok && <Sent requests={requests.data.sent} actions={actions} />}
+      <SuggestedPeople actions={actions} />
       {snoozes?.ok && <Snoozed snoozed={snoozes.data.snoozed} actions={actions} />}
     </>
   );

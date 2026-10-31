@@ -1194,6 +1194,14 @@ export const strings = {
   friends_sort_newest: "Nýjustu fyrst",
   /** Sort friends by name. */
   friends_sort_name: "Eftir nafni",
+  /** Heading of the suggested people on the friends list (decision 0114). */
+  friends_suggested: "Fólk sem þú gætir þekkt",
+  /** Heading of the friend suggestions section in Settings (decision 0114). */
+  suggestions_setting_title: "Tillögur að vinum",
+  /** Switch: take part in friend suggestions, which works both ways. */
+  suggestions_setting_label: "Taka þátt í tillögum",
+  /** Under the switch: off means nobody sees the reader suggested and the reader sees no suggestions. */
+  suggestions_setting_hint: "Ef slökkt er sér enginn þig í tillögum og þú sérð engar.",
   /** A notification: someone asked the reader to be friends. {name} is that person. */
   notice_friend_request: (args: { name: string }): string =>
     args.name + " sendi þér vinabeiðni.",

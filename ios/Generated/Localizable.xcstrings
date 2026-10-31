@@ -7153,6 +7153,54 @@
         }
       }
     },
+    "friends_suggested": {
+      "comment": "Heading of the suggested people on the friends list (decision 0114).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fólk sem þú gætir þekkt"
+          }
+        }
+      }
+    },
+    "suggestions_setting_title": {
+      "comment": "Heading of the friend suggestions section in Settings (decision 0114).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tillögur að vinum"
+          }
+        }
+      }
+    },
+    "suggestions_setting_label": {
+      "comment": "Switch: take part in friend suggestions, which works both ways.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Taka þátt í tillögum"
+          }
+        }
+      }
+    },
+    "suggestions_setting_hint": {
+      "comment": "Under the switch: off means nobody sees the reader suggested and the reader sees no suggestions.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ef slökkt er sér enginn þig í tillögum og þú sérð engar."
+          }
+        }
+      }
+    },
     "notice_friend_request": {
       "comment": "A notification: someone asked the reader to be friends. {name} is that person.",
       "extractionState": "manual",
