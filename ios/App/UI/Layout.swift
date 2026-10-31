@@ -72,7 +72,7 @@ extension SocialRoute {
     /// do: a community and its queues. A post and the statements are one column.
     var wide: Bool {
         switch self {
-        case .post, .statements, .person: false
+        case .post, .statements, .person, .people, .conversation: false
         case .community, .reports, .requests: true
         }
     }

@@ -81,6 +81,16 @@ final class SignInModel {
     /// An invite link opened while signed in, for the list to open; nil once taken.
     private(set) var signedInInvite: String?
 
+    /// A link to a post or a community opened from outside, for the tabs to open once they are there; nil once taken.
+    private(set) var openedRoute: SocialRoute?
+
+    func openRoute(_ route: SocialRoute) { openedRoute = route }
+
+    func takeRoute() -> SocialRoute? {
+        defer { openedRoute = nil }
+        return openedRoute
+    }
+
     /// An invite link was opened. Signed in, it waits in `signedInInvite` for the list.
     func openInvite(token: String) async {
         guard session != .signedIn else {
@@ -156,6 +166,7 @@ final class SignInModel {
     func signedOut() {
         inviteToken = nil
         signedInInvite = nil
+        openedRoute = nil
         pendingCallback = nil
         invite = .none
         problem = nil

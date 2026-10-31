@@ -52,9 +52,11 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="${urlScheme}" />
             </intent-filter>
-            <!-- The invite link itself (decision 0019). It opens here once the
-                 host serves assetlinks.json for the release signing key, and
-                 in the browser until then. -->
+            <!-- The invite link (decision 0019) and the links to a post or a
+                 community (decision 0121). They open here once the host serves
+                 assetlinks.json for the release signing key, and in the browser
+                 until then. A prefix is as narrow as a filter can be below API
+                 31: a deeper page arrives here and goes on to the browser. -->
             <intent-filter android:autoVerify="true">
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
@@ -62,6 +64,8 @@
                 <data android:scheme="https" />
                 <data android:host="${linkHost}" />
                 <data android:pathPrefix="${linkPathPrefix}" />
+                <data android:pathPrefix="/posts/" />
+                <data android:pathPrefix="/communities/" />
             </intent-filter>
         </activity>
         <!-- The contentless push and new tokens (push/Fcm.kt). -->

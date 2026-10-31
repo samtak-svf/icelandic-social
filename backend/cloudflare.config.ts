@@ -32,6 +32,9 @@ const PRODUCTION = {
   domains: ["spjall.samtak.is"],
   apnsTeam: "B4724Z74TM",
   apnsTopic: "is.samtak.spjall.beta",
+  // Google Play's app-signing certificate: what the store build is signed with, from the publisher API (#473).
+  androidCerts:
+    "CA:D9:AC:A5:C8:C6:5C:B2:6F:B5:00:7D:1B:53:A6:3D:2A:76:F6:60:CD:0A:7F:59:AE:41:13:0C:B1:D2:3A:0C",
   // 1003 was Fljótið's (decision 0034, removed by 0044) and is not reused.
   limits: { public: "1001", claim: "1002", photo: "1004" },
 };
@@ -45,6 +48,8 @@ const STAGING: typeof PRODUCTION = {
   // It pushes to nobody.
   apnsTeam: "",
   apnsTopic: "",
+  // No build trusts it with a link.
+  androidCerts: "",
   // Its own counters, 1000 above production's.
   limits: { public: "2001", claim: "2002", photo: "2004" },
 };
@@ -178,10 +183,9 @@ export default defineConfig(({ mode }) => {
             ? "fake-google-client"
             : "654764079866-26282k1r7oltsqt2gv71hl92jmbd8pjv.apps.googleusercontent.com",
         ),
-        // The link host's association files (decision 0019). Empty until the
-        // store accounts exist: the Play app-signing certificate's SHA-256
-        // fingerprints, comma-separated, and the Apple team of is.samtak.spjall.
-        ANDROID_CERT_SHA256: bindings.text(""),
+        // The link host's association files (decision 0019): the Play app-signing certificate's SHA-256
+        // fingerprints, comma-separated, and the Apple team of is.samtak.spjall, empty until that team exists.
+        ANDROID_CERT_SHA256: bindings.text(own.androidCerts),
         APPLE_TEAM_ID: bindings.text(""),
         // APNs (decision 0025): the team that owns the APNs key, and the bundle
         // id pushed to. The interim team and bundle id until Samtak's team

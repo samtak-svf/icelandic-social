@@ -70,9 +70,9 @@ The Worker also serves the link host:
   (`is.samtak.spjall://invite/{token}`) and how to join the test group. It shows nothing that
   `GET /v1/invites` does not.
 - `/.well-known/assetlinks.json` and `/.well-known/apple-app-site-association`, generated from
-  `identifiers/ids.json`. The signing-certificate fingerprints and the team id come from vars,
-  empty until the store accounts exist. Until then the page's link to the app does the job of
-  App Links and Universal Links.
+  `identifiers/ids.json`. The signing-certificate fingerprints and the team id come from vars.
+  The fingerprint is set since #473; the team id stays empty until Samtak's Apple team exists, and the
+  interim team's beta build is named meanwhile.
 
 ### The core signs in
 
