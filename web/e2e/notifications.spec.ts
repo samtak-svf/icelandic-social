@@ -1,5 +1,5 @@
 import { strings } from "../src/generated/brand/strings.ts";
-import { found, join, person, post, runJobs, write } from "./social-helpers.ts";
+import { found, join, person, post, runJobs, titleOf, write } from "./social-helpers.ts";
 import { expect, test, WEB } from "./origin.ts";
 
 // Notifications v2 on the web (decisions 0103, 0104, 0106), through what a
@@ -70,4 +70,60 @@ test("back from the bell returns to the page it was pressed on", async ({ browse
   await expect(a.getByRole("heading", { name: strings.notifications_title })).toBeVisible();
   await a.goBack();
   await expect(a).toHaveURL(community);
+});
+
+// Decision 0106, the community level: the lower of the kind's level and the
+// community's applies, so a community set to Slökkt tells its member nothing
+// while another community, left alone, still does. The kind-level case above
+// sets a level for one kind; this one sets it for one community.
+test("a community set to off sends no row, another community still does, and the level persists", async ({
+  browser,
+}) => {
+  test.slow();
+  const a = await person(browser, "Auður Prófsdóttir");
+  const b = await person(browser, "Björn Prófsson");
+  const quiet = await found(a, "open");
+  const quietName = await titleOf(a);
+  await write(a, strings.post_compose, strings.post_publish, "Fundur í rólega hópnum.");
+  const loud = await found(a, "open");
+  const loudName = await titleOf(a);
+  await write(a, strings.post_compose, strings.post_publish, "Fundur í hávaðahópnum.");
+  expect(quietName).not.toBe(loudName);
+  await join(b, quiet);
+  await join(b, loud);
+
+  // The level is set on the community's own tab, and is still set after a reload.
+  await a.goto(`${quiet}/about`);
+  const level = a
+    .getByRole("main")
+    .getByRole("combobox", { name: strings.notification_settings_title });
+  await level.selectOption("off");
+  await expect(level).toHaveValue("off");
+  await a.reload();
+  await expect(
+    a.getByRole("main").getByRole("combobox", { name: strings.notification_settings_title }),
+  ).toHaveValue("off");
+
+  // Björn reacts to a post in each; the count shows each reaction landed.
+  for (const [address, text] of [
+    [quiet, "Fundur í rólega hópnum"],
+    [loud, "Fundur í hávaðahópnum"],
+  ] as const) {
+    await b.goto(address);
+    const card = post(b, text);
+    await card.getByRole("button", { name: strings.post_like, exact: true }).click();
+    await expect(card.getByText(strings.reaction_count({ count: 1 }))).toBeVisible();
+  }
+  await runJobs();
+
+  await a.goto(WEB);
+  await a.getByRole("link", { name: new RegExp(strings.notifications_title) }).click();
+  const reacted = a
+    .getByRole("listitem")
+    .filter({
+      has: a.getByText(strings.notice_reaction({ name: "Björn Prófsson" }), { exact: true }),
+    });
+  // The row of the community left alone is there, so an empty list cannot pass for the quiet one.
+  await expect(reacted.filter({ hasText: loudName })).toHaveCount(1);
+  await expect(reacted.filter({ hasText: quietName })).toHaveCount(0);
 });

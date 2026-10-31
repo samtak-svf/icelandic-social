@@ -11,6 +11,7 @@
 
 #![allow(clippy::disallowed_methods)] // tests use files
 
+mod levels;
 mod phone;
 mod wall;
 
@@ -386,6 +387,7 @@ fn the_oldest_kept_release_reads_this_worker() {
     let kinds: Vec<_> = page.notifications.iter().map(|n| n.kind).collect();
     assert!(kinds.contains(&NotificationKind::Comment), "{kinds:?}");
     assert!(kinds.contains(&NotificationKind::Reaction), "{kinds:?}");
+    levels::grouped_and_levelled_on_the_release(&owner, run, &invite, &community, &plain.post_id);
     let plain_again = from_owner.post(&plain.post_id).unwrap();
     assert_eq!(plain_again.comment_count, 1);
     assert_eq!(
