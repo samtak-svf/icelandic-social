@@ -76,7 +76,14 @@ export const listImportConnectionsRoute = createRoute({
   responses: {
     200: json(
       "The connections, oldest first",
-      z.object({ connections: z.array(ImportConnection) }).openapi("ImportConnectionList"),
+      z
+        .object({
+          available: z.boolean().openapi({
+            description: "Whether a new connection can be made here; false when switched off",
+          }),
+          connections: z.array(ImportConnection),
+        })
+        .openapi("ImportConnectionList"),
     ),
     ...AUTHED,
   },

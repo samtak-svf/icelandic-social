@@ -7,12 +7,14 @@ import {
   listConnections,
   removeConnection,
 } from "../../../src/modules/imports/connections.ts";
+import { createApp } from "../../../src/app.ts";
 import { mediaBucket } from "../../../src/env/index.ts";
 import { expireFiles, publishFile, type Choice } from "../../../src/modules/imports/file.ts";
 import { jobHandlers } from "../../../src/modules/imports/index.ts";
 import { scrapeHealth, startDueScrapes } from "../../../src/modules/imports/scrape-jobs.ts";
 import { profileAddress, scrapeSettings } from "../../../src/modules/imports/scrape.ts";
 import { runJobs } from "../../../src/modules/jobs/index.ts";
+import { CLIENT_HEADER } from "../../../src/shared/client-version.ts";
 import { png } from "../../images.ts";
 import { errorOf, ok, person, type Person } from "../../people.ts";
 import { euEnv } from "../../support.ts";
@@ -824,6 +826,24 @@ describe("the off switch", () => {
     const refused = await owner.call("POST", "/v1/imports/connections", { profileUrl: PROFILE });
     expect(refused.status).toBe(503);
     expect(await errorOf(refused)).toBe("unavailable");
+  });
+
+  it("says so in the list, as on says the opposite", async () => {
+    const owner = await person("Sigga");
+    const list = async (running: Env) =>
+      (await (
+        await createApp().fetch(
+          new Request("https://spjall.test/v1/imports/connections", {
+            headers: {
+              ...owner.auth,
+              [CLIENT_HEADER]: `android/${env.MIN_CLIENT_VERSION_ANDROID}`,
+            },
+          }),
+          running,
+        )
+      ).json()) as { available: boolean };
+    expect((await list(off)).available).toBe(false);
+    expect((await list(E)).available).toBe(true);
   });
 
   it("starts no run, and a connection picks up when it comes back on", async () => {

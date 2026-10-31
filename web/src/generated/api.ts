@@ -1054,6 +1054,8 @@ export interface CreateImportConnection {
 }
 
 export interface ImportConnectionList {
+  /** Whether a new connection can be made here; false when switched off */
+  available: boolean;
   connections: Array<ImportConnection>;
 }
 
@@ -1100,6 +1102,16 @@ export interface CreateImportFile {
   /** The ZIP's length in bytes */
   size: number;
 }
+
+export interface ImportList {
+  imports: Array<ImportSummary>;
+}
+
+export type ImportSummary = ImportStatus & {
+  importId: string;
+  /** Milliseconds since the epoch */
+  createdAt: number;
+};
 
 export interface ImportStatus {
   state: "uploading" | "parsing" | "ready" | "publishing" | "done" | "failed" | "removing";
@@ -3635,6 +3647,15 @@ export function completeImport(args: {
   | { status: 426; data: ApiError }
 > {
   return call("POST", "/v1/imports/{importId}/complete", args, init);
+}
+
+/** The caller's file imports, newest first, without any being removed */
+export function listImports(init?: CallInit): Promise<
+  | { status: 200; data: ImportList }
+  | { status: 401; data: ApiError }
+  | { status: 426; data: ApiError }
+> {
+  return call("GET", "/v1/imports", undefined, init);
 }
 
 /** Where an import stands, and what the file held */

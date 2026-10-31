@@ -22,7 +22,9 @@ const le = (bytes: number, n: number) => {
 };
 
 async function deflate(data: Uint8Array): Promise<Uint8Array> {
-  const stream = new Blob([data]).stream().pipeThrough(new CompressionStream("deflate-raw"));
+  const stream = new Blob([new Uint8Array(data)])
+    .stream()
+    .pipeThrough(new CompressionStream("deflate-raw"));
   return new Uint8Array(await new Response(stream).arrayBuffer());
 }
 

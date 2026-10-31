@@ -26,6 +26,8 @@ import { Route as CommunitiesNewRouteImport } from './routes/communities.new'
 import { Route as ConversationsIndexRouteImport } from './routes/conversations.index'
 import { Route as ConversationsConversationIdRouteImport } from './routes/conversations.$conversationId'
 import { Route as ConversationsLinkRouteImport } from './routes/conversations.link'
+import { Route as ImportsIndexRouteImport } from './routes/imports.index'
+import { Route as ImportsImportIdRouteImport } from './routes/imports.$importId'
 import { Route as PeopleAccountIdRouteImport } from './routes/people.$accountId'
 import { Route as PostsPostIdRouteImport } from './routes/posts.$postId'
 import { Route as CommunitiesCommunityIdTabsRouteImport } from './routes/communities.$communityId._tabs'
@@ -127,6 +129,16 @@ const ConversationsLinkRoute = ConversationsLinkRouteImport.update({
   id: '/link',
   path: '/link',
   getParentRoute: () => ConversationsRoute,
+} as any)
+const ImportsIndexRoute = ImportsIndexRouteImport.update({
+  id: '/imports/',
+  path: '/imports/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ImportsImportIdRoute = ImportsImportIdRouteImport.update({
+  id: '/imports/$importId',
+  path: '/imports/$importId',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const PeopleAccountIdRoute = PeopleAccountIdRouteImport.update({
   id: '/people/$accountId',
@@ -233,10 +245,12 @@ export interface FileRoutesByFullPath {
   '/communities/new': typeof CommunitiesNewRoute
   '/conversations/$conversationId': typeof ConversationsConversationIdRoute
   '/conversations/link': typeof ConversationsLinkRoute
+  '/imports/$importId': typeof ImportsImportIdRoute
   '/people/$accountId': typeof PeopleAccountIdRoute
   '/posts/$postId': typeof PostsPostIdRoute
   '/communities/': typeof CommunitiesIndexRoute
   '/conversations/': typeof ConversationsIndexRoute
+  '/imports/': typeof ImportsIndexRoute
   '/communities/$communityId': typeof CommunitiesCommunityIdTabsRouteWithChildren
   '/communities/$communityId/anonymous': typeof CommunitiesCommunityIdAnonymousRoute
   '/communities/$communityId/log': typeof CommunitiesCommunityIdLogRoute
@@ -266,10 +280,12 @@ export interface FileRoutesByTo {
   '/communities/new': typeof CommunitiesNewRoute
   '/conversations/$conversationId': typeof ConversationsConversationIdRoute
   '/conversations/link': typeof ConversationsLinkRoute
+  '/imports/$importId': typeof ImportsImportIdRoute
   '/people/$accountId': typeof PeopleAccountIdRoute
   '/posts/$postId': typeof PostsPostIdRoute
   '/communities': typeof CommunitiesIndexRoute
   '/conversations': typeof ConversationsIndexRoute
+  '/imports': typeof ImportsIndexRoute
   '/communities/$communityId/anonymous': typeof CommunitiesCommunityIdAnonymousRoute
   '/communities/$communityId/log': typeof CommunitiesCommunityIdLogRoute
   '/communities/$communityId/manage': typeof CommunitiesCommunityIdManageRoute
@@ -300,10 +316,12 @@ export interface FileRoutesById {
   '/communities/new': typeof CommunitiesNewRoute
   '/conversations/$conversationId': typeof ConversationsConversationIdRoute
   '/conversations/link': typeof ConversationsLinkRoute
+  '/imports/$importId': typeof ImportsImportIdRoute
   '/people/$accountId': typeof PeopleAccountIdRoute
   '/posts/$postId': typeof PostsPostIdRoute
   '/communities/': typeof CommunitiesIndexRoute
   '/conversations/': typeof ConversationsIndexRoute
+  '/imports/': typeof ImportsIndexRoute
   '/communities/$communityId/_tabs': typeof CommunitiesCommunityIdTabsRouteWithChildren
   '/communities/$communityId/anonymous': typeof CommunitiesCommunityIdAnonymousRoute
   '/communities/$communityId/log': typeof CommunitiesCommunityIdLogRoute
@@ -336,10 +354,12 @@ export interface FileRouteTypes {
     | '/communities/new'
     | '/conversations/$conversationId'
     | '/conversations/link'
+    | '/imports/$importId'
     | '/people/$accountId'
     | '/posts/$postId'
     | '/communities/'
     | '/conversations/'
+    | '/imports/'
     | '/communities/$communityId'
     | '/communities/$communityId/anonymous'
     | '/communities/$communityId/log'
@@ -369,10 +389,12 @@ export interface FileRouteTypes {
     | '/communities/new'
     | '/conversations/$conversationId'
     | '/conversations/link'
+    | '/imports/$importId'
     | '/people/$accountId'
     | '/posts/$postId'
     | '/communities'
     | '/conversations'
+    | '/imports'
     | '/communities/$communityId/anonymous'
     | '/communities/$communityId/log'
     | '/communities/$communityId/manage'
@@ -402,10 +424,12 @@ export interface FileRouteTypes {
     | '/communities/new'
     | '/conversations/$conversationId'
     | '/conversations/link'
+    | '/imports/$importId'
     | '/people/$accountId'
     | '/posts/$postId'
     | '/communities/'
     | '/conversations/'
+    | '/imports/'
     | '/communities/$communityId/_tabs'
     | '/communities/$communityId/anonymous'
     | '/communities/$communityId/log'
@@ -435,9 +459,11 @@ export interface RootRouteChildren {
   TestersRoute: typeof TestersRoute
   VerifyRoute: typeof VerifyRoute
   CommunitiesNewRoute: typeof CommunitiesNewRoute
+  ImportsImportIdRoute: typeof ImportsImportIdRoute
   PeopleAccountIdRoute: typeof PeopleAccountIdRoute
   PostsPostIdRoute: typeof PostsPostIdRoute
   CommunitiesIndexRoute: typeof CommunitiesIndexRoute
+  ImportsIndexRoute: typeof ImportsIndexRoute
   CommunitiesCommunityIdTabsRoute: typeof CommunitiesCommunityIdTabsRouteWithChildren
   CommunitiesCommunityIdAnonymousRoute: typeof CommunitiesCommunityIdAnonymousRoute
   CommunitiesCommunityIdLogRoute: typeof CommunitiesCommunityIdLogRoute
@@ -567,6 +593,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/conversations/link'
       preLoaderRoute: typeof ConversationsLinkRouteImport
       parentRoute: typeof ConversationsRoute
+    }
+    '/imports/': {
+      id: '/imports/'
+      path: '/imports'
+      fullPath: '/imports/'
+      preLoaderRoute: typeof ImportsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/imports/$importId': {
+      id: '/imports/$importId'
+      path: '/imports/$importId'
+      fullPath: '/imports/$importId'
+      preLoaderRoute: typeof ImportsImportIdRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/people/$accountId': {
       id: '/people/$accountId'
@@ -733,9 +773,11 @@ const rootRouteChildren: RootRouteChildren = {
   TestersRoute: TestersRoute,
   VerifyRoute: VerifyRoute,
   CommunitiesNewRoute: CommunitiesNewRoute,
+  ImportsImportIdRoute: ImportsImportIdRoute,
   PeopleAccountIdRoute: PeopleAccountIdRoute,
   PostsPostIdRoute: PostsPostIdRoute,
   CommunitiesIndexRoute: CommunitiesIndexRoute,
+  ImportsIndexRoute: ImportsIndexRoute,
   CommunitiesCommunityIdTabsRoute: CommunitiesCommunityIdTabsRouteWithChildren,
   CommunitiesCommunityIdAnonymousRoute: CommunitiesCommunityIdAnonymousRoute,
   CommunitiesCommunityIdLogRoute: CommunitiesCommunityIdLogRoute,

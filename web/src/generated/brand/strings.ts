@@ -1230,4 +1230,170 @@ export const strings = {
     plural.select(args.count) === "one"
       ? String(args.count) + " sameiginlegur vinur"
       : String(args.count) + " sameiginlegir vinir",
+  /** Title of the screen that brings a person's own posts in from another platform, and the link to it. */
+  imports_title: "Flytja inn pósta",
+  /** What the screen does, and that nothing is published until chosen. */
+  imports_intro: "Hér geturðu flutt inn eldri pósta þína af öðrum miðli. Ekkert birtist fyrr en þú hefur skoðað póstana og valið að birta þá.",
+  /** Heading: bring posts in from an export file. */
+  imports_file_title: "Úr skrá",
+  /** How to get the export file. */
+  imports_file_hint: "Sæktu afrit af gögnunum þínum á hinum miðlinum og veldu JSON-snið. Þú færð ZIP-skrá sem má vera allt að 4 GB.",
+  /** Button choosing the export file. */
+  imports_file_choose: "Velja ZIP-skrá",
+  /** Progress of an upload. */
+  imports_file_sending: (args: { part: string; parts: string }): string =>
+    "Sendi hluta " + args.part + " af " + args.parts + ". Hafðu síðuna opna á meðan.",
+  /** Button carrying on with a stopped upload. */
+  imports_file_resume: "Halda áfram",
+  /** An upload stopped and can carry on. */
+  imports_file_stalled: "Sendingin stöðvaðist. Þú getur haldið áfram þar sem frá var horfið.",
+  /** The chosen file is over the limit. */
+  imports_file_too_large: "Skráin er of stór. Hún má vera allt að 4 GB.",
+  /** The upload's time ran out. */
+  imports_file_expired: "Sendingin rann út á tíma. Veldu skrána aftur.",
+  /** Heading of the person's earlier file imports. */
+  imports_earlier_title: "Fyrri skrár",
+  /** An earlier file import: upload never finished. */
+  imports_state_uploading: "Sendingin kláraðist ekki",
+  /** An earlier file import: being read. */
+  imports_state_parsing: "Verið er að lesa skrána",
+  /** An earlier file import: waits for a choice. */
+  imports_state_ready: "Bíður þess að þú veljir pósta",
+  /** An earlier file import: being published. */
+  imports_state_publishing: "Verið er að birta póstana",
+  /** An earlier file import: published. */
+  imports_state_done: "Birt",
+  /** An earlier file import: failed. */
+  imports_state_failed: "Tókst ekki",
+  /** Heading: connect a public profile on another platform. */
+  imports_profile_title: "Af opinberum prófíl",
+  /** How connecting a profile works. */
+  imports_profile_hint: "Límdu slóðina á opinbera prófílinn þinn á hinum miðlinum. Þú sannar með kóða að prófíllinn sé þinn. Eftir það bætast nýir póstar við af sjálfu sér.",
+  /** Label of the profile address field. */
+  imports_profile_url: "Slóð á prófílinn",
+  /** Button connecting a profile. */
+  imports_profile_connect: "Tengja prófíl",
+  /** The address is not a public profile. */
+  imports_profile_invalid: "Þetta er ekki slóð á opinberan prófíl.",
+  /** The person has as many connections as one may. */
+  imports_profile_limit: "Ekki er hægt að hafa fleiri en þrjár tengingar.",
+  /** This route is switched off. */
+  imports_profile_off: "Þessi leið er lokuð eins og er.",
+  /** What to do with the code shown beside this sentence. */
+  imports_profile_code: "Birtu þennan kóða í nýjum pósti á prófílnum og veldu svo Athuga. Pósturinn þarf að vera opinber og þú mátt eyða honum þegar kóðinn er fundinn.",
+  /** Button asking for a look for the code. */
+  imports_profile_check: "Athuga",
+  /** The code is being looked for. */
+  imports_profile_checking: "Verið er að leita að kóðanum.",
+  /** The code was not found. */
+  imports_profile_not_found: "Kóðinn fannst ekki. Athugaðu hvort pósturinn sé opinber og reyndu aftur.",
+  /** A connection's posts are being fetched. */
+  imports_sync_importing: "Verið er að sækja póstana.",
+  /** A connection's first collection waits for a choice. */
+  imports_sync_preview: "Póstarnir eru tilbúnir. Skoðaðu þá og veldu hverjir birtast.",
+  /** When a connection last fetched. */
+  imports_sync_last: (args: { date: string }): string =>
+    "Síðast sótt " + args.date + ".",
+  /** Fetching is put off for now. */
+  imports_sync_capped: "Beðið er með að sækja póstana. Reynt verður aftur síðar.",
+  /** The last fetch failed. */
+  imports_sync_failed: "Síðasta tilraun tókst ekki. Reynt verður aftur.",
+  /** Link from a connection to its first collection. */
+  imports_preview_link: "Skoða og velja",
+  /** Button stopping a connection and removing its posts. */
+  imports_disconnect: "Aftengja og eyða póstum",
+  /** Confirmation of the same. */
+  imports_disconnect_confirm: "Aftengja og eyða öllum póstum sem komu þaðan? Þetta er ekki hægt að afturkalla.",
+  /** Heading: connect a page the person manages. */
+  imports_page_title: "Af síðu sem þú stjórnar",
+  /** How connecting a page works. */
+  imports_page_hint: "Skráðu þig inn á hinn miðilinn og veldu síðu sem þú stjórnar. Eftir það bætast nýir póstar við af sjálfu sér.",
+  /** Link that opens the platform's sign-in. */
+  imports_page_start: "Skrá inn og velja síðu",
+  /** Button connecting a chosen page. */
+  imports_page_connect: "Tengja síðuna",
+  /** Back from sign-in: pages to choose from. */
+  imports_page_choose: "Veldu síðuna sem þú vilt tengja.",
+  /** Back from sign-in: no pages. */
+  imports_page_none: "Engin síða fannst á þessum aðgangi.",
+  /** Back from sign-in: it failed. */
+  imports_page_failed: "Innskráningin tókst ekki. Reyndu aftur.",
+  /** Back from sign-in: the person said no. */
+  imports_page_declined: "Hætt var við innskráninguna. Ekkert var sótt.",
+  /** A page connection's sign-in ran out. */
+  imports_page_expired: "Innskráningin er útrunnin. Skráðu þig inn aftur.",
+  /** Title of the screen choosing what to publish. */
+  imports_preview_title: "Veldu pósta",
+  /** What an import holds. */
+  imports_counts: (args: { posts: string; images: string; videos: string }): string =>
+    "Póstar: " + args.posts + ". Myndir: " + args.images + ". Myndbönd: " + args.videos + ".",
+  /** Legend of the date range. */
+  imports_range: "Tímabil",
+  /** Label of the range's start. */
+  imports_from: "Frá",
+  /** Label of the range's end. */
+  imports_to: "Til",
+  /** Checkbox: this post is published. */
+  imports_include: "Birta þennan póst",
+  /** On a post with a video. */
+  imports_item_video: "Myndbandið fylgir ekki, aðeins tengill á upprunalega póstinn.",
+  /** The limit on posts left out was reached. */
+  imports_excluded_full: "Ekki er hægt að sleppa fleiri en 1.000 póstum. Þrengdu tímabilið til að sleppa fleirum.",
+  /** No post in the chosen range. */
+  imports_empty_range: "Engir póstar á þessu tímabili.",
+  /** Button publishing the chosen posts. */
+  imports_publish: "Birta valda pósta",
+  /** How long an unpublished preview stays. */
+  imports_preview_kept: "Það sem ekki hefur verið birt eyðist eftir 7 daga.",
+  /** The import cannot be published in this state. */
+  imports_not_ready: "Þessi innflutningur er ekki tilbúinn til birtingar.",
+  /** The file is being read. */
+  imports_wait_parsing: "Verið er að lesa skrána. Þú mátt loka síðunni og koma aftur síðar.",
+  /** The posts are being published. */
+  imports_wait_publishing: "Verið er að birta póstana. Þú mátt loka síðunni.",
+  /** The import is being removed. */
+  imports_wait_removing: "Verið er að eyða póstunum.",
+  /** An upload left unfinished in an earlier visit. */
+  imports_unfinished: "Sending þessarar skrár kláraðist ekki. Eyddu henni og byrjaðu upp á nýtt.",
+  /** The posts are published. */
+  imports_done: "Póstarnir eru komnir á vegginn með upprunalegum dagsetningum.",
+  /** Button removing an import and its posts. */
+  imports_remove: "Eyða þessum innflutningi",
+  /** Confirmation of the same. */
+  imports_remove_confirm: "Eyða þessum innflutningi og öllum póstum sem fylgdu honum? Þetta er ekki hægt að afturkalla.",
+  /** Link back to the imports screen. */
+  imports_back: "Aftur í innflutning",
+  /** The file is cut short. */
+  imports_failed_truncated: "Skráin er ekki heil. Sæktu hana aftur.",
+  /** The ZIP has an entry too large to read. */
+  imports_failed_zip64: "Þessi ZIP-skrá er á sniði sem ekki er hægt að lesa. Sæktu afrit af styttra tímabili.",
+  /** The file has a password. */
+  imports_failed_encrypted: "Skráin er læst með lykilorði. Sæktu afrit án lykilorðs.",
+  /** Not the right format. */
+  imports_failed_unsupported: "Þetta er ekki á réttu sniði. Skráin þarf að vera ZIP-skrá með gögnum á JSON-sniði.",
+  /** Too much in the file. */
+  imports_failed_too_big: "Of mikið er í skránni. Sæktu afrit af styttra tímabili.",
+  /** The file is damaged. */
+  imports_failed_corrupt: "Skráin er skemmd. Sæktu hana aftur.",
+  /** No posts were found. */
+  imports_failed_no_posts: "Engir póstar fundust í skránni. Athugaðu hvort þú hafir valið JSON-snið og pósta í afritinu.",
+  /** The import ran out of time. */
+  imports_failed_expired: "Innflutningurinn rann út áður en honum lauk. Byrjaðu upp á nýtt.",
+  /** How many posts a connection has brought in. */
+  imports_sync_posts: (args: { count: number }): string =>
+    plural.select(args.count) === "one"
+      ? String(args.count) + " póstur kominn inn"
+      : String(args.count) + " póstar komnir inn",
+  /** Entries the reader could not read. */
+  imports_skipped: (args: { count: number }): string =>
+    plural.select(args.count) === "one"
+      ? "Ekki var hægt að lesa " + String(args.count) + " færslu."
+      : "Ekki var hægt að lesa " + String(args.count) + " færslur.",
+  /** How many images a post has. */
+  imports_item_images: (args: { count: number }): string =>
+    plural.select(args.count) === "one"
+      ? String(args.count) + " mynd"
+      : String(args.count) + " myndir",
+  /** Too many tries in a short time, on the import screens. */
+  imports_rate_limited: "Of margar tilraunir í einu. Reyndu aftur eftir smástund.",
 } as const;
