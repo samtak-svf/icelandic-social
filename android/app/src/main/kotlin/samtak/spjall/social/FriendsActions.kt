@@ -56,6 +56,9 @@ interface PersonActions :
     /** The settings behind the gear on this account's own wall (0115). */
     fun settings() {}
 
+    /** The friends screen, behind the friend count on this account's own wall (0114). */
+    fun friends() {}
+
     fun openPost(postId: String) {}
 
     fun selectTab(tab: WallTab) {}

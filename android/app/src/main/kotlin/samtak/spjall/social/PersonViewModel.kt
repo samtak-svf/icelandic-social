@@ -13,10 +13,12 @@ import kotlinx.coroutines.withContext
 import samtak.spjall.account.Problem
 import samtak.spjall.account.problem
 import samtak.spjall.core.CommunityImage
+import samtak.spjall.core.CommunityImagePage
 import samtak.spjall.core.CoreException
 import samtak.spjall.core.FrameKind
 import samtak.spjall.core.PersonProfile
 import samtak.spjall.core.Post
+import samtak.spjall.core.PostPage
 import samtak.spjall.core.ReportReason
 import samtak.spjall.core.ReportTarget
 import samtak.spjall.core.ReportTargetKind
@@ -171,7 +173,17 @@ class PersonViewModel(
                     }
                 failed = null
                 attachments.spent()
-                _state.update { it.copy(posts = listOf(post) + it.posts, draft = "", publishing = false) }
+                // A post with images changes the Myndir tab: it asks again the next time it is opened.
+                _state.update {
+                    it.copy(
+                        posts = listOf(post) + it.posts,
+                        draft = "",
+                        publishing = false,
+                        images = emptyList(),
+                        imagesNext = null,
+                        imagesLoaded = false,
+                    )
+                }
             } catch (e: CoreException) {
                 val notice = e.imageNotice()
                 // A media id the server no longer knows (over a day old): the next try uploads again.
@@ -294,18 +306,26 @@ class PersonViewModel(
         _state.update { it.copy(busy = true, problem = null) }
         viewModelScope.launch {
             try {
-                val (profile, wall, page) =
+                val fresh =
                     withContext(io) {
                         action()
-                        Triple(social.person(accountId), social.wall(accountId), social.wallPosts(accountId, null))
+                        Fresh(
+                            social.person(accountId),
+                            social.wall(accountId),
+                            social.wallPosts(accountId, null),
+                            // The images are asked for again only if the tab has been opened: it asks for itself.
+                            if (_state.value.imagesLoaded) social.wallImages(accountId, null) else null,
+                        )
                     }
                 failed = null
                 _state.update {
                     it.copy(
-                        profile = profile,
-                        wall = wall,
-                        posts = page.posts,
-                        postsNext = page.next,
+                        profile = fresh.profile,
+                        wall = fresh.wall,
+                        posts = fresh.posts.posts,
+                        postsNext = fresh.posts.next,
+                        images = fresh.images?.images ?: it.images,
+                        imagesNext = if (fresh.images != null) fresh.images.next else it.imagesNext,
                         loaded = true,
                         busy = false,
                     )
@@ -317,3 +337,11 @@ class PersonViewModel(
         }
     }
 }
+
+/** What [PersonViewModel.load] asks the core for; [images] only when the Myndir tab has been opened. */
+private class Fresh(
+    val profile: PersonProfile,
+    val wall: WallProfile,
+    val posts: PostPage,
+    val images: CommunityImagePage?,
+)

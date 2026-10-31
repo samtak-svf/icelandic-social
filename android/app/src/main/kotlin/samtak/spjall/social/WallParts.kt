@@ -37,10 +37,10 @@ import samtak.spjall.core.ReportTarget
 import samtak.spjall.core.ReportTargetKind
 import samtak.spjall.core.WallAudience
 import samtak.spjall.me.Confirm
+import samtak.spjall.ui.Dates
 import samtak.spjall.ui.Palette
 import java.time.YearMonth
 import java.time.format.TextStyle
-import java.util.Locale
 
 // The tabs of a wall (decision 0115) and the menu a person's screen has.
 
@@ -52,7 +52,7 @@ private const val GRID_GAP = 4
 internal fun monthName(month: String): String =
     runCatching {
         val parsed = YearMonth.parse(month)
-        "${parsed.month.getDisplayName(TextStyle.FULL_STANDALONE, Locale.getDefault())} ${parsed.year}"
+        "${parsed.month.getDisplayName(TextStyle.FULL_STANDALONE, Dates.ICELANDIC)} ${parsed.year}"
     }.getOrDefault(month)
 
 /** The three tabs and the one that is open. */

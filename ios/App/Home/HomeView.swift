@@ -299,7 +299,7 @@ struct HomeView: View {
 
     private var meStack: some View {
         NavigationStack(path: $mePath) {
-            OwnWall(me: me, social: social, models: routeModels, onSettings: { mePath.append(.settings) })
+            OwnWall(me: me, social: social, models: routeModels, open: { mePath.append($0) })
                 .navigationDestination(for: MeRoute.self) { route in
                     switch route {
                     case .settings:

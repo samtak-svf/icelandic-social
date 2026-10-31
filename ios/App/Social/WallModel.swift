@@ -56,6 +56,12 @@ final class WallModel {
             next = page.next
             postsLoaded = true
             failed = nil
+            // The gallery shows what the server holds now: a post written in the feed may have added to it.
+            if imagesLoaded {
+                let images = try await offMain { try social.wallImages(id, cursor: nil, limit: Self.page) }
+                self.images = images.images
+                imagesNext = images.next
+            }
         } catch {
             failed = { await self.load() }
             problem = Problem(error)
@@ -144,6 +150,10 @@ final class WallModel {
             }
             attachments.finish()
             posts.insert(created, at: 0)
+            // A post with images changes the gallery: it asks again when it is opened.
+            images = []
+            imagesNext = nil
+            imagesLoaded = false
             draft = ""
             failed = nil
             posted = true

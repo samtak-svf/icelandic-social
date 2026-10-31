@@ -10,6 +10,8 @@ struct PersonView: View {
     var onSettings: (() -> Void)?
     /// This account's own record, set on its own wall, where the photo is chosen, framed and removed as on the web.
     var own: MeModel?
+    /// Opens the friends: set on this account's own wall, where the friend count is the way to them.
+    var onFriends: (() -> Void)?
     @State private var wall: WallModel?
     @State private var ending = false
     @State private var reporting = false
@@ -20,7 +22,7 @@ struct PersonView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
                 if let person = model.person {
-                    PersonHeader(person: person)
+                    PersonHeader(person: person, onFriends: person.relation == .oneself ? onFriends : nil)
                     if let own { PhotoControls(model: own, hasPhoto: person.photo != nil) }
                     PersonActions(model: model, person: person)
                     if let wall { WallView(model: wall, person: person) }
@@ -107,13 +109,21 @@ struct PersonView: View {
 /// The photo, the name and the counts.
 private struct PersonHeader: View {
     let person: PersonProfile
+    var onFriends: (() -> Void)?
 
     var body: some View {
         VStack(spacing: 6) {
             Avatar(
                 name: person.name, kind: person.verified ? .verified : .unverified, size: 72, photo: person.photoOf)
             NameWithMark(name: person.shownName, verified: person.verified, markSize: 14, font: .sans(20, black: true))
-            Text(verbatim: plural("person_friend_count", Int(person.friendCount)))
+            let friends = plural("person_friend_count", Int(person.friendCount))
+            if let onFriends {
+                // The web links the count to /friends on the own wall; 44 pt is the least touch target.
+                Button(action: onFriends) { Text(verbatim: friends).frame(minHeight: 44) }
+                    .accessibilityIdentifier("friend-count")
+            } else {
+                Text(verbatim: friends)
+            }
             if person.relation != .oneself && person.mutualCount > 0 {
                 Text(verbatim: plural("person_mutual_count", Int(person.mutualCount)))
             }

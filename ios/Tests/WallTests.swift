@@ -108,6 +108,30 @@ final class WallTests: XCTestCase {
         XCTAssertEqual(model.posts.first?.audience, .everyone)
     }
 
+    private func image(_ id: String) -> CommunityImage {
+        CommunityImage(mediaId: id, postId: "w-\(id)", commentId: nil, width: 10, height: 10, createdAt: 1)
+    }
+
+    func testLoadingAgainRefreshesTheImagesOnceTheGalleryHasBeenOpened() async {
+        let model = await wall()
+        await model.loadImages()
+        XCTAssertTrue(model.images.isEmpty)
+        social.walls.images["a1"] = [image("m1")]
+        await model.load()
+        XCTAssertEqual(model.images.map(\.mediaId), ["m1"])
+    }
+
+    func testAPostWrittenOnTheWallMakesTheGalleryAskAgain() async {
+        let model = await wall()
+        await model.loadImages()
+        social.walls.images["a1"] = [image("m2")]
+        model.draft = "Mynd"
+        _ = await model.publish()
+        XCTAssertFalse(model.imagesLoaded)
+        await model.loadImages()
+        XCTAssertEqual(model.images.map(\.mediaId), ["m2"])
+    }
+
     func testTheImagesPageSeparately() async {
         social.walls.images["a1"] = (1...3).map {
             CommunityImage(

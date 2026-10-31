@@ -25,6 +25,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -126,7 +127,17 @@ private fun ProfileCard(
                     color = Palette.fg,
                 )
                 val friends = profile.friendCount
-                Muted(pluralStringResource(R.plurals.person_friend_count, friends.toInt(), friends.toLong()))
+                val count = pluralStringResource(R.plurals.person_friend_count, friends.toInt(), friends.toLong())
+                if (own) {
+                    // The web's link to /friends (0114); the touch target is 48 dp.
+                    TextButton(
+                        onClick = actions::friends,
+                        modifier = Modifier.heightIn(min = 48.dp).testTag("friend-count"),
+                        contentPadding = PaddingValues(0.dp),
+                    ) { Text(count, style = MaterialTheme.typography.bodyMedium, color = Palette.mutedFg) }
+                } else {
+                    Muted(count)
+                }
                 if (profile.relation != Relation.ONESELF && profile.relation != Relation.UNKNOWN) {
                     val mutual = profile.mutualCount
                     Muted(pluralStringResource(R.plurals.person_mutual_count, mutual.toInt(), mutual.toLong()))
