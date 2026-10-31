@@ -170,7 +170,7 @@ private struct SharedCardImage: View {
                     loaded.resizable().scaledToFill()
                 }
             }
-            .clipShape(RoundedRectangle(cornerRadius: 10))
+            .clipShape(RoundedRectangle(cornerRadius: BrandTokens.Radius.thumbnail))
             .accessibilityElement()
             .accessibilityLabel(Text("post_image_alt"))
             .accessibilityAddTraits(.isImage)

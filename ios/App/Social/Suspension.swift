@@ -88,7 +88,7 @@ struct SuspendedNotice: View {
             .padding(.horizontal, 16)
             .padding(.vertical, 12)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(BrandTokens.Colors.muted, in: RoundedRectangle(cornerRadius: 14))
+            .background(BrandTokens.Colors.muted, in: RoundedRectangle(cornerRadius: BrandTokens.Radius.card))
             .padding(.horizontal, 16)
             .padding(.vertical, 8)
             .accessibilityIdentifier("suspended-notice")

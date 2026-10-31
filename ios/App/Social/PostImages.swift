@@ -158,11 +158,11 @@ private struct PostImageView: View {
                     loaded.resizable().scaledToFill()
                 }
             }
-            .clipShape(RoundedRectangle(cornerRadius: 10))
+            .clipShape(RoundedRectangle(cornerRadius: BrandTokens.Radius.thumbnail))
             .accessibilityElement()
             .accessibilityLabel(label)
             .accessibilityAddTraits([.isImage, .isButton])
-            .contentShape(RoundedRectangle(cornerRadius: 10))
+            .contentShape(RoundedRectangle(cornerRadius: BrandTokens.Radius.thumbnail))
             .onTapGesture(perform: onOpen)
             .task(id: image.mediaId) {
                 guard loaded == nil, let images else { return }
@@ -213,7 +213,7 @@ private struct PickedThumbnail: View {
                     loaded.resizable().scaledToFill()
                 }
             }
-            .clipShape(RoundedRectangle(cornerRadius: 10))
+            .clipShape(RoundedRectangle(cornerRadius: BrandTokens.Radius.thumbnail))
             .overlay(alignment: .topTrailing) {
                 Button(action: onRemove) {
                     Image(systemName: "xmark")

@@ -195,7 +195,7 @@ private struct Banner: View {
                 .foregroundStyle(BrandTokens.Colors.fg)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(14)
-                .background(BrandTokens.Colors.secondarySubtle, in: RoundedRectangle(cornerRadius: 14))
+                .background(BrandTokens.Colors.secondarySubtle, in: RoundedRectangle(cornerRadius: Radii.card))
                 .padding(.horizontal, 16)
                 .padding(.top, 8)
         }
@@ -259,7 +259,7 @@ private struct TypingRow: View {
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 12)
-        .background(BrandTokens.Colors.muted, in: RoundedRectangle(cornerRadius: 18))
+        .background(BrandTokens.Colors.muted, in: RoundedRectangle(cornerRadius: Radii.bubble))
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 16)
         .padding(.vertical, 4)
@@ -327,11 +327,11 @@ private struct Composer: View {
                 .frame(minHeight: 40)
                 .background(
                     focused ? BrandTokens.Colors.surface : BrandTokens.Colors.muted,
-                    in: RoundedRectangle(cornerRadius: 20)
+                    in: RoundedRectangle(cornerRadius: Radii.field)
                 )
                 .overlay {
                     if focused {
-                        RoundedRectangle(cornerRadius: 20).strokeBorder(BrandTokens.Colors.fg, lineWidth: 1.5)
+                        RoundedRectangle(cornerRadius: Radii.field).strokeBorder(BrandTokens.Colors.fg, lineWidth: 1.5)
                     }
                 }
                 .padding(.vertical, 2)

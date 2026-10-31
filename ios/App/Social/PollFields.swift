@@ -23,7 +23,8 @@ struct PollFields: View {
                     .font(.sans(14))
                     .padding(.horizontal, 12)
                     .frame(minHeight: 40)
-                    .background(BrandTokens.Colors.muted, in: RoundedRectangle(cornerRadius: 10))
+                    .background(
+                        BrandTokens.Colors.muted, in: RoundedRectangle(cornerRadius: BrandTokens.Radius.thumbnail))
                     if fields.count > CommunityModel.pollMinOptions {
                         RoundButton(
                             systemImage: "minus.circle", label: "composer_poll_remove_option",

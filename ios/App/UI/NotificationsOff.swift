@@ -31,6 +31,6 @@ struct NotificationsOff: View {
         .padding(.top, 12)
         .padding(.bottom, 2)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(BrandTokens.Colors.secondarySubtle, in: RoundedRectangle(cornerRadius: 14))
+        .background(BrandTokens.Colors.secondarySubtle, in: RoundedRectangle(cornerRadius: BrandTokens.Radius.card))
     }
 }

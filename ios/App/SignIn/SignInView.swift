@@ -74,6 +74,6 @@ private struct InviteCard: View {
             .foregroundStyle(color)
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(14)
-            .background(BrandTokens.Colors.secondarySubtle, in: RoundedRectangle(cornerRadius: 14))
+            .background(BrandTokens.Colors.secondarySubtle, in: RoundedRectangle(cornerRadius: BrandTokens.Radius.card))
     }
 }

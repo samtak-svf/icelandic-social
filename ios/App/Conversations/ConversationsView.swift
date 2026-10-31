@@ -143,8 +143,8 @@ private struct SearchField: View {
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 10)
-        .background(BrandTokens.Colors.bg, in: RoundedRectangle(cornerRadius: 10))
-        .overlay(RoundedRectangle(cornerRadius: 10).stroke(BrandTokens.Colors.border))
+        .background(BrandTokens.Colors.bg, in: RoundedRectangle(cornerRadius: BrandTokens.Radius.thumbnail))
+        .overlay(RoundedRectangle(cornerRadius: BrandTokens.Radius.thumbnail).stroke(BrandTokens.Colors.border))
         .padding(.horizontal, 16)
         .padding(.vertical, 8)
     }
@@ -181,7 +181,7 @@ private struct Notice: View {
             .foregroundStyle(BrandTokens.Colors.fg)
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(14)
-            .background(BrandTokens.Colors.secondarySubtle, in: RoundedRectangle(cornerRadius: 14))
+            .background(BrandTokens.Colors.secondarySubtle, in: RoundedRectangle(cornerRadius: BrandTokens.Radius.card))
     }
 }
 

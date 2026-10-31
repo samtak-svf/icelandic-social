@@ -64,17 +64,24 @@ extension Font {
     }
 }
 
-/// The type the design repeats.
+/// The corner radii, by role. Short, so a call site stays on one line.
+typealias Radii = BrandTokens.Radius
+
+/// The type the design repeats, read from the generated tokens. Line heights are not applied: iOS lays text out
+/// at the font's own leading.
 enum TypeStyle {
+    private typealias Tokens = BrandTokens.Typography
+
     /// A tab's name across the top of its screen, in capitals.
-    static let screenTitle = Font.headline(30)
+    static let screenTitle = Font.headline(Tokens.screenTitle.size)
     /// The person's own name on "Ég".
-    static let accountName = Font.headline(24, relativeTo: .title)
+    static let accountName = Font.headline(Tokens.accountName.size, relativeTo: .title)
     /// Small capitals over a section or a day; tracked by `sectionTracking`.
-    static let sectionLabel = Font.sans(10, black: true, relativeTo: .caption2)
-    static let sectionTracking: CGFloat = 1.4
+    static let sectionLabel = Font.sans(
+        Tokens.sectionLabel.size, black: Tokens.sectionLabel.weight == 900, relativeTo: .caption2)
+    static let sectionTracking: CGFloat = Tokens.sectionLabel.tracking
     /// A message's text.
-    static let bubble = Font.sans(14.5, relativeTo: .body)
+    static let bubble = Font.sans(Tokens.bubble.size, relativeTo: .body)
     /// The time and read line under a message, a sender's name in a group.
-    static let meta = Font.sans(10, black: true, relativeTo: .caption2)
+    static let meta = Font.sans(Tokens.meta.size, black: Tokens.meta.weight == 900, relativeTo: .caption2)
 }

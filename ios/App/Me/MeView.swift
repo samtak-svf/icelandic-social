@@ -109,8 +109,11 @@ struct Panel<Content: View>: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) { content }
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(BrandTokens.Colors.surface, in: RoundedRectangle(cornerRadius: 18))
-            .overlay { RoundedRectangle(cornerRadius: 18).strokeBorder(BrandTokens.Colors.border, lineWidth: 1) }
+            .background(BrandTokens.Colors.surface, in: RoundedRectangle(cornerRadius: BrandTokens.Radius.bubble))
+            .overlay {
+                RoundedRectangle(cornerRadius: BrandTokens.Radius.bubble).strokeBorder(
+                    BrandTokens.Colors.border, lineWidth: 1)
+            }
     }
 }
 
@@ -132,10 +135,11 @@ private struct InviteCard: View {
                     if let link = model.link {
                         QRCode(text: link)
                             .padding(6)
-                            .background(.white, in: RoundedRectangle(cornerRadius: 12))
+                            .background(.white, in: RoundedRectangle(cornerRadius: BrandTokens.Radius.pane))
                             .frame(width: 104, height: 104)
                             .overlay {
-                                RoundedRectangle(cornerRadius: 12).strokeBorder(BrandTokens.Colors.border, lineWidth: 1)
+                                RoundedRectangle(cornerRadius: BrandTokens.Radius.pane).strokeBorder(
+                                    BrandTokens.Colors.border, lineWidth: 1)
                             }
                             .accessibilityElement()
                             .accessibilityLabel(Text("invite_link_title"))

@@ -33,7 +33,7 @@ struct CoverBand: View {
     }
 
     var body: some View {
-        let shape = RoundedRectangle(cornerRadius: 14)
+        let shape = RoundedRectangle(cornerRadius: BrandTokens.Radius.card)
         Color.clear
             .aspectRatio(ratio, contentMode: .fit)
             .overlay {

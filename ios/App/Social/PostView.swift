@@ -234,10 +234,10 @@ private struct CommentComposer: View {
                     .frame(minHeight: 40)
                     .background(
                         focused ? BrandTokens.Colors.surface : BrandTokens.Colors.muted,
-                        in: RoundedRectangle(cornerRadius: 20)
+                        in: RoundedRectangle(cornerRadius: BrandTokens.Radius.field)
                     )
                     .overlay {
-                        RoundedRectangle(cornerRadius: 20)
+                        RoundedRectangle(cornerRadius: BrandTokens.Radius.field)
                             .strokeBorder(focused ? BrandTokens.Colors.borderStrong : BrandTokens.Colors.border)
                     }
                     .onChange(of: draft) { _, text in

@@ -124,7 +124,9 @@ private struct ReportCard: View {
                     .lineLimit(1...4)
                     .padding(.horizontal, 12)
                     .padding(.vertical, 10)
-                    .background(BrandTokens.Colors.muted, in: RoundedRectangle(cornerRadius: 10))
+                    .background(
+                        BrandTokens.Colors.muted, in: RoundedRectangle(cornerRadius: BrandTokens.Radius.thumbnail)
+                    )
                     .onChange(of: reason) { _, text in
                         if text.count > ReportsModel.reasonLimit {
                             reason = String(text.prefix(ReportsModel.reasonLimit))
@@ -177,7 +179,7 @@ private struct ReportCard: View {
         .foregroundStyle(BrandTokens.Colors.fg)
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(12)
-        .background(BrandTokens.Colors.muted, in: RoundedRectangle(cornerRadius: 10))
+        .background(BrandTokens.Colors.muted, in: RoundedRectangle(cornerRadius: BrandTokens.Radius.thumbnail))
     }
 
     /// What a closed report came to: the decision, its reason, and who closed it and when (#360).
