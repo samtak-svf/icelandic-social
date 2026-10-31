@@ -46,11 +46,18 @@ const REACTION_FALLBACK = "👍";
 export function NoticeBadgeMark({
   badge,
   emoji,
-}: Readonly<{ badge: NoticeBadge; emoji: string | null }>) {
+  pair = false,
+}: Readonly<{
+  badge: NoticeBadge;
+  emoji: string | null;
+  /** Two faces fill the diagonal, so the mark takes the free top corner, as on Android. */
+  pair?: boolean;
+}>) {
   return (
     <span
       aria-hidden="true"
-      className="absolute -bottom-1 -right-1 flex size-5 items-center justify-center rounded-full border border-border bg-surface text-xs text-fg"
+      data-testid="notice-badge"
+      className={`absolute ${pair ? "-right-1 -top-1" : "-bottom-1 -right-1"} flex size-5 items-center justify-center rounded-full border border-border bg-surface text-xs text-fg`}
     >
       {badge === "emoji" ? (emoji ?? REACTION_FALLBACK) : GLYPH[badge]}
     </span>

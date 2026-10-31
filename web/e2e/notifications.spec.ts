@@ -61,6 +61,60 @@ test("two reactions are one row; seen clears the badge, a click reads the row; a
   await expect(a.getByLabel(strings.notification_kind_reaction)).toHaveValue("in_app");
 });
 
+// #452: on a row naming two people the badge sits on the free top corner, so
+// it never covers the second face's initials.
+test("a grouped row keeps its badge off the second face", async ({ browser }) => {
+  test.slow();
+  const a = await person(browser, "Auður Prófsdóttir");
+  const b = await person(browser, "Björn Prófsson");
+  const c = await person(browser, "Cecilía Prófsdóttir");
+  const community = await found(a, "open");
+  await join(b, community);
+  await join(c, community);
+  await write(a, strings.post_compose, strings.post_publish, "Fundur á morgun kl. 20.");
+  for (const [index, one] of [b, c].entries()) {
+    await one.goto(community);
+    const card = post(one, "Fundur á morgun");
+    await card.getByRole("button", { name: strings.post_like, exact: true }).click();
+    await expect(card.getByText(strings.reaction_count({ count: index + 1 }))).toBeVisible();
+  }
+  await runJobs();
+
+  await a.setViewportSize({ width: 390, height: 800 });
+  await a.reload();
+  await a.getByRole("link", { name: new RegExp(strings.notifications_title) }).click();
+  const names = ["Björn Prófsson", "Cecilía Prófsdóttir"] as const;
+  const sentence = (name: string, other: string) =>
+    a.getByText(strings.notice_reaction_two({ name, other }), { exact: true });
+  const both = sentence(names[0], names[1]).or(sentence(names[1], names[0]));
+  await expect(both).toBeVisible();
+  const row = a.getByRole("listitem").filter({ has: both });
+
+  const faces = row.getByTestId("notice-face");
+  await expect(faces).toHaveCount(2);
+  const badge = row.getByTestId("notice-badge");
+  await expect(badge).toBeVisible();
+  const [back, front, mark] = await Promise.all([
+    faces.nth(0).boundingBox(),
+    faces.nth(1).boundingBox(),
+    badge.boundingBox(),
+  ]);
+  if (back === null || front === null || mark === null)
+    throw new Error("a face or the badge has no box");
+  // The face drawn first sits lower right: the second person's.
+  const second = front.y > back.y ? front : back;
+  const apart =
+    mark.x + mark.width <= second.x ||
+    second.x + second.width <= mark.x ||
+    mark.y + mark.height <= second.y ||
+    second.y + second.height <= mark.y;
+  expect(
+    apart,
+    `badge ${JSON.stringify(mark)} overlaps second face ${JSON.stringify(second)}`,
+  ).toBe(true);
+  await a.screenshot({ path: process.env["PAIR_SHOT"] ?? "test-results/web-pair.png" });
+});
+
 // #349: the notifications open over the page the bell was pressed on, and
 // back returns there, as the apps now do.
 test("back from the bell returns to the page it was pressed on", async ({ browser }) => {
