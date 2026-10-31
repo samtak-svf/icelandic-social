@@ -149,7 +149,7 @@ private struct DeviceRow: View {
                 .font(.system(size: 16))
                 .foregroundStyle(BrandTokens.Colors.fg)
                 .frame(width: 30, height: 30)
-                .background(BrandTokens.Colors.muted, in: RoundedRectangle(cornerRadius: 8))
+                .background(BrandTokens.Colors.muted, in: RoundedRectangle(cornerRadius: BrandTokens.Radius.well))
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 2) {
                 Text(verbatim: deviceTitle(device))

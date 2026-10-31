@@ -87,8 +87,8 @@ struct SocialSearchField: View {
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 10)
-        .background(BrandTokens.Colors.surface, in: RoundedRectangle(cornerRadius: 10))
-        .overlay(RoundedRectangle(cornerRadius: 10).stroke(BrandTokens.Colors.border))
+        .background(BrandTokens.Colors.surface, in: RoundedRectangle(cornerRadius: Radii.thumbnail))
+        .overlay(RoundedRectangle(cornerRadius: Radii.thumbnail).stroke(BrandTokens.Colors.border))
         .padding(.horizontal, 16)
         .padding(.vertical, 8)
     }
@@ -351,7 +351,7 @@ struct PostCard: View {
                         }
                         .padding(.horizontal, 12)
                         .padding(.vertical, 8)
-                        .background(BrandTokens.Colors.muted, in: RoundedRectangle(cornerRadius: 16))
+                        .background(BrandTokens.Colors.muted, in: RoundedRectangle(cornerRadius: Radii.postBubble))
                     }
                 }
                 if canWrite {
@@ -361,8 +361,8 @@ struct PostCard: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(.horizontal, 16)
                         .frame(minHeight: 40)
-                        .background(BrandTokens.Colors.muted, in: RoundedRectangle(cornerRadius: 20))
-                        .overlay { RoundedRectangle(cornerRadius: 20).strokeBorder(BrandTokens.Colors.border) }
+                        .background(BrandTokens.Colors.muted, in: RoundedRectangle(cornerRadius: Radii.field))
+                        .overlay { RoundedRectangle(cornerRadius: Radii.field).strokeBorder(BrandTokens.Colors.border) }
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -508,7 +508,7 @@ struct CommentCard: View {
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
-        .background(BrandTokens.Colors.muted, in: RoundedRectangle(cornerRadius: 16))
+        .background(BrandTokens.Colors.muted, in: RoundedRectangle(cornerRadius: Radii.postBubble))
         .overlay(alignment: .bottomTrailing) {
             if comment.likes > 0 {
                 HStack(spacing: 3) {
@@ -651,10 +651,10 @@ struct SocialComposer<Above: View, Leading: View>: View {
                     .frame(minHeight: 40)
                     .background(
                         focused ? BrandTokens.Colors.surface : BrandTokens.Colors.muted,
-                        in: RoundedRectangle(cornerRadius: 20)
+                        in: RoundedRectangle(cornerRadius: Radii.field)
                     )
                     .overlay {
-                        RoundedRectangle(cornerRadius: 20)
+                        RoundedRectangle(cornerRadius: Radii.field)
                             .strokeBorder(focused ? BrandTokens.Colors.borderStrong : BrandTokens.Colors.border)
                     }
                     .onChange(of: draft) { _, text in
@@ -699,7 +699,7 @@ struct SocialNote: View {
             .fixedSize(horizontal: false, vertical: true)
             .padding(.horizontal, 16)
             .padding(.vertical, 12)
-            .background(BrandTokens.Colors.muted, in: RoundedRectangle(cornerRadius: 14))
+            .background(BrandTokens.Colors.muted, in: RoundedRectangle(cornerRadius: Radii.card))
     }
 }
 

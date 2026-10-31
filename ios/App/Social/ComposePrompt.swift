@@ -23,8 +23,13 @@ struct ComposePrompt: View {
                         .padding(.horizontal, 16)
                         .padding(.vertical, 10)
                         .frame(minHeight: 40)
-                        .background(BrandTokens.Colors.muted, in: RoundedRectangle(cornerRadius: 20))
-                        .overlay { RoundedRectangle(cornerRadius: 20).strokeBorder(BrandTokens.Colors.border) }
+                        .background(
+                            BrandTokens.Colors.muted, in: RoundedRectangle(cornerRadius: BrandTokens.Radius.field)
+                        )
+                        .overlay {
+                            RoundedRectangle(cornerRadius: BrandTokens.Radius.field).strokeBorder(
+                                BrandTokens.Colors.border)
+                        }
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)

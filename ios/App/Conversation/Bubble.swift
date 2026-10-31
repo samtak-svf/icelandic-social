@@ -251,7 +251,7 @@ struct Bubble: View {
         return words.joined(separator: " · ")
     }
 
-    private static let radius: CGFloat = 18
+    private static let radius = BrandTokens.Radius.bubble
     private static let tail: CGFloat = 5
     private static let share: CGFloat = 0.76
 }

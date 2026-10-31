@@ -104,12 +104,12 @@ struct PollView: View {
                         .scaleEffect(x: CGFloat(percent) / 100, anchor: .leading)
                 }
             }
-            .clipShape(RoundedRectangle(cornerRadius: 10))
+            .clipShape(RoundedRectangle(cornerRadius: BrandTokens.Radius.thumbnail))
             .overlay {
-                RoundedRectangle(cornerRadius: 10)
+                RoundedRectangle(cornerRadius: BrandTokens.Radius.thumbnail)
                     .strokeBorder(mine ? BrandTokens.Colors.primary : BrandTokens.Colors.border, lineWidth: 1)
             }
-            .contentShape(RoundedRectangle(cornerRadius: 10))
+            .contentShape(RoundedRectangle(cornerRadius: BrandTokens.Radius.thumbnail))
         }
         .buttonStyle(.plain)
         .disabled(!canVote || poll.closed || mine)

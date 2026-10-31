@@ -20,7 +20,7 @@ struct WallCover: View {
             if let wall = model.wall, wall.cover != nil {
                 CoverBand(cover: wall.coverOf, alt: "wall_cover_alt")
             } else {
-                RoundedRectangle(cornerRadius: 14).fill(BrandTokens.Colors.muted).frame(height: 96)
+                RoundedRectangle(cornerRadius: BrandTokens.Radius.card).fill(BrandTokens.Colors.muted).frame(height: 96)
                     .accessibilityHidden(true)
             }
             if own && (controls.pick || controls.remove) { menu(controls).padding(8) }

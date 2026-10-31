@@ -32,7 +32,7 @@ struct ProblemCard: View {
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(BrandTokens.Colors.muted, in: RoundedRectangle(cornerRadius: 12))
+        .background(BrandTokens.Colors.muted, in: RoundedRectangle(cornerRadius: BrandTokens.Radius.pane))
     }
 
     /// The line naming the request id, or nil when no server refused the request.

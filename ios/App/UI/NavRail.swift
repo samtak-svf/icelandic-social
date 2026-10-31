@@ -34,7 +34,7 @@ struct NavRail<Tab: Hashable>: View {
                     .frame(maxWidth: .infinity, minHeight: 60)
                     .background(
                         selected ? BrandTokens.Colors.secondarySubtle : Color.clear,
-                        in: RoundedRectangle(cornerRadius: 12)
+                        in: RoundedRectangle(cornerRadius: BrandTokens.Radius.pane)
                     )
                     .contentShape(Rectangle())
                 }

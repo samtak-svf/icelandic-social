@@ -44,7 +44,7 @@ struct PendingStrip: View {
             }
         }
         .frame(width: Self.size, height: Self.size)
-        .clipShape(RoundedRectangle(cornerRadius: 10))
+        .clipShape(RoundedRectangle(cornerRadius: BrandTokens.Radius.thumbnail))
         .task(id: pending.path) {
             let (path, longest) = (pending.path, Self.size * scale * 2)
             image = await Task.detached(priority: .userInitiated) { decodePhoto(path, longest: longest) }.value
@@ -59,6 +59,6 @@ struct PendingStrip: View {
         .foregroundStyle(BrandTokens.Colors.fg)
         .padding(.horizontal, 12)
         .padding(.vertical, 10)
-        .background(BrandTokens.Colors.muted, in: RoundedRectangle(cornerRadius: 10))
+        .background(BrandTokens.Colors.muted, in: RoundedRectangle(cornerRadius: BrandTokens.Radius.thumbnail))
     }
 }

@@ -183,8 +183,11 @@ struct FrameCropper: View {
                     .onChange(of: box.size) { _, new in size = new }
                 }
             }
-            .clipShape(RoundedRectangle(cornerRadius: 14))
-            .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(BrandTokens.Colors.borderStrong, lineWidth: 1))
+            .clipShape(RoundedRectangle(cornerRadius: BrandTokens.Radius.card))
+            .overlay(
+                RoundedRectangle(cornerRadius: BrandTokens.Radius.card).strokeBorder(
+                    BrandTokens.Colors.borderStrong, lineWidth: 1)
+            )
             .contentShape(Rectangle())
             .gesture(drag.simultaneously(with: pinch))
             .accessibilityElement()

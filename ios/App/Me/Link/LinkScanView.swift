@@ -71,7 +71,7 @@ struct LinkView: View {
                     onCode: { text in Task { await model.scanned(text) } },
                     onDenied: { cameraDenied = true }
                 )
-                .clipShape(RoundedRectangle(cornerRadius: 18))
+                .clipShape(RoundedRectangle(cornerRadius: BrandTokens.Radius.bubble))
                 .padding(.horizontal, 16)
             }
             Text("device_link_scan_hint")
@@ -96,7 +96,7 @@ struct LinkView: View {
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
                 .padding(14)
-                .background(BrandTokens.Colors.surface, in: RoundedRectangle(cornerRadius: 12))
+                .background(BrandTokens.Colors.surface, in: RoundedRectangle(cornerRadius: BrandTokens.Radius.pane))
             Button {
                 Task { await model.submitDraft() }
             } label: {

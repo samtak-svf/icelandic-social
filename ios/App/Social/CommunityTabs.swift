@@ -101,8 +101,8 @@ struct GalleryTile: View {
                 .overlay {
                     if let loaded { loaded.resizable().scaledToFill() }
                 }
-                .clipShape(RoundedRectangle(cornerRadius: 6))
-                .contentShape(RoundedRectangle(cornerRadius: 6))
+                .clipShape(RoundedRectangle(cornerRadius: BrandTokens.Radius.md))
+                .contentShape(RoundedRectangle(cornerRadius: BrandTokens.Radius.md))
         }
         .buttonStyle(.plain)
         .accessibilityLabel(Text("post_image_alt"))

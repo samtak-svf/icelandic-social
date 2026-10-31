@@ -102,7 +102,7 @@ struct FeaturedCard: View {
                 .overlay {
                     if let thumb { thumb.resizable().scaledToFill() }
                 }
-                .clipShape(RoundedRectangle(cornerRadius: 10))
+                .clipShape(RoundedRectangle(cornerRadius: BrandTokens.Radius.thumbnail))
                 .accessibilityHidden(true)
                 .task(id: image.mediaId) {
                     guard thumb == nil, let images else { return }

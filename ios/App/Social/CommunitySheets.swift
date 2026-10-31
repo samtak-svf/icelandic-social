@@ -76,7 +76,7 @@ struct CommunityAside: View {
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .overlay { RoundedRectangle(cornerRadius: 12).strokeBorder(BrandTokens.Colors.border) }
+        .overlay { RoundedRectangle(cornerRadius: BrandTokens.Radius.pane).strokeBorder(BrandTokens.Colors.border) }
     }
 }
 
