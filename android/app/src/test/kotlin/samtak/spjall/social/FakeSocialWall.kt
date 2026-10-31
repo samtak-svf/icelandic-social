@@ -36,6 +36,10 @@ open class FakeSocialWall :
     /** What the next wall write answers with instead of succeeding; a test sets it to a refusal. */
     var wallFailure: Throwable? = null
 
+    /** The media and the poll the last wall post was written with. */
+    var lastWallMedia: List<String> = emptyList()
+    var lastWallPoll: List<String>? = null
+
     private fun failing() {
         wallFailure?.let { throw it }
     }
@@ -69,6 +73,8 @@ open class FakeSocialWall :
     ): Post {
         call("createWallPost $audience $body")
         failing()
+        lastWallMedia = media
+        lastWallPoll = poll
         return post("wp${wallPostsOf.values.sumOf { it.size } + 1}", communityId = "w-me", body = body, author = self)
             .copy(wallOwner = self.accountId, audience = audience)
             .also { wallPostsOf.getOrPut(self.accountId) { mutableListOf() }.add(0, it) }
@@ -76,6 +82,7 @@ open class FakeSocialWall :
 
     override fun uploadWallImage(path: String): PostImage {
         call("uploadWallImage $path")
+        failing()
         return PostImage("m1", 100u, 100u)
     }
 

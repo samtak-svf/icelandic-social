@@ -1,7 +1,9 @@
 package samtak.spjall.social
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -11,8 +13,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Button
@@ -41,7 +45,10 @@ import samtak.spjall.brand.R
 import samtak.spjall.core.Author
 import samtak.spjall.core.PersonProfile
 import samtak.spjall.core.Relation
+import samtak.spjall.core.ReportTarget
+import samtak.spjall.core.ReportTargetKind
 import samtak.spjall.me.Confirm
+import samtak.spjall.ui.AppIcons
 import samtak.spjall.ui.Avatar
 import samtak.spjall.ui.AvatarKind
 import samtak.spjall.ui.NameWithMark
@@ -65,7 +72,10 @@ fun PersonScreen(
 ) {
     val profile = state.profile
     val own = profile?.relation == Relation.ONESELF
-    LaunchedEffect(state.blocked) { if (state.blocked) actions.back() }
+    LaunchedEffect(state.blocked) { if (state.blocked) actions.blocked() }
+    // The wall post being reported; the dialog closes once the report is sent.
+    var reportingPost by rememberSaveable { mutableStateOf<String?>(null) }
+    if (reportingPost in state.reportedPosts) reportingPost = null
     Surface(modifier = Modifier.fillMaxSize(), color = Palette.bg, contentColor = Palette.fg) {
         Column(modifier = Modifier.windowInsetsPadding(WindowInsets.safeDrawing.only(SUB_SCREEN_SIDES))) {
             val title = profile?.let { it.name ?: stringResource(R.string.person_unnamed) }.orEmpty()
@@ -80,9 +90,18 @@ fun PersonScreen(
                 state.problem?.let { problem -> item(key = "problem") { ProblemCard(problem) { actions.retry() } } }
                 if (state.reported) item(key = "reported") { Muted(stringResource(R.string.report_sent)) }
                 profile?.let { item(key = "profile") { ProfileCard(it, state, !state.busy, actions) } }
-                profile?.let { wallTabs(it, state, own, actions) }
+                profile?.let { wallTabs(it, state, own, actions) { reportingPost = it } }
             }
         }
+    }
+    reportingPost?.let { postId ->
+        ReportDialog(
+            onSend = { reason, note ->
+                reportingPost = null
+                actions.report(ReportTarget(ReportTargetKind.POST, postId), reason, note)
+            },
+            onDismiss = { reportingPost = null },
+        )
     }
 }
 
@@ -95,14 +114,9 @@ private fun ProfileCard(
 ) {
     val own = profile.relation == Relation.ONESELF
     SocialCard {
-        CoverBand(wallCoverOf(profile.accountId, state.wall?.cover), stringResource(R.string.wall_cover_alt))
+        CoverWithCamera(profile.accountId, state, own, actions)
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
-            Avatar(
-                name = profile.name,
-                kind = if (profile.verified) AvatarKind.Verified else AvatarKind.Unverified,
-                size = 64.dp,
-                photo = profile.photo?.let { PhotoOf(profile.accountId, it) },
-            )
+            AvatarWithCamera(profile, own, actions)
             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 NameWithMark(
                     name = profile.name ?: stringResource(R.string.person_unnamed),
@@ -119,6 +133,7 @@ private fun ProfileCard(
             }
             if (own) {
                 IconButton(onClick = actions::settings, modifier = Modifier.testTag("gear")) {
+                    // settings_title: the gear's label is tab_me until that string has an android surface.
                     Icon(Icons.Filled.Settings, stringResource(R.string.tab_me))
                 }
             } else if (profile.relation != Relation.UNKNOWN) {
@@ -129,6 +144,57 @@ private fun ProfileCard(
         state.wall?.let { Muted(stringResource(R.string.wall_joined, monthName(it.joinedMonth))) }
         RelationPart(profile, enabled, actions)
         SnoozePart(profile, enabled, actions)
+    }
+}
+
+@Composable
+private fun CoverWithCamera(
+    accountId: String,
+    state: PersonViewModel.State,
+    own: Boolean,
+    actions: PersonActions,
+) {
+    Box {
+        CoverBand(wallCoverOf(accountId, state.wall?.cover), stringResource(R.string.wall_cover_alt))
+        // The web's camera on the cover; a suspended account may only take the cover off, in About.
+        if (own && !suspended()) {
+            IconButton(
+                onClick = actions::chooseCover,
+                modifier = Modifier.align(Alignment.TopEnd).testTag("cover-camera"),
+            ) {
+                Icon(AppIcons.Camera, stringResource(R.string.community_cover_choose), tint = Palette.fg)
+            }
+        }
+    }
+}
+
+@Composable
+private fun AvatarWithCamera(
+    profile: PersonProfile,
+    own: Boolean,
+    actions: PersonActions,
+) {
+    Box {
+        Avatar(
+            name = profile.name,
+            kind = if (profile.verified) AvatarKind.Verified else AvatarKind.Unverified,
+            size = 64.dp,
+            photo = profile.photo?.let { PhotoOf(profile.accountId, it) },
+        )
+        // The picture is changed in the settings (the web's camera on the avatar opens its photo controls).
+        if (own && !suspended()) {
+            IconButton(
+                onClick = actions::settings,
+                modifier = Modifier.align(Alignment.BottomEnd).size(CAMERA.dp).testTag("avatar-camera"),
+            ) {
+                Icon(
+                    AppIcons.Camera,
+                    stringResource(R.string.photo_change),
+                    tint = Palette.fg,
+                    modifier = Modifier.size(CAMERA_MARK.dp).background(Palette.surface, CircleShape),
+                )
+            }
+        }
     }
 }
 
@@ -257,3 +323,6 @@ internal fun Shared(
         }
     }
 }
+
+private const val CAMERA = 28
+private const val CAMERA_MARK = 22

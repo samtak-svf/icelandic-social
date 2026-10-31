@@ -2,6 +2,7 @@ package samtak.spjall.social
 
 import samtak.spjall.core.FriendSort
 import samtak.spjall.core.ReportReason
+import samtak.spjall.core.ReportTarget
 import samtak.spjall.core.WallAudience
 
 /** What the friends screen asks of its view model, so a screen test can stand in for it (decision 0114). */
@@ -27,7 +28,9 @@ interface FriendsActions {
 
 /** What the person screen asks of its view model. */
 @Suppress("TooManyFunctions")
-interface PersonActions {
+interface PersonActions :
+    PollActions,
+    Attaching {
     fun back()
 
     fun retry()
@@ -87,10 +90,39 @@ interface PersonActions {
 
     fun removeCover() {}
 
+    /** Reports the account, or one of its wall posts. */
     fun report(
+        target: ReportTarget,
         reason: ReportReason,
         note: String,
     ) {}
 
     fun block() {}
+
+    /** The account was blocked: the web goes to the friends list, whichever way it came (0114). */
+    fun blocked() {}
+
+    override fun addImage() {}
+
+    override fun removeImage(path: String) {}
+
+    override fun togglePoll() {}
+
+    override fun pollOption(
+        index: Int,
+        text: String,
+    ) {}
+
+    override fun addPollOption() {}
+
+    override fun removePollOption(index: Int) {}
+
+    override fun vote(
+        postId: String,
+        optionId: String,
+    ) {}
+
+    override fun withdrawVote(postId: String) {}
+
+    override fun closePoll(postId: String) {}
 }

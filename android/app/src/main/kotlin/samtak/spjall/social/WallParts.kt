@@ -33,6 +33,8 @@ import androidx.compose.ui.unit.dp
 import samtak.spjall.brand.R
 import samtak.spjall.core.PersonProfile
 import samtak.spjall.core.PostImage
+import samtak.spjall.core.ReportTarget
+import samtak.spjall.core.ReportTargetKind
 import samtak.spjall.core.WallAudience
 import samtak.spjall.me.Confirm
 import samtak.spjall.ui.Palette
@@ -59,6 +61,7 @@ internal fun LazyListScope.wallTabs(
     state: PersonViewModel.State,
     own: Boolean,
     actions: PersonActions,
+    reportPost: (String) -> Unit,
 ) {
     item(key = "tabs") {
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -83,7 +86,7 @@ internal fun LazyListScope.wallTabs(
         }
     }
     when (state.tab) {
-        WallTab.POSTS -> postsTab(state, own, actions)
+        WallTab.POSTS -> postsTab(state, own, actions, reportPost)
         WallTab.ABOUT -> aboutTab(profile, state, own, actions)
         WallTab.IMAGES -> imagesTab(state, actions)
     }
@@ -93,6 +96,7 @@ private fun LazyListScope.postsTab(
     state: PersonViewModel.State,
     own: Boolean,
     actions: PersonActions,
+    reportPost: (String) -> Unit,
 ) {
     if (own) item(key = "composer") { WallComposer(state, actions) }
     if (state.loaded && state.posts.isEmpty()) item(key = "posts-empty") { Muted(stringResource(R.string.posts_empty)) }
@@ -101,14 +105,16 @@ private fun LazyListScope.postsTab(
         PostCard(
             post = post,
             reacting = false,
-            reported = false,
+            reported = post.postId in state.reportedPosts,
             callbacks =
                 PostCardCallbacks(
                     onReact = { actions.react(post.postId, it) },
-                    onReport = { actions.openPost(post.postId) },
+                    onReport = { reportPost(post.postId) },
                     onOpen = { actions.openPost(post.postId) },
                     onComment = { actions.openPost(post.postId) },
                     onDelete = { actions.deletePost(post.postId) }.takeIf { post.mine },
+                    poll = actions.callbacksFor(post.postId, mayClose = post.mine),
+                    answering = post.postId in state.answering,
                 ),
         )
         if (own && post.audience != null) {
@@ -134,7 +140,9 @@ private fun WallComposer(
             onText = actions::draft,
             onSend = actions::publish,
             modifier = Modifier.testTag("wall-composer"),
+            ready = state.postable,
         ) {
+            ComposerAttachments(state.picked, state.poll, state.imageNotice, state.publishing || suspended(), actions)
             Text(stringResource(R.string.wall_audience_label), style = MaterialTheme.typography.labelMedium)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 WallAudience.entries.forEach { audience ->
@@ -165,6 +173,8 @@ private fun AudienceMenu(
     onChange: (WallAudience) -> Unit,
 ) {
     var open by rememberSaveable { mutableStateOf(false) }
+    // A suspended account may not change who reads a post (0115).
+    if (suspended()) return
     Box {
         TextButton(onClick = { open = true }, modifier = Modifier.testTag(tag)) {
             Text(stringResource(audienceLabel(audience)))
@@ -205,6 +215,8 @@ private fun BioEditor(
 ) {
     var text by rememberSaveable(saved) { mutableStateOf(saved) }
     val tooLong = text.length > BIO_MAX
+    // A suspended account may clear the bio, not write it (0115).
+    val clearOnly = suspended()
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         OutlinedTextField(
             value = text,
@@ -217,7 +229,7 @@ private fun BioEditor(
         )
         OutlinedButton(
             onClick = { actions.saveBio(text) },
-            enabled = !tooLong && text.trim() != saved,
+            enabled = !tooLong && text.trim() != saved && (!clearOnly || text.isBlank()),
             modifier = Modifier.heightIn(min = 48.dp).testTag("bio-save"),
         ) { Text(stringResource(R.string.save)) }
     }
@@ -229,13 +241,19 @@ private fun CoverControls(
     actions: PersonActions,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        OutlinedButton(
-            onClick = actions::chooseCover,
-            modifier = Modifier.heightIn(min = 48.dp).testTag("cover-choose"),
-        ) { Text(stringResource(R.string.community_cover_choose)) }
+        // A suspended account may take the cover off, not put one on (0115).
+        val removeOnly = suspended()
+        if (!removeOnly) {
+            OutlinedButton(
+                onClick = actions::chooseCover,
+                modifier = Modifier.heightIn(min = 48.dp).testTag("cover-choose"),
+            ) { Text(stringResource(R.string.community_cover_choose)) }
+        }
         if (hasCover) {
-            OutlinedButton(onClick = actions::reframeCover, modifier = Modifier.heightIn(min = 48.dp)) {
-                Text(stringResource(R.string.image_frames_title))
+            if (!removeOnly) {
+                OutlinedButton(onClick = actions::reframeCover, modifier = Modifier.heightIn(min = 48.dp)) {
+                    Text(stringResource(R.string.image_frames_title))
+                }
             }
             OutlinedButton(
                 onClick = actions::removeCover,
@@ -309,7 +327,7 @@ internal fun PersonMenu(
         ReportDialog(
             onSend = { reason, note ->
                 reporting = false
-                actions.report(reason, note)
+                actions.report(ReportTarget(ReportTargetKind.ACCOUNT, profile.accountId), reason, note)
             },
             onDismiss = { reporting = false },
         )

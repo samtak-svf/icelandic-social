@@ -16,6 +16,8 @@ import org.junit.Before
 import org.junit.Test
 import samtak.spjall.core.CoreException
 import samtak.spjall.core.ReportReason
+import samtak.spjall.core.ReportTarget
+import samtak.spjall.core.ReportTargetKind
 import samtak.spjall.core.WallAudience
 
 /** The wall on the person screen (0115): report and block, the composer, the audience, the bio. */
@@ -59,7 +61,7 @@ class PersonWallViewModelTest {
     fun reportingTargetsTheAccountAndShowsItWasSent() =
         runTest(dispatcher) {
             val model = model()
-            model.report(ReportReason.SPAM, "note")
+            model.report(ReportTarget(ReportTargetKind.ACCOUNT, "a2"), ReportReason.SPAM, "note")
             advanceUntilIdle()
             assertTrue(social.calls.any { it.startsWith("report") && "a2" in it })
             assertTrue(model.state.value.reported)

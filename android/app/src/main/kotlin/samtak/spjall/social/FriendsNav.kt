@@ -10,6 +10,7 @@ import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.composable
 import samtak.spjall.core.FriendSort
 import samtak.spjall.core.ReportReason
+import samtak.spjall.core.ReportTarget
 import samtak.spjall.core.WallAudience
 import samtak.spjall.ui.rememberBack
 
@@ -92,6 +93,7 @@ internal fun PersonRoute(
     settings: () -> Unit = {},
     chooseCover: () -> Unit = {},
     reframeCover: () -> Unit = {},
+    addImage: () -> Unit = {},
 ) {
     val state by model.state.collectAsStateWithLifecycle()
     val back = rememberBack(nav)
@@ -157,11 +159,38 @@ internal fun PersonRoute(
             override fun removeCover() = model.removeCover()
 
             override fun report(
+                target: ReportTarget,
                 reason: ReportReason,
                 note: String,
-            ) = model.report(reason, note)
+            ) = model.report(target, reason, note)
 
             override fun block() = model.block()
+
+            override fun blocked() = nav.navigate(SocialRoutes.FRIENDS)
+
+            override fun addImage() = addImage()
+
+            override fun removeImage(path: String) = model.unpick(path)
+
+            override fun togglePoll() = model.togglePoll()
+
+            override fun pollOption(
+                index: Int,
+                text: String,
+            ) = model.pollOption(index, text)
+
+            override fun addPollOption() = model.addPollOption()
+
+            override fun removePollOption(index: Int) = model.removePollOption(index)
+
+            override fun vote(
+                postId: String,
+                optionId: String,
+            ) = model.vote(postId, optionId)
+
+            override fun withdrawVote(postId: String) = model.withdrawVote(postId)
+
+            override fun closePoll(postId: String) = model.closePoll(postId)
         },
         tab = tab,
     )

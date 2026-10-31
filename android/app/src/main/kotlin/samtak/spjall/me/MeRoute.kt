@@ -19,6 +19,7 @@ import samtak.spjall.BuildConfig
 import samtak.spjall.brand.R
 import samtak.spjall.core.coreVersion
 import samtak.spjall.frames.LocalFrameSession
+import samtak.spjall.social.IMAGES
 import samtak.spjall.social.PersonRoute
 import samtak.spjall.social.PersonViewModel
 import samtak.spjall.social.SocialRoutes
@@ -132,6 +133,14 @@ internal fun OwnWallRoute(
         rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
             uri?.let { frames.open(wall.coverRequest { graph.files.master(it) }) }
         }
+    val images =
+        rememberLauncherForActivityResult(ActivityResultContracts.PickMultipleVisualMedia(IMAGES)) { uris ->
+            wall.pick(uris.map(graph.files::pickedPhoto))
+        }
+    val image =
+        rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
+            uri?.let { wall.pick(listOf(graph.files.pickedPhoto(it))) }
+        }
     WithSocialHost(
         graph.social,
         openStatements = { nav.navigate(SocialRoutes.STATEMENTS) },
@@ -144,6 +153,12 @@ internal fun OwnWallRoute(
             settings = { nav.navigate(AppRoutes.SETTINGS) },
             chooseCover = { cover.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
             reframeCover = { frames.open(wall.reframeCoverRequest(graph.files::temp)) },
+            addImage = {
+                if (wall.roomForImage()) {
+                    val request = PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                    if (wall.room() > 1) images.launch(request) else image.launch(request)
+                }
+            },
         )
     }
 }
