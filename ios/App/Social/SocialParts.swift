@@ -285,7 +285,7 @@ struct PostCard: View {
                 }
                 .buttonStyle(.plain)
             }
-            if let onShare {
+            if let onShare, post.canBeSent {
                 Button(action: onShare) {
                     ActionLabel(systemImage: "arrowshape.turn.up.right", text: "share", active: false)
                 }

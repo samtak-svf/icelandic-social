@@ -82,7 +82,12 @@ final class HomeModel {
     /// alone (`web/src/social/paged.ts:7`), so coming back to the app does not reload.
     func refresh() async { await load() }
 
-    func retry() async { await failed?() }
+    /// Clears the problem whatever failed: a refused reaction has nothing to repeat, and while a problem stands the
+    /// sentinel asks for no more pages.
+    func retry() async {
+        problem = nil
+        await failed?()
+    }
 
     /// There is nothing to show and nothing more to ask for: the first page came in and the list has ended. An
     /// empty list with a cursor is a quiet stretch, not an empty feed (decision 0116).

@@ -140,6 +140,39 @@ final class HomeTests: XCTestCase {
         XCTAssertNotNil(model.problem)
     }
 
+    func testRetryAfterARefusedReactionClearsTheProblemAndPagingGoesOn() async {
+        let model = await home(pages: [
+            .more(posts: [makePost("p1", "c1")], next: "1"),
+            .end(posts: [makePost("p2", "c1")]),
+        ])
+        social.failOn = "react"
+        await model.react("p1", "👍")
+        XCTAssertFalse(model.wantsMore, "a standing problem holds the sentinel")
+        social.failOn = nil
+        await model.retry()
+        XCTAssertNil(model.problem, "nothing to repeat, and the card goes")
+        XCTAssertTrue(model.wantsMore)
+    }
+
+    func testRetryOfAFailedPageClearsTheProblemOnceItComesIn() async {
+        let model = await home(pages: [
+            .more(posts: [makePost("p1", "c1")], next: "1"),
+            .end(posts: [makePost("p2", "c1")]),
+        ])
+        social.failOn = "home"
+        await model.more()
+        XCTAssertNotNil(model.problem)
+        social.failOn = nil
+        await model.retry()
+        XCTAssertEqual(model.posts.map(\.postId), ["p1", "p2"])
+        XCTAssertNil(model.problem)
+    }
+
+    func testAWallPostCannotBeSentToAConversation() {
+        XCTAssertFalse(wallPost("w1").canBeSent)
+        XCTAssertTrue(makePost("p1", "c1").canBeSent)
+    }
+
     // MARK: Composing
 
     func testTheComposerStartsWhereTheCoreSaysAndAnonymousNeedsACommunityThatAllowsIt() async {

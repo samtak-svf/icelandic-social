@@ -68,3 +68,8 @@ final class PostActions {
         voting.remove(postId)
     }
 }
+
+extension Post {
+    /// A post may be sent to a conversation. A wall post may not: its card always reads as unavailable (decision 0115).
+    var canBeSent: Bool { wallOwner == nil }
+}
