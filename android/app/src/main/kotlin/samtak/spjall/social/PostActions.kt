@@ -43,8 +43,11 @@ interface PostActions {
     /** Deletes this account's own post, once it confirmed. */
     fun deletePost()
 
-    /** Deletes this account's own comment, once it confirmed. */
-    fun deleteComment(commentId: String)
+    /** Deletes this account's own comment, once it confirmed; with a reason, removes another's from its own wall. */
+    fun deleteComment(
+        commentId: String,
+        reason: String? = null,
+    )
 
     fun report(
         target: ReportTarget,

@@ -73,6 +73,7 @@ internal fun CommentItem(
             kind = if (comment.author.verified) AvatarKind.Verified else AvatarKind.Unverified,
             size = 32.dp,
             photo = comment.author.photoOf(),
+            modifier = Modifier.opensPerson(comment.author.accountId),
         )
         Column(modifier = Modifier.weight(1f)) {
             Box {
@@ -98,7 +99,11 @@ private fun CommentBubble(comment: Comment) {
     ) {
         StateMark(comment.state)
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            Text(text = comment.author.shownName(), style = MaterialTheme.typography.labelLarge)
+            Text(
+                text = comment.author.shownName(),
+                style = MaterialTheme.typography.labelLarge,
+                modifier = Modifier.opensPerson(comment.author.accountId),
+            )
             RoleBadge(comment.author.role)
         }
         if (comment.body.isNotEmpty()) Text(text = comment.body, style = MaterialTheme.typography.bodyMedium)

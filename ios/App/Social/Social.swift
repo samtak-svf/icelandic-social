@@ -6,7 +6,7 @@ import SpjallCore
 /// it is kept apart from `Account`, whose conversations are end-to-end encrypted: nothing here is written to the
 /// conversation store or to the device at all. Every call asks the server and blocks on the network, so the
 /// models make them off the main actor.
-protocol Social: Sendable {
+protocol Social: Sendable, Friending, Walling, Homing {
     /// Whether Kenni vouches for this account: only a verified one creates a community (0063).
     func me() throws -> Me
     /// A page of the communities this account may see, by name when `query` is set.
@@ -357,15 +357,6 @@ extension CoreAccount: Social {
     func pinCommunity(_ community: String) throws { try core().pinCommunity(communityId: community) }
 
     func unpinCommunity(_ community: String) throws { try core().unpinCommunity(communityId: community) }
-}
-
-/// Where a hosted screen leads: a community, a post, or a community's report queue.
-enum SocialRoute: Hashable {
-    case community(String)
-    case post(String)
-    case reports(String)
-    case requests(String)
-    case statements
 }
 
 /// One of the reactions the quick bar offers: its emoji, and the key of the words a screen reader says in place of it.

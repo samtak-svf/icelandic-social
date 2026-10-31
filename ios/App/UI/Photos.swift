@@ -12,6 +12,8 @@ struct PhotoOf: Hashable, Sendable {
         case account
         case communityPicture
         case communityCover
+        /// An account's wall cover (decision 0115): the owner is the account id.
+        case wallCover
         /// A group's photo: the core's own file on this device, not something fetched (decision 0094).
         case groupFile
     }
@@ -60,6 +62,13 @@ extension Community {
     /// The community's cover in `frame`, or nil when it has none (decisions 0080, 0086).
     func coverOf(_ frame: Frame) -> PhotoOf? {
         cover.map { PhotoOf(owner: communityId, version: $0, kind: .communityCover, frame: frame) }
+    }
+}
+
+extension WallProfile {
+    /// The wall's cover in `frame`, or nil when it has none (decision 0115).
+    func coverOf(_ frame: Frame) -> PhotoOf? {
+        cover.map { PhotoOf(owner: accountId, version: $0, kind: .wallCover, frame: frame) }
     }
 }
 
@@ -128,6 +137,8 @@ final class PhotoCache<Image: Sendable>: @unchecked Sendable {
                     path = try social.communityPictureFramed(photo.owner, version: photo.version, frame: photo.frame)
                 case .communityCover:
                     path = try social.communityCoverFramed(photo.owner, version: photo.version, frame: photo.frame)
+                case .wallCover:
+                    path = try social.wallCoverFramed(photo.owner, version: photo.version, frame: photo.frame)
                 case .groupFile:
                     path = photo.owner
                 }
@@ -192,7 +203,7 @@ struct LoadedPhoto<Picture: View, Placeholder: View>: View {
 /// A picture for the screen: an avatar's or a community's picture is the server's 512 px one, halved, which is
 /// about the largest (88 pt) on most screens at a quarter of the memory; a cover keeps 1200 pixels across.
 func displayPhoto(_ kind: PhotoOf.Kind, _ path: String) -> UIImage? {
-    downsampled(path, maxPixel: kind == .communityCover ? 1200 : 256)
+    downsampled(path, maxPixel: kind == .communityCover || kind == .wallCover ? 1200 : 256)
 }
 
 private func downsampled(_ path: String, maxPixel: Int) -> UIImage? {

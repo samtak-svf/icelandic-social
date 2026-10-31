@@ -11,6 +11,7 @@ import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
@@ -260,6 +261,61 @@ class MeViewModelTest {
             val file = File.createTempFile("master", ".jpg")
             assertNull(model.reframePhotoRequest { file }.master())
             assertFalse("the empty file is removed", file.exists())
+        }
+
+    @Test
+    fun aRemovedPhotoTellsTheWall() =
+        runTest(dispatcher) {
+            account.myPhoto = "v7"
+            val model = model()
+            var told = 0
+            model.removePhoto { told++ }
+            advanceUntilIdle()
+            assertEquals(1, told)
+        }
+
+    @Test
+    fun aFailedRemovalLandsInPhotoProblemAndTellsNoOne() =
+        runTest(dispatcher) {
+            account.myPhoto = "v7"
+            val model = model()
+            account.failOn = "removePhoto"
+            var told = 0
+            model.removePhoto { told++ }
+            advanceUntilIdle()
+            assertEquals(0, told)
+            assertNotNull(model.state.value.photoProblem)
+            assertNull(model.state.value.problem)
+            account.failOn = null
+            model.retry()
+            advanceUntilIdle()
+            assertEquals(1, told)
+            assertNull(model.state.value.photoProblem)
+        }
+
+    @Test
+    fun aChosenPhotoTellsTheWallOnceItIsIn() =
+        runTest(dispatcher) {
+            val model = model()
+            val file = File.createTempFile("master", ".jpg")
+            file.writeBytes(byteArrayOf(1))
+            var told = 0
+            val request = model.photoRequest({ told++ }) { file }
+            request.master()
+            request.save(framing)
+            assertEquals(1, told)
+        }
+
+    @Test
+    fun aFramedPhotoTellsTheWallOnceItIsIn() =
+        runTest(dispatcher) {
+            account.myFraming = framing
+            account.photoMaster = byteArrayOf(9)
+            val model = model()
+            val file = File.createTempFile("master", ".jpg")
+            var told = 0
+            model.reframePhotoRequest({ told++ }) { file }.save(framing)
+            assertEquals(1, told)
         }
 
     @Test

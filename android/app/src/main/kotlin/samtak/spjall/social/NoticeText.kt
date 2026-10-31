@@ -10,7 +10,7 @@ import samtak.spjall.core.SocialNotification
 import samtak.spjall.core.SocialNotificationKind
 
 /** The mark on the corner of a notification's picture (decisions 0103, 0104). */
-enum class NoticeBadge { EMOJI, COMMENT, APPROVED, MODERATOR }
+enum class NoticeBadge { EMOJI, COMMENT, APPROVED, MODERATOR, FRIEND }
 
 /**
  * The sentence of a notification row and of its push, and the badge, chosen by the rule in
@@ -55,6 +55,9 @@ fun noticeLine(
         SocialNotificationKind.COMMENT -> actors(COMMENT, NoticeBadge.COMMENT, names, actorCount)
         SocialNotificationKind.REPLY -> actors(REPLY, NoticeBadge.COMMENT, names, actorCount)
         SocialNotificationKind.REACTION -> actors(REACTION, NoticeBadge.EMOJI, names, actorCount)
+        // One person asks or answers, so these never group: a count of actors is not read (0114).
+        SocialNotificationKind.FRIEND_REQUEST -> person(R.string.notice_friend_request, names)
+        SocialNotificationKind.FRIEND_ACCEPTED -> person(R.string.notice_friend_accepted, names)
     }
 
 private fun moderatedLine(action: NotificationAction?): Int =
@@ -63,6 +66,8 @@ private fun moderatedLine(action: NotificationAction?): Int =
         NotificationAction.REVIEW_UPHELD -> R.string.notice_review_upheld
         NotificationAction.REVIEW_OVERTURNED -> R.string.notice_review_overturned
         NotificationAction.CLEAR_ACCOUNT_PHOTO -> R.string.notice_account_photo_cleared
+        NotificationAction.CLEAR_ACCOUNT_BIO -> R.string.notice_account_bio_cleared
+        NotificationAction.CLEAR_ACCOUNT_COVER -> R.string.notice_account_cover_cleared
         NotificationAction.SUSPEND_ACCOUNT -> R.string.notice_account_suspended
         NotificationAction.UNSUSPEND_ACCOUNT -> R.string.notice_account_unsuspended
         NotificationAction.HIDE_POST,
@@ -94,6 +99,11 @@ private fun actors(
         else -> NoticeLine(stem.one, false, name, null, 0, badge)
     }
 }
+
+private fun person(
+    @StringRes key: Int,
+    names: List<String?>,
+) = NoticeLine(key, false, names.firstOrNull(), null, 0, NoticeBadge.FRIEND)
 
 private fun fixed(
     @StringRes key: Int,

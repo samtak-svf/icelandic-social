@@ -13,6 +13,7 @@ struct SettingsSection: View {
     let communityNames: [String: String]
     let onLink: () -> Void
     let onStatements: () -> Void
+    let onFriends: () -> Void
 
     @State private var revoking: String?
     @State private var deleting = false
@@ -47,6 +48,12 @@ struct SettingsSection: View {
                 NotificationsOff()
             }
             NotificationSettingsSection(levels: levels, names: communityNames)
+            Button(action: onFriends) {
+                PillLabel(text: "person_friends", filled: false, wide: false)
+            }
+            .buttonStyle(.plain)
+            .disabled(model.busy)
+            .frame(maxWidth: .infinity)
             Button(action: onStatements) {
                 PillLabel(text: "statements_title", filled: false, wide: false)
             }

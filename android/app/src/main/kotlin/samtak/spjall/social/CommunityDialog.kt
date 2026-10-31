@@ -347,6 +347,10 @@ internal fun ModerationLogAction.logWording(until: ULong? = null): Wording =
         ModerationLogAction.UNSUSPEND_ACCOUNT,
         -> statementLabel(until)
         ModerationLogAction.CLEAR_ACCOUNT_PHOTO,
+        ModerationLogAction.CLEAR_ACCOUNT_BIO,
+        ModerationLogAction.CLEAR_ACCOUNT_COVER,
+        ModerationLogAction.READ_REPORTED,
+        -> statementLabel(until)
         ModerationLogAction.CLOSE_REPORT,
         ModerationLogAction.UNKNOWN,
         -> Wording(R.string.moderation_done)

@@ -172,6 +172,7 @@ private struct NoticePicture: View {
             case .comment: symbol("text.bubble.fill")
             case .approved: symbol("checkmark")
             case .moderator: symbol("shield.fill")
+            case .friend: symbol("person.fill")
             }
         }
         .frame(width: 20, height: 20)

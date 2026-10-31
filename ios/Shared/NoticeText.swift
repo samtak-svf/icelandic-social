@@ -2,9 +2,9 @@ import Foundation
 import SpjallCore
 
 /// The mark on a notification's picture (decision 0103): the reaction's own emoji, a speech bubble, a check or a
-/// shield.
+/// shield, or a person for a friend request and its answer (0114).
 enum NoticeBadge: String, Equatable, Sendable {
-    case emoji, comment, approved, moderator
+    case emoji, comment, approved, moderator, friend
 }
 
 /// The arguments of a notification's sentence. A nil name is a deleted account.
@@ -37,6 +37,8 @@ func noticeWording(
     case .reply: (base, badge) = ("notice_reply", .comment)
     case .reaction: (base, badge) = ("notice_reaction", .emoji)
     case .joinApproved: return NoticeWording(key: "notice_join_approved", args: .none, badge: .approved)
+    case .friendRequest: return friendWording("notice_friend_request", names)
+    case .friendAccepted: return friendWording("notice_friend_accepted", names)
     case .moderated:
         return NoticeWording(key: moderatedKey(action), args: .none, badge: .moderator)
     }
@@ -52,12 +54,19 @@ func noticeWording(
     }
 }
 
+/// A friend request or its answer names its one actor, whatever the count (0114).
+private func friendWording(_ key: String, _ names: [String?]) -> NoticeWording {
+    NoticeWording(key: key, args: .one(name: names.first ?? nil), badge: .friend)
+}
+
 private func moderatedKey(_ action: NotificationAction?) -> String {
     switch action {
     case .declineAnonymousPost: "notice_anonymous_declined"
     case .reviewUpheld: "notice_review_upheld"
     case .reviewOverturned: "notice_review_overturned"
     case .clearAccountPhoto: "notice_account_photo_cleared"
+    case .clearAccountBio: "notice_account_bio_cleared"
+    case .clearAccountCover: "notice_account_cover_cleared"
     case .suspendAccount: "notice_account_suspended"
     case .unsuspendAccount: "notice_account_unsuspended"
     case .hidePost, .removePost, .restorePost, .hideComment, .removeComment, .restoreComment, .muteMember,

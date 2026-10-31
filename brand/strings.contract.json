@@ -11,7 +11,7 @@
       "description": "Bottom tab: the conversation list."
     },
     "tab_feed": {
-      "surfaces": ["web"],
+      "surfaces": ["android", "ios", "web"],
       "description": "Tab: the feed, the first place the app opens (decision 0116)."
     },
     "tab_me": {
@@ -927,8 +927,8 @@
       "description": "Heading of the web's sign-in page (decision 0062)."
     },
     "settings_title": {
-      "surfaces": ["web"],
-      "description": "The web's settings page: its heading and its link in the navigation."
+      "surfaces": ["android", "ios", "web"],
+      "description": "The settings: the web's page heading and navigation link, and the apps' screen behind the gear on the wall."
     },
     "main_navigation": {
       "surfaces": ["web"],
@@ -1478,15 +1478,15 @@
       "description": "A community with no posts yet."
     },
     "feed_empty": {
-      "surfaces": ["web"],
+      "surfaces": ["android", "ios", "web"],
       "description": "The feed's empty state: what fills it (decision 0116)."
     },
     "feed_compose_target": {
-      "surfaces": ["web"],
+      "surfaces": ["android", "ios", "web"],
       "description": "Label of the picker in the feed composer: the own wall or a community the viewer may post in (decision 0116)."
     },
     "feed_target_wall": {
-      "surfaces": ["web"],
+      "surfaces": ["android", "ios", "web"],
       "description": "Option of the feed composer's picker: the viewer's own wall (decision 0116)."
     },
     "post_comments": {

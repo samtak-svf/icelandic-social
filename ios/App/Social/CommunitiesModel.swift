@@ -30,6 +30,8 @@ enum CommunitiesPart: CaseIterable, Identifiable, Sendable {
 final class CommunitiesModel {
     /// The communities this account is a member of.
     private(set) var mine: [Community] = []
+    /// The names of the communities this account is in, by id.
+    var namesById: [String: String] { Dictionary(mine.map { ($0.communityId, $0.name) }) { first, _ in first } }
     /// The search as typed; `search()` asks the server for it.
     var query = ""
     /// The search's pages so far, for `query`.
@@ -59,10 +61,6 @@ final class CommunitiesModel {
     private let social: Social
     private var failed: (() async -> Void)?
     private let sleep: @Sendable (Duration) async throws -> Void
-    /// The feed posts whose reaction is on its way, so a second tap waits for the first.
-    private var reacting: Set<String> = []
-    /// The feed's posts whose poll action is on its way, so a second tap waits for the first.
-    private var voting: Set<String> = []
 
     init(
         social: Social,
@@ -150,46 +148,34 @@ final class CommunitiesModel {
         community(post.communityId).map { canWrite($0, now: nowMillis()) } ?? false
     }
 
-    /// Sets this account's reaction on a feed post, shown at once and put back if the server refuses.
-    func react(_ postId: String, _ emoji: String) async {
-        guard !reacting.contains(postId), let index = feedPosts.firstIndex(where: { $0.postId == postId }),
-            writes(feedPosts[index])
-        else { return }
-        let before = feedPosts[index]
-        let off = before.myEmoji == emoji
-        feedPosts[index] = reacted(before, off ? nil : emoji)
-        reacting.insert(postId)
-        let social = social
-        problem = nil
-        do {
-            try await offMain {
-                if off { try social.unreact(postId) } else { try social.react(postId, emoji: emoji) }
-            }
-            failed = nil
-        } catch {
-            if let index = feedPosts.firstIndex(where: { $0.postId == postId }) { feedPosts[index] = before }
-            failed = nil
-            problem = Problem(error)
-        }
-        reacting.remove(postId)
-    }
+    /// Sets this account's reaction on a post to `emoji`, or takes it off when it is `emoji` already. The post
+    /// shows the change at once and goes back to what it was if the server refuses.
+    func react(_ postId: String, _ emoji: String) async { await actions.react(postId, emoji, actionsHost) }
 
-    /// Votes for `option` in the poll on a feed post (decision 0090), as the community's own screen does.
-    func vote(_ postId: String, option: String) async {
-        let social = social
-        await pollAction(postId) { try social.votePoll(postId, option: option) }
-    }
+    /// Votes for `option` in the poll on a post, or changes the vote (decision 0090); the post then reads as the
+    /// server sent it back. A poll closed meanwhile shows its results and says so.
+    func vote(_ postId: String, option: String) async { await actions.vote(postId, option: option, actionsHost) }
 
     /// Takes this account's vote back.
-    func withdrawVote(_ postId: String) async {
-        let social = social
-        await pollAction(postId) { try social.withdrawVote(postId) }
-    }
+    func withdrawVote(_ postId: String) async { await actions.withdrawVote(postId, actionsHost) }
 
-    /// Closes the poll; its author and the community's moderators may.
-    func closePoll(_ postId: String) async {
-        let social = social
-        await pollAction(postId) { try social.closePoll(postId) }
+    /// Closes the poll: no more votes, and everyone sees the results.
+    func closePoll(_ postId: String) async { await actions.closePoll(postId, actionsHost) }
+
+    private let actions = PostActions()
+
+    private var actionsHost: PostActions.Host {
+        PostActions.Host(
+            social: social,
+            read: { id in self.feedPosts.first { $0.postId == id } },
+            write: { post in
+                if let at = self.feedPosts.firstIndex(where: { $0.postId == post.postId }) { self.feedPosts[at] = post }
+            },
+            may: { self.writes($0) },
+            settle: {
+                self.failed = nil
+                self.problem = $0
+            })
     }
 
     /// This account may close the poll on a feed post: it wrote it, or moderates the post's community, and it is open.
@@ -197,21 +183,6 @@ final class CommunitiesModel {
         guard let poll = post.poll, !poll.closed else { return false }
         let role = community(post.communityId)?.role
         return post.mine || role == .owner || role == .moderator
-    }
-
-    private func pollAction(_ postId: String, _ act: @escaping @Sendable () throws -> Post) async {
-        guard !voting.contains(postId), let index = feedPosts.firstIndex(where: { $0.postId == postId }),
-            writes(feedPosts[index])
-        else { return }
-        voting.insert(postId)
-        problem = nil
-        let outcome = await runPollAction(social, postId: postId, act)
-        if let post = outcome.post, let index = feedPosts.firstIndex(where: { $0.postId == postId }) {
-            feedPosts[index] = post
-        }
-        failed = nil
-        problem = outcome.problem
-        voting.remove(postId)
     }
 
     /// Asks the server for `query` once the typing pauses; a newer search cancels the task. Nothing typed is every

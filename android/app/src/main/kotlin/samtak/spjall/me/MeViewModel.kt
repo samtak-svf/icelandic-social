@@ -49,6 +49,8 @@ class MeViewModel(
         val blocked: List<Person> = emptyList(),
         val busy: Boolean = false,
         val problem: Problem? = null,
+        /** Removing the photo failed: the own wall says so, where the button is. */
+        val photoProblem: Problem? = null,
         /** This device was revoked or the account deleted: back to sign-in. */
         val signedOut: Boolean = false,
     )
@@ -133,18 +135,26 @@ class MeViewModel(
      * The crop sheet's request for a photo just picked (decisions 0039 and 0086): [read] makes the master, saving
      * sends it and then the framing, and the file goes when the sheet closes, whether or not the server took it.
      */
-    fun photoRequest(read: () -> File): FrameRequest =
+    fun photoRequest(
+        changed: () -> Unit = {},
+        read: () -> File,
+    ): FrameRequest =
         newImageRequest(FrameKind.PHOTO, read) { file, framing ->
             account.setPhoto(file.path)
             account.setPhotoFraming(framing)
             refresh()
+            changed()
         }
 
     /** The request to frame the photo again from the master the server kept; [temp] makes the file it comes down to. */
-    fun reframePhotoRequest(temp: () -> File): FrameRequest =
+    fun reframePhotoRequest(
+        changed: () -> Unit = {},
+        temp: () -> File,
+    ): FrameRequest =
         storedImageRequest(FrameKind.PHOTO, account::photoFraming, account::photoSource, temp) { framing ->
             account.setPhotoFraming(framing)
             refresh()
+            changed()
         }
 
     private fun refresh() {
@@ -152,12 +162,13 @@ class MeViewModel(
         _state.update { it.copy(me = me) }
     }
 
-    /** Removes the photo, for everyone. */
-    fun removePhoto() {
-        perform(::removePhoto) {
+    /** Removes the photo, for everyone; [changed] is told once it is gone, and a refusal lands in `photoProblem`. */
+    fun removePhoto(changed: () -> Unit = {}) {
+        _state.update { it.copy(photoProblem = null) }
+        perform({ removePhoto(changed) }, { state, problem -> state.copy(photoProblem = problem) }) {
             account.removePhoto()
-            val me = account.me()
-            _state.update { it.copy(me = me) }
+            refresh()
+            changed()
         }
     }
 
@@ -184,6 +195,7 @@ class MeViewModel(
     /** Runs [action] off the main thread, one at a time; on failure, [again] is what [retry] repeats. */
     private fun perform(
         again: () -> Unit,
+        shown: (State, Problem) -> State = { state, problem -> state.copy(problem = problem) },
         action: suspend () -> Unit,
     ) {
         if (_state.value.busy) return
@@ -195,11 +207,11 @@ class MeViewModel(
                 _state.update { it.copy(busy = false) }
             } catch (e: CoreException) {
                 failed = again
-                _state.update { it.copy(busy = false, problem = e.problem()) }
+                _state.update { shown(it.copy(busy = false), e.problem()) }
             } catch (_: IOException) {
                 // The picked photo could not be read or made smaller.
                 failed = again
-                _state.update { it.copy(busy = false, problem = Problem.Generic()) }
+                _state.update { shown(it.copy(busy = false), Problem.Generic()) }
             }
         }
     }

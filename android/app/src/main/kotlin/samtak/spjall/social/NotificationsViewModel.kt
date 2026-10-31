@@ -204,6 +204,10 @@ sealed interface Opens {
         val communityId: String,
     ) : Opens
 
+    data class Person(
+        val accountId: String,
+    ) : Opens
+
     data object Statements : Opens
 
     data object Nowhere : Opens
@@ -227,6 +231,8 @@ fun SocialNotification.opens(): Opens {
     val post = postId
     return when {
         kind == SocialNotificationKind.MODERATED && action in STATED -> Opens.Statements
+        kind == SocialNotificationKind.FRIEND_REQUEST || kind == SocialNotificationKind.FRIEND_ACCEPTED ->
+            (actor ?: actors.firstOrNull())?.let { Opens.Person(it.accountId) } ?: Opens.Nowhere
         post != null && kind != SocialNotificationKind.MODERATED -> Opens.Post(post)
         else -> communityId?.let { Opens.Community(it) } ?: Opens.Nowhere
     }

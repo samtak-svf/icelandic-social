@@ -284,6 +284,13 @@ class NotificationsViewModelTest {
     }
 
     @Test
+    fun aFriendNoticeOpensThePersonWhoAskedOrAnswered() {
+        listOf(SocialNotificationKind.FRIEND_REQUEST, SocialNotificationKind.FRIEND_ACCEPTED).forEach {
+            assertEquals(Opens.Person("a2"), notification("n", it, 1uL, postId = null, communityId = null).opens())
+        }
+    }
+
+    @Test
     fun aTapOnARowWithNoCommunityGoesNowhere() {
         assertEquals(
             Opens.Nowhere,

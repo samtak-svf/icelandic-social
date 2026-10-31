@@ -42,6 +42,15 @@ enum Dates {
         format("d. MMM yyyy", at, calendar)
     }
 
+    /// A year and month as the server sends them ("2026-03"), in words: "mars 2026". Nil when the text is not one.
+    static func month(_ yearMonth: String, calendar: Calendar = .current) -> String? {
+        let parts = yearMonth.split(separator: "-").compactMap { Int($0) }
+        guard parts.count == 2, (1...12).contains(parts[1]),
+            let date = calendar.date(from: DateComponents(year: parts[0], month: parts[1], day: 1))
+        else { return nil }
+        return format("LLLL yyyy", date, calendar)
+    }
+
     /// A moment to the minute with its year: "15. jan. 2027, 00:00".
     static func dateTime(_ at: Date, calendar: Calendar = .current) -> String {
         format("d. MMM yyyy, HH:mm", at, calendar)

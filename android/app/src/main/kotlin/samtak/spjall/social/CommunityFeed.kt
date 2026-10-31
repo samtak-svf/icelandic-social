@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyListState
@@ -15,7 +14,6 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -227,37 +225,8 @@ private fun ComposerExtras(
     state: CommunityViewModel.State,
     actions: CommunityActions,
 ) {
-    val poll = state.poll
-    if (poll != null) PollFields(poll, actions) else ImagesPicked(state, actions)
-    if (state.images.isEmpty()) {
-        OutlinedButton(
-            onClick = actions::togglePoll,
-            enabled = !state.publishing,
-            modifier = Modifier.heightIn(min = 44.dp),
-        ) { Text(stringResource(R.string.composer_poll)) }
-    }
+    ComposerAttachments(state.images, state.poll, state.imageNotice, state.publishing || suspended(), actions)
     if (state.community?.anonymousPosts == true) {
         AnonymousSwitch(state.anonymous, !state.publishing, actions::setAnonymous)
     }
-}
-
-/** The images picked for the post, the button that adds one, and why the last one was not taken. */
-@Composable
-private fun ImagesPicked(
-    state: CommunityViewModel.State,
-    actions: CommunityActions,
-) {
-    if (state.images.isNotEmpty()) PickedImages(state.images, actions::removeImage)
-    state.imageNotice?.let { notice ->
-        Text(
-            text = notice.text(),
-            style = MaterialTheme.typography.bodyMedium,
-            color = Palette.danger,
-        )
-    }
-    OutlinedButton(
-        onClick = actions::addImage,
-        enabled = !state.publishing,
-        modifier = Modifier.heightIn(min = 44.dp),
-    ) { Text(stringResource(R.string.post_add_images)) }
 }

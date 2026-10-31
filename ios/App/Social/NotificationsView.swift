@@ -14,14 +14,14 @@ struct NotificationsView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            ScreenHeader(title: localized("notifications_title"), back: onBack) {
-                if model.unread > 0 {
-                    Button(localized("notifications_mark_all_read")) { Task { await model.markAllRead() } }
-                        .font(.sans(13, black: true, relativeTo: .subheadline))
-                        .foregroundStyle(BrandTokens.Colors.primary)
-                        .frame(minHeight: 44)
-                        .padding(.horizontal, 12)
-                }
+            ScreenHeader(title: localized("notifications_title"), back: onBack) { EmptyView() }
+            // Under the title, not beside it: beside the back control and the bell it cut "Tilkynningar" short at 390 pt.
+            if model.unread > 0 {
+                Button(localized("notifications_mark_all_read")) { Task { await model.markAllRead() } }
+                    .font(.sans(13, black: true, relativeTo: .subheadline))
+                    .foregroundStyle(BrandTokens.Colors.primary)
+                    .frame(maxWidth: .infinity, minHeight: 44, alignment: .trailing)
+                    .padding(.horizontal, 20)
             }
             if model.busy {
                 ProgressView().progressViewStyle(.linear)

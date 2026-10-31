@@ -15,6 +15,8 @@ struct PostView: View {
     @State private var sharing: String?
     /// The own comment waiting for the delete to be confirmed.
     @State private var deletingComment: String?
+    @State private var removingComment: String?
+    @State private var removalReason = ""
     @Environment(\.dismiss) private var dismiss
     @Environment(\.suspension) private var suspension
 
@@ -32,6 +34,17 @@ struct PostView: View {
                         onVote: { option in Task { await model.vote(option) } },
                         onWithdrawVote: { Task { await model.withdrawVote() } },
                         onClosePoll: model.canClosePoll ? { Task { await model.closePoll() } } : nil)
+                    if model.ownsWall, let audience = post.audience {
+                        Picker(
+                            "wall_audience_label",
+                            selection: Binding(get: { audience }, set: { new in Task { await model.setAudience(new) } })
+                        ) {
+                            Text("wall_audience_friends").tag(WallAudience.friends)
+                            Text("wall_audience_everyone").tag(WallAudience.everyone)
+                        }
+                        .pickerStyle(.segmented)
+                        .disabled(!mayWrite(suspension) || model.busy)
+                    }
                     if model.muted {
                         SocialNote(text: "community_muted")
                     }
@@ -82,6 +95,19 @@ struct PostView: View {
             Button("delete", role: .destructive) { Task { await model.deleteComment(commentId) } }
             Button("cancel", role: .cancel) {}
         }
+        .alert(
+            "wall_comment_remove_confirm",
+            isPresented: Binding(get: { removingComment != nil }, set: { if !$0 { removingComment = nil } }),
+            presenting: removingComment
+        ) { commentId in
+            TextField("wall_comment_remove_reason", text: $removalReason)
+            Button("wall_comment_remove", role: .destructive) {
+                let reason = removalReason
+                removalReason = ""
+                Task { await model.removeWallComment(commentId, reason: reason) }
+            }
+            Button("cancel", role: .cancel) { removalReason = "" }
+        }
         .onChange(of: model.deleted) { _, deleted in
             if deleted { dismiss() }
         }
@@ -116,7 +142,9 @@ struct PostView: View {
         CommentCard(
             comment: comment,
             onReport: { reporting = Reporting(target: ReportTarget(kind: .comment, id: comment.commentId)) },
-            onDelete: model.mine(comment.author) ? { deletingComment = comment.commentId } : nil,
+            onDelete: model.mine(comment.author)
+                ? { deletingComment = comment.commentId }
+                : (model.ownsWall ? { removingComment = comment.commentId } : nil),
             onReply: replyable ? { model.reply(to: comment) } : nil,
             onLike: mayWrite(suspension, model.writes)
                 ? { Task<Void, Never> { await model.like(comment.commentId) } } : nil,

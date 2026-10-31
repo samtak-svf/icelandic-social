@@ -18,6 +18,8 @@ func kindLabel(_ kind: SocialNotificationKind) -> String {
     case .reaction: localized("notification_kind_reaction")
     case .joinApproved: localized("notification_kind_join_approved")
     case .moderated: localized("notification_kind_moderated")
+    case .friendRequest: localized("notification_kind_friend_request")
+    case .friendAccepted: localized("notification_kind_friend_accepted")
     }
 }
 

@@ -36,7 +36,7 @@ extension CoreAccount {
 /// The moderated rows a statement of reasons explains (0115).
 private let statedActions: [NotificationAction] = [
     .hidePost, .removePost, .hideComment, .removeComment, .clearAccountPhoto, .suspendAccount, .reviewUpheld,
-    .reviewOverturned,
+    .reviewOverturned, .clearAccountBio, .clearAccountCover,
 ]
 
 /// Where a notification opens: the statements for what a moderator did with its reasons, its post, or its community
@@ -44,6 +44,12 @@ private let statedActions: [NotificationAction] = [
 func noticeRoute(_ notification: SocialNotification) -> SocialRoute? {
     if notification.kind == .moderated, let action = notification.action, statedActions.contains(action) {
         return .statements
+    }
+    // A friend request and its answer open the one who made them (0114).
+    if notification.kind == .friendRequest || notification.kind == .friendAccepted,
+        let actor = notification.actors.first
+    {
+        return .person(actor.accountId)
     }
     let target = noticeTarget(
         kind: notification.kind, postId: notification.postId, communityId: notification.communityId)

@@ -8,6 +8,7 @@ import samtak.spjall.social.SocialRoutes
 internal object AppRoutes {
     const val LIST = "conversations"
     const val ME = "me"
+    const val SETTINGS = "settings"
     const val VERIFY = "verify"
     const val LINK = "link"
     const val PEOPLE = "people"
@@ -19,9 +20,9 @@ internal object AppRoutes {
 
 internal fun conversationRoute(id: String) = "${AppRoutes.CONVERSATION}/$id"
 
-/** A tab keeps one copy of itself on the stack, above the list. */
+/** A tab keeps one copy of itself on the stack, above the feed (decision 0116), the start of the graph. */
 private fun NavOptionsBuilder.tab() {
-    popUpTo(AppRoutes.LIST) { saveState = true }
+    popUpTo(SocialRoutes.FEED) { saveState = true }
     launchSingleTop = true
     restoreState = true
 }

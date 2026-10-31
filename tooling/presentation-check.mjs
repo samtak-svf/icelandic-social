@@ -19,7 +19,6 @@ const SECTIONS = /** @type {const} */ ([
   "listStamp",
   "problem",
   "notice",
-  "noticeNext",
 ]);
 
 /** The badge each notification kind draws on its row's picture (decision 0103). */
@@ -179,7 +178,7 @@ function caseProblems(section, c, keys, where) {
       ...f.text("initials"),
     ];
   }
-  if (section === "notice" || section === "noticeNext") return noticeProblems(c, keys, where);
+  if (section === "notice") return noticeProblems(c, keys, where);
   if (section === "problem") {
     const outcome = c?.outcome === "unreachable" || c?.outcome === "refused";
     return [

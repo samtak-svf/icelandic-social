@@ -25,6 +25,18 @@
         }
       }
     },
+    "tab_feed": {
+      "comment": "Tab: the feed, the first place the app opens (decision 0116).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fljótið"
+          }
+        }
+      }
+    },
     "tab_me": {
       "comment": "Bottom tab: own profile, invite link and the way to settings (docs/decisions/0034).",
       "extractionState": "manual",
@@ -2317,6 +2329,18 @@
         }
       }
     },
+    "settings_title": {
+      "comment": "The settings: the web's page heading and navigation link, and the apps' screen behind the gear on the wall.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stillingar"
+          }
+        }
+      }
+    },
     "session_browser": {
       "comment": "A browser session in the list: its browser and system, as the server named them.",
       "extractionState": "manual",
@@ -3621,6 +3645,42 @@
           "stringUnit": {
             "state": "translated",
             "value": "Engir póstar enn."
+          }
+        }
+      }
+    },
+    "feed_empty": {
+      "comment": "The feed's empty state: what fills it (decision 0116).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hér birtast póstar úr hópunum þínum, frá vinum þínum og af veggnum þínum. Skrifaðu fyrsta póstinn eða finndu hóp."
+          }
+        }
+      }
+    },
+    "feed_compose_target": {
+      "comment": "Label of the picker in the feed composer: the own wall or a community the viewer may post in (decision 0116).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hvert á pósturinn að fara?"
+          }
+        }
+      }
+    },
+    "feed_target_wall": {
+      "comment": "Option of the feed composer's picker: the viewer's own wall (decision 0116).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Veggurinn minn"
           }
         }
       }
