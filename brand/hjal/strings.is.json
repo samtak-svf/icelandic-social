@@ -1,6 +1,7 @@
 {
   "app_name": "Hjal",
   "tab_conversations": "Hjal",
+  "tab_feed": "Fljótið",
   "tab_me": "Ég",
   "new_conversation": "Nýtt hjal",
   "conversations_empty": "Engin samtöl enn. Deildu hlekknum þínum til að hefja samtal.",
@@ -361,6 +362,9 @@
   "post_compose_prompt": "Skrifaðu eitthvað…",
   "post_publish": "Birta",
   "posts_empty": "Engir póstar enn.",
+  "feed_empty": "Hér birtast póstar úr [[group.dat.pl.def]] þínum, frá [[friend.dat.pl]] þínum og af [[wall.dat.def]] þínum. Skrifaðu fyrsta póstinn eða finndu [[group.acc]].",
+  "feed_compose_target": "Hvert á pósturinn að fara?",
+  "feed_target_wall": "[[Wall.nom.def]] minn",
   "post_comments": {
     "one": "{count} athugasemd",
     "other": "{count} athugasemdir"

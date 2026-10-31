@@ -22,28 +22,86 @@ import { useSuspended } from "./suspended.tsx";
 // The one text box a post and a comment are both written in; a post also
 // takes up to four images (decision 0065).
 
+/** A community the feed's composer may write in; the wall is the choice that is none of them. */
+export type Target = Readonly<{ communityId: string; name: string; anonymousAllowed: boolean }>;
+
+const WALL = "";
+
 export const REFUSED = {
   too_many: strings.post_images_too_many,
   too_large: strings.post_image_too_large,
   invalid_image: strings.post_image_failed,
 } as const;
 
+type Place = { wall: boolean; communityId: string; anonymousAllowed: boolean };
+
+/** Where the post goes: the fixed place, or the feed's pick, which is the wall until a community is chosen. */
+function place(targets: readonly Target[] | undefined, picked: string, fixed: Place): Place {
+  if (targets === undefined) return fixed;
+  const found = targets.find((t) => t.communityId === picked);
+  return found === undefined
+    ? { wall: true, communityId: fixed.communityId, anonymousAllowed: fixed.anonymousAllowed }
+    : { wall: false, communityId: found.communityId, anonymousAllowed: found.anonymousAllowed };
+}
+
+/** The feed's picker (decision 0116): the wall, or a community the person may write in; absent with none to pick. */
+function TargetSelect({
+  targets,
+  value,
+  busy,
+  change,
+}: Readonly<{
+  targets?: readonly Target[];
+  value: string;
+  busy: boolean;
+  change: (value: string) => void;
+}>) {
+  if (targets === undefined || targets.length === 0) return null;
+  return (
+    <label className="flex flex-col gap-1 text-sm font-medium">
+      {strings.feed_compose_target}
+      <select
+        value={value}
+        disabled={busy}
+        onChange={(event) => change(event.target.value)}
+        className="min-h-11 rounded-md border border-border-strong bg-surface px-3 text-base font-normal"
+      >
+        <option value={WALL}>{strings.feed_target_wall}</option>
+        {targets.map((t) => (
+          <option key={t.communityId} value={t.communityId}>
+            {t.name}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
 /**
  * A new post: its text, its images, or both. The images are checked when
  * chosen and uploaded when the post is published, then named in it.
  */
 function PostForm({
-  communityId,
+  communityId: fixedCommunity,
   posted,
-  anonymousAllowed,
-  wall,
+  anonymousAllowed: fixedAnonymous,
+  wall: fixedWall,
+  targets,
 }: Readonly<{
   communityId: string;
   posted: () => void;
   anonymousAllowed: boolean;
   /** Writing on one's own wall (decision 0115): an audience, and no community. */
   wall: boolean;
+  /** The feed's picker (decision 0116): where a post may go besides the wall; none on a fixed target. */
+  targets?: readonly Target[];
 }>) {
+  const [target, setTarget] = useState(WALL);
+  const { wall, communityId, anonymousAllowed } = place(targets, target, {
+    wall: fixedWall,
+    communityId: fixedCommunity,
+    anonymousAllowed: fixedAnonymous,
+  });
   const id = useId();
   const [text, setText] = useState("");
   const [files, setFiles] = useState<File[]>([]);
@@ -55,12 +113,12 @@ function PostForm({
   const path = { communityId };
 
   function choose(event: ChangeEvent<HTMLInputElement>) {
-    const picked = Array.from(event.target.files ?? []);
+    const chosen = Array.from(event.target.files ?? []);
     event.target.value = "";
-    if (picked.length === 0) return;
-    const refused = refusal(files.length, picked);
+    if (chosen.length === 0) return;
+    const refused = refusal(files.length, chosen);
     setProblem(refused);
-    if (refused === null) setFiles([...files, ...picked]);
+    if (refused === null) setFiles([...files, ...chosen]);
   }
 
   async function publish(): Promise<Problem | keyof typeof REFUSED | null> {
@@ -124,6 +182,7 @@ function PostForm({
         onChange={(event) => setText(event.target.value)}
         className="rounded-md border border-border-strong bg-surface p-2"
       />
+      <TargetSelect targets={targets} value={target} busy={busy} change={setTarget} />
       {poll !== null && <PollFields options={poll} busy={busy} change={setPoll} />}
       {files.length > 0 && (
         <ul className="flex flex-col gap-1">
@@ -215,11 +274,14 @@ export function PostComposer({
   posted,
   anonymousAllowed = false,
   wall = false,
+  targets,
 }: Readonly<{
   communityId?: string;
   posted: () => void;
   anonymousAllowed?: boolean;
   wall?: boolean;
+  /** The feed's composer (decision 0116): the wall, or one of these. */
+  targets?: readonly Target[];
 }>) {
   const { state } = useAccount();
   const suspended = useSuspended();
@@ -273,6 +335,7 @@ export function PostComposer({
             communityId={communityId}
             anonymousAllowed={anonymousAllowed}
             wall={wall}
+            targets={targets}
             posted={() => {
               setOpen(false);
               posted();

@@ -95,7 +95,10 @@ export function Shell({ children }: Readonly<{ children: ReactNode }>) {
           {strings.app_name}
         </span>
         <ul className="mx-auto flex max-w-2xl justify-around gap-0 medium:gap-1 medium:mx-0 medium:w-full medium:flex-col medium:px-2">
-          <NavLink to="/" icon={<PersonIcon />}>
+          <NavLink to="/" icon={<FeedIcon />}>
+            {strings.tab_feed}
+          </NavLink>
+          <NavLink to="/me" icon={<PersonIcon />}>
             {strings.tab_me}
           </NavLink>
           <NavLink to="/communities" icon={<PeopleIcon />}>
@@ -117,7 +120,7 @@ export function Shell({ children }: Readonly<{ children: ReactNode }>) {
   );
 }
 
-type Tab = "/" | "/communities" | "/conversations" | "/settings";
+type Tab = "/" | "/me" | "/communities" | "/conversations" | "/settings";
 
 /**
  * The bell at the right of the top bar (decision 0109): named, with the unseen
@@ -179,6 +182,11 @@ function Icon({ children }: Readonly<{ children: ReactNode }>) {
   );
 }
 
+const FeedIcon = () => (
+  <Icon>
+    <path d="M4 5h16M4 10h16M4 15h10M4 20h7" />
+  </Icon>
+);
 const PersonIcon = () => (
   <Icon>
     <circle cx="12" cy="8" r="4" />

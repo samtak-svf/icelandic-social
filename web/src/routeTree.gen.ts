@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ConversationsRouteImport } from './routes/conversations'
 import { Route as FriendsRouteImport } from './routes/friends'
+import { Route as MeRouteImport } from './routes/me'
 import { Route as ModerationRouteImport } from './routes/moderation'
 import { Route as NotificationsRouteImport } from './routes/notifications'
 import { Route as PrivacyRouteImport } from './routes/privacy'
@@ -54,6 +55,11 @@ const ConversationsRoute = ConversationsRouteImport.update({
 const FriendsRoute = FriendsRouteImport.update({
   id: '/friends',
   path: '/friends',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MeRoute = MeRouteImport.update({
+  id: '/me',
+  path: '/me',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ModerationRoute = ModerationRouteImport.update({
@@ -215,6 +221,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/conversations': typeof ConversationsRouteWithChildren
   '/friends': typeof FriendsRoute
+  '/me': typeof MeRoute
   '/moderation': typeof ModerationRoute
   '/notifications': typeof NotificationsRoute
   '/privacy': typeof PrivacyRoute
@@ -247,6 +254,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/friends': typeof FriendsRoute
+  '/me': typeof MeRoute
   '/moderation': typeof ModerationRoute
   '/notifications': typeof NotificationsRoute
   '/privacy': typeof PrivacyRoute
@@ -280,6 +288,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/conversations': typeof ConversationsRouteWithChildren
   '/friends': typeof FriendsRoute
+  '/me': typeof MeRoute
   '/moderation': typeof ModerationRoute
   '/notifications': typeof NotificationsRoute
   '/privacy': typeof PrivacyRoute
@@ -315,6 +324,7 @@ export interface FileRouteTypes {
     | '/'
     | '/conversations'
     | '/friends'
+    | '/me'
     | '/moderation'
     | '/notifications'
     | '/privacy'
@@ -347,6 +357,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/friends'
+    | '/me'
     | '/moderation'
     | '/notifications'
     | '/privacy'
@@ -379,6 +390,7 @@ export interface FileRouteTypes {
     | '/'
     | '/conversations'
     | '/friends'
+    | '/me'
     | '/moderation'
     | '/notifications'
     | '/privacy'
@@ -413,6 +425,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ConversationsRoute: typeof ConversationsRouteWithChildren
   FriendsRoute: typeof FriendsRoute
+  MeRoute: typeof MeRoute
   ModerationRoute: typeof ModerationRoute
   NotificationsRoute: typeof NotificationsRoute
   PrivacyRoute: typeof PrivacyRoute
@@ -455,6 +468,13 @@ declare module '@tanstack/react-router' {
       path: '/friends'
       fullPath: '/friends'
       preLoaderRoute: typeof FriendsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/me': {
+      id: '/me'
+      path: '/me'
+      fullPath: '/me'
+      preLoaderRoute: typeof MeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/moderation': {
@@ -703,6 +723,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ConversationsRoute: ConversationsRouteWithChildren,
   FriendsRoute: FriendsRoute,
+  MeRoute: MeRoute,
   ModerationRoute: ModerationRoute,
   NotificationsRoute: NotificationsRoute,
   PrivacyRoute: PrivacyRoute,

@@ -84,9 +84,18 @@ for (const width of WIDTHS) {
     const card = await box(post(member, "Póstur á breiðum skjá."));
     const back = await box(backLink.locator(".."));
     const composer = await box(member.locator("[data-comment-composer]"));
+    // From medium up the card is a box and the bars span it; on a phone it runs to the
+    // screen's edges (0116) and the bars keep the page's gutter inside it.
     for (const bar of [back, composer]) {
-      expect(bar.x).toBeCloseTo(card.x, 0);
-      expect(bar.width).toBeCloseTo(card.width, 0);
+      if (sizeClassOf(width) === "compact") {
+        expect(card.x).toBeCloseTo(0, 0);
+        expect(card.width).toBeCloseTo(await layoutWidth(member), 0);
+        expect(bar.x).toBeGreaterThanOrEqual(card.x);
+        expect(bar.x + bar.width).toBeLessThanOrEqual(card.x + card.width + 0.5);
+      } else {
+        expect(bar.x).toBeCloseTo(card.x, 0);
+        expect(bar.width).toBeCloseTo(card.width, 0);
+      }
     }
     expect(await pageOverflow(member)).toBe(0);
   });

@@ -13,13 +13,20 @@ async function atProvider(page: Page, person: string, name: string) {
   await page.getByRole("button").click();
 }
 
-/** Signs in with Google from the sign-in page as `name`; Ég shows it. */
-export async function signIn(page: Page, name: string, subject = newGoogleSubject()) {
+/** Google's half of signing in: the person ends on the feed. */
+async function enterWithGoogle(page: Page, name: string, subject: string) {
   await page.goto(`${WEB}/`);
   await page.getByRole("heading", { name: strings.sign_in_title }).waitFor();
   await page.getByRole("link", { name: strings.sign_in_google }).click();
   await atProvider(page, subject, name);
   await page.waitForURL(`${WEB}/`);
+}
+
+/** Signs in with Google from the sign-in page as `name`; the feed opens, Ég shows the name. */
+export async function signIn(page: Page, name: string, subject = newGoogleSubject()) {
+  await enterWithGoogle(page, name, subject);
+  await page.getByRole("link", { name: strings.tab_me }).click();
+  await page.waitForURL(`${WEB}/me`);
   await expect(page.getByText(name)).toBeVisible();
 }
 
@@ -38,7 +45,7 @@ export async function addMark(page: Page, name: string, kennitala = newKennitala
  * is refused as taken; that person exists, so another one is drawn.
  */
 export async function signInVerified(page: Page, name: string) {
-  await signIn(page, name);
+  await enterWithGoogle(page, name, newGoogleSubject());
   const linked = page.getByRole("status").filter({ hasText: strings.verify_linked });
   const taken = page.getByText(strings.identity_taken);
   for (let attempt = 0; ; attempt++) {
@@ -49,4 +56,5 @@ export async function signInVerified(page: Page, name: string) {
   }
   await page.getByRole("link", { name: strings.tab_me }).first().click();
   await expect(page.getByText(strings.verified_short)).toBeVisible();
+  await expect(page.getByText(name).first()).toBeVisible();
 }

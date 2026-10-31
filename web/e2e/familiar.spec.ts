@@ -119,7 +119,7 @@ test("a comment is liked with a count, and the like is taken back", async ({ bro
 
   await member.goto(community);
   await post(member, "Póstur til að líka")
-    .getByRole("link", { name: strings.post_comments({ count: 1 }) })
+    .getByRole("link", { name: strings.post_comment_action, exact: true })
     .click();
   const comment = member.getByRole("article").filter({ hasText: "Athugasemd til að líka." });
   const like = comment.getByRole("button", { name: strings.comment_like });

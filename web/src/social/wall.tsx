@@ -11,7 +11,7 @@ import {
 } from "../generated/api.ts";
 import { strings } from "../generated/brand/strings.ts";
 import { Dialog } from "../ui/dialog.tsx";
-import { buttonClass, ProblemText, Status, VerifiedMark } from "../ui/kit.tsx";
+import { ProblemText, Status, VerifiedMark } from "../ui/kit.tsx";
 import { VerifyCta } from "../ui/verify.tsx";
 import { Avatar, Cover } from "./avatar.tsx";
 import { PostComposer } from "./composer.tsx";
@@ -267,13 +267,8 @@ function Header({
           {strings.person_snoozed_until({ date: formatIsDate(person.snoozedUntil) })}
         </p>
       )}
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2 empty:hidden">
         {owner && <VerifyCta />}
-        {owner && (
-          <Link to="/friends" className={buttonClass("quiet")}>
-            {strings.person_friends}
-          </Link>
-        )}
         <RelationActions relation={person.relation} path={path} busy={busy} act={act} />
         {!owner && (
           <PersonMenu

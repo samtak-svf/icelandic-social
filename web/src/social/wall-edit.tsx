@@ -56,7 +56,7 @@ export function BioLine({
             </Button>
           )}
         </div>
-        <ImageProblem problem={problem} />
+        <ImageProblem problem={problem} inline />
       </div>
     );
   }

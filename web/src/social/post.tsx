@@ -13,18 +13,18 @@ import {
   type SocialMedia,
 } from "../generated/api.ts";
 import { strings } from "../generated/brand/strings.ts";
-import { relativeTime } from "../lib/relative-time.ts";
 import { Dialog } from "../ui/dialog.tsx";
 import { DotsIcon, Menu, MenuItem } from "../ui/menu.tsx";
-import { AudienceDialog, AudienceMark } from "./audience.tsx";
+import { AudienceDialog } from "./audience.tsx";
 import { useSuspended } from "./suspended.tsx";
-import { authorName, PersonName } from "./author-name.tsx";
+import { authorName } from "./author-name.tsx";
 import { Avatar } from "./avatar.tsx";
 import { ProblemText, Status } from "../ui/kit.tsx";
-import { outcome, when } from "./outcome.ts";
+import { outcome } from "./outcome.ts";
 import { ReportForm } from "./report.tsx";
-import { ActionRow, Summary, useReactions } from "./post-actions.tsx";
+import { ActionRow, useReactions } from "./post-actions.tsx";
 import { PollCard } from "./poll.tsx";
+import { postByline, PostHeading, type PostCommunity } from "./post-heading.tsx";
 import { isPostTombstone, PostTombstone } from "./post-tombstone.tsx";
 import { RoleBadge } from "./roles.tsx";
 import { CommentImage } from "./comment-image.tsx";
@@ -52,38 +52,6 @@ export function StateMark({ state }: Readonly<{ state: Post["state"] }>) {
   );
 }
 
-/** The name a post shows: an anonymous one never carries the author's (decision 0091). */
-export function postByline(post: Post): string {
-  if (post.anonymous)
-    return post.mine ? strings.post_anonymous_mine : strings.post_anonymous_author;
-  return authorName(post.author);
-}
-
-/** The author's picture, or the neutral one of an anonymous post. */
-function PostPicture({ post }: Readonly<{ post: Post }>) {
-  const shown = post.anonymous ? null : post.author;
-  return (
-    <Avatar
-      kind="person"
-      id={post.anonymous ? "anonymous" : (shown?.accountId ?? "")}
-      name={shown?.name ?? null}
-      photo={shown?.photo ?? null}
-      className="size-10 rounded-full"
-    />
-  );
-}
-
-/** The byline: name, mark and role, or the anonymous wording. */
-function PostName({ post }: Readonly<{ post: Post }>) {
-  if (post.anonymous) return <span className="font-semibold">{postByline(post)}</span>;
-  return (
-    <>
-      <PersonName author={post.author} />
-      <RoleBadge role={post.author?.role ?? null} />
-    </>
-  );
-}
-
 type PostViewProps = Readonly<{
   post: Post;
   linked: boolean;
@@ -92,7 +60,7 @@ type PostViewProps = Readonly<{
   changed: () => void;
   /** Whether the caller is the owner or a moderator of the post's community. */
   moderates: boolean;
-  community?: { communityId: string; name: string; photo: string | null } | null;
+  community?: PostCommunity;
 }>;
 
 export function PostView(props: PostViewProps) {
@@ -108,45 +76,19 @@ function LivePost({ post, linked, deleted, changed, moderates, community }: Post
   return (
     <article
       aria-label={postByline(post)}
-      className="flex flex-col gap-2 rounded-md border border-border p-4"
+      // Full-bleed on a compact window (decision 0116): the card runs to the screen's edges, with
+      // the page's 1rem gutter taken back, and is a box again from medium up.
+      className="-mx-4 flex flex-col gap-2 rounded-none border-x-0 border-y border-border p-4 medium:mx-0 medium:rounded-md medium:border"
     >
       <StateMark state={post.state} />
       {post.pinned && <PinnedMark />}
       <header className="flex items-start gap-3">
-        <PostPicture post={post} />
-        <div className="flex min-w-0 flex-1 flex-col">
-          <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
-            <PostName post={post} />
-          </span>
-          <span className="flex flex-wrap items-center gap-x-2 text-sm text-muted-fg">
-            <time dateTime={new Date(post.createdAt).toISOString()} title={when(post.createdAt)}>
-              {relativeTime(post.createdAt)}
-            </time>
-            <AudienceMark audience={post.audience} />
-            {post.wall === undefined && community !== undefined && community !== null && (
-              <Link
-                to="/communities/$communityId"
-                params={{ communityId: community.communityId }}
-                className="inline-flex items-center gap-1 font-medium text-fg"
-              >
-                <Avatar
-                  kind="community"
-                  id={community.communityId}
-                  name={community.name}
-                  photo={community.photo}
-                  className="size-5 rounded text-[0.6rem]"
-                />
-                <span className="underline">{community.name}</span>
-              </Link>
-            )}
-          </span>
-        </div>
+        <PostHeading post={post} community={post.wall === undefined ? community : null} />
         <PostMenu post={post} deleted={deleted} changed={changed} moderates={moderates} />
       </header>
       {post.body !== "" && <Body post={post} linked={linked} />}
       {post.poll !== undefined && <PollCard post={post} />}
       {post.media.length > 0 && <Images postId={post.postId} media={post.media} />}
-      <Summary post={post} reactions={reactions} linked={linked} />
       <ActionRow post={post} reactions={reactions} linked={linked} />
       {linked && post.latestComment !== null && post.latestComment.state === "visible" && (
         <LatestComment comment={post.latestComment} />

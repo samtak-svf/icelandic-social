@@ -2,6 +2,7 @@ import type { Page } from "@playwright/test";
 import { strings } from "../src/generated/brand/strings.ts";
 import {
   accountOf,
+  befriend,
   cardMenu,
   layoutWidth,
   pageOverflow,
@@ -17,19 +18,9 @@ import { expect, test, WEB } from "./origin.ts";
 
 const button = (name: string) => ({ name, exact: true });
 
-/** `a` asks `b` to be friends and `b` accepts, each on the other's screen. */
-async function befriend(a: Page, b: Page) {
-  await a.goto(`${WEB}/people/${await accountOf(b)}`);
-  await a.getByRole("button", button(strings.person_add_friend)).click();
-  await expect(a.getByText(strings.person_request_sent, { exact: true })).toBeVisible();
-  await b.goto(`${WEB}/people/${await accountOf(a)}`);
-  await b.getByRole("button", button(strings.person_accept)).click();
-  await expect(b.getByText(strings.person_friends, { exact: true })).toBeVisible();
-}
-
 /** Writes on one's own wall, `everyone` choosing the wider audience; friends is the default. */
 async function writeOnWall(page: Page, text: string, everyone = false) {
-  await page.goto(`${WEB}/`);
+  await page.goto(`${WEB}/me`);
   await page.getByRole("button", { name: strings.post_compose_prompt }).click();
   const dialog = page.getByRole("dialog");
   await expect(dialog.getByRole("radio", button(strings.wall_audience_friends))).toBeChecked();
@@ -43,7 +34,7 @@ test("the owner's wall: tabs, a post for friends, a bio, and the audience change
 }) => {
   test.slow();
   const a = await person(browser, "Auður Prófsdóttir");
-  await a.goto(`${WEB}/`);
+  await a.goto(`${WEB}/me`);
   await expect(a.getByRole("heading", { level: 1 })).toContainText("Auður Prófsdóttir");
   for (const tab of [strings.wall_tab_posts, strings.wall_tab_about, strings.wall_tab_images]) {
     await expect(a.getByRole("button", button(tab))).toBeVisible();
@@ -151,7 +142,7 @@ test("the owner takes a comment off the wall with a reason, and a visitor can on
   await write(b, strings.comment_compose, strings.comment_publish, "Óboðin athugasemd");
   await expect(b.getByRole("button", button(strings.wall_comment_remove))).toHaveCount(0);
 
-  await a.goto(`${WEB}/`);
+  await a.goto(`${WEB}/me`);
   await post(a, "Innlegg með athugasemd")
     .getByRole("link", { name: strings.post_write_comment })
     .click();
@@ -162,14 +153,14 @@ test("the owner takes a comment off the wall with a reason, and a visitor can on
   await expect(a.getByText("Óboðin athugasemd", { exact: true })).toHaveCount(0);
   // The way back from the post leads to the wall, not to a community.
   await a.getByRole("link", { name: strings.post_back }).click();
-  await expect(a).toHaveURL(`${WEB}/`);
+  await expect(a).toHaveURL(`${WEB}/me`);
 });
 
 test("fits a phone, with no sideways scroll", async ({ browser }) => {
   const a = await person(browser, "Auður Prófsdóttir");
   const b = await person(browser, "Björn Prófsson");
   await a.setViewportSize({ width: 360, height: 800 });
-  for (const path of ["/", `/people/${await accountOf(b)}`, "/?tab=about", "/?tab=images"]) {
+  for (const path of ["/me", `/people/${await accountOf(b)}`, "/me?tab=about", "/me?tab=images"]) {
     await a.goto(`${WEB}${path}`);
     await expect(a.getByRole("heading", { level: 1 })).toBeVisible();
     expect(await pageOverflow(a)).toBeLessThanOrEqual(0);

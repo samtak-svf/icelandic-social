@@ -10,6 +10,10 @@
       "surfaces": ["android", "ios", "web"],
       "description": "Bottom tab: the conversation list."
     },
+    "tab_feed": {
+      "surfaces": ["web"],
+      "description": "Tab: the feed, the first place the app opens (decision 0116)."
+    },
     "tab_me": {
       "surfaces": ["android", "ios", "web"],
       "description": "Bottom tab: own profile, invite link and the way to settings (docs/decisions/0034)."
@@ -1472,6 +1476,18 @@
     "posts_empty": {
       "surfaces": ["android", "ios", "web"],
       "description": "A community with no posts yet."
+    },
+    "feed_empty": {
+      "surfaces": ["web"],
+      "description": "The feed's empty state: what fills it (decision 0116)."
+    },
+    "feed_compose_target": {
+      "surfaces": ["web"],
+      "description": "Label of the picker in the feed composer: the own wall or a community the viewer may post in (decision 0116)."
+    },
+    "feed_target_wall": {
+      "surfaces": ["web"],
+      "description": "Option of the feed composer's picker: the viewer's own wall (decision 0116)."
     },
     "post_comments": {
       "surfaces": ["android", "ios", "web"],

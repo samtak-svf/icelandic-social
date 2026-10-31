@@ -9,9 +9,12 @@ const REFUSED = {
 } as const;
 
 /** What went wrong with an image, as a sentence. */
-export function ImageProblem({ problem }: Readonly<{ problem: SendProblem | null }>) {
+export function ImageProblem({
+  problem,
+  inline = false,
+}: Readonly<{ problem: SendProblem | null; inline?: boolean }>) {
   return (
-    <Status>
+    <Status inline={inline}>
       {typeof problem === "string"
         ? REFUSED[problem]
         : problem !== null && <ProblemText problem={problem} />}

@@ -15,7 +15,7 @@ const BUTTON = {
 export type ButtonTone = keyof typeof BUTTON;
 
 /** The classes a Button of `tone` wears; only `link` leaves out the roomy `px-4`. */
-export function buttonClass(tone: ButtonTone, className = ""): string {
+function buttonClass(tone: ButtonTone, className = ""): string {
   const pad = tone === "link" ? "" : "px-4 ";
   return `min-h-11 rounded-md ${pad}font-medium disabled:opacity-60 ${BUTTON[tone]} ${className}`;
 }
