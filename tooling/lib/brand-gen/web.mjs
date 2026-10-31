@@ -3,7 +3,7 @@
 // strings as a typed module, the tokens as Tailwind theme variables with a
 // dark mode, the bundled fonts as WOFF2 with their licences, and the icons.
 
-import { brandColors, fontFamilies, hex2, radii, typeStyles } from "./color.mjs";
+import { brandColors, cssFamily, fontFamilies, hex, hex2, radii, typeStyles } from "./color.mjs";
 import { renderOpaquePng, squareFrame } from "./icon.mjs";
 import { keysFor } from "./strings.mjs";
 import { woff2 } from "./woff2.mjs";
@@ -17,12 +17,7 @@ import { woff2 } from "./woff2.mjs";
 const DIR = "web/src/generated/brand";
 
 /** @param {string} fileName a font's TTF name, `GothicA1-Medium.ttf` */
-const woff2Name = (fileName) => fileName.replace(/\.ttf$/, ".woff2");
-
-/** @param {{ r: number, g: number, b: number, a: number }} c */
-function hex(c) {
-  return `#${hex2(c.r)}${hex2(c.g)}${hex2(c.b)}${c.a < 255 ? hex2(c.a) : ""}`.toLowerCase();
-}
+export const woff2Name = (fileName) => fileName.replace(/\.ttf$/, ".woff2");
 
 /**
  * A sentence as a TypeScript expression: literal text joined to `args.<name>`
@@ -95,11 +90,6 @@ function stringsModule(brand) {
     "} as const;",
     "",
   ].join("\n");
-}
-
-/** @param {string} family */
-function cssFamily(family) {
-  return /^[a-z-]+$/.test(family) ? family : JSON.stringify(family);
 }
 
 /**

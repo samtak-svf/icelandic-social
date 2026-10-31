@@ -111,3 +111,17 @@ export function spacing(tokens) {
 export function hex2(byte) {
   return byte.toString(16).toUpperCase().padStart(2, "0");
 }
+
+/**
+ * A colour as lowercase hex, with the alpha byte only when it is not opaque.
+ *
+ * @param {{ r: number, g: number, b: number, a: number }} c
+ */
+export function hex(c) {
+  return `#${hex2(c.r)}${hex2(c.g)}${hex2(c.b)}${c.a < 255 ? hex2(c.a) : ""}`.toLowerCase();
+}
+
+/** @param {string} family a font family name, quoted unless it is a plain keyword */
+export function cssFamily(family) {
+  return /^[a-z-]+$/.test(family) ? family : JSON.stringify(family);
+}

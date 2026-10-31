@@ -27,20 +27,17 @@ import { readJson, ROOT } from "./lib/repo.mjs";
  */
 
 /**
- * Every output for one brand, or the reasons it cannot generate.
+ * Everything the emitters read for one brand, loaded from disk. The brand must
+ * already have passed tooling/brand-check.mjs.
  *
  * @param {string} name
  * @param {string} [root]
- * @returns {{ problems: string[], files: OutputFile[] }}
+ * @returns {import("./lib/brand-gen/strings.mjs").BrandInput}
  */
-export function generate(name, root = ROOT) {
-  if (!existsSync(join(root, "brand", name, "brand.json")))
-    return { problems: [`brand/${name}: no such brand`], files: [] };
-  const { problems } = checkBrand(name, root);
-  if (problems.length > 0) return { problems, files: [] };
+export function loadBrand(name, root = ROOT) {
   const dir = `brand/${name}`;
   const manifest = readJson(`${dir}/brand.json`, root);
-  const brand = {
+  return {
     name,
     manifest,
     strings: expandStrings(readJson(`${dir}/strings.is.json`, root), readTerms(dir, root)),
@@ -60,6 +57,21 @@ export function generate(name, root = ROOT) {
       }),
     ),
   };
+}
+
+/**
+ * Every output for one brand, or the reasons it cannot generate.
+ *
+ * @param {string} name
+ * @param {string} [root]
+ * @returns {{ problems: string[], files: OutputFile[] }}
+ */
+export function generate(name, root = ROOT) {
+  if (!existsSync(join(root, "brand", name, "brand.json")))
+    return { problems: [`brand/${name}: no such brand`], files: [] };
+  const { problems } = checkBrand(name, root);
+  if (problems.length > 0) return { problems, files: [] };
+  const brand = loadBrand(name, root);
   const files = [...android(brand), ...ios(brand), ...backend(brand), ...web(brand)];
   const leaked = tokensInOutputs(files);
   if (leaked.length > 0) return { problems: leaked, files: [] };

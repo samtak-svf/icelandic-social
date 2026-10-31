@@ -331,7 +331,7 @@ function linearFromSrgb(v) {
  * @param {Rgba} color
  * @returns {[number, number, number]}
  */
-function oklab({ r, g, b }) {
+export function oklab({ r, g, b }) {
   /** @param {number} v */
   const linear = (v) => linearFromSrgb(byte(v) / 255);
   const [lr, lg, lb] = [linear(r), linear(g), linear(b)];
