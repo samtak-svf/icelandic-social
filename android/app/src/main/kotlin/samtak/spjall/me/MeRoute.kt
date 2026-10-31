@@ -131,7 +131,7 @@ internal fun OwnWallRoute(
     val wall: PersonViewModel =
         viewModel(key = "wall-$id") { PersonViewModel(id, graph.social) }
     // Back from the friends, or from a post written in the feed: the count and the images may have changed.
-    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { wall.load() }
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { wall.refresh() }
     val frames = LocalFrameSession.current
     // Made small and square off the main thread, in the view model (decision 0039).
     val photo =

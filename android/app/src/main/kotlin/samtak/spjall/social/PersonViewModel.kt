@@ -84,6 +84,43 @@ class PersonViewModel(
         perform(::load) {}
     }
 
+    /**
+     * Back on this screen: what may have changed elsewhere, with nothing on it moving. The pages of posts and images
+     * further down stay, so a reader coming back from a post is where they were; a failure leaves what is in view.
+     */
+    fun refresh() {
+        if (!_state.value.loaded) return load()
+        if (_state.value.busy) return
+        viewModelScope.launch {
+            val fresh =
+                try {
+                    withContext(io) { fetch() }
+                } catch (_: CoreException) {
+                    return@launch
+                }
+            _state.update {
+                val (posts, postsNext) =
+                    keepingOlder(fresh.posts.posts, fresh.posts.next, it.posts, it.postsNext) { post -> post.postId }
+                val (images, imagesNext) =
+                    if (fresh.images == null) {
+                        it.images to it.imagesNext
+                    } else {
+                        keepingOlder(fresh.images.images, fresh.images.next, it.images, it.imagesNext) { image ->
+                            image.mediaId
+                        }
+                    }
+                it.copy(
+                    profile = fresh.profile,
+                    wall = fresh.wall,
+                    posts = posts,
+                    postsNext = postsNext,
+                    images = images,
+                    imagesNext = imagesNext,
+                )
+            }
+        }
+    }
+
     fun add() = perform(::add) { social.sendFriendRequest(accountId) }
 
     fun cancel() = perform(::cancel) { social.cancelFriendRequest(accountId) }
@@ -297,6 +334,15 @@ class PersonViewModel(
             null
         }
 
+    /** Everything the screen shows. The images are asked for only if the tab has been opened: it asks for itself. */
+    private fun fetch() =
+        Fresh(
+            social.person(accountId),
+            social.wall(accountId),
+            social.wallPosts(accountId, null),
+            if (_state.value.imagesLoaded) social.wallImages(accountId, null) else null,
+        )
+
     /** Runs [action], if any, then asks for the profile again; a refusal leaves the old profile in view. */
     private fun perform(
         again: () -> Unit,
@@ -309,13 +355,7 @@ class PersonViewModel(
                 val fresh =
                     withContext(io) {
                         action()
-                        Fresh(
-                            social.person(accountId),
-                            social.wall(accountId),
-                            social.wallPosts(accountId, null),
-                            // The images are asked for again only if the tab has been opened: it asks for itself.
-                            if (_state.value.imagesLoaded) social.wallImages(accountId, null) else null,
-                        )
+                        fetch()
                     }
                 failed = null
                 _state.update {

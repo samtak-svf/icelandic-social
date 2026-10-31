@@ -4,6 +4,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertHeightIsAtLeast
+import androidx.compose.ui.test.assertWidthIsAtLeast
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
@@ -30,6 +31,7 @@ import org.robolectric.annotation.GraphicsMode
 import samtak.spjall.conversations.SCREENSHOT_DEVICE
 import samtak.spjall.conversations.SCREENSHOT_SDK
 import samtak.spjall.core.CommunityImage
+import samtak.spjall.core.Post
 import samtak.spjall.core.Relation
 import samtak.spjall.frames.FakeFrameRules
 import samtak.spjall.frames.LocalFrameRules
@@ -102,6 +104,69 @@ class WallRefreshTest {
             advanceUntilIdle()
             assertEquals(listOf("m2"), mediaIds(model))
         }
+
+    private fun wallOf(vararg ids: String): MutableList<Post> {
+        val posts = ids.map { post(it, communityId = "w-me", body = it, author = self) }
+        return posts.toMutableList()
+    }
+
+    private fun postIds(model: PersonViewModel): List<String> {
+        val posts = model.state.value.posts
+        return posts.map { it.postId }
+    }
+
+    @Test
+    fun comingBackKeepsThePagesFurtherDownAndAddsWhatIsNew() =
+        runTest(dispatcher) {
+            social.wallPageSize = 2
+            social.wallPostsOf[self.accountId] = wallOf("p1", "p2", "p3", "p4", "p5")
+            val model = ownWall()
+            model.morePosts()
+            advanceUntilIdle()
+            assertEquals(listOf("p1", "p2", "p3", "p4"), postIds(model))
+            social.wallPostsOf.getValue(self.accountId).add(0, wallOf("new").single())
+            model.refresh()
+            advanceUntilIdle()
+            assertEquals(listOf("new", "p1", "p2", "p3", "p4"), postIds(model))
+            model.morePosts()
+            advanceUntilIdle()
+            assertEquals(listOf("new", "p1", "p2", "p3", "p4", "p5"), postIds(model))
+        }
+
+    @Test
+    fun comingBackBringsTheNewFriendCount() =
+        runTest(dispatcher) {
+            val model = ownWall()
+            social.people[self.accountId] = social.people.getValue(self.accountId).copy(friendCount = 4u)
+            model.refresh()
+            advanceUntilIdle()
+            val profile = model.state.value.profile
+            assertEquals(4uL, profile?.friendCount)
+        }
+
+    @Test
+    fun aFailureComingBackLeavesTheScreenAsItWas() =
+        runTest(dispatcher) {
+            social.wallPostsOf[self.accountId] = wallOf("p1")
+            val model = ownWall()
+            social.failOn = "wallPosts ${self.accountId}"
+            model.refresh()
+            advanceUntilIdle()
+            assertEquals(listOf("p1"), postIds(model))
+            assertEquals(null, model.state.value.problem)
+        }
+
+    @Test
+    fun aRowThatIsGoneLeavesTheFirstPageStandingAlone() {
+        val joined = keepingOlder(listOf("a", "b"), "next", listOf("x", "y", "z"), "old") { it }
+        assertEquals(listOf("a", "b") to "next", joined)
+    }
+
+    @Test
+    fun aCompleteFirstPageIsAllThereIs() {
+        val joined = keepingOlder(listOf("a", "b"), null, listOf("a", "b", "gone"), "old") { it }
+        assertEquals(listOf("a", "b") to null, joined)
+    }
 }
 
 /** The friend count is a way to the friends on the own wall and text on another's (0114). */
@@ -137,6 +202,7 @@ class FriendCountLinkTest {
         val count = compose.onNodeWithTag("friend-count")
         count.assertHasClickAction()
         count.assertHeightIsAtLeast(48.dp)
+        count.assertWidthIsAtLeast(48.dp)
         count.performClick()
         assertEquals(1, actions.friends)
     }

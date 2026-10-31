@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
@@ -25,7 +26,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -129,12 +129,15 @@ private fun ProfileCard(
                 val friends = profile.friendCount
                 val count = pluralStringResource(R.plurals.person_friend_count, friends.toInt(), friends.toLong())
                 if (own) {
-                    // The web's link to /friends (0114); the touch target is 48 dp.
-                    TextButton(
-                        onClick = actions::friends,
-                        modifier = Modifier.heightIn(min = 48.dp).testTag("friend-count"),
-                        contentPadding = PaddingValues(0.dp),
-                    ) { Text(count, style = MaterialTheme.typography.bodyMedium, color = Palette.mutedFg) }
+                    // The web's link to /friends (0114); the touch target is 48 dp, the text in line with the name.
+                    Box(
+                        modifier =
+                            Modifier
+                                .sizeIn(minWidth = 48.dp, minHeight = 48.dp)
+                                .clickable(role = Role.Button, onClick = actions::friends)
+                                .testTag("friend-count"),
+                        contentAlignment = Alignment.CenterStart,
+                    ) { Muted(count) }
                 } else {
                     Muted(count)
                 }

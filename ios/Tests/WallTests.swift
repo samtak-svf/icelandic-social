@@ -121,6 +121,23 @@ final class WallTests: XCTestCase {
         XCTAssertEqual(model.images.map(\.mediaId), ["m1"])
     }
 
+    func testLoadingAgainKeepsThePagesFurtherDownAndAddsWhatIsNew() async {
+        social.walls.posts["a1"] = ["w1", "w2", "w3", "w4", "w5"].map { wallPost($0) }
+        let model = await wall()
+        await model.more()
+        XCTAssertEqual(model.posts.map(\.postId), ["w1", "w2", "w3", "w4"])
+        social.walls.posts["a1"]?.insert(wallPost("new"), at: 0)
+        await model.load()
+        XCTAssertEqual(model.posts.map(\.postId), ["new", "w1", "w2", "w3", "w4"])
+        XCTAssertNotNil(model.next)
+    }
+
+    func testARowThatIsGoneLeavesTheFirstPageStandingAlone() {
+        let joined = keepingOlder(["a", "b"], "next", ["x", "y", "z"], "old", id: { $0 })
+        XCTAssertEqual(joined.0, ["a", "b"])
+        XCTAssertEqual(joined.1, "next")
+    }
+
     func testAPostWrittenOnTheWallMakesTheGalleryAskAgain() async {
         let model = await wall()
         await model.loadImages()
