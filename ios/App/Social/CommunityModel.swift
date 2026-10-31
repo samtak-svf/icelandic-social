@@ -60,11 +60,7 @@ final class CommunityModel {
     private let now: @Sendable () -> UInt64
     private let sleep: @Sendable (Duration) async throws -> Void
     private var failed: (() async -> Void)?
-    /// The posts whose reaction is on its way, so a second tap waits for the first.
-    private var reacting: Set<String> = []
     private var loadingMembers = false
-    /// The polls whose vote is on its way, so a second tap waits for the first.
-    private var voting: Set<String> = []
 
     /// The community page's tabs (decision 0089), in the order the row shows them.
     enum Tab: String, CaseIterable, Sendable {
@@ -676,68 +672,40 @@ final class CommunityModel {
         }
     }
 
-    /// Sets this account's reaction on a post to `kind`, or takes it off when it is `kind` already. The post
+    /// Sets this account's reaction on a post to `emoji`, or takes it off when it is `emoji` already. The post
     /// shows the change at once and goes back to what it was if the server refuses.
-    func react(_ postId: String, _ emoji: String) async {
-        guard writes, !reacting.contains(postId), let index = posts.firstIndex(where: { $0.postId == postId })
-        else { return }
-        let before = posts[index]
-        let off = before.myEmoji == emoji
-        posts[index] = reacted(before, off ? nil : emoji)
-        reacting.insert(postId)
-        let social = social
-        problem = nil
-        do {
-            try await offMain {
-                if off { try social.unreact(postId) } else { try social.react(postId, emoji: emoji) }
-            }
-            failed = nil
-        } catch {
-            if let index = posts.firstIndex(where: { $0.postId == postId }) { posts[index] = before }
-            failed = nil
-            problem = Problem(error)
-        }
-        reacting.remove(postId)
+    func react(_ postId: String, _ emoji: String) async { await actions.react(postId, emoji, actionsHost) }
+
+    /// Votes for `option` in the poll on a post, or changes the vote (decision 0090); the post then reads as the
+    /// server sent it back. A poll closed meanwhile shows its results and says so.
+    func vote(_ postId: String, option: String) async { await actions.vote(postId, option: option, actionsHost) }
+
+    /// Takes this account's vote back.
+    func withdrawVote(_ postId: String) async { await actions.withdrawVote(postId, actionsHost) }
+
+    /// Closes the poll: no more votes, and everyone sees the results.
+    func closePoll(_ postId: String) async { await actions.closePoll(postId, actionsHost) }
+
+    private let actions = PostActions()
+
+    private var actionsHost: PostActions.Host {
+        PostActions.Host(
+            social: social,
+            read: { id in self.posts.first { $0.postId == id } },
+            write: { post in
+                if let at = self.posts.firstIndex(where: { $0.postId == post.postId }) { self.posts[at] = post }
+            },
+            may: { _ in self.writes },
+            settle: {
+                self.failed = nil
+                self.problem = $0
+            })
     }
 
     /// This account may close the poll on `post`: its author, the owner or a moderator, while it is open.
     func canClose(_ post: Post) -> Bool {
         guard let poll = post.poll, !poll.closed else { return false }
         return post.mine || moderates
-    }
-
-    /// Votes for `option` in the poll on a post, or changes the vote (decision 0090); the post then reads as the
-    /// server sent it back. A poll closed meanwhile shows its results and says so.
-    func vote(_ postId: String, option: String) async {
-        let social = social
-        await pollAction(postId) { try social.votePoll(postId, option: option) }
-    }
-
-    /// Takes this account's vote back.
-    func withdrawVote(_ postId: String) async {
-        let social = social
-        await pollAction(postId) { try social.withdrawVote(postId) }
-    }
-
-    /// Closes the poll: no more votes, and everyone sees the results.
-    func closePoll(_ postId: String) async {
-        let social = social
-        await pollAction(postId) { try social.closePoll(postId) }
-    }
-
-    private func pollAction(_ postId: String, _ act: @escaping @Sendable () throws -> Post) async {
-        guard writes, !voting.contains(postId) else { return }
-        voting.insert(postId)
-        problem = nil
-        let outcome = await runPollAction(social, postId: postId, act)
-        if let post = outcome.post { replace(post) }
-        failed = nil
-        problem = outcome.problem
-        voting.remove(postId)
-    }
-
-    private func replace(_ post: Post) {
-        if let index = posts.firstIndex(where: { $0.postId == post.postId }) { posts[index] = post }
     }
 
     /// The newest page again, once a post opened from here is closed: the posts on it take their reactions and

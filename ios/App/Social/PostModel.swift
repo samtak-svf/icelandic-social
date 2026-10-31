@@ -41,9 +41,6 @@ final class PostModel {
     private let social: Social
     private let now: @Sendable () -> UInt64
     private var failed: (() async -> Void)?
-    private var reacting = false
-    /// A vote is on its way.
-    private var voting = false
     /// The comments whose like is on its way, so a second tap waits for the first.
     private var liking: Set<String> = []
 
@@ -260,27 +257,30 @@ final class PostModel {
         busy = false
     }
 
-    /// Sets this account's reaction to `kind`, or takes it off when it is `kind` already, shown at once and
+    /// Sets this account's reaction to `emoji`, or takes it off when it is `emoji` already, shown at once and
     /// put back if the server refuses.
-    func react(_ emoji: String) async {
-        guard writes, !reacting, let before = post else { return }
-        let off = before.myEmoji == emoji
-        post = reacted(before, off ? nil : emoji)
-        reacting = true
-        let social = social
-        let id = postId
-        problem = nil
-        do {
-            try await offMain {
-                if off { try social.unreact(id) } else { try social.react(id, emoji: emoji) }
-            }
-            failed = nil
-        } catch {
-            post = before
-            failed = nil
-            problem = Problem(error)
-        }
-        reacting = false
+    func react(_ emoji: String) async { await actions.react(postId, emoji, actionsHost) }
+
+    /// Votes in the post's poll, takes the vote back, or closes the poll (decision 0090); the post then reads as
+    /// the server sent it back.
+    func vote(_ option: String) async { await actions.vote(postId, option: option, actionsHost) }
+
+    func withdrawVote() async { await actions.withdrawVote(postId, actionsHost) }
+
+    func closePoll() async { await actions.closePoll(postId, actionsHost) }
+
+    private let actions = PostActions()
+
+    private var actionsHost: PostActions.Host {
+        PostActions.Host(
+            social: social,
+            read: { id in self.post?.postId == id ? self.post : nil },
+            write: { self.post = $0 },
+            may: { _ in self.writes },
+            settle: {
+                self.failed = nil
+                self.problem = $0
+            })
     }
 
     /// This account moderates the post's community, and may pin its posts (decision 0080).
@@ -309,37 +309,6 @@ final class PostModel {
     var canClosePoll: Bool {
         guard let post, let poll = post.poll, !poll.closed else { return false }
         return post.mine || moderates
-    }
-
-    /// Votes in the post's poll, takes the vote back, or closes the poll (decision 0090); the post then reads as
-    /// the server sent it back.
-    func vote(_ option: String) async {
-        let social = social
-        let id = postId
-        await pollAction { try social.votePoll(id, option: option) }
-    }
-
-    func withdrawVote() async {
-        let social = social
-        let id = postId
-        await pollAction { try social.withdrawVote(id) }
-    }
-
-    func closePoll() async {
-        let social = social
-        let id = postId
-        await pollAction { try social.closePoll(id) }
-    }
-
-    private func pollAction(_ act: @escaping @Sendable () throws -> Post) async {
-        guard writes, !voting else { return }
-        voting = true
-        problem = nil
-        let outcome = await runPollAction(social, postId: postId, act)
-        if let fresh = outcome.post { post = fresh }
-        failed = nil
-        problem = outcome.problem
-        voting = false
     }
 
     /// Gives a comment this account's one 👍, or takes it back, shown at once and put back if the server refuses

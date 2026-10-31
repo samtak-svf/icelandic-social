@@ -38,8 +38,6 @@ final class HomeModel {
 
     private let social: Social
     private var failed: (() async -> Void)?
-    private var reacting: Set<String> = []
-    private var voting: Set<String> = []
 
     init(social: Social) {
         self.social = social
@@ -157,57 +155,34 @@ final class HomeModel {
         return role == .owner || role == .moderator
     }
 
-    func react(_ postId: String, _ emoji: String) async {
-        guard !reacting.contains(postId), let index = posts.firstIndex(where: { $0.postId == postId }),
-            writes(posts[index])
-        else { return }
-        let before = posts[index]
-        let off = before.myEmoji == emoji
-        posts[index] = reacted(before, off ? nil : emoji)
-        reacting.insert(postId)
-        let social = social
-        problem = nil
-        do {
-            try await offMain {
-                if off { try social.unreact(postId) } else { try social.react(postId, emoji: emoji) }
-            }
-            failed = nil
-        } catch {
-            if let index = posts.firstIndex(where: { $0.postId == postId }) { posts[index] = before }
-            failed = nil
-            problem = Problem(error)
-        }
-        reacting.remove(postId)
-    }
+    /// Sets this account's reaction on a post to `emoji`, or takes it off when it is `emoji` already. The post
+    /// shows the change at once and goes back to what it was if the server refuses.
+    func react(_ postId: String, _ emoji: String) async { await actions.react(postId, emoji, actionsHost) }
 
-    func vote(_ postId: String, option: String) async {
-        let social = social
-        await pollAction(postId) { try social.votePoll(postId, option: option) }
-    }
+    /// Votes for `option` in the poll on a post, or changes the vote (decision 0090); the post then reads as the
+    /// server sent it back. A poll closed meanwhile shows its results and says so.
+    func vote(_ postId: String, option: String) async { await actions.vote(postId, option: option, actionsHost) }
 
-    func withdrawVote(_ postId: String) async {
-        let social = social
-        await pollAction(postId) { try social.withdrawVote(postId) }
-    }
+    /// Takes this account's vote back.
+    func withdrawVote(_ postId: String) async { await actions.withdrawVote(postId, actionsHost) }
 
-    func closePoll(_ postId: String) async {
-        let social = social
-        await pollAction(postId) { try social.closePoll(postId) }
-    }
+    /// Closes the poll: no more votes, and everyone sees the results.
+    func closePoll(_ postId: String) async { await actions.closePoll(postId, actionsHost) }
 
-    private func pollAction(_ postId: String, _ act: @escaping @Sendable () throws -> Post) async {
-        guard !voting.contains(postId), let index = posts.firstIndex(where: { $0.postId == postId }),
-            writes(posts[index])
-        else { return }
-        voting.insert(postId)
-        problem = nil
-        let outcome = await runPollAction(social, postId: postId, act)
-        if let post = outcome.post, let index = posts.firstIndex(where: { $0.postId == postId }) {
-            posts[index] = post
-        }
-        failed = nil
-        problem = outcome.problem
-        voting.remove(postId)
+    private let actions = PostActions()
+
+    private var actionsHost: PostActions.Host {
+        PostActions.Host(
+            social: social,
+            read: { id in self.posts.first { $0.postId == id } },
+            write: { post in
+                if let at = self.posts.firstIndex(where: { $0.postId == post.postId }) { self.posts[at] = post }
+            },
+            may: { self.writes($0) },
+            settle: {
+                self.failed = nil
+                self.problem = $0
+            })
     }
 
     // MARK: Composing
