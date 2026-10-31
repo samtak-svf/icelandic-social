@@ -24,6 +24,8 @@ pub enum ModerationLogAction {
     BanMember,
     UnbanMember,
     ClearAccountPhoto,
+    ClearAccountBio,
+    ClearAccountCover,
     SuspendAccount,
     UnsuspendAccount,
     CloseReport,
@@ -41,6 +43,8 @@ pub enum ModerationLogAction {
     RevealAuthor,
     ReviewUpheld,
     ReviewOverturned,
+    /// A platform moderator read a reported post on a wall.
+    ReadReported,
     #[serde(other)]
     Unknown,
 }
