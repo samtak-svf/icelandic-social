@@ -7,6 +7,7 @@ import { Avatar, Cover } from "./avatar.tsx";
 import { Invite } from "./invite.tsx";
 import type { Members } from "./members.ts";
 import { outcome } from "./outcome.ts";
+import { moderatesAs } from "./roles.tsx";
 import { LAYOUTS } from "../ui/layout.ts";
 import { DotsIcon, Menu, MenuItem } from "../ui/menu.tsx";
 import { ProblemText, Status } from "../ui/kit.tsx";
@@ -24,7 +25,7 @@ export function CommunityBar({
 }: Readonly<{ community: Community; changed?: () => void }>) {
   const { communityId } = community;
   const navigate = useNavigate();
-  const moderates = community.role === "owner" || community.role === "moderator";
+  const moderates = moderatesAs(community.role);
   const waiting =
     (community.openReports ?? 0) +
     (community.pendingJoinRequests ?? 0) +

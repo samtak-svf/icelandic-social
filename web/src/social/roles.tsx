@@ -9,10 +9,23 @@ export function moderatesAs(role: "owner" | "moderator" | "member" | null): bool
   return role === "owner" || role === "moderator";
 }
 
-/** Whether the caller may write in `community` now: a member whose notifications are not muted away (the composer's own test, as on the community's page). */
-export function mayPostIn(community: Pick<Community, "role" | "mutedUntil">): boolean {
-  const muted = community.mutedUntil !== null && community.mutedUntil > Date.now();
-  return community.role !== null && !muted;
+type Standing = Pick<Community, "role" | "mutedUntil" | "readOnly">;
+
+/** Whether a moderator has muted the caller in `community` now. */
+function mutedIn(community: Standing): boolean {
+  return community.mutedUntil !== null && community.mutedUntil > Date.now();
+}
+
+/** Whether the caller may write in `community` now, as the server decides: a member, of any role, in a community that is not read-only, and not muted there. */
+export function mayPostIn(community: Standing): boolean {
+  return community.role !== null && !community.readOnly && !mutedIn(community);
+}
+
+/** What tells a member why there is no composer, or null when there is one or the caller has not joined. */
+export function noPostNotice(community: Standing): string | null {
+  if (community.role === null) return null;
+  if (community.readOnly) return strings.community_read_only;
+  return mutedIn(community) ? strings.community_muted : null;
 }
 
 /** Eigandi or Stjórnandi beside a name; nothing for a member. */

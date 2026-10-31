@@ -6,7 +6,7 @@ import { strings } from "../generated/brand/strings.ts";
 import type { Problem } from "../problem.ts";
 import { feedPhase } from "./post-feed.tsx";
 import { PostView } from "./post.tsx";
-import { mayPostIn } from "./roles.tsx";
+import { mayPostIn, noPostNotice } from "./roles.tsx";
 
 vi.mock("@tanstack/react-router", () => ({
   useNavigate: () => () => undefined,
@@ -68,17 +68,37 @@ describe("feedPhase", () => {
 
 describe("mayPostIn", () => {
   const now = Date.now();
-  it("is a member whose notifications are not muted away", () => {
-    expect(mayPostIn({ role: "member", mutedUntil: null })).toBe(true);
-    expect(mayPostIn({ role: "member", mutedUntil: now - 1000 })).toBe(true);
+  const roles = ["owner", "moderator", "member"] as const;
+
+  it.each(roles)("lets a %s write in a community that is not read-only", (role) => {
+    expect(mayPostIn({ role, mutedUntil: null, readOnly: false })).toBe(true);
+    expect(mayPostIn({ role, mutedUntil: now - 1000, readOnly: false })).toBe(true);
+    expect(noPostNotice({ role, mutedUntil: null, readOnly: false })).toBeNull();
   });
 
-  it("is not a person who has not joined", () => {
-    expect(mayPostIn({ role: null, mutedUntil: null })).toBe(false);
+  it.each(roles)("stops a %s in a read-only community, and says why", (role) => {
+    expect(mayPostIn({ role, mutedUntil: null, readOnly: true })).toBe(false);
+    expect(noPostNotice({ role, mutedUntil: null, readOnly: true })).toBe(
+      strings.community_read_only,
+    );
   });
 
-  it("is not a member muted for now", () => {
-    expect(mayPostIn({ role: "member", mutedUntil: now + 60_000 })).toBe(false);
+  it("gives a muted member in a read-only community the reason that outlasts the mute", () => {
+    const standing = { role: "member", mutedUntil: now + 60_000, readOnly: true } as const;
+    expect(noPostNotice(standing)).toBe(strings.community_read_only);
+  });
+
+  it("is not a person who has not joined, who is told nothing", () => {
+    for (const readOnly of [false, true]) {
+      expect(mayPostIn({ role: null, mutedUntil: null, readOnly })).toBe(false);
+      expect(noPostNotice({ role: null, mutedUntil: null, readOnly })).toBeNull();
+    }
+  });
+
+  it("is not a member muted for now, who is told so", () => {
+    const standing = { role: "member", mutedUntil: now + 60_000, readOnly: false } as const;
+    expect(mayPostIn(standing)).toBe(false);
+    expect(noPostNotice(standing)).toBe(strings.community_muted);
   });
 });
 

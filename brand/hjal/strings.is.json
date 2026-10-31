@@ -358,6 +358,7 @@
   "community_join_requested": "Beiðni þín bíður samþykkis stjórnanda.",
   "community_leave": "Yfirgefa [[group.acc.def]]",
   "community_muted": "Stjórnandi þaggaði niður í þér hér. Þú getur lesið en ekki skrifað.",
+  "community_read_only": "Ekki er lengur hægt að skrifa hér en þú getur enn lesið.",
   "post_compose": "Skrifa póst",
   "post_compose_prompt": "Skrifaðu eitthvað…",
   "post_publish": "Birta",
