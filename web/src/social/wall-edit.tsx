@@ -37,9 +37,9 @@ export function BioLine({
   if (!owner) return bio === null ? null : <p className="break-words">{bio}</p>;
   if (!editing) {
     return (
-      <div className="flex flex-col items-center gap-1">
+      <div className="flex flex-col items-start gap-2">
         {bio !== null && <p className="break-words">{bio}</p>}
-        <div className="flex flex-wrap justify-center gap-2">
+        <div className="flex flex-wrap gap-2">
           {!suspended && (
             <Button
               onClick={() => {
