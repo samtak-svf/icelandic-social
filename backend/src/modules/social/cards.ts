@@ -39,8 +39,10 @@ async function card(env: Env, viewer: string, ref: Ref) {
   }
   if (ref.kind === "post") {
     const found = await postAccess(env, viewer, ref.id);
-    const [post] = found ? await render(env, [found.post], found.access.viewer) : [];
-    if (!found || !post) return unavailable;
+    // A card names a community, and a wall has none to name (decision 0115).
+    if (!found || found.access.wall) return unavailable;
+    const [post] = await render(env, [found.post], found.access.viewer);
+    if (!post) return unavailable;
     return {
       kind: "post" as const,
       ref,
@@ -57,10 +59,11 @@ async function card(env: Env, viewer: string, ref: Ref) {
     };
   }
   const found = await commentAccess(env, viewer, ref.id);
-  const author =
-    found &&
-    (await authors(env, [found.comment.author], found.post.communityId)).get(found.comment.author);
-  if (!found || !author) return unavailable;
+  if (!found || found.access.wall) return unavailable;
+  const author = (await authors(env, [found.comment.author], found.post.communityId)).get(
+    found.comment.author,
+  );
+  if (!author) return unavailable;
   return {
     kind: "comment" as const,
     ref,

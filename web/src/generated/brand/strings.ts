@@ -397,6 +397,57 @@ export const strings = {
   community_read_more: "Lesa meira",
   /** Says a community's content is hosted on a server and is not end-to-end encrypted (decisions 0060, 0063). */
   community_not_encrypted_notice: "Efni í hópum er hýst á þjóni og er ekki dulkóðað enda á milli.",
+  /** Says a wall's content is hosted on a server and is not end-to-end encrypted (decision 0115). */
+  wall_not_encrypted_notice: "Efni á veggnum er hýst á þjóni og er ekki dulkóðað enda á milli.",
+  /** The tab of a wall's posts (decision 0115). */
+  wall_tab_posts: "Innlegg",
+  /** The tab of a wall's bio and joined month (decision 0115). */
+  wall_tab_about: "Um",
+  /** The tab of the images in the wall's posts the viewer may read (decision 0115). */
+  wall_tab_images: "Myndir",
+  /** The label of the short text an account writes about itself (decision 0115). */
+  wall_bio_label: "Um mig",
+  /** The placeholder of the bio field (decision 0115). */
+  wall_bio_placeholder: "Segðu frá þér í nokkrum orðum",
+  /** Says the bio is longer than the limit (decision 0115). */
+  wall_bio_too_long: "Textinn er of langur.",
+  /** When the account joined, its month and year (decision 0115). */
+  wall_joined: (args: { month: string }): string =>
+    "Skráð í " + args.month,
+  /** The alt text of an account's cover (decision 0115). */
+  wall_cover_alt: "Forsíðumynd",
+  /** The label of the audience picker on a wall post (decision 0115). */
+  wall_audience_label: "Hverjir lesa þetta",
+  /** The audience of a wall post that only the owner's friends read (decision 0115). */
+  wall_audience_friends: "Vinir",
+  /** The audience of a wall post that every signed-in account reads (decision 0115). */
+  wall_audience_everyone: "Allir innskráðir",
+  /** The owner's action of removing a comment from their wall (decision 0115). */
+  wall_comment_remove: "Fjarlægja athugasemd",
+  /** The confirmation of removing a comment from one's wall (decision 0115). */
+  wall_comment_remove_confirm: "Fjarlægja athugasemdina af veggnum þínum? Sá sem skrifaði hana fær að vita það.",
+  /** The label of the reason asked of an owner removing a comment (decision 0115). */
+  wall_comment_remove_reason: "Ástæða",
+  /** Marks a report in the platform's queue as being of a wall's content (decision 0115). */
+  moderation_report_on_wall: "Á vegg",
+  /** The logged decision of clearing an account's bio (decision 0115). */
+  moderation_decision_clear_account_bio: "Textinn um aðganginn var fjarlægður.",
+  /** The logged decision of clearing an account's cover (decision 0115). */
+  moderation_decision_clear_account_cover: "Forsíðumyndin var fjarlægð.",
+  /** The logged read of a reported wall post by a platform moderator (decision 0115). */
+  moderation_decision_read_reported: "Tilkynnt efni var lesið.",
+  /** Tells an account its bio was cleared (decision 0115). */
+  notice_account_bio_cleared: "Stjórnandi fjarlægði textann um þig af aðganginum þínum.",
+  /** Tells an account its cover was cleared (decision 0115). */
+  notice_account_cover_cleared: "Stjórnandi fjarlægði forsíðumyndina af aðganginum þínum.",
+  /** The platform moderator's action of clearing an account's bio (decision 0115). */
+  platform_clear_bio: "Fjarlægja textann um aðganginn",
+  /** The confirmation of clearing a bio (decision 0115). */
+  platform_clear_bio_confirm: "Fjarlægja textann af aðganginum? Aðgerðin er skráð í aðgerðaskrá Samtaks.",
+  /** The platform moderator's action of clearing an account's cover (decision 0115). */
+  platform_clear_cover: "Fjarlægja forsíðumynd aðgangsins",
+  /** The confirmation of clearing a cover (decision 0115). */
+  platform_clear_cover_confirm: "Fjarlægja forsíðumyndina af aðganginum? Aðgerðin er skráð í aðgerðaskrá Samtaks.",
   /** Owner action: change a community's name, description or audience. */
   community_edit: "Breyta hópi",
   /** Title of the screen holding a moderator's and the owner's tools (decision 0079). */
@@ -653,15 +704,15 @@ export const strings = {
   /** Section heading on /privacy: what personal data is processed. */
   privacy_data_heading: "Hvaða gögn eru unnin",
   /** Body on /privacy describing sign-in identities, Kenni HMAC, E2EE messages, profile photos and community content (decisions 0002, 0008, 0033, 0039, 0063, 0065). */
-  privacy_data_body: "Við innskráningu með Google tekur þjónninn við nafni og staðfestu auðkenni frá Google. Ef þú staðfestir auðkenni með rafrænum skilríkjum í gegnum Kenni fær þjónninn skráð nafn þitt úr Þjóðskrá, en kennitalan sjálf er aldrei geymd í gagnagrunni heldur aðeins óafturkræft dulritunarlegt fingrafar hennar (HMAC). Einkasamtöl og hópsamtöl í símaöppunum eru dulkóðuð enda á milli (MLS) þannig að þjónninn getur hvorki lesið skilaboð né viðhengi þeirra. Mynd sem þú setur á aðganginn þinn og efni í hópum (póstar, athugasemdir, myndir og viðbrögð) eru hýst á þjóninum án lýsigagna (EXIF) og eru ekki dulkóðuð enda á milli. Þjónninn geymir líka hverjir eru vinir þínir og vinabeiðnir til þín og frá þér. Öðrum innskráðum notendum er sýndur fjöldi vina þinna og hverjir þeirra eru líka vinir þeirra en listinn sjálfur er ekki sýndur öðrum. Sá sem sendir vinabeiðni fær ekki að vita ef henni er hafnað.",
+  privacy_data_body: "Við innskráningu með Google tekur þjónninn við nafni og staðfestu auðkenni frá Google. Ef þú staðfestir auðkenni með rafrænum skilríkjum í gegnum Kenni fær þjónninn skráð nafn þitt úr Þjóðskrá en kennitalan sjálf er aldrei geymd í gagnagrunni heldur aðeins óafturkræft dulritunarlegt fingrafar hennar (HMAC). Einkasamtöl og hópsamtöl í símaöppunum eru dulkóðuð enda á milli (MLS) þannig að þjónninn getur hvorki lesið skilaboð né viðhengi þeirra. Mynd sem þú setur á aðganginn þinn er hýst á þjóninum án lýsigagna (EXIF) og er ekki dulkóðuð enda á milli. Sama á við um efni í hópum og á veggjum (pósta, athugasemdir, myndir og viðbrögð), textann um þig og forsíðumyndina þína. Póst á veggnum þínum geta annaðhvort vinir þínir eða allir innskráðir notendur lesið, eftir því hvað þú velur fyrir hvern póst en textann um þig og forsíðumyndina geta allir innskráðir notendur lesið. Enginn sem þú hefur lokað á eða hefur lokað á þig getur lesið neitt af þessu. Stjórnandi Samtaks getur aðeins lesið póst sem eingöngu vinir þínir eiga að sjá ef tilkynning um hann er opin og hver slíkur lestur er skráður í aðgerðaskrá. Þjónninn geymir líka hverjir eru vinir þínir og vinabeiðnir til þín og frá þér. Öðrum innskráðum notendum er sýndur fjöldi vina þinna og hverjir þeirra eru líka vinir þeirra en listinn sjálfur er ekki sýndur öðrum. Sá sem sendir vinabeiðni fær ekki að vita ef henni er hafnað.",
   /** Section heading on /privacy: where data is stored and how long it is kept. */
   privacy_retention_heading: "Varðveisla og geymslutími",
   /** Body on /privacy describing retention periods (encrypted media 30 days, removed posts 90 days, moderation logs and closed reports 1 year, no PII in logs; decisions 0001, 0008, 0023, 0066, 0070). */
-  privacy_retention_body: "Dulkóðuð viðhengi í samtölum geymast á þjóninum í allt að 30 daga á meðan tæki sækja þau. Ef hópi er eytt má endurheimta hann í 30 daga áður en póstum, athugasemdum og myndum hans er eytt varanlega. Póstum og athugasemdum sem stjórnandi fjarlægir er eytt eftir 90 daga og lokuðum tilkynningum og aðgerðaskrá stjórnenda, sem skráir líka bann á aðgöngum, er eytt eftir eitt ár. Vinabeiðni sem er lokið, hvort sem henni var hafnað, hún afturkölluð eða hún rann út, er geymd í 90 daga frá því að hún var send. Atburðaskrár þjónsins geyma hvorki nöfn, kennitölur, símanúmer né innihald skilaboða.",
+  privacy_retention_body: "Dulkóðuð viðhengi í samtölum geymast á þjóninum í allt að 30 daga á meðan tæki sækja þau. Ef hópi er eytt má endurheimta hann í 30 daga áður en póstum, athugasemdum og myndum hans er eytt varanlega. Póstum og athugasemdum sem stjórnandi fjarlægir, og athugasemdum sem eigandi veggjar fjarlægir af honum, er eytt eftir 90 daga og lokuðum tilkynningum og aðgerðaskrá stjórnenda, sem skráir líka bann á aðgöngum, er eytt eftir eitt ár. Vinabeiðni sem er lokið, hvort sem henni var hafnað, hún afturkölluð eða hún rann út, er geymd í 90 daga frá því að hún var send. Atburðaskrár þjónsins geyma hvorki nöfn, kennitölur, símanúmer né innihald skilaboða.",
   /** Section heading on /privacy: account deletion and user rights. */
   privacy_rights_heading: "Eyðing aðgangs og réttindi þín",
   /** Body on /privacy describing immediate account deletion in the app and how to contact the controller. */
-  privacy_rights_body: "Þú getur hvenær sem er skráð út einstaka vafra og tæki í stillingum eða eytt aðganginum þínum í appinu. Þegar aðgangi er eytt lokast allar innskráningar og lyklar strax, mynd og upplýsingar aðgangsins eyðast af þjóninum og reikningurinn er tekinn úr öllum samtölum og hópum. Listi yfir vini þína og vinabeiðnir eyðast með honum. Fyrirspurnir um persónuvernd má senda á samtak@samtak.is.",
+  privacy_rights_body: "Þú getur hvenær sem er skráð út einstaka vafra og tæki í stillingum eða eytt aðganginum þínum í appinu. Þegar aðgangi er eytt lokast allar innskráningar og lyklar strax, mynd og upplýsingar aðgangsins eyðast af þjóninum og aðgangurinn er tekinn úr öllum samtölum og hópum. Listi yfir vini þína og vinabeiðnir eyðast með honum ásamt veggnum þínum og öllum póstum, athugasemdum og myndum á honum. Fyrirspurnir um persónuvernd má senda á samtak@samtak.is.",
   /** Title and link label of the public support page (/support, decision 0009, #383). */
   support_title: "Aðstoð",
   /** Introductory paragraph on /support explaining how to get help. */

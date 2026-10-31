@@ -2,7 +2,8 @@ import { db, space } from "../../env/index.ts";
 import { notePost } from "../communities/index.ts";
 import { type IndexedPost, spaceAccess } from "./access.ts";
 import { deleteKeys } from "./media.ts";
-import { type Post, parseCursor, render, unindex } from "./posts.ts";
+import { parseCursor } from "./post-page.ts";
+import { type Post, render, unindex } from "./posts.ts";
 
 // The anonymous posts waiting for a moderator (decision 0091). The caller has
 // already decided that the account may moderate the community.
@@ -33,7 +34,7 @@ export async function pendingQueue(
   const { results } = await db(env)
     .prepare(
       `SELECT post_id AS postId, community_id AS communityId, author_id AS authorId,
-              created_at AS createdAt, state, anonymous
+              created_at AS createdAt, state, anonymous, audience
          FROM post_index
         WHERE community_id = ?1 AND state = 'pending' AND anonymous = 1
           AND (?2 IS NULL OR created_at < ?2

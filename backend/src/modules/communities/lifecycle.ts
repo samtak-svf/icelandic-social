@@ -119,6 +119,27 @@ async function purge(
 }
 
 /**
+ * Purges `accountId`'s wall with its account (decision 0115): the same path, and
+ * so its images and space go. Run twice, it finds nothing the second time.
+ */
+export async function purgeWall(
+  env: Env,
+  accountId: string,
+  hooks: LifecycleHooks,
+  now = Date.now(),
+): Promise<void> {
+  const wall = await db(env)
+    .prepare(
+      `SELECT c.community_id AS id FROM walls w
+         JOIN communities c ON c.community_id = w.community_id
+        WHERE w.account_id = ? AND c.purged_at IS NULL`,
+    )
+    .bind(accountId)
+    .first<{ id: string }>();
+  if (wall) await purge(env, wall.id, hooks, now);
+}
+
+/**
  * The daily job (decisions 0063, 0070): purges the communities deleted 30
  * days ago and the read-only ones past their 90 days, deletes the rows of
  * those deleted a year ago, and the declined requests past their wait. How

@@ -1,6 +1,6 @@
 # 0115. The wall: an account's posts, for friends by default, moderated by the platform
 
-- Status: accepted; designed, not yet implemented; the platform moderation screen and action route (#374), the statement of reasons, the single review, the tombstone, suspension and the notice of reports waiting (#374) implemented, the rest still to come
+- Status: accepted; designed, not yet implemented; the platform moderation screen and action route (#374), the statement of reasons, the single review, the tombstone, suspension and the notice of reports waiting (#374) and the wall's backend (#377) implemented, the rest still to come
 - Date: 2026-10-30
 - Decided by: Guðröður Atli Jónsson
 - Amends: [0044](0044-no-fljotid-in-v1.md) ("There is no wall"; settles the report and moderation it asked for),

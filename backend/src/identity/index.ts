@@ -3,6 +3,7 @@
 // 0019, 0024, 0029, 0033, 0061). The tables it owns are written only here.
 
 export {
+  accountProfile,
   activeDevices,
   activeDevicesOf,
   type Device,
@@ -12,6 +13,7 @@ export {
   type PushTarget,
   pushTarget,
   revokeAllDevices,
+  setBio,
   setPhotoVersion,
 } from "./accounts.ts";
 export {

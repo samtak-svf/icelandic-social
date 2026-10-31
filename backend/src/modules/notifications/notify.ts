@@ -95,7 +95,7 @@ async function write(env: Env, key: string, group: string, n: Notice, now: numbe
                                     post_id, comment_id, action, emoji, created_at)
          SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
           WHERE EXISTS (SELECT 1 FROM accounts WHERE account_id = ?2)
-            AND (?5 IS NULL OR EXISTS (SELECT 1 FROM live_communities WHERE community_id = ?5))
+            AND (?5 IS NULL OR EXISTS (SELECT 1 FROM live_spaces WHERE community_id = ?5))
          ON CONFLICT (notification_id) DO ${
            grouped
              ? `UPDATE SET created_at = excluded.created_at, read_at = NULL,

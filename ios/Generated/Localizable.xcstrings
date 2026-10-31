@@ -3157,6 +3157,306 @@
         }
       }
     },
+    "wall_not_encrypted_notice": {
+      "comment": "Says a wall's content is hosted on a server and is not end-to-end encrypted (decision 0115).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Efni á veggnum er hýst á þjóni og er ekki dulkóðað enda á milli."
+          }
+        }
+      }
+    },
+    "wall_tab_posts": {
+      "comment": "The tab of a wall's posts (decision 0115).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Innlegg"
+          }
+        }
+      }
+    },
+    "wall_tab_about": {
+      "comment": "The tab of a wall's bio and joined month (decision 0115).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Um"
+          }
+        }
+      }
+    },
+    "wall_tab_images": {
+      "comment": "The tab of the images in the wall's posts the viewer may read (decision 0115).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Myndir"
+          }
+        }
+      }
+    },
+    "wall_bio_label": {
+      "comment": "The label of the short text an account writes about itself (decision 0115).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Um mig"
+          }
+        }
+      }
+    },
+    "wall_bio_placeholder": {
+      "comment": "The placeholder of the bio field (decision 0115).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Segðu frá þér í nokkrum orðum"
+          }
+        }
+      }
+    },
+    "wall_bio_too_long": {
+      "comment": "Says the bio is longer than the limit (decision 0115).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Textinn er of langur."
+          }
+        }
+      }
+    },
+    "wall_joined": {
+      "comment": "When the account joined, its month and year (decision 0115).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Skráð í %1$@"
+          }
+        }
+      }
+    },
+    "wall_cover_alt": {
+      "comment": "The alt text of an account's cover (decision 0115).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Forsíðumynd"
+          }
+        }
+      }
+    },
+    "wall_audience_label": {
+      "comment": "The label of the audience picker on a wall post (decision 0115).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hverjir lesa þetta"
+          }
+        }
+      }
+    },
+    "wall_audience_friends": {
+      "comment": "The audience of a wall post that only the owner's friends read (decision 0115).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vinir"
+          }
+        }
+      }
+    },
+    "wall_audience_everyone": {
+      "comment": "The audience of a wall post that every signed-in account reads (decision 0115).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Allir innskráðir"
+          }
+        }
+      }
+    },
+    "wall_comment_remove": {
+      "comment": "The owner's action of removing a comment from their wall (decision 0115).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fjarlægja athugasemd"
+          }
+        }
+      }
+    },
+    "wall_comment_remove_confirm": {
+      "comment": "The confirmation of removing a comment from one's wall (decision 0115).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fjarlægja athugasemdina af veggnum þínum? Sá sem skrifaði hana fær að vita það."
+          }
+        }
+      }
+    },
+    "wall_comment_remove_reason": {
+      "comment": "The label of the reason asked of an owner removing a comment (decision 0115).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ástæða"
+          }
+        }
+      }
+    },
+    "moderation_report_on_wall": {
+      "comment": "Marks a report in the platform's queue as being of a wall's content (decision 0115).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Á vegg"
+          }
+        }
+      }
+    },
+    "moderation_decision_clear_account_bio": {
+      "comment": "The logged decision of clearing an account's bio (decision 0115).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Textinn um aðganginn var fjarlægður."
+          }
+        }
+      }
+    },
+    "moderation_decision_clear_account_cover": {
+      "comment": "The logged decision of clearing an account's cover (decision 0115).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Forsíðumyndin var fjarlægð."
+          }
+        }
+      }
+    },
+    "moderation_decision_read_reported": {
+      "comment": "The logged read of a reported wall post by a platform moderator (decision 0115).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tilkynnt efni var lesið."
+          }
+        }
+      }
+    },
+    "notice_account_bio_cleared": {
+      "comment": "Tells an account its bio was cleared (decision 0115).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stjórnandi fjarlægði textann um þig af aðganginum þínum."
+          }
+        }
+      }
+    },
+    "notice_account_cover_cleared": {
+      "comment": "Tells an account its cover was cleared (decision 0115).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stjórnandi fjarlægði forsíðumyndina af aðganginum þínum."
+          }
+        }
+      }
+    },
+    "platform_clear_bio": {
+      "comment": "The platform moderator's action of clearing an account's bio (decision 0115).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fjarlægja textann um aðganginn"
+          }
+        }
+      }
+    },
+    "platform_clear_bio_confirm": {
+      "comment": "The confirmation of clearing a bio (decision 0115).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fjarlægja textann af aðganginum? Aðgerðin er skráð í aðgerðaskrá Samtaks."
+          }
+        }
+      }
+    },
+    "platform_clear_cover": {
+      "comment": "The platform moderator's action of clearing an account's cover (decision 0115).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fjarlægja forsíðumynd aðgangsins"
+          }
+        }
+      }
+    },
+    "platform_clear_cover_confirm": {
+      "comment": "The confirmation of clearing a cover (decision 0115).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fjarlægja forsíðumyndina af aðganginum? Aðgerðin er skráð í aðgerðaskrá Samtaks."
+          }
+        }
+      }
+    },
     "community_edit": {
       "comment": "Owner action: change a community's name, description or audience.",
       "extractionState": "manual",

@@ -12,6 +12,7 @@
 #![allow(clippy::disallowed_methods)] // tests use files
 
 mod phone;
+mod wall;
 
 use std::time::{Duration, Instant, SystemTime};
 
@@ -371,6 +372,10 @@ fn the_last_store_release_reads_this_worker() {
         }),
     );
     reports_notice_withheld(&decider);
+
+    // A wall, from its first post to the platform's action on it.
+    let walled = Phone::new(&kennitala(run, 5), Some(&invite), Platform::Android);
+    wall::a_wall_on_the_release(&walled, &mut member, &decider);
 
     // The owner's page, with the notices of content: a comment and a reaction.
     await_rows(&owner, |rows| {

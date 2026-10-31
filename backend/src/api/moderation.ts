@@ -36,6 +36,8 @@ export type Action = keyof typeof ACTIONS;
  */
 export const PLATFORM_ACTIONS = {
   clear_account_photo: "account",
+  clear_account_bio: "account",
+  clear_account_cover: "account",
   suspend_account: "account",
   unsuspend_account: "account",
 } as const;
@@ -104,6 +106,10 @@ const Report = z
     target: Target,
     // Who wrote the post or comment, or the account reported; null once deleted.
     targetAccount: z.union([Author, z.null()]),
+    onWall: z.boolean().openapi({
+      description:
+        "The post or comment is on a person's wall; read it through `readReportedWallContent` (decision 0115)",
+    }),
     targetSuspended: z.boolean().openapi({
       description:
         "That account is suspended now, in the platform's queue; always false in a community's, which is not told (decision 0115)",
@@ -161,6 +167,7 @@ const LogEntry = z
       ...(Object.keys(ACTIONS) as [Action, ...Action[]]),
       ...(Object.keys(PLATFORM_ACTIONS) as [PlatformAction, ...PlatformAction[]]),
       "close_report",
+      "read_reported",
       "delete_community",
       "restore_community",
       ...COMMUNITY_IMAGE_ACTIONS,

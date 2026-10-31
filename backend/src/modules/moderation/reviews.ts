@@ -35,6 +35,8 @@ type Reviewable = (typeof REVIEWABLE)[number];
 type TargetKind = "post" | "comment" | "account";
 
 type Row = {
+  as_platform: number;
+  on_wall: number;
   entry_id: number;
   community_id: string | null;
   actor_id: string | null;
@@ -55,7 +57,9 @@ type Row = {
 
 const LISTED = REVIEWABLE.map((a) => `'${a}'`).join(", ");
 
-const SELECTED = `l.entry_id, l.community_id, l.actor_id, l.action, l.target_kind, l.target_id,
+const SELECTED = `l.as_platform,
+       EXISTS (SELECT 1 FROM walls w WHERE w.community_id = l.community_id) AS on_wall,
+       l.entry_id, l.community_id, l.actor_id, l.action, l.target_kind, l.target_id,
        l.target_account, l.reason, l.created_at, l.suspended_until, r.account_id, r.state, r.asked_at, r.decided_at,
        r.reason AS review_reason, r.restored`;
 
@@ -82,6 +86,9 @@ const textOf = (env: Env, r: Row) =>
   r.community_id === null || r.target_kind === "account"
     ? Promise.resolve(null)
     : keptText(env, r.community_id, r.target_kind, r.target_id);
+
+/** A wall's owner removing a comment: their wall to keep, with no review (decision 0115). */
+const ownersOwn = (r: Row) => r.on_wall === 1 && r.as_platform === 0;
 
 /** A page of what moderators did to `accountId`'s content, newest first. */
 async function statementPage(
@@ -111,7 +118,7 @@ async function statementPage(
         createdAt: r.created_at,
         until: r.suspended_until,
         body: await textOf(env, r),
-        canAsk: r.state === null && (await targetState(env, r)) !== "visible",
+        canAsk: r.state === null && !ownersOwn(r) && (await targetState(env, r)) !== "visible",
         review:
           r.state === null || r.asked_at === null
             ? null
@@ -142,7 +149,7 @@ async function ask(
     )
     .bind(accountId, entryId)
     .first<Row>();
-  if (!row) return "not_found";
+  if (!row || ownersOwn(row)) return "not_found";
   if ((await targetState(env, row)) === "visible") return "restored";
   const { meta } = await db(env)
     .prepare(
@@ -188,7 +195,8 @@ async function openReviews(env: Env, accountId: string, before: string | undefin
         reason: r.reason,
         createdAt: r.created_at,
         until: r.suspended_until,
-        body: await textOf(env, r),
+        // A wall's text is read only on an open report, logged (0115).
+        body: r.on_wall === 1 ? null : await textOf(env, r),
         askedAt: r.asked_at ?? r.created_at,
         canDecide: r.actor_id !== accountId && r.account_id !== accountId,
       })),

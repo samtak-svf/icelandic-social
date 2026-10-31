@@ -1,7 +1,7 @@
-import { spaceAccess, type IndexedPost } from "./access.ts";
+import { readsWall, spaceAccess, type IndexedPost } from "./access.ts";
 import { db } from "../../env/index.ts";
 import type { Viewer } from "./do/space.ts";
-import { render, type Post } from "./posts.ts";
+import { render, wallFields, type Post } from "./posts.ts";
 
 // A post a moderator removed keeps its place (decisions 0063, 0071, 0115): every
 // reader of the space sees that it was removed, the author and moderators too in
@@ -28,6 +28,7 @@ function tombstone(row: IndexedPost, viewer: string): Post {
     latestComment: null,
     state: "removed",
     pinned: false,
+    ...wallFields(row),
   };
 }
 
@@ -55,12 +56,15 @@ export async function removedPost(env: Env, viewer: string, postId: string): Pro
   const row = await db(env)
     .prepare(
       `SELECT post_id AS postId, community_id AS communityId, author_id AS authorId,
-              created_at AS createdAt, state, anonymous
+              created_at AS createdAt, state, anonymous, audience
          FROM post_index WHERE post_id = ? AND state = 'removed'`,
     )
     .bind(postId)
     .first<IndexedPost>();
   if (!row) return null;
   const access = await spaceAccess(env, viewer, row.communityId);
-  return access && !access.viewer.hidden.includes(row.authorId) ? tombstone(row, viewer) : null;
+  if (!access || access.viewer.hidden.includes(row.authorId)) return null;
+  // Who may not read a wall post learns nothing of it, its removal included (0115).
+  if (access.wall && !readsWall(access.wall, row.audience, viewer)) return null;
+  return tombstone(row, viewer);
 }

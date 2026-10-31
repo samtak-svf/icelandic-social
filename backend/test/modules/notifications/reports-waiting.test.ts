@@ -454,7 +454,7 @@ describe("a client that cannot word it", () => {
         `SELECT 1 AS yes FROM (SELECT 'reports_waiting' AS kind, NULL AS community_id, NULL AS action) n
           WHERE ${shownTo(reach)}`,
       ).first()) !== null;
-    for (const reach of ["frozen", "decoding", "suspension", "friends"] as const) {
+    for (const reach of ["frozen", "decoding", "suspension", "friends", "wall"] as const) {
       expect(await passes(reach)).toBe(false);
     }
     expect(await passes("all")).toBe(true);

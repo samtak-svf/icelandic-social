@@ -134,6 +134,9 @@ export default defineConfig(({ mode }) => {
         // The version from which an app words a notice of reports waiting (decision 0115): no
         // app has a platform screen, so this is above them all until one does. Not a floor.
         REPORTS_NOTICE_CLIENT_VERSION: bindings.text("999.0.0"),
+        // The version from which an app knows a wall's notices (decision 0115): no app
+        // has a wall, so this is above them all until one does. Not a floor.
+        WALL_NOTICE_CLIENT_VERSION: bindings.text("999.0.0"),
         // Where a client below its floor gets a current build (decision 0030),
         // published by /health and the 426 body. Android's is the internal
         // track's opt-in link while the app is not on a public listing; iOS's is

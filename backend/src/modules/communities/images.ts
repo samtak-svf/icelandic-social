@@ -13,6 +13,7 @@ import {
 } from "../../api/community-images.ts";
 import { MAX_PHOTO_UPLOAD } from "../../api/accounts.ts";
 import type { AppEnv } from "../../http.ts";
+import type { Context } from "hono";
 import { framingFits } from "../../api/image-frames.ts";
 import { db, withinLimit } from "../../env/index.ts";
 import { fail } from "../../shared/errors.ts";
@@ -46,6 +47,30 @@ const KINDS = {
 
 type Kind = keyof typeof KINDS;
 
+/**
+ * The request's body stored as the image at `key`, or why not: a community's
+ * picture and cover and a wall's cover share it.
+ */
+export async function uploadedImage(
+  c: Context<AppEnv>,
+  accountId: string,
+  key: string,
+  frames: "photo" | "cover",
+) {
+  const upload = await takeUpload(c, accountId, MAX_PHOTO_UPLOAD);
+  if ("error" in upload) return upload;
+  let stored: Awaited<ReturnType<typeof storeImage>>;
+  try {
+    stored = await storeImage(c.env, key, frames, upload.body, upload.length);
+  } catch {
+    // The body ended short of, or ran past, its Content-Length.
+    return { status: 400 as const, error: "invalid_request" as const };
+  }
+  return stored === "invalid_image"
+    ? { status: 400 as const, error: "invalid_image" as const }
+    : stored;
+}
+
 export function communityImageRoutes(app: OpenAPIHono<AppEnv>, hooks: LifecycleHooks): void {
   const set = (route: typeof putCommunityAvatarRoute, kind: Kind) =>
     app.openapi(route, async (c) => {
@@ -54,17 +79,9 @@ export function communityImageRoutes(app: OpenAPIHono<AppEnv>, hooks: LifecycleH
       const found = await standing(c.env, accountId, communityId);
       if (!found) return fail(c, 404, "not_found");
       if (!moderates(found)) return fail(c, 403, "not_permitted");
-      const upload = await takeUpload(c, accountId, MAX_PHOTO_UPLOAD);
-      if ("error" in upload) return fail(c, upload.status, upload.error);
       const { frames, key } = KINDS[kind];
-      let stored: Awaited<ReturnType<typeof storeImage>>;
-      try {
-        stored = await storeImage(c.env, key(communityId), frames, upload.body, upload.length);
-      } catch {
-        // The body ended short of, or ran past, its Content-Length.
-        return fail(c, 400, "invalid_request");
-      }
-      if (stored === "invalid_image") return fail(c, 400, "invalid_image");
+      const stored = await uploadedImage(c, accountId, key(communityId), frames);
+      if ("error" in stored) return fail(c, stored.status, stored.error);
       // The object first, then the version, so none names an image not there yet.
       const [written] = await db(c.env).batch([
         imageVersion(c.env, communityId, kind, stored.version, stored.framing),

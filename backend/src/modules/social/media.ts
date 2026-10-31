@@ -3,7 +3,8 @@ import { communityCoverKey, communityPictureKey, deleteImage } from "../../share
 import { log } from "../../shared/log.ts";
 import type { MediaRef } from "./do/space.ts";
 import { REMOVED_KEPT_MS } from "./do/space-schema.ts";
-import { mediaKey, parseCursor } from "./posts.ts";
+import { parseCursor } from "./post-page.ts";
+import { mediaKey } from "./posts.ts";
 
 // The images of posts (decision 0065): validated and re-encoded by the
 // server to a WebP no larger than 2048 pixels a side, without metadata, kept
@@ -130,7 +131,8 @@ export type CommunityImage = {
 /**
  * The images of a community's visible posts and of their comments that stand,
  * newest first, but those of an account `hidden` names (a block, decision
- * 0063). Keyset pagination on (created_at, media_id), like the feed's.
+ * 0063). Keyset pagination on (created_at, media_id), like the feed's. With
+ * `everyoneOnly`, only those of the wall posts anyone may read (decision 0115).
  */
 export async function communityImages(
   env: Env,
@@ -138,6 +140,7 @@ export async function communityImages(
   hidden: string[],
   cursor: string | undefined,
   limit: number,
+  everyoneOnly = false,
 ): Promise<{ rows: CommunityImage[]; next: string | null }> {
   const at = parseCursor(cursor);
   const { results } = await db(env)
@@ -151,9 +154,17 @@ export async function communityImages(
           AND p.author_id NOT IN (SELECT value FROM json_each(?2))
           AND (?3 IS NULL OR m.created_at < ?3
                OR (m.created_at = ?3 AND (?4 IS NULL OR m.media_id < ?4)))
+          AND (?6 = 0 OR p.audience = 'everyone')
         ORDER BY m.created_at DESC, m.media_id DESC LIMIT ?5`,
     )
-    .bind(communityId, JSON.stringify(hidden), at?.t ?? null, at?.id ?? null, limit + 1)
+    .bind(
+      communityId,
+      JSON.stringify(hidden),
+      at?.t ?? null,
+      at?.id ?? null,
+      limit + 1,
+      everyoneOnly ? 1 : 0,
+    )
     .all<CommunityImage>();
   const rows = results.slice(0, limit);
   const last = rows.at(-1);
@@ -161,6 +172,15 @@ export async function communityImages(
     rows,
     next: results.length > limit && last ? `${last.createdAt}-${last.mediaId}` : null,
   };
+}
+
+/** The ids of a post's own images, its comments' left out. */
+export async function postMedia(env: Env, postId: string): Promise<string[]> {
+  const { results } = await db(env)
+    .prepare("SELECT media_id AS id FROM social_media WHERE post_id = ? AND comment_id IS NULL")
+    .bind(postId)
+    .all<{ id: string }>();
+  return results.map((r) => r.id);
 }
 
 /**

@@ -52,9 +52,19 @@ async function setting() {
       poll: { options: ["Já", "Nei"] },
     }),
   );
-  return { one, owner, author, outsider, id, elsewhere, owned, postId, commentId, poll };
+  const wallPost = await ok<{ postId: string }>(
+    await one.call("POST", "/v1/wall/posts", { body: "Á veggnum" }),
+  );
+  return { one, owner, author, outsider, id, elsewhere, owned, postId, commentId, poll, wallPost };
 }
 type Setting = Awaited<ReturnType<typeof setting>>;
+
+const putCover = async (by: Person) =>
+  worker.fetch(`${BASE}/v1/wall/cover`, {
+    method: "PUT",
+    headers: { ...by.auth, "content-type": "application/octet-stream" },
+    body: await png(1600, 600),
+  });
 
 /**
  * Every path a suspended account is refused, by the contract's operation id.
@@ -106,6 +116,35 @@ const REFUSED: Record<string, { allowed: number; call: (s: Setting) => Promise<R
     allowed: 204,
     call: (s) =>
       s.one.call("PUT", `/v1/communities/${s.owned}/invitations/${s.outsider.accountId}`),
+  },
+  createWallPost: {
+    allowed: 200,
+    call: (s) => s.one.call("POST", "/v1/wall/posts", { body: "Nýtt", audience: "friends" }),
+  },
+  uploadWallMedia: {
+    allowed: 200,
+    call: async (s) => s.one.send("/v1/wall/media", await png(40, 20)),
+  },
+  setPostAudience: {
+    allowed: 204,
+    call: (s) =>
+      s.one.call("PATCH", `/v1/posts/${s.wallPost.postId}/audience`, { audience: "everyone" }),
+  },
+  setBio: {
+    allowed: 204,
+    call: (s) => s.one.call("PUT", "/v1/me/bio", { bio: "Smiður" }),
+  },
+  setWallCover: {
+    allowed: 200,
+    call: (s) => putCover(s.one),
+  },
+  frameWallCover: {
+    allowed: 200,
+    call: async (s) => {
+      // Refused like the frames while suspended; the frames need a cover after.
+      await putCover(s.one);
+      return s.one.call("PATCH", "/v1/wall/cover/frames", { focus: { x: 0.2, y: 0.8 } });
+    },
   },
 };
 
@@ -170,6 +209,7 @@ const NOT_REFUSED: Record<string, readonly string[]> = {
     "withdrawJoinRequest",
     "leaveCommunity",
     "closePoll",
+    "removeWallCover",
   ],
   // Protecting oneself, and answering the decision.
   recourse: ["blockAccount", "unblockAccount", "report", "askModerationReview"],
@@ -197,6 +237,7 @@ const NOT_REFUSED: Record<string, readonly string[]> = {
     "moderate",
     "moderatePlatform",
     "decideModerationReview",
+    "removeWallComment",
   ],
   // The account's own reading: what it has seen, and how it is told.
   reading: [
@@ -368,6 +409,22 @@ describe("what a suspended account still does (decision 0115)", () => {
     expect((await s.one.call("DELETE", `/v1/comments/${commentId}`)).status).toBe(204);
     expect((await s.one.call("DELETE", `/v1/posts/${postId}`)).status).toBe(204);
     expect((await s.one.call("POST", `/v1/communities/${s.id}/leave`)).status).toBe(204);
+  });
+
+  it("removes a comment on its own wall, and takes its cover down", async () => {
+    const platform = await platformModerator("Samtak");
+    const s = await setting();
+    await s.one.call("PATCH", `/v1/posts/${s.wallPost.postId}/audience`, { audience: "everyone" });
+    expect((await putCover(s.one)).status).toBe(200);
+    const { commentId } = await ok<{ commentId: string }>(
+      await s.outsider.call("POST", `/v1/posts/${s.wallPost.postId}/comments`, { body: "Bull" }),
+    );
+    await suspend(platform, s.one);
+    expect(
+      (await s.one.call("POST", `/v1/wall/comments/${commentId}/remove`, { reason: "Bull" }))
+        .status,
+    ).toBe(204);
+    expect((await s.one.call("DELETE", "/v1/wall/cover")).status).toBe(204);
   });
 
   it("takes back a reaction and a vote it gave before", async () => {
