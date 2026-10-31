@@ -16,7 +16,10 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
+import samtak.spjall.core.CommunityRole
 import samtak.spjall.core.HomePage
+import samtak.spjall.core.Poll
+import samtak.spjall.core.PollOption
 import samtak.spjall.core.Post
 import samtak.spjall.core.PostTarget
 import samtak.spjall.core.WallAudience
@@ -64,20 +67,27 @@ class FeedViewModelTest {
     @Test
     fun emptyPagesWithACursorAreNotAnEmptyFeedAndAreBoundedPerGo() =
         runTest(dispatcher) {
-            repeat(12) { social.homePages += HomePage.More(emptyList(), "c$it") }
+            repeat(20) { social.homePages += HomePage.More(emptyList(), "c$it") }
             social.homePages += HomePage.End(listOf(post("p9")))
             val model = model()
-            assertEquals("five empty pages in one go", 5, homeCalls())
+            assertEquals("eight empty pages in one go", 8, homeCalls())
             assertEquals(FeedPhase.LOADING, model.state.value.phase)
             assertNotNull(model.state.value.next)
             model.more()
             advanceUntilIdle()
-            assertEquals("the next go is five more", 10, homeCalls())
+            assertEquals("the next go is eight more", 16, homeCalls())
             assertEquals(FeedPhase.LOADING, model.state.value.phase)
             model.more()
             advanceUntilIdle()
             assertEquals(FeedPhase.LIST, model.state.value.phase)
             assertNull(model.state.value.next)
+        }
+
+    @Test
+    fun aPageAsksForThirtyPosts() =
+        runTest(dispatcher) {
+            model()
+            assertEquals(listOf(30u), social.limits)
         }
 
     @Test
@@ -136,8 +146,10 @@ class FeedViewModelTest {
     fun publishingPutsThePostFirstClearsTheDraftAndWritesToTheTarget() =
         runTest(dispatcher) {
             social.homePages += HomePage.End(listOf(post("p1")))
+            social.offered += community("k1", role = CommunityRole.MEMBER)
             val model = model()
             val community = PostTarget.Community("k1", anonymous = true)
+            social.offered += community("k1", role = CommunityRole.MEMBER)
             model.onTarget(community)
             model.onDraft("Halló")
             model.publish()
@@ -161,7 +173,7 @@ class FeedViewModelTest {
     @Test
     fun aWallPostHasNoCommunityHeading() =
         runTest(dispatcher) {
-            social.offered += community("k1")
+            social.communities["k1"] = community("k1", role = CommunityRole.MEMBER)
             val wallPost =
                 post("p2")
                     .copy(wallOwner = "a2")
@@ -171,4 +183,92 @@ class FeedViewModelTest {
             assertEquals("k1", model.headingOf(inCommunity))
             assertNull(model.headingOf(onWall))
         }
+
+    @Test
+    fun aCommunityThePickerLeavesOutStillNamesItsPostsAndRules() =
+        runTest(dispatcher) {
+            // Muted: not offered to the composer, yet a member, so the heading reads from the account's list.
+            social.communities["k1"] = community("k1", role = CommunityRole.MEMBER, mutedUntil = FAR)
+            social.homePages += HomePage.End(listOf(post("p1")))
+            val model = model()
+            val state = model.state.value
+            assertTrue(state.communities.isEmpty())
+            assertEquals("k1", model.headingOf(state.posts.single()))
+        }
+
+    @Test
+    fun aMutedCommunityIsReadAndNotReactedToNorVotedIn() =
+        runTest(dispatcher) {
+            social.communities["k1"] = community("k1", role = CommunityRole.MEMBER, mutedUntil = FAR)
+            social.communities["k2"] = community("k2", role = CommunityRole.MEMBER)
+            social.homePages += HomePage.End(listOf(post("p1"), post("p2", communityId = "k2"), wallPost("p3")))
+            val model = model()
+            model.react("p1", "👍")
+            model.vote("p1", "o0")
+            advanceUntilIdle()
+            assertTrue(social.calls.none { it.contains("p1") && (it.startsWith("react") || it.startsWith("votePoll")) })
+            model.react("p2", "👍")
+            model.react("p3", "👍")
+            model.vote("p3", "o0")
+            advanceUntilIdle()
+            assertTrue("react p2 \uD83D\uDC4D" in social.calls)
+            assertTrue("react p3 \uD83D\uDC4D" in social.calls)
+            assertTrue("votePoll p3 o0" in social.calls)
+        }
+
+    @Test
+    fun theAuthorAndTheModeratorsOfItsCommunityCloseAnOpenPollAndNobodyElse() =
+        runTest(dispatcher) {
+            social.communities["k1"] = community("k1", role = CommunityRole.MODERATOR)
+            social.communities["k2"] = community("k2", role = CommunityRole.MEMBER)
+            val open = poll()
+            social.homePages +=
+                HomePage.End(
+                    listOf(
+                        post("p1", poll = open),
+                        post("p2", communityId = "k2", poll = open),
+                        post("p3", communityId = "k2", poll = open, author = self),
+                        post("p4", poll = poll(closed = true), author = self),
+                    ),
+                )
+            val state = model().state.value
+            val closable = state.posts.map { state.canClose(it) }
+            assertEquals(listOf(true, false, true, false), closable)
+        }
+
+    @Test
+    fun aRetryClearsAProblemThatNoRepeatableCallLeftBehind() =
+        runTest(dispatcher) {
+            social.homePages += HomePage.More(listOf(post("p1")), "c1")
+            social.communities["k1"] = community("k1", role = CommunityRole.MEMBER)
+            val model = model()
+            social.failOn = "deletePost p1"
+            model.deletePost("p1")
+            advanceUntilIdle()
+            assertNotNull(model.state.value.problem)
+            model.retry()
+            assertNull(model.state.value.problem)
+        }
+
+    @Test
+    fun aCommunityTheComposerDoesNotOfferCannotBePostedTo() =
+        runTest(dispatcher) {
+            val model = model()
+            model.onTarget(PostTarget.Community("k9", anonymous = false))
+            model.onDraft("Halló")
+            model.publish()
+            advanceUntilIdle()
+            assertTrue(social.written.isEmpty())
+            assertEquals("Halló", model.state.value.draft)
+        }
+
+    private fun wallPost(id: String) = post(id, poll = poll()).copy(wallOwner = "a2")
+
+    private fun poll(closed: Boolean = false) =
+        Poll(listOf(PollOption("o0", "Já", 0uL), PollOption("o1", "Nei", 0uL)), 0uL, null, closed)
+
+    private companion object {
+        /** A mute that has not ended. */
+        val FAR = ULong.MAX_VALUE / 2uL
+    }
 }

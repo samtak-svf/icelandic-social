@@ -18,6 +18,9 @@ open class FakeSocialHome :
     val homePages = ArrayDeque<HomePage>()
     val offered = mutableListOf<Community>()
 
+    /** The page size each `home` call asked for. */
+    val limits = mutableListOf<UInt>()
+
     /** Each post written, with the target it went to and the media and the poll it carried. */
     class Written(
         val target: PostTarget,
@@ -41,6 +44,7 @@ open class FakeSocialHome :
         limit: UInt,
     ): HomePage {
         call("home ${before.orEmpty()}".trim())
+        limits += limit
         return homePages.removeFirstOrNull() ?: HomePage.End(emptyList())
     }
 

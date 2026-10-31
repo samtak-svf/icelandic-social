@@ -140,7 +140,8 @@ private fun PostItem(
                 onComment = onComment,
                 onDelete = onDelete.takeIf { post.mine },
                 onPin = actions::pin.takeIf { state.moderates },
-                onSendToConversation = { actions.sendToConversation(post.postId) },
+                // A wall post's card is always unavailable to its recipient (decision 0115), so it is not sent.
+                onSendToConversation = { actions.sendToConversation(post.postId) }.takeIf { post.wallOwner == null },
                 poll =
                     PollCallbacks(
                         onVote = actions::vote,

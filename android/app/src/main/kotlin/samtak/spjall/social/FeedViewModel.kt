@@ -35,6 +35,7 @@ enum class FeedPhase { LOADING, PROBLEM, LIST, EMPTY }
 class FeedViewModel(
     private val social: Social,
     private val io: CoroutineDispatcher = Dispatchers.IO,
+    private val now: () -> Long = System::currentTimeMillis,
     defaultTarget: () -> PostTarget = ::defaultPostTarget,
 ) : ViewModel() {
     data class State(
@@ -47,8 +48,10 @@ class FeedViewModel(
         val refreshing: Boolean = false,
         val publishing: Boolean = false,
         val problem: Problem? = null,
-        /** The communities the composer offers; the headings name a post's community from them. */
+        /** The communities the composer offers: the picker's, which leaves out those this account may not post in. */
         val communities: List<Community> = emptyList(),
+        /** Every community this account is in: the headings name a post's community from them, and rights read them. */
+        val mine: List<Community> = emptyList(),
         val target: PostTarget,
         val draft: String = "",
         val reacting: Set<String> = emptySet(),
@@ -68,8 +71,28 @@ class FeedViewModel(
         val keepsAsking: Boolean
             get() = phase == FeedPhase.LOADING && next != null && (!loading && problem == null)
 
+        /** The composer offers [target]: the wall always, a community only once it is among the offered. */
+        fun offers(target: PostTarget): Boolean =
+            target !is PostTarget.Community || communities.any { it.communityId == target.communityId }
+
+        /** The community a card names: none for a wall post, which shows its author alone. */
         fun community(post: Post): Community? =
-            if (post.wallOwner == null) communities.firstOrNull { it.communityId == post.communityId } else null
+            if (post.wallOwner == null) mine.firstOrNull { it.communityId == post.communityId } else null
+
+        /**
+         * This account may react to and vote on a post: a wall's, or one of a community it is in and may write in
+         * (not read-only, not muted). The suspension is the screen's to apply.
+         */
+        fun writes(
+            post: Post,
+            now: Long,
+        ): Boolean = post.wallOwner != null || community(post)?.writes(now) == true
+
+        /** This account may close the poll on a post: its author, or a moderator of its community, while open. */
+        fun canClose(post: Post): Boolean {
+            val open = post.poll?.closed == false
+            return open && (post.mine || community(post)?.moderates == true)
+        }
     }
 
     private val _state = MutableStateFlow(State(target = defaultTarget()))
@@ -86,8 +109,8 @@ class FeedViewModel(
         load()
         viewModelScope.launch {
             try {
-                val offered = withContext(io) { social.postCommunities() }
-                _state.update { it.copy(communities = offered) }
+                val (all, offered) = withContext(io) { social.myCommunities() to social.postCommunities() }
+                _state.update { it.copy(mine = all, communities = offered) }
             } catch (_: CoreException) {
                 // The headings fall back to the author and the picker to the own wall; the feed itself says why.
             }
@@ -150,10 +173,10 @@ class FeedViewModel(
         if (skipped && ok) more()
     }
 
+    /** Clears the problem whatever failed, then repeats the call that can be repeated (a card's own can not). */
     fun retry() {
-        val again = retrying ?: return
         _state.update { it.copy(problem = null) }
-        again()
+        retrying?.invoke()
     }
 
     /**
@@ -182,7 +205,13 @@ class FeedViewModel(
 
     fun onDraft(text: String) = _state.update { it.copy(draft = text) }
 
-    fun onTarget(target: PostTarget) = _state.update { it.copy(target = target) }
+    /** Another place sends the images again, since an upload belongs to its target. */
+    fun onTarget(target: PostTarget) {
+        if (target.place() != _state.value.target.place()) attachments.forgetUploads()
+        _state.update { it.copy(target = target) }
+    }
+
+    private fun PostTarget.place(): String? = (this as? PostTarget.Community)?.communityId
 
     fun onAudience(audience: WallAudience) = onTarget(PostTarget.Wall(audience))
 
@@ -199,7 +228,8 @@ class FeedViewModel(
     fun publish() {
         val s = _state.value
         val attached = attachments.state.value
-        if (s.publishing || s.loading || !attached.postable(s.draft)) return
+        val ready = attached.postable(s.draft) && s.offers(s.target)
+        if (s.publishing || s.loading || !ready) return
         _state.update { it.copy(publishing = true, problem = null) }
         attachments.clearNotice()
         retrying = ::publish
@@ -233,7 +263,7 @@ class FeedViewModel(
         emoji: String,
     ) {
         val post = _state.value.posts.firstOrNull { it.postId == postId } ?: return
-        if (postId in _state.value.reacting) return
+        if (postId in _state.value.reacting || !_state.value.writes(post, now())) return
         _state.update { it.copy(reacting = it.reacting + postId) }
         viewModelScope.launch {
             try {
@@ -259,7 +289,7 @@ class FeedViewModel(
         call: () -> Post,
     ) = viewModelScope.answerPoll(
         io,
-        busy = postId in _state.value.answering,
+        busy = postId in _state.value.answering || !mayAnswer(postId),
         begin = { _state.update { it.copy(answering = it.answering + postId, problem = null) } },
         call = call,
     ) { changed, problem ->
@@ -268,6 +298,10 @@ class FeedViewModel(
             if (changed != null) done.copy(posts = done.posts.replacing(changed)) else done.copy(problem = problem)
         }
     }
+
+    /** The post is held and this account may write on it; a post no longer in the list is not answered. */
+    private fun mayAnswer(postId: String): Boolean =
+        _state.value.let { s -> s.posts.firstOrNull { it.postId == postId }?.let { s.writes(it, now()) } == true }
 
     fun deletePost(postId: String) {
         viewModelScope.launch {
@@ -299,9 +333,9 @@ class FeedViewModel(
 
     private companion object {
         /** Posts a page of the feed asks for. */
-        const val HOME_PAGE = 20u
+        const val HOME_PAGE = 30u
 
         /** Empty `More` pages one call reads before it hands back; the screen asks again while nothing is held. */
-        const val EMPTY_PAGES = 5
+        const val EMPTY_PAGES = 8
     }
 }
