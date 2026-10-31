@@ -77,4 +77,11 @@ final class DatesTests: XCTestCase {
         let now = Date(timeIntervalSince1970: 1_800_000_000)
         XCTAssertEqual(Dates.age(of: now.addingTimeInterval(30), now: now), .now)
     }
+
+    func testAYearAndMonthFromTheServerReadsInWords() {
+        XCTAssertEqual(Dates.month("2026-03", calendar: calendar), "mars 2026")
+        XCTAssertEqual(Dates.month("2025-12", calendar: calendar), "desember 2025")
+        XCTAssertNil(Dates.month("2026-13", calendar: calendar))
+        XCTAssertNil(Dates.month("mars", calendar: calendar))
+    }
 }

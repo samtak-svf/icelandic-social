@@ -179,7 +179,7 @@ private struct WallAbout: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             if let month = model.wall?.joinedMonth {
-                Text(verbatim: localized("wall_joined", month)).font(TypeStyle.meta)
+                Text(verbatim: localized("wall_joined", Dates.month(month) ?? month)).font(TypeStyle.meta)
                     .foregroundStyle(BrandTokens.Colors.mutedFg)
             }
             if person.relation != .oneself { PersonLinks(person: person) }
