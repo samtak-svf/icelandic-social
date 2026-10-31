@@ -37,7 +37,7 @@ export function EmojiPicker({
           aria-label={emoji}
           aria-pressed={chosen === emoji}
           onClick={() => onPick(emoji)}
-          className="inline-flex size-9 items-center justify-center rounded text-xl hover:bg-muted aria-pressed:bg-muted"
+          className="inline-flex size-9 items-center justify-center rounded-md text-xl hover:bg-muted aria-pressed:bg-muted"
         >
           {emoji}
         </button>

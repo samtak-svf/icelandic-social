@@ -36,6 +36,30 @@
   --font-sans: "Gothic A1", sans-serif;
   --font-headline: "Archivo Condensed", sans-serif;
   --radius-md: 6px;
+  --radius-well: 8px;
+  --radius-thumbnail: 10px;
+  --radius-pane: 12px;
+  --radius-card: 14px;
+  --radius-post-bubble: 16px;
+  --radius-bubble: 18px;
+  --radius-field: 20px;
+  --radius-pill: 22px;
+  --radius-pill-lg: 26px;
+  --text-screen-title: 30px;
+  --text-screen-title--line-height: 32px;
+  --text-screen-title--font-weight: 800;
+  --text-account-name: 24px;
+  --text-account-name--line-height: 26px;
+  --text-account-name--font-weight: 800;
+  --text-section-label: 10px;
+  --text-section-label--letter-spacing: 0.14em;
+  --text-section-label--font-weight: 900;
+  --text-bubble: 14.5px;
+  --text-bubble--line-height: 21px;
+  --text-bubble--font-weight: 500;
+  --text-meta: 10px;
+  --text-meta--line-height: 13px;
+  --text-meta--font-weight: 900;
 }
 
 @layer base {

@@ -31,7 +31,7 @@ export function Dialog({
         // A click on the backdrop lands on the dialog element itself.
         if (event.target === ref.current) onClose();
       }}
-      className={`m-auto ${wide ? "w-[min(56rem,calc(100%-2rem))]" : "w-[min(32rem,calc(100%-2rem))]"} rounded-lg border border-border bg-surface p-4 text-fg backdrop:bg-black/50`}
+      className={`m-auto ${wide ? "w-[min(56rem,calc(100%-2rem))]" : "w-[min(32rem,calc(100%-2rem))]"} rounded-pane border border-border bg-surface p-4 text-fg backdrop:bg-black/50`}
     >
       <div className="flex items-center justify-between gap-2">
         <h2 className="text-xl font-semibold">{title}</h2>

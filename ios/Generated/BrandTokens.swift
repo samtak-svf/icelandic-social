@@ -103,5 +103,51 @@ enum BrandTokens {
 
     enum Radius {
         static let md: CGFloat = 6
+        static let well: CGFloat = 8
+        static let thumbnail: CGFloat = 10
+        static let pane: CGFloat = 12
+        static let card: CGFloat = 14
+        static let postBubble: CGFloat = 16
+        static let bubble: CGFloat = 18
+        static let field: CGFloat = 20
+        static let pill: CGFloat = 22
+        static let pillLg: CGFloat = 26
+    }
+
+    /// The gaps the design repeats, in points.
+    enum Spacing {
+        static let space2: CGFloat = 2
+        static let space4: CGFloat = 4
+        static let space6: CGFloat = 6
+        static let space8: CGFloat = 8
+        static let space10: CGFloat = 10
+        static let space12: CGFloat = 12
+        static let space14: CGFloat = 14
+        static let space16: CGFloat = 16
+        static let space20: CGFloat = 20
+        static let space24: CGFloat = 24
+    }
+
+    /// The type the design repeats. `family` is a key of `Fonts`; tracking is in points
+    /// (the em value times the size).
+    enum Typography {
+        struct Style {
+            let family: String
+            let weight: Int
+            let size: CGFloat
+            let lineHeight: CGFloat?
+            let tracking: CGFloat
+        }
+
+        /// A screen title in the cream band: condensed capitals.
+        static let screenTitle = Style(family: "headline", weight: 800, size: 30, lineHeight: 32, tracking: 0)
+        /// The account name on the account screen.
+        static let accountName = Style(family: "headline", weight: 800, size: 24, lineHeight: 26, tracking: 0)
+        /// Small capitals over a section, a day in a conversation.
+        static let sectionLabel = Style(family: "sans", weight: 900, size: 10, lineHeight: nil, tracking: 1.4)
+        /// A message's text.
+        static let bubble = Style(family: "sans", weight: 500, size: 14.5, lineHeight: 21, tracking: 0)
+        /// Time and read state under a message, a row's time.
+        static let meta = Style(family: "sans", weight: 900, size: 10, lineHeight: 13, tracking: 0)
     }
 }

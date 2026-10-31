@@ -3,7 +3,7 @@
 // strings as a typed module, the tokens as Tailwind theme variables with a
 // dark mode, the bundled fonts as WOFF2 with their licences, and the icons.
 
-import { brandColors, fontFamilies, hex2, radii } from "./color.mjs";
+import { brandColors, fontFamilies, hex2, radii, typeStyles } from "./color.mjs";
 import { renderOpaquePng, squareFrame } from "./icon.mjs";
 import { keysFor } from "./strings.mjs";
 import { woff2 } from "./woff2.mjs";
@@ -147,6 +147,16 @@ function themeCss(brand) {
         `  --font-${f.name}: ${[f.family, ...(fallbacks[f.name] ?? [])].map(cssFamily).join(", ")};`,
     ),
     ...radii(brand.tokens).map((r) => `  --radius-${r.name}: ${r.value}px;`),
+    ...typeStyles(brand.tokens).flatMap((t) => [
+      `  --text-${t.name}: ${t.size}px;`,
+      ...(t.lineHeight === undefined
+        ? []
+        : [`  --text-${t.name}--line-height: ${t.lineHeight}px;`]),
+      ...(t.letterSpacing === undefined
+        ? []
+        : [`  --text-${t.name}--letter-spacing: ${t.letterSpacing}em;`]),
+      `  --text-${t.name}--font-weight: ${t.weight};`,
+    ]),
     "}",
     "",
     "@layer base {",

@@ -32,7 +32,7 @@ function Pictures({
         id={n.communityId ?? n.notificationId}
         name={community?.name ?? null}
         photo={community?.photo ?? null}
-        className="size-10 rounded-lg"
+        className="size-10 rounded-thumbnail"
       />
     );
   }

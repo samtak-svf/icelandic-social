@@ -32,6 +32,7 @@ import {
   resolveColor,
   THRESHOLDS,
 } from "./lib/contrast.mjs";
+import { checkScales } from "./lib/brand-gen/token-check.mjs";
 import { checkTerms, readTerms } from "./lib/brand-gen/terms.mjs";
 import { brandNames, readJson, ROOT } from "./lib/repo.mjs";
 import { validate } from "./lib/schema.mjs";
@@ -329,6 +330,7 @@ export function checkBrand(name, root = ROOT) {
   problems.push(...checkIcon(manifest.icon, dir, root, tokens));
   problems.push(...checkFonts(manifest.fonts, dir, root, tokens));
   problems.push(...checkModes(tokens).map((p) => `tokens.json ${p}`));
+  problems.push(...checkScales(tokens, manifest.fonts).map((p) => `tokens.json ${p}`));
   const pairs = readJson("brand/contrast-pairs.json", root);
   const contrast = checkContrast(tokens, pairs);
   problems.push(...contrast.problems.map((p) => `contrast ${p}`));

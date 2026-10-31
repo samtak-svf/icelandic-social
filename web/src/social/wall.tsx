@@ -150,7 +150,7 @@ function Wall({
           name={person.name}
           photo={person.photo}
           alt={owner ? strings.photo_own_alt : undefined}
-          className="size-24 rounded-2xl border-4 border-bg text-3xl"
+          className="size-24 rounded-post-bubble border-4 border-bg text-3xl"
         />
         {owner && (
           <Badge

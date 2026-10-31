@@ -164,7 +164,7 @@ export function Shared({ person }: Readonly<{ person: Person }>) {
                     id={c.communityId}
                     name={c.name}
                     photo={c.photo}
-                    className="size-10 rounded-lg"
+                    className="size-10 rounded-thumbnail"
                   />
                   <span className="min-w-0 truncate font-medium">{c.name}</span>
                 </Link>

@@ -25,7 +25,7 @@ export function ImageGrid({
     <>
       <ul className="grid grid-cols-3 gap-1 medium:grid-cols-4">
         {images.map((image) => (
-          <li key={image.mediaId} className="aspect-square overflow-hidden rounded-sm">
+          <li key={image.mediaId} className="aspect-square overflow-hidden rounded-thumbnail">
             <Link
               to="/posts/$postId"
               params={{ postId: image.postId }}
