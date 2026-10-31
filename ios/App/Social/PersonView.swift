@@ -6,6 +6,9 @@ import SwiftUI
 struct PersonView: View {
     let model: PersonModel
     let social: Social
+    /// Opens the settings: set on this account's own wall, which is the Me tab's root (decision 0115).
+    var onSettings: (() -> Void)?
+    @State private var wall: WallModel?
     @State private var ending = false
     @State private var reporting = false
     @State private var blocking = false
@@ -17,7 +20,7 @@ struct PersonView: View {
                 if let person = model.person {
                     PersonHeader(person: person)
                     PersonActions(model: model, person: person)
-                    PersonLinks(person: person)
+                    if let wall { WallView(model: wall, person: person) }
                 } else if !model.loaded {
                     ProgressView().frame(maxWidth: .infinity).padding(.top, 40)
                 }
@@ -33,13 +36,17 @@ struct PersonView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar(.visible, for: .navigationBar)
         .toolbar { if let person = model.person, person.relation != .oneself { menu(person) } }
+        .toolbar { if let onSettings { gear(onSettings) } }
         .bellInNavigationBar()
         .safeAreaInset(edge: .top) {
             if let problem = model.problem {
                 ProblemCard(problem: problem) { Task { await model.retry() } }.padding(16)
             }
         }
-        .task { await model.load() }
+        .task {
+            if wall == nil { wall = WallModel(social: social, accountId: model.accountId) }
+            await model.load()
+        }
         .confirmationDialog(
             Text(verbatim: model.person.map { localized("friend_end_confirm", $0.shownName) } ?? ""),
             isPresented: $ending, titleVisibility: .visible
@@ -59,6 +66,14 @@ struct PersonView: View {
         }
         .sheet(isPresented: $reporting) {
             ReportSheet(social: social, target: ReportTarget(kind: .account, id: model.accountId))
+        }
+    }
+
+    /// The gear on this account's own wall: everything the Me tab held is behind it.
+    private func gear(_ open: @escaping () -> Void) -> some ToolbarContent {
+        ToolbarItem(placement: .topBarTrailing) {
+            Button(action: open) { Image(systemName: "gearshape") }
+                .accessibilityLabel(Text("settings_title"))
         }
     }
 
@@ -139,7 +154,7 @@ private struct PersonActions: View {
 }
 
 /// The communities they share with the reader, and the friends the two have in common.
-private struct PersonLinks: View {
+struct PersonLinks: View {
     let person: PersonProfile
 
     var body: some View {

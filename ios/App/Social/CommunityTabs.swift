@@ -86,7 +86,7 @@ struct CommunityGallery: View {
     }
 }
 
-private struct GalleryTile: View {
+struct GalleryTile: View {
     let image: CommunityImage
 
     @Environment(\.postImages) private var images

@@ -15,6 +15,8 @@ struct MeView: View {
     let onLink: () -> Void
     let onStatements: () -> Void
     let onFriends: () -> Void
+    /// Set when the settings are pushed over the wall: the back control before the title (decision 0115).
+    var onBack: (() -> Void)?
 
     /// What the photo picker chose, from the circle or from the words under it.
     @State private var picked: PhotosPickerItem?
@@ -22,7 +24,7 @@ struct MeView: View {
     var body: some View {
         // The title stays in its band and the rest scrolls under it (0053), as on the list.
         VStack(spacing: 0) {
-            ScreenHeader(title: localized("tab_me"))
+            ScreenHeader(title: localized("settings_title"), back: onBack) { EmptyView() }
             content
         }
         .background(BrandTokens.Colors.bg)

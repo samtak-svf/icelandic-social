@@ -19,8 +19,7 @@ struct HomeView: View {
     enum MeRoute: Hashable {
         case verify
         case link
-        case statements
-        case friends
+        case statements, friends, settings
     }
 
     let signIn: SignInModel
@@ -302,31 +301,34 @@ struct HomeView: View {
 
     private var meStack: some View {
         NavigationStack(path: $mePath) {
-            MeView(
-                model: me, push: push, levels: levels,
-                communityNames: Dictionary(communities.mine.map { ($0.communityId, $0.name) }) { first, _ in first },
-                onVerify: { mePath.append(.verify) }, onLink: { mePath.append(.link) },
-                onStatements: { mePath.append(.statements) }, onFriends: { mePath.append(.friends) }
-            )
-            .navigationDestination(for: MeRoute.self) { route in
-                switch route {
-                case .link:
-                    LinkView(model: LinkModel(account: signIn.account))
-                case .statements:
-                    OwnStatementsView(social: social)
-                case .friends:
-                    OwnFriendsView(social: social)
-                case .verify:
-                    VerifyView(
-                        model: signIn, onVerify: { Task { await signIn.verify(browser: browser) } },
-                        onLater: { mePath.removeLast() },
-                        onRetry: { Task { await signIn.retry(browser: browser) } }
-                    )
+            OwnWall(me: me, social: social, models: routeModels, onSettings: { mePath.append(.settings) })
+                .navigationDestination(for: MeRoute.self) { route in
+                    switch route {
+                    case .settings:
+                        MeView(
+                            model: me, push: push, levels: levels,
+                            communityNames: communities.namesById,
+                            onVerify: { mePath.append(.verify) }, onLink: { mePath.append(.link) },
+                            onStatements: { mePath.append(.statements) }, onFriends: { mePath.append(.friends) },
+                            onBack: { mePath.removeLast() }
+                        )
+                    case .link:
+                        LinkView(model: LinkModel(account: signIn.account))
+                    case .statements:
+                        OwnStatementsView(social: social)
+                    case .friends:
+                        OwnFriendsView(social: social)
+                    case .verify:
+                        VerifyView(
+                            model: signIn, onVerify: { Task { await signIn.verify(browser: browser) } },
+                            onLater: { mePath.removeLast() },
+                            onRetry: { Task { await signIn.retry(browser: browser) } }
+                        )
+                    }
                 }
-            }
-            .navigationDestination(for: SocialRoute.self) { route in
-                SocialDestination(route: route, social: social, models: routeModels)
-            }
+                .navigationDestination(for: SocialRoute.self) { route in
+                    SocialDestination(route: route, social: social, models: routeModels)
+                }
         }
         .hosted(bell: bell, social: social, sharing: postSharing, suspension: suspension)
     }

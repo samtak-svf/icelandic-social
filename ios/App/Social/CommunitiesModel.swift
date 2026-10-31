@@ -30,6 +30,8 @@ enum CommunitiesPart: CaseIterable, Identifiable, Sendable {
 final class CommunitiesModel {
     /// The communities this account is a member of.
     private(set) var mine: [Community] = []
+    /// The names of the communities this account is in, by id.
+    var namesById: [String: String] { Dictionary(mine.map { ($0.communityId, $0.name) }) { first, _ in first } }
     /// The search as typed; `search()` asks the server for it.
     var query = ""
     /// The search's pages so far, for `query`.

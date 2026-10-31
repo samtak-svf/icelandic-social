@@ -6,7 +6,7 @@ import SpjallCore
 /// it is kept apart from `Account`, whose conversations are end-to-end encrypted: nothing here is written to the
 /// conversation store or to the device at all. Every call asks the server and blocks on the network, so the
 /// models make them off the main actor.
-protocol Social: Sendable, Friending {
+protocol Social: Sendable, Friending, Walling {
     /// Whether Kenni vouches for this account: only a verified one creates a community (0063).
     func me() throws -> Me
     /// A page of the communities this account may see, by name when `query` is set.

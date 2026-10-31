@@ -55,6 +55,8 @@ final class PostModel {
 
     /// This account may comment and react: a member, not muted, and the post still shown.
     var writes: Bool {
+        // A wall post has no community to be a member of: its readers comment while they can read it (0115).
+        if post?.wallOwner != nil { return post?.state == .visible }
         guard let community, post?.state == .visible else { return false }
         return canWrite(community, now: now())
     }
@@ -108,8 +110,10 @@ final class PostModel {
                 let post = try social.post(id)
                 // A removed post is all its reader gets: it has no comments to ask for, and they are refused.
                 if isPostTombstone(post) { return (post, nil, nil) }
+                // On a wall post `communityId` is the wall's id, which is no community to read.
+                let community = post.wallOwner == nil ? try social.community(post.communityId) : nil
                 return (
-                    post, try social.community(post.communityId),
+                    post, community,
                     try social.comments(id, after: nil, limit: Self.page)
                 )
             }
@@ -149,6 +153,38 @@ final class PostModel {
             if self.replyingTo?.commentId == commentId { self.replyingTo = nil }
         }
     }
+
+    /// The post is on this account's own wall, whose owner removes comments under it and says who may read it.
+    var ownsWall: Bool { me != nil && post?.wallOwner == me }
+
+    /// Removes a comment under a post on this account's own wall, with the reason its writer reads (1 to 500
+    /// characters, not blank). Nothing is sent without one.
+    func removeWallComment(_ commentId: String, reason: String) async {
+        let reason = reason.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard ownsWall, !reason.isEmpty, reason.count <= Self.reasonLimit else { return }
+        let social = social
+        await perform(again: { await self.removeWallComment(commentId, reason: reason) }) {
+            try await offMain { try social.removeWallComment(commentId, reason: reason) }
+            let before = self.comments.count
+            self.comments.removeAll { $0.commentId == commentId }
+            if self.comments.count < before, let count = self.post?.commentCount, count > 0 {
+                self.post?.commentCount = count - 1
+            }
+        }
+    }
+
+    /// Changes who may read this account's own wall post.
+    func setAudience(_ audience: WallAudience) async {
+        guard ownsWall, let id = post?.postId else { return }
+        let social = social
+        await perform(again: { await self.setAudience(audience) }) {
+            try await offMain { try social.setPostAudience(id, audience: audience) }
+            self.post?.audience = audience
+        }
+    }
+
+    /// The longest reason for removing a comment.
+    static let reasonLimit = 500
 
     /// Answers `comment`: the composer says whose comment it is, and what is sent goes under it (decision 0071).
     /// A thread takes one level, so a reply has no reply action of its own.
