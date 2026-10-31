@@ -21,7 +21,9 @@ use worker::*;
 fn awaited(path: &Path) -> String {
     let deadline = Instant::now() + Duration::from_secs(120);
     loop {
-        if let Ok(text) = std::fs::read_to_string(path) {
+        // A writer creates the file before it fills it, so empty means not yet.
+        let text = std::fs::read_to_string(path).unwrap_or_default();
+        if !text.trim().is_empty() {
             return text.trim().to_owned();
         }
         assert!(Instant::now() < deadline, "no {}", path.display());
