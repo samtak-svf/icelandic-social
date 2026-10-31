@@ -13,7 +13,6 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavController
 import androidx.navigation.NavGraphBuilder
-import androidx.navigation.compose.composable
 import samtak.spjall.account.Account
 import samtak.spjall.core.CommunityAudience
 import samtak.spjall.core.CommunityRole
@@ -41,9 +40,7 @@ fun NavGraphBuilder.socialScreens(
     fun screen(
         route: String,
         content: @Composable (NavBackStackEntry) -> Unit,
-    ) = composable(route) { entry ->
-        WithSocialHost(social, openStatements = { nav.navigate(SocialRoutes.STATEMENTS) }) { content(entry) }
-    }
+    ) = hostedScreen(social, nav, route, content)
 
     screen(SocialRoutes.COMMUNITIES) { Communities(social, account, nav, sharePost) }
     screen(SocialRoutes.NOTIFICATIONS) { NotificationsRoute(social, nav, read, dismissNotice) }
@@ -66,6 +63,7 @@ fun NavGraphBuilder.socialScreens(
         entry.arguments?.getString("id")?.let { AnonymousQueue(it, social, nav) }
     }
     screen(SocialRoutes.STATEMENTS) { Statements(social, nav) }
+    friendScreens(social, nav, ::screen)
 }
 
 @Composable

@@ -86,7 +86,13 @@ internal fun AuthorRow(
     createdAt: ULong,
     trailing: @Composable () -> Unit = {},
 ) {
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+    // An anonymous post names nobody (0091), so its byline opens nothing.
+    val opens = if (anonymousRes == null) Modifier.opensPerson(author?.accountId) else Modifier
+    Row(
+        modifier = opens,
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
         Avatar(
             name = author?.name,
             kind = if (author?.verified == true) AvatarKind.Verified else AvatarKind.Unverified,

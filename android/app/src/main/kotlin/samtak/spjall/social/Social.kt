@@ -3,8 +3,6 @@ package samtak.spjall.social
 import samtak.spjall.core.Author
 import samtak.spjall.core.Card
 import samtak.spjall.core.CardRef
-import samtak.spjall.core.Comment
-import samtak.spjall.core.CommentPage
 import samtak.spjall.core.Community
 import samtak.spjall.core.CommunityAudience
 import samtak.spjall.core.CommunityImagePage
@@ -32,7 +30,10 @@ import samtak.spjall.core.ReportTarget
  * rather than on [CoreClient], so their tests need no native library. One function per core call.
  */
 @Suppress("TooManyFunctions")
-interface Social : SocialNotifications {
+interface Social :
+    SocialNotifications,
+    SocialFriends,
+    SocialComments {
     /** A page of the communities this account may see, [query] matching their names; [after] is the `next` before. */
     fun communities(
         query: String?,
@@ -266,12 +267,6 @@ interface Social : SocialNotifications {
         frame: Frame,
     ): String?
 
-    /** Likes a comment as this account. */
-    fun likeComment(commentId: String)
-
-    /** Takes this account's like off a comment. */
-    fun unlikeComment(commentId: String)
-
     /** Pins a post to the top of its community (moderators and owners). */
     fun pinPost(
         communityId: String,
@@ -289,24 +284,6 @@ interface Social : SocialNotifications {
 
     /** Unpins a community. */
     fun unpinCommunity(communityId: String)
-
-    /** A page of a post's comments, oldest first; [after] is the `next` of the page before. */
-    fun comments(
-        postId: String,
-        after: String?,
-        limit: UInt,
-    ): CommentPage
-
-    /** A comment of text, one image from [uploadPostImage] by its media id, or both (0082). */
-    fun createComment(
-        postId: String,
-        body: String,
-        parentCommentId: String? = null,
-        media: List<String> = emptyList(),
-    ): Comment
-
-    /** Deletes this account's own comment. */
-    fun deleteComment(commentId: String)
 
     /** Reports content to the community's moderators; the server sends unlawful content to the platform's. */
     fun report(
@@ -358,7 +335,9 @@ interface Social : SocialNotifications {
 class CoreSocial private constructor(
     private val lazyClient: Lazy<CoreClient>,
 ) : Social,
-    SocialNotifications by CoreNotifications(lazyClient) {
+    SocialNotifications by CoreNotifications(lazyClient),
+    SocialFriends by CoreFriends(lazyClient),
+    SocialComments by CoreComments(lazyClient) {
     constructor(open: () -> CoreClient) : this(lazy(open))
 
     private val client by lazyClient
@@ -551,10 +530,6 @@ class CoreSocial private constructor(
         frame: Frame,
     ) = client.communityCoverFramed(communityId, version, frame)
 
-    override fun likeComment(commentId: String) = client.likeComment(commentId)
-
-    override fun unlikeComment(commentId: String) = client.unlikeComment(commentId)
-
     override fun pinPost(
         communityId: String,
         postId: String,
@@ -568,21 +543,6 @@ class CoreSocial private constructor(
     override fun pinCommunity(communityId: String) = client.pinCommunity(communityId)
 
     override fun unpinCommunity(communityId: String) = client.unpinCommunity(communityId)
-
-    override fun comments(
-        postId: String,
-        after: String?,
-        limit: UInt,
-    ) = client.comments(postId, after, limit)
-
-    override fun createComment(
-        postId: String,
-        body: String,
-        parentCommentId: String?,
-        media: List<String>,
-    ) = client.createComment(postId, body, parentCommentId, media)
-
-    override fun deleteComment(commentId: String) = client.deleteComment(commentId)
 
     override fun report(
         target: ReportTarget,

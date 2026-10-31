@@ -37,6 +37,9 @@ interface MeActions {
     /** Opens what moderators decided about this account's content, and why (decision 0115). */
     fun statements()
 
+    /** The friends, the requests and the snoozes (0114). */
+    fun friends()
+
     /** The system's notification settings for the app. */
     fun notificationSettings()
 }

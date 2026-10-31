@@ -89,6 +89,8 @@ internal fun MeRoute(
             override fun linkBrowser() = nav.navigate(AppRoutes.LINK)
 
             override fun statements() = nav.navigate(SocialRoutes.STATEMENTS)
+
+            override fun friends() = nav.navigate(SocialRoutes.FRIENDS)
         }
     // Read here, not in the screen: the core's version needs the native library, which screenshot tests lack.
     val version =

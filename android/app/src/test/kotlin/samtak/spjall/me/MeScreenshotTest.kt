@@ -145,5 +145,7 @@ private class NoMeActions : MeActions {
 
     override fun statements() = Unit
 
+    override fun friends() = Unit
+
     override fun notificationSettings() = Unit
 }

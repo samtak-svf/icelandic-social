@@ -94,6 +94,10 @@ class SettingsTest {
             override fun statements() {
                 calls += "statements"
             }
+
+            override fun friends() {
+                calls += "friends"
+            }
         }
 
     private fun text(id: Int) = InstrumentationRegistry.getInstrumentation().targetContext.getString(id)

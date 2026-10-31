@@ -13,6 +13,8 @@ object SocialRoutes {
     const val REQUESTS = "requests"
     const val ANONYMOUS = "anonymous"
     const val STATEMENTS = "statements"
+    const val FRIENDS = "friends"
+    const val PERSON = "person"
 
     fun community(id: String) = "$COMMUNITY/$id"
 
@@ -23,6 +25,8 @@ object SocialRoutes {
         id: String,
         focus: Boolean = false,
     ) = if (focus) "$POST/$id?focus=true" else "$POST/$id"
+
+    fun person(accountId: String) = "$PERSON/$accountId"
 
     fun reports(id: String) = "$REPORTS/$id"
 
