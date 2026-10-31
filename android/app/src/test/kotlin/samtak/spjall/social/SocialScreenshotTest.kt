@@ -166,6 +166,15 @@ class SocialScreenshotTest {
             loaded = true,
         )
 
+    private val groupedNoticeState =
+        notificationsState.copy(
+            notifications =
+                listOf(
+                    notification("g1", SocialNotificationKind.COMMENT, 1_700_000_200_000uL)
+                        .copy(actors = listOf(anna, self), actorCount = 2uL, snippet = "Takk fyrir pistilinn"),
+                ),
+        )
+
     private fun shoot(screen: @Composable () -> Unit) {
         compose.setContent {
             CompositionLocalProvider(LocalFrameRules provides FakeFrameRules) { SpjallTheme { screen() } }
@@ -270,6 +279,9 @@ class SocialScreenshotTest {
     @Test
     @Config(fontScale = 2f)
     fun reportsCutsNoWord() = noWordCut(reportsScreen)
+
+    @Test
+    fun groupedNotice() = shoot { NotificationsScreen(groupedNoticeState, none<NotificationsActions>()) }
 
     @Test
     fun notifications() = shoot(notificationsScreen)
