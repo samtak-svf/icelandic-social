@@ -17,7 +17,7 @@ use tempfile::TempDir;
 
 pub const KEY: [u8; 32] = [7; 32];
 
-pub const SOCIAL: [&str; 10] = [
+pub const SOCIAL: [&str; 16] = [
     "/v1/communities",
     "/v1/me/communities",
     "/v1/feed",
@@ -28,7 +28,22 @@ pub const SOCIAL: [&str; 10] = [
     "/v1/notifications",
     "/v1/notification-settings",
     "/v1/moderation",
+    "/v1/friends",
+    "/v1/friend-requests",
+    "/v1/snoozes",
+    "/v1/people/",
+    "/v1/home",
+    "/v1/wall",
 ];
+
+/// Whether a path is one this helper answers rather than the relay. A wall's
+/// reads stand under its account, and the bio beside the profile.
+fn social(path: &str) -> bool {
+    SOCIAL.iter().any(|p| path.starts_with(p))
+        || path.contains("/wall/")
+        || path.ends_with("/wall")
+        || path == "/v1/me/bio"
+}
 
 #[derive(Default)]
 pub struct Canned {
@@ -49,7 +64,7 @@ pub struct Hosted {
 
 impl Transport for Hosted {
     fn request(&self, request: Request) -> Result<Response, Unreachable> {
-        if !SOCIAL.iter().any(|p| request.path.starts_with(p)) {
+        if !social(&request.path) {
             return self.link.request(request);
         }
         let mut canned = self.canned.lock().unwrap();
@@ -58,7 +73,7 @@ impl Transport for Hosted {
     }
 
     fn upload(&self, request: Request, file: &Path) -> Result<Response, Unreachable> {
-        if !SOCIAL.iter().any(|p| request.path.starts_with(p)) {
+        if !social(&request.path) {
             return self.link.upload(request, file);
         }
         let mut canned = self.canned.lock().unwrap();
@@ -70,7 +85,7 @@ impl Transport for Hosted {
     /// A social download gets the queued answer, and on 200 the bytes
     /// `IMAGE` in the file.
     fn download(&self, request: Request, to: &Path) -> Result<Response, Unreachable> {
-        if !SOCIAL.iter().any(|p| request.path.starts_with(p)) {
+        if !social(&request.path) {
             return self.link.download(request, to);
         }
         let mut canned = self.canned.lock().unwrap();

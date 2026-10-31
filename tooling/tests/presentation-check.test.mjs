@@ -39,6 +39,28 @@ describe("presentation-check", () => {
     ]);
   });
 
+  it("holds a notice the released core cannot read yet to the same rules", () => {
+    const edited = vectors();
+    const accepted = edited.noticeNext.findIndex(
+      (/** @type {any} */ c) => c.kind === "friend_accepted",
+    );
+    edited.noticeNext[accepted].badge = "comment";
+    expect(check(edited, contract())).toEqual([
+      `presentation.vectors.json noticeNext[${accepted}]: friend_accepted's badge is friend, not comment`,
+    ]);
+  });
+
+  it("fails a cleared cover that reads as any other moderator's action", () => {
+    const edited = vectors();
+    const cover = edited.noticeNext.findIndex(
+      (/** @type {any} */ c) => c.action === "clear_account_cover",
+    );
+    edited.noticeNext[cover].key = "notice_moderated";
+    expect(check(edited, contract())).toEqual([
+      `presentation.vectors.json noticeNext[${cover}]: moderated with 0 actors reads notice_account_cover_cleared, not notice_moderated`,
+    ]);
+  });
+
   it("fails rather than pass on a contract with no keys", () => {
     expect(check(vectors(), {})).toEqual(["brand/strings.contract.json has no keys"]);
   });

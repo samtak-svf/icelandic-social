@@ -38,7 +38,7 @@ fn clear(blobs: &dyn BlobStore, dir: &Path, keep: Option<&Path>) {
 
 /// Removes every file in `dir` and in the folder of each frame under it
 /// (0086), then the folders; the next fetch makes them again.
-fn forget_tree(blobs: &dyn BlobStore, dir: &Path) {
+pub(crate) fn forget_tree(blobs: &dyn BlobStore, dir: &Path) {
     for frame in FRAMES {
         let sub = dir.join(frame.name());
         clear(blobs, &sub, None);
@@ -58,7 +58,7 @@ const FRAMES: [Frame; 4] = [
 
 /// The server's refusal of a re-framing as the apps see it: `no_master` is
 /// its own error, for the apps to say "upload it again" (0086).
-fn framing_error(error: ApiError) -> ClientError {
+pub(crate) fn framing_error(error: ApiError) -> ClientError {
     match error {
         ApiError::Refused {
             status: 409,
@@ -167,7 +167,7 @@ impl<T: Transport> Client<T> {
 
     /// Fetches into `to` through a `.part` file beside it, so a failed
     /// download leaves nothing at `to`. False on a 404.
-    fn source_to(
+    pub(crate) fn source_to(
         &mut self,
         to: &Path,
         fetch: impl FnOnce(&Api<'_, T>, &Path) -> Result<(), ApiError>,
@@ -192,7 +192,7 @@ impl<T: Transport> Client<T> {
     /// The file at `dir/<version>.webp`: kept from an earlier call, else
     /// fetched now through `fetch` in place of the versions before it. None
     /// when the server answered 404; the caller then decides what to forget.
-    fn kept_or_fetched(
+    pub(crate) fn kept_or_fetched(
         &mut self,
         dir: PathBuf,
         version: &str,
@@ -437,6 +437,6 @@ impl<T: Transport> Client<T> {
 /// Where the files of `frame` are kept under `base`: the folder itself for
 /// the unnamed frame an app from before 0086 knows, a folder of the frame's
 /// name otherwise, so each frame keeps its own latest version.
-fn frame_dir(base: PathBuf, frame: Option<Frame>) -> PathBuf {
+pub(crate) fn frame_dir(base: PathBuf, frame: Option<Frame>) -> PathBuf {
     frame.map_or(base.clone(), |f| base.join(f.name()))
 }

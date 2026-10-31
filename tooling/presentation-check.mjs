@@ -19,6 +19,7 @@ const SECTIONS = /** @type {const} */ ([
   "listStamp",
   "problem",
   "notice",
+  "noticeNext",
 ]);
 
 /** The badge each notification kind draws on its row's picture (decision 0103). */
@@ -28,6 +29,8 @@ const BADGES = /** @type {Record<string, string>} */ ({
   reaction: "emoji",
   join_approved: "approved",
   moderated: "moderator",
+  friend_request: "friend",
+  friend_accepted: "friend",
 });
 
 /** The kinds that name their actors; the others name nobody. */
@@ -39,6 +42,8 @@ const MODERATED = /** @type {Record<string, string>} */ ({
   review_upheld: "notice_review_upheld",
   review_overturned: "notice_review_overturned",
   clear_account_photo: "notice_account_photo_cleared",
+  clear_account_bio: "notice_account_bio_cleared",
+  clear_account_cover: "notice_account_cover_cleared",
   suspend_account: "notice_account_suspended",
   unsuspend_account: "notice_account_unsuspended",
 });
@@ -174,7 +179,7 @@ function caseProblems(section, c, keys, where) {
       ...f.text("initials"),
     ];
   }
-  if (section === "notice") return noticeProblems(c, keys, where);
+  if (section === "notice" || section === "noticeNext") return noticeProblems(c, keys, where);
   if (section === "problem") {
     const outcome = c?.outcome === "unreachable" || c?.outcome === "refused";
     return [
