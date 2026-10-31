@@ -65,6 +65,10 @@ organisation serves this product.
 
 ## Open
 
+- **Which routes stay.** The scraper and page feeds are trials that establish which routes are
+  viable. They are not the final choice of cross-platform sync methods, and that choice is made
+  later on what they show. Only the core is meant to last, so a route can be replaced or dropped
+  without touching it.
 - **Whether the source platform objects.** Its answer on the developer app and the listed-destination
   programme may turn on this. The off switch is the prepared response.
 - **Legal and rights questions** go to the review before the open beta, with 0119's.
