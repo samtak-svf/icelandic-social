@@ -193,6 +193,8 @@ type Secrets = {
   APNS_KEY_P8?: string;
   APNS_KEY_ID?: string;
   OPS_TOKEN?: string;
+  IMPORT_SCRAPE_TOKEN?: string;
+  IMPORT_SCRAPE_CONFIG?: string;
 };
 
 /**
@@ -202,6 +204,20 @@ type Secrets = {
 export function opsToken(env: Env): string | undefined {
   const token = (env as Env & Secrets).OPS_TOKEN;
   return token && token.length >= 32 ? token : undefined;
+}
+
+/**
+ * The scraping feed's token, its settings as JSON and its monthly cap (decision
+ * 0120), or null while it is switched off in this environment or not fully set.
+ */
+export function importScrape(
+  env: Env,
+): { token: string; config: string; monthlyCapUsd: number } | null {
+  if (env.IMPORT_SCRAPE !== "on") return null;
+  const { IMPORT_SCRAPE_TOKEN: token, IMPORT_SCRAPE_CONFIG: config } = env as Env & Secrets;
+  const monthlyCapUsd = Number(env.IMPORT_SCRAPE_MONTHLY_USD);
+  if (!token || !config || !Number.isFinite(monthlyCapUsd)) return null;
+  return { token, config, monthlyCapUsd };
 }
 
 /**

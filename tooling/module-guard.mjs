@@ -100,6 +100,8 @@ export const OWNERS = {
   import_files: "imports",
   import_file_parts: "imports",
   import_file_items: "imports",
+  import_connections: "imports",
+  import_scrape_spend: "imports",
 };
 
 /** The reads of another module's table, each with its reason. */

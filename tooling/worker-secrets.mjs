@@ -69,6 +69,10 @@ export const SECRETS = [
   // The maintainer's bearer token for /ops (decision 0068). Unset, the routes
   // answer 404; shorter than 32 characters, they do too.
   { name: "OPS_TOKEN", vault: "ops-token", when: "now" },
+  // The scraping feed (decision 0120): the provider's token, and its address,
+  // actor, allowed hosts and prices as JSON. Unset, the feed stays off.
+  { name: "IMPORT_SCRAPE_TOKEN", vault: "scrape-token", when: "now" },
+  { name: "IMPORT_SCRAPE_CONFIG", vault: "scrape-config", when: "now" },
 ];
 
 /**

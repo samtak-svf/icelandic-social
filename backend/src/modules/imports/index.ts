@@ -3,9 +3,13 @@
 // it owns are written only here.
 
 import type { Handler } from "../jobs/index.ts";
+import { connectionJobHandlers } from "./scrape-jobs.ts";
 import { jobHandlers as coreJobs } from "./core.ts";
 import { fileJobHandlers } from "./file-jobs.ts";
 
+export { connectionRoutes } from "./connection-routes.ts";
+export { expireUnproven } from "./connections.ts";
+export { scrapeHealth, startDueScrapes } from "./scrape-jobs.ts";
 export { importPost, openImport, requestRemoval, type SourcePost } from "./core.ts";
 export { deleteAccountFiles, expireFiles } from "./file.ts";
 export { importRoutes } from "./routes.ts";
@@ -14,4 +18,5 @@ export { importRoutes } from "./routes.ts";
 export const jobHandlers = (): Record<string, Handler> => ({
   ...coreJobs(),
   ...fileJobHandlers(),
+  ...connectionJobHandlers(),
 });

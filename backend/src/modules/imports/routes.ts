@@ -44,7 +44,7 @@ function refusal<K extends Code>(c: Context<AppEnv>, code: K): Refusal<K> {
 }
 
 /** The rate limit of the routes that start work, as an upload's: per account. */
-async function limited(c: Context<AppEnv>, accountId: string): Promise<boolean> {
+export async function limited(c: Context<AppEnv>, accountId: string): Promise<boolean> {
   if (await withinLimit(c.env, "photos", accountId)) return false;
   log("request.rate_limited", { code: "photos", requestId: c.var.requestId });
   return true;
