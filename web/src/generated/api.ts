@@ -2476,6 +2476,26 @@ export function listCommunityImages(args: {
 }
 
 /**
+ * The posts of the caller's communities, friends and own wall, newest first
+ *
+ * Read a time window at a time, widening while pages come up short, so a page can be short or empty while older posts remain: follow `next` until it is null.
+ */
+export function getHome(args?: {
+  query?: {
+    /** The `next` of the page before */
+    before?: string;
+    limit?: number;
+  };
+}, init?: CallInit): Promise<
+  | { status: 200; data: PostPage }
+  | { status: 400; data: ApiError }
+  | { status: 401; data: ApiError }
+  | { status: 426; data: ApiError }
+> {
+  return call("GET", "/v1/home", args, init);
+}
+
+/**
  * The posts of the caller's communities, newest first
  *
  * Read a time window at a time, so a page can be short or empty while older posts remain: follow `next` until it is null.

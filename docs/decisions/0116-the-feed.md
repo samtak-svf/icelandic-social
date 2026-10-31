@@ -1,6 +1,6 @@
 # 0116. The feed: a first tab, newest first, read per source
 
-- Status: accepted; designed, not yet implemented
+- Status: accepted; implemented on the server (`GET /v1/home`, with snooze and block in the statement). Still to come: the measurement below, the tab, the composer and the card on the web and in the apps
 - Date: 2026-10-30
 - Decided by: Guðröður Atli Jónsson
 - Amended by: [0117](0117-names-in-the-ui-are-one-table.md) (the `Samfélög` tab is `Hópar`)
@@ -34,14 +34,15 @@
 
 - **Newest first. No ranking, no fan-out, no suggestions** (0060).
 - **Three sources:** the account's communities, its friends' wall posts it may read, its own wall.
-- **`GET /v1/home` is new, and `/v1/feed` stays exactly as it is** (`backend/src/modules/social/posts.ts:209–246`), community
-  only, so an installed app is not affected and the hub keeps its feed.
+- **`GET /v1/home` is new, and `/v1/feed` stays exactly as it is** (`feed` in `backend/src/modules/social/posts.ts`), community
+  only, so an installed app is not affected and the hub keeps its feed. A test pins its response byte for byte.
 - **One query, two joins, no bound list of ids**: the community half as today, plus
   `friendships JOIN walls JOIN post_index`, plus the own wall, all through the existing
   `posts_by_community(community_id, created_at)` (`backend/migrations/0015_social.sql:16`). No new index. The block
-  filter is the existing one (`posts.ts:225`), and snoozes (0114) are filtered in the same statement.
-- **The index learns the audience, and that leaks nothing.** `post_index.audience` (0115) is never returned to a client.
-  Friends read both audiences, and a non-friend's wall never enters this query, so the feed does not need to compare
+  filter is the existing one (`UNBLOCKED`), and snoozes (0114) are filtered in the same statement. An anonymous post stays
+  when its author is snoozed, since hiding it would let a viewer find its author by snoozing one person at a time.
+- **The index learns the audience, and that leaks nothing.** `post_index.audience` (0115) is returned only on a post of a wall the viewer reads, for the card's icon (0115), as on the
+  wall itself. Friends read both audiences, and a non-friend's wall never enters this query, so the feed does not need to compare
   audience per reader at all; only the person screen does.
 
 ### What it costs
@@ -52,7 +53,7 @@ measured.** The first step of the plan extends the spike.
 - A community gets 7 posts a day under the doc's assumptions (100,000 accounts × 0.2 × 70% ÷ 2,000, lines 56–60). An
   account's wall gets 0.06 (0.2 × 30%).
 - **A viewer with 500 friends and 50 communities therefore has 380 posts a day in its sources** (50 × 7 + 500 × 0.06).
-- **A fixed window is too costly at that size.** The Worker's 30 days (`posts.ts:17`) would read 11,400 post rows, the class
+- **A fixed window is too costly at that size.** The Worker's 30 days (`FEED_WINDOW_MS` in `posts.ts`) would read 11,400 post rows, the class
   of the measured "one scan" (19,326 rows, `docs/d1-social-workload.md:93`) that the window exists to avoid; the spike's own
   7 days (`spikes/d1-workload/model.ts:268`) would read 2,660.
 - **So the window adapts**: it starts at 24 hours and widens to 4, 16 and 30 days, in at most three statements per
@@ -60,11 +61,13 @@ measured.** The first step of the plan extends the spike.
   [The feed at the size of 0116](../d1-social-workload.md#the-feed-at-the-size-of-0116-373) (an index entry and a table row
   for each post and wall, which the first estimate here of 1,500 left out), under the 3,000 that would call for a change.
   A light viewer's wider window reads few rows, and the existing step-back
-  (`posts.ts:234–243`) is kept, now also looking at the oldest friendship.
+  (in `feed`, `posts.ts`) has its counterpart here. It looks at the oldest source, a friend's wall included and not the
+  friendship, because a friend's older posts are read as soon as the two are friends (0115), so stopping at the friendship
+  would lose them without saying so. The three statements are two windows and that one read.
 - **Storage:** `friendships` at 100,000 accounts with 50 friends each is 5 million directed rows, 0.72 GiB
   (`docs/d1-social-workload.md:79`), which is what 0060's 0.9 GiB for the graph already counted as follows.
 - **Rendering is the open risk.** A page reads one Space call per community on it, in parallel
-  (`posts.ts:52–62`). A page of 30 friends' posts means up to 30 object calls; a community's page has never paid this.
+  (`render`, `posts.ts`). A page of 30 friends' posts means up to 30 object calls; a community's page has never paid this.
   **It is not measured.** The feed does not ship until a staging measurement of the 95th percentile says it holds; if it
   does not, the page gets shorter, which costs nothing else.
 
@@ -83,6 +86,10 @@ measured.** The first step of the plan extends the spike.
 
 ### Measured, then decided
 
+- **"Holds" means the 95th percentile of `GET /v1/home` under 1,000 ms warm**, because this record names no threshold. If it
+  fails, the page goes to 20, then 15, and is re-measured (`HOME_PAGE`, `backend/src/api/home.ts`;
+  `tooling/home-measure.mjs`, whose `--page` measures a shorter page with no deploy). Decided 2026-10-31 by the overseeing
+  session, which Guðröður may overrule.
 - **Multi-image layout stays as it is**: one image alone, several in two columns (`post.tsx:403`), each opening the
   viewer. A mosaic would need a per-image crop that no editor produces.
 - **A ⋯ on others' posts exists**: Tilkynna for others, Eyða for the author (`post.tsx:347–365`). No change.

@@ -16,6 +16,7 @@ import {
   uploadSocialMediaRoute,
 } from "../../api/social.ts";
 import { communityImagesRoute } from "../../api/community-gallery.ts";
+import { homeRoute } from "../../api/home.ts";
 import { voteRoute, withdrawVoteRoute } from "../../api/polls.ts";
 import { likeCommentRoute, unlikeCommentRoute } from "../../api/social-hub.ts";
 import type { AppEnv } from "../../http.ts";
@@ -27,6 +28,7 @@ import { log } from "../../shared/log.ts";
 import { markRead } from "../communities/index.ts";
 import { notice } from "../jobs/index.ts";
 import { cardRoutes } from "./cards.ts";
+import { home } from "./home.ts";
 import {
   commentAccess,
   ownWallComment,
@@ -135,6 +137,16 @@ export function socialRoutes(app: OpenAPIHono<AppEnv>): void {
     if (!access || access.wall) return fail(c, 404, "not_found");
     const page = await communityImages(c.env, communityId, access.viewer.hidden, cursor, limit);
     return c.json({ images: page.rows, next: page.next }, 200);
+  });
+
+  app.openapi(homeRoute, async (c) => {
+    const { accountId } = c.var.session;
+    const { before, limit } = c.req.valid("query");
+    const knowing = decodesEveryNotice(c.env, c.req.header(CLIENT_HEADER));
+    const hidden = await blockedEither(c.env, accountId);
+    const viewer = { account: accountId, hidden, moderator: false };
+    const page = await home(c.env, viewer, before, limit, knowing);
+    return c.json({ posts: await renderListed(c.env, page.rows, viewer), next: page.next }, 200);
   });
 
   app.openapi(feedRoute, async (c) => {

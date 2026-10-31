@@ -2,10 +2,18 @@ import { db } from "../../env/index.ts";
 import { SUMMARY, summaryOf, type SummaryRow } from "./summary.ts";
 
 // Snoozing a person (decision 0114): 30 days, tells nobody, liftable early. It
-// will filter the feed only, never a notification or the person's screen; the
-// feed is a later step, which reads this table through this module.
+// filters the home feed only (decision 0116), never a notification or the
+// person's screen; that feed reads this table through `UNSNOOZED`.
 
 const SNOOZE_MS = 30 * 24 * 60 * 60 * 1000;
+
+/**
+ * SQL: `viewer` has no snooze on `author` in force at `now`, each a column or a
+ * parameter. A snooze past its time is not in force before the sweep removes it.
+ */
+export const UNSNOOZED = (viewer: string, author: string, now: string) =>
+  `NOT EXISTS (SELECT 1 FROM person_snoozes z
+     WHERE z.account_id = ${viewer} AND z.target_id = ${author} AND z.until > ${now})`;
 
 /** Snoozes `target` for `me`, from now; undefined when there is no such account. */
 export async function snooze(

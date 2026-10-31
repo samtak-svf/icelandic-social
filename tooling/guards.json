@@ -158,6 +158,10 @@
       "reason": "Reports the wait, run and wall of CI from the GitHub API, before and after a change to the runner flow; it checks nothing."
     },
     {
+      "script": "home-measure",
+      "reason": "A person runs it on staging to time the home feed at its heaviest viewer; the figure decides the page length in decision 0116, and no stage runs it."
+    },
+    {
       "script": "core-release",
       "reason": "Takes a merged core to a tag, a release and a branch for the apps PR; a person runs it, and it checks nothing."
     },
