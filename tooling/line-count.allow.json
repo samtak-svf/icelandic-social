@@ -38,7 +38,7 @@
   "core/mls/src/storage.rs": 1050,
   "core/mls/tests/framing_fixture.rs": 414,
   "core/mls/tests/group.rs": 772,
-  "core/store/src/lib.rs": 1645,
+  "core/store/src/lib.rs": 1643,
   "core/wasm/src/dto.rs": 460,
   "ios/App/Conversation/Bubble.swift": 483,
   "ios/App/Conversation/ConversationInfoView.swift": 429,

@@ -14,6 +14,7 @@ use std::time::Duration;
 
 pub use rusqlite;
 
+mod keying;
 #[cfg(all(target_arch = "wasm32", target_os = "unknown", feature = "opfs"))]
 mod opfs;
 #[cfg(all(target_arch = "wasm32", target_os = "unknown", feature = "opfs"))]
@@ -809,10 +810,7 @@ fn hex(bytes: &[u8]) -> String {
 /// settings the store keeps. `Store::open` uses it, and so does a second
 /// database that shares the store's key and VFS (the browser's blobs, 0081).
 pub fn connect(path: &Path, key: &Key) -> rusqlite::Result<Connection> {
-    let connection = Connection::open(path)?;
-    // The key must be the first statement on the connection. Hex digits
-    // only, so formatting it into the pragma cannot inject anything.
-    connection.execute_batch(&format!("PRAGMA key = \"x'{}'\";", hex(key)))?;
+    let connection = keying::open_keyed(path, key)?;
     cipher(&connection, CIPHER_PROBES)?;
     connection.query_row("SELECT COUNT(*) FROM sqlite_master", [], |_| Ok(()))?;
     connection.busy_timeout(BUSY_TIMEOUT)?;
