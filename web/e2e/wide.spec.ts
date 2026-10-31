@@ -89,7 +89,7 @@ for (const width of WIDTHS) {
     for (const bar of [back, composer]) {
       if (sizeClassOf(width) === "compact") {
         expect(card.x).toBeCloseTo(0, 0);
-        expect(card.width).toBeCloseTo(width, 0);
+        expect(card.width).toBeCloseTo(await layoutWidth(member), 0);
         expect(bar.x).toBeGreaterThanOrEqual(card.x);
         expect(bar.x + bar.width).toBeLessThanOrEqual(card.x + card.width + 0.5);
       } else {
