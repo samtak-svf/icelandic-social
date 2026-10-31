@@ -170,6 +170,11 @@ function imageOf(entry: unknown): string | null {
   return found || null;
 }
 
+/** The provider's error for a run that found no posts. */
+const NOTHING_FOUND = "no_items";
+
+type ScrapeAnswer = "posts" | "empty" | "failed";
+
 /** One post of the provider's answer; null when it lacks what an import needs. */
 function scrapedItem(settings: ScrapeSettings, raw: unknown): ScrapedItem | null {
   const item = record(raw);
@@ -199,26 +204,33 @@ function scrapedItem(settings: ScrapeSettings, raw: unknown): ScrapedItem | null
   };
 }
 
+/**
+ * What one part of an answer says of the profile. The provider gives the same `empty` for
+ * a profile with nothing new and one it could not read, so it proves nothing about either.
+ */
+function answerOf(rows: unknown[], items: ScrapedItem[]): ScrapeAnswer {
+  if (items.length > 0) return "posts";
+  return rows.every((row) => record(row).error === NOTHING_FOUND) ? "empty" : "failed";
+}
+
 /** `count` posts of a finished run from `offset` on, and how many entries were read. */
 export async function readItems(
   settings: ScrapeSettings,
   datasetId: string,
   offset: number,
   count: number,
-): Promise<{ items: ScrapedItem[]; read: number }> {
+): Promise<{ items: ScrapedItem[]; read: number; answer: ScrapeAnswer }> {
   const query = new URLSearchParams({
     clean: "true",
     offset: String(offset),
     limit: String(count),
   });
   const answer = await call(settings, `/datasets/${datasetId}/items?${query}`);
-  const rows = Array.isArray(answer) ? answer : [];
-  return {
-    items: rows
-      .map((row) => scrapedItem(settings, row))
-      .filter((item): item is ScrapedItem => item !== null),
-    read: rows.length,
-  };
+  if (!Array.isArray(answer)) return { items: [], read: 0, answer: "failed" };
+  const items = answer
+    .map((row) => scrapedItem(settings, row))
+    .filter((item): item is ScrapedItem => item !== null);
+  return { items, read: answer.length, answer: answerOf(answer, items) };
 }
 
 /**
