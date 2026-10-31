@@ -48,6 +48,11 @@ const ImportStatus = z
   })
   .openapi("ImportStatus");
 
+const ImportSummary = ImportStatus.extend({
+  importId: OpaqueId,
+  createdAt: z.int().openapi({ description: "Milliseconds since the epoch" }),
+}).openapi("ImportSummary");
+
 const ImportItem = z
   .object({
     id: z.string(),
@@ -134,6 +139,22 @@ export const completeImportRoute = createRoute({
     409: errorResponse("incomplete: a part is missing; conflict: the upload is complete"),
     410: errorResponse("expired: the upload is past its 7 days"),
     ...INVALID,
+    ...AUTHED,
+  },
+});
+
+export const listImportsRoute = createRoute({
+  method: "get",
+  path: "/v1/imports",
+  operationId: "listImports",
+  tags,
+  summary: "The caller's file imports, newest first, without any being removed",
+  security: ACCOUNT,
+  responses: {
+    200: json(
+      "The latest 100",
+      z.object({ imports: z.array(ImportSummary) }).openapi("ImportList"),
+    ),
     ...AUTHED,
   },
 });

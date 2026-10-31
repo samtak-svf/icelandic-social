@@ -1,5 +1,12 @@
 import { db } from "../../env/index.ts";
-import { type FileRow, ITEM_PAGE } from "./file.ts";
+import {
+  FILE_COLUMNS,
+  FILE_FROM,
+  type FileRead,
+  fileRow,
+  type FileRow,
+  ITEM_PAGE,
+} from "./file.ts";
 
 // What the person sees of a file import: where it stands, and the posts the parse
 // found, a page at a time, to choose from.
@@ -24,6 +31,33 @@ export function statusOf(file: FileRow): FileStatus {
     failure: file.failure,
     counts: { posts, images, videos, skipped, earliest, latest },
   };
+}
+
+/** How many earlier file imports are listed: far more than a person has reason to hold. */
+const LISTED = 100;
+
+/**
+ * The person's own file imports, newest first, so that one can be found again to remove
+ * it long after it was published. A connection's preview is reached from the connection,
+ * and an import being removed is already gone as far as they are concerned.
+ */
+export async function listFiles(
+  env: Env,
+  accountId: string,
+): Promise<(FileStatus & { importId: string; createdAt: number })[]> {
+  const { results } = await db(env)
+    .prepare(
+      `SELECT ${FILE_COLUMNS}, s.created_at AS createdAt ${FILE_FROM}
+        WHERE s.account_id = ? AND s.kind = 'file' AND s.removing_at IS NULL
+        ORDER BY s.created_at DESC, s.import_id DESC LIMIT ?`,
+    )
+    .bind(accountId, LISTED)
+    .all<FileRead & { createdAt: number }>();
+  return results.map((row) => ({
+    importId: row.importId,
+    createdAt: row.createdAt,
+    ...statusOf(fileRow(row)),
+  }));
 }
 
 export type PreviewItem = {

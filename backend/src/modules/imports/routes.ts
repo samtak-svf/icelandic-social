@@ -6,6 +6,7 @@ import {
   deleteImportRoute,
   getImportRoute,
   listImportItemsRoute,
+  listImportsRoute,
   publishImportRoute,
   putImportPartRoute,
 } from "../../api/imports.ts";
@@ -23,7 +24,7 @@ import {
   putFilePart,
   removeFile,
 } from "./file.ts";
-import { itemsOf, statusOf } from "./file-read.ts";
+import { itemsOf, listFiles, statusOf } from "./file-read.ts";
 
 // The routes of a file import (decision 0119). Another person's import answers
 // not_found, as an import that does not exist. Log lines carry ids and sizes only.
@@ -90,6 +91,10 @@ export function importRoutes(app: OpenAPIHono<AppEnv>): void {
     if (done !== "ok") return refusal(c, done);
     return c.body(null, 204);
   });
+
+  app.openapi(listImportsRoute, async (c) =>
+    c.json({ imports: await listFiles(c.env, c.var.session.accountId) }, 200),
+  );
 
   app.openapi(getImportRoute, async (c) => {
     const file = await fileOf(c.env, c.var.session.accountId, c.req.valid("param").importId);

@@ -102,6 +102,7 @@ describe("the delivery contract", () => {
       "get /v1/friend-suggestions listFriendSuggestions",
       "get /v1/friends listFriends",
       "get /v1/home getHome",
+      "get /v1/imports listImports",
       "get /v1/imports/connections listImportConnections",
       "get /v1/imports/pages listImportPages",
       "get /v1/imports/{importId} getImport",

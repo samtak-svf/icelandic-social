@@ -3989,6 +3989,10 @@
       "ImportConnectionList": {
         "type": "object",
         "properties": {
+          "available": {
+            "type": "boolean",
+            "description": "Whether a new connection can be made here; false when switched off"
+          },
           "connections": {
             "type": "array",
             "items": {
@@ -3997,6 +4001,7 @@
           }
         },
         "required": [
+          "available",
           "connections"
         ]
       },
@@ -4153,6 +4158,45 @@
         },
         "required": [
           "size"
+        ]
+      },
+      "ImportList": {
+        "type": "object",
+        "properties": {
+          "imports": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ImportSummary"
+            }
+          }
+        },
+        "required": [
+          "imports"
+        ]
+      },
+      "ImportSummary": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ImportStatus"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "importId": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9_-]{1,128}$",
+                "example": "c_9f3a1b"
+              },
+              "createdAt": {
+                "type": "integer",
+                "description": "Milliseconds since the epoch"
+              }
+            },
+            "required": [
+              "importId",
+              "createdAt"
+            ]
+          }
         ]
       },
       "ImportStatus": {
@@ -19021,6 +19065,55 @@
           },
           "410": {
             "description": "expired: the upload is past its 7 days",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "426": {
+            "description": "client_too_old: Spjall-Client names a version below the floor; minVersion says which",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/imports": {
+      "get": {
+        "operationId": "listImports",
+        "tags": [
+          "imports"
+        ],
+        "summary": "The caller's file imports, newest first, without any being removed",
+        "security": [
+          {
+            "deviceToken": []
+          },
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The latest 100",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportList"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No device token or session the route takes, or one that is not valid",
             "content": {
               "application/json": {
                 "schema": {

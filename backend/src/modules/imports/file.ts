@@ -53,6 +53,20 @@ export type FileRow = {
   latest: number | null;
 };
 
+/** What a file import is read as, shared by the one and the list. */
+export const FILE_COLUMNS = `s.import_id AS importId, s.account_id AS accountId,
+              s.removing_at IS NOT NULL AS removing,
+              COALESCE(f.state, 'failed') AS state, f.failure, COALESCE(f.upload_id, '') AS uploadId,
+              COALESCE(f.size, 0) AS size, COALESCE(f.expires_at, 0) AS expiresAt,
+              COALESCE(f.posts, 0) AS posts, COALESCE(f.images, 0) AS images,
+              COALESCE(f.videos, 0) AS videos, COALESCE(f.skipped, 0) AS skipped,
+              f.earliest, f.latest`;
+export const FILE_FROM = `FROM import_sources s LEFT JOIN import_files f ON f.import_id = s.import_id`;
+
+export type FileRead = Omit<FileRow, "removing"> & { removing: number };
+
+export const fileRow = (row: FileRead): FileRow => ({ ...row, removing: row.removing === 1 });
+
 /**
  * The file import `importId` of `accountId`, or the preview of a connection's first
  * collection, which is read and published the same way; null when it is not theirs. A
@@ -65,19 +79,12 @@ export async function fileOf(
 ): Promise<FileRow | null> {
   const row = await db(env)
     .prepare(
-      `SELECT s.import_id AS importId, s.account_id AS accountId,
-              s.removing_at IS NOT NULL AS removing,
-              COALESCE(f.state, 'failed') AS state, f.failure, COALESCE(f.upload_id, '') AS uploadId,
-              COALESCE(f.size, 0) AS size, COALESCE(f.expires_at, 0) AS expiresAt,
-              COALESCE(f.posts, 0) AS posts, COALESCE(f.images, 0) AS images,
-              COALESCE(f.videos, 0) AS videos, COALESCE(f.skipped, 0) AS skipped,
-              f.earliest, f.latest
-         FROM import_sources s LEFT JOIN import_files f ON f.import_id = s.import_id
+      `SELECT ${FILE_COLUMNS} ${FILE_FROM}
         WHERE s.import_id = ? AND s.account_id = ? AND s.kind IN ('file', 'profile', 'page')`,
     )
     .bind(importId, accountId)
-    .first<Omit<FileRow, "removing"> & { removing: number }>();
-  return row && { ...row, removing: row.removing === 1 };
+    .first<FileRead>();
+  return row && fileRow(row);
 }
 
 /** Starts an upload of `size` bytes: the import first, which the file row hangs on. */

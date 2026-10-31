@@ -11,6 +11,7 @@ import { fail } from "../../shared/errors.ts";
 import { log } from "../../shared/log.ts";
 import { askForCheck, createConnection, listConnections, removeConnection } from "./connections.ts";
 import { limited } from "./routes.ts";
+import { scrapeSettings } from "./scrape.ts";
 
 // The routes of a connection to a public profile (decision 0120). Another person's
 // connection answers not_found, as one that does not exist.
@@ -28,7 +29,13 @@ export function connectionRoutes(app: OpenAPIHono<AppEnv>): void {
   });
 
   app.openapi(listImportConnectionsRoute, async (c) =>
-    c.json({ connections: await listConnections(c.env, c.var.session.accountId) }, 200),
+    c.json(
+      {
+        available: scrapeSettings(c.env) !== null,
+        connections: await listConnections(c.env, c.var.session.accountId),
+      },
+      200,
+    ),
   );
 
   app.openapi(notSuspended(checkImportConnectionRoute), async (c) => {

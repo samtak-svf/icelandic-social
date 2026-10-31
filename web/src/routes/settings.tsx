@@ -87,6 +87,11 @@ function Settings() {
           {strings.statements_title}
         </Link>
       </p>
+      <p className="mt-2">
+        <Link to="/imports" search={{}} className="underline">
+          {strings.imports_title}
+        </Link>
+      </p>
       {state.status === "signed-in" && state.me.platformModerator && (
         <p className="mt-2">
           <Link to="/moderation" className="underline">

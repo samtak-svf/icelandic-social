@@ -3079,6 +3079,338 @@
       "placeholders": {
         "count": "int"
       }
+    },
+    "imports_title": {
+      "surfaces": ["web"],
+      "description": "Title of the screen that brings a person's own posts in from another platform, and the link to it."
+    },
+    "imports_intro": {
+      "surfaces": ["web"],
+      "description": "What the screen does, and that nothing is published until chosen."
+    },
+    "imports_file_title": {
+      "surfaces": ["web"],
+      "description": "Heading: bring posts in from an export file."
+    },
+    "imports_file_hint": {
+      "surfaces": ["web"],
+      "description": "How to get the export file."
+    },
+    "imports_file_choose": {
+      "surfaces": ["web"],
+      "description": "Button choosing the export file."
+    },
+    "imports_file_sending": {
+      "surfaces": ["web"],
+      "description": "Progress of an upload.",
+      "placeholders": {
+        "part": "string",
+        "parts": "string"
+      }
+    },
+    "imports_file_resume": {
+      "surfaces": ["web"],
+      "description": "Button carrying on with a stopped upload."
+    },
+    "imports_file_stalled": {
+      "surfaces": ["web"],
+      "description": "An upload stopped and can carry on."
+    },
+    "imports_file_too_large": {
+      "surfaces": ["web"],
+      "description": "The chosen file is over the limit."
+    },
+    "imports_file_expired": {
+      "surfaces": ["web"],
+      "description": "The upload's time ran out."
+    },
+    "imports_earlier_title": {
+      "surfaces": ["web"],
+      "description": "Heading of the person's earlier file imports."
+    },
+    "imports_state_uploading": {
+      "surfaces": ["web"],
+      "description": "An earlier file import: upload never finished."
+    },
+    "imports_state_parsing": {
+      "surfaces": ["web"],
+      "description": "An earlier file import: being read."
+    },
+    "imports_state_ready": {
+      "surfaces": ["web"],
+      "description": "An earlier file import: waits for a choice."
+    },
+    "imports_state_publishing": {
+      "surfaces": ["web"],
+      "description": "An earlier file import: being published."
+    },
+    "imports_state_done": {
+      "surfaces": ["web"],
+      "description": "An earlier file import: published."
+    },
+    "imports_state_failed": {
+      "surfaces": ["web"],
+      "description": "An earlier file import: failed."
+    },
+    "imports_profile_title": {
+      "surfaces": ["web"],
+      "description": "Heading: connect a public profile on another platform."
+    },
+    "imports_profile_hint": {
+      "surfaces": ["web"],
+      "description": "How connecting a profile works."
+    },
+    "imports_profile_url": {
+      "surfaces": ["web"],
+      "description": "Label of the profile address field."
+    },
+    "imports_profile_connect": {
+      "surfaces": ["web"],
+      "description": "Button connecting a profile."
+    },
+    "imports_profile_invalid": {
+      "surfaces": ["web"],
+      "description": "The address is not a public profile."
+    },
+    "imports_profile_limit": {
+      "surfaces": ["web"],
+      "description": "The person has as many connections as one may."
+    },
+    "imports_profile_off": {
+      "surfaces": ["web"],
+      "description": "This route is switched off."
+    },
+    "imports_profile_code": {
+      "surfaces": ["web"],
+      "description": "What to do with the code shown beside this sentence."
+    },
+    "imports_profile_check": {
+      "surfaces": ["web"],
+      "description": "Button asking for a look for the code."
+    },
+    "imports_profile_checking": {
+      "surfaces": ["web"],
+      "description": "The code is being looked for."
+    },
+    "imports_profile_not_found": {
+      "surfaces": ["web"],
+      "description": "The code was not found."
+    },
+    "imports_sync_importing": {
+      "surfaces": ["web"],
+      "description": "A connection's posts are being fetched."
+    },
+    "imports_sync_preview": {
+      "surfaces": ["web"],
+      "description": "A connection's first collection waits for a choice."
+    },
+    "imports_sync_last": {
+      "surfaces": ["web"],
+      "description": "When a connection last fetched.",
+      "placeholders": {
+        "date": "string"
+      }
+    },
+    "imports_sync_capped": {
+      "surfaces": ["web"],
+      "description": "Fetching is put off for now."
+    },
+    "imports_sync_failed": {
+      "surfaces": ["web"],
+      "description": "The last fetch failed."
+    },
+    "imports_preview_link": {
+      "surfaces": ["web"],
+      "description": "Link from a connection to its first collection."
+    },
+    "imports_disconnect": {
+      "surfaces": ["web"],
+      "description": "Button stopping a connection and removing its posts."
+    },
+    "imports_disconnect_confirm": {
+      "surfaces": ["web"],
+      "description": "Confirmation of the same."
+    },
+    "imports_page_title": {
+      "surfaces": ["web"],
+      "description": "Heading: connect a page the person manages."
+    },
+    "imports_page_hint": {
+      "surfaces": ["web"],
+      "description": "How connecting a page works."
+    },
+    "imports_page_start": {
+      "surfaces": ["web"],
+      "description": "Link that opens the platform's sign-in."
+    },
+    "imports_page_connect": {
+      "surfaces": ["web"],
+      "description": "Button connecting a chosen page."
+    },
+    "imports_page_choose": {
+      "surfaces": ["web"],
+      "description": "Back from sign-in: pages to choose from."
+    },
+    "imports_page_none": {
+      "surfaces": ["web"],
+      "description": "Back from sign-in: no pages."
+    },
+    "imports_page_failed": {
+      "surfaces": ["web"],
+      "description": "Back from sign-in: it failed."
+    },
+    "imports_page_declined": {
+      "surfaces": ["web"],
+      "description": "Back from sign-in: the person said no."
+    },
+    "imports_page_expired": {
+      "surfaces": ["web"],
+      "description": "A page connection's sign-in ran out."
+    },
+    "imports_preview_title": {
+      "surfaces": ["web"],
+      "description": "Title of the screen choosing what to publish."
+    },
+    "imports_counts": {
+      "surfaces": ["web"],
+      "description": "What an import holds.",
+      "placeholders": {
+        "posts": "string",
+        "images": "string",
+        "videos": "string"
+      }
+    },
+    "imports_range": {
+      "surfaces": ["web"],
+      "description": "Legend of the date range."
+    },
+    "imports_from": {
+      "surfaces": ["web"],
+      "description": "Label of the range's start."
+    },
+    "imports_to": {
+      "surfaces": ["web"],
+      "description": "Label of the range's end."
+    },
+    "imports_include": {
+      "surfaces": ["web"],
+      "description": "Checkbox: this post is published."
+    },
+    "imports_item_video": {
+      "surfaces": ["web"],
+      "description": "On a post with a video."
+    },
+    "imports_excluded_full": {
+      "surfaces": ["web"],
+      "description": "The limit on posts left out was reached."
+    },
+    "imports_empty_range": {
+      "surfaces": ["web"],
+      "description": "No post in the chosen range."
+    },
+    "imports_publish": {
+      "surfaces": ["web"],
+      "description": "Button publishing the chosen posts."
+    },
+    "imports_preview_kept": {
+      "surfaces": ["web"],
+      "description": "How long an unpublished preview stays."
+    },
+    "imports_not_ready": {
+      "surfaces": ["web"],
+      "description": "The import cannot be published in this state."
+    },
+    "imports_wait_parsing": {
+      "surfaces": ["web"],
+      "description": "The file is being read."
+    },
+    "imports_wait_publishing": {
+      "surfaces": ["web"],
+      "description": "The posts are being published."
+    },
+    "imports_wait_removing": {
+      "surfaces": ["web"],
+      "description": "The import is being removed."
+    },
+    "imports_unfinished": {
+      "surfaces": ["web"],
+      "description": "An upload left unfinished in an earlier visit."
+    },
+    "imports_done": {
+      "surfaces": ["web"],
+      "description": "The posts are published."
+    },
+    "imports_remove": {
+      "surfaces": ["web"],
+      "description": "Button removing an import and its posts."
+    },
+    "imports_remove_confirm": {
+      "surfaces": ["web"],
+      "description": "Confirmation of the same."
+    },
+    "imports_back": {
+      "surfaces": ["web"],
+      "description": "Link back to the imports screen."
+    },
+    "imports_failed_truncated": {
+      "surfaces": ["web"],
+      "description": "The file is cut short."
+    },
+    "imports_failed_zip64": {
+      "surfaces": ["web"],
+      "description": "The ZIP has an entry too large to read."
+    },
+    "imports_failed_encrypted": {
+      "surfaces": ["web"],
+      "description": "The file has a password."
+    },
+    "imports_failed_unsupported": {
+      "surfaces": ["web"],
+      "description": "Not the right format."
+    },
+    "imports_failed_too_big": {
+      "surfaces": ["web"],
+      "description": "Too much in the file."
+    },
+    "imports_failed_corrupt": {
+      "surfaces": ["web"],
+      "description": "The file is damaged."
+    },
+    "imports_failed_no_posts": {
+      "surfaces": ["web"],
+      "description": "No posts were found."
+    },
+    "imports_failed_expired": {
+      "surfaces": ["web"],
+      "description": "The import ran out of time."
+    },
+    "imports_sync_posts": {
+      "surfaces": ["web"],
+      "description": "How many posts a connection has brought in.",
+      "plural": true,
+      "placeholders": {
+        "count": "int"
+      }
+    },
+    "imports_skipped": {
+      "surfaces": ["web"],
+      "description": "Entries the reader could not read.",
+      "plural": true,
+      "placeholders": {
+        "count": "int"
+      }
+    },
+    "imports_item_images": {
+      "surfaces": ["web"],
+      "description": "How many images a post has.",
+      "plural": true,
+      "placeholders": {
+        "count": "int"
+      }
+    },
+    "imports_rate_limited": {
+      "surfaces": ["web"],
+      "description": "Too many tries in a short time, on the import screens."
     }
   }
 }

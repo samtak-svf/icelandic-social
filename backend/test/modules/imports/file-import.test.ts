@@ -361,3 +361,37 @@ describe("what is left behind", () => {
     expect(await stored(importId)).toBe(false);
   });
 });
+
+describe("the list of a person's file imports", () => {
+  type Listed = Status & { importId: string; createdAt: number };
+  const listed = async (owner: Person) =>
+    (await get<{ imports: Listed[] }>(owner, "/v1/imports")).imports;
+
+  it("finds a published import again, to remove it, and only the owner's", async () => {
+    const owner = await person("eigandi");
+    const other = await person("annar");
+    const importId = await upload(owner, await sampleZip());
+    await publish(owner, importId);
+    const [only, ...rest] = await listed(owner);
+    expect(rest).toEqual([]);
+    expect(only).toMatchObject({ importId, state: "done", counts: { posts: 3 } });
+    expect(await listed(other)).toEqual([]);
+  });
+
+  it("leaves out an import being removed", async () => {
+    const owner = await person("eigandi");
+    const importId = await upload(owner, await sampleZip());
+    expect((await owner.call("DELETE", `/v1/imports/${importId}`)).status).toBe(204);
+    expect(await listed(owner)).toEqual([]);
+  });
+
+  it("puts the newest first", async () => {
+    const owner = await person("eigandi");
+    const first = await upload(owner, await sampleZip());
+    const second = await upload(owner, await sampleZip());
+    await env.DB.prepare("UPDATE import_sources SET created_at = 1000 WHERE import_id = ?")
+      .bind(first)
+      .run();
+    expect((await listed(owner)).map((row) => row.importId)).toEqual([second, first]);
+  });
+});
