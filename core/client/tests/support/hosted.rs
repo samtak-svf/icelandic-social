@@ -17,7 +17,7 @@ use tempfile::TempDir;
 
 pub const KEY: [u8; 32] = [7; 32];
 
-pub const SOCIAL: [&str; 16] = [
+pub const SOCIAL: [&str; 18] = [
     "/v1/communities",
     "/v1/me/communities",
     "/v1/feed",
@@ -30,6 +30,8 @@ pub const SOCIAL: [&str; 16] = [
     "/v1/moderation",
     "/v1/friends",
     "/v1/friend-requests",
+    "/v1/friend-suggestions",
+    "/v1/friend-suggestion-settings",
     "/v1/snoozes",
     "/v1/people/",
     "/v1/home",

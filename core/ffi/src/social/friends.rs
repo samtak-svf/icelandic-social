@@ -1,8 +1,9 @@
-//! Friends and snoozes (0114) as the apps see them.
+//! Friends, snoozes and suggestions (0114) as the apps see them.
 
 use spjall_client::api;
 pub use spjall_client::api::{
-    Friend, FriendPage, FriendRequest, FriendRequests, FriendSort, Relation, Snooze,
+    Friend, FriendPage, FriendRequest, FriendRequests, FriendSort, FriendSuggestions, Relation,
+    Snooze,
 };
 
 use super::{Author, CardCommunity};
@@ -61,6 +62,14 @@ pub struct Snooze {
     pub person: Author,
     /// Unix milliseconds.
     pub until: u64,
+}
+
+/// A page of the people suggested to this account, verified first, then by name.
+#[uniffi::remote(Record)]
+pub struct FriendSuggestions {
+    pub people: Vec<Author>,
+    /// The `after` of the next page, none on the last.
+    pub next: Option<String>,
 }
 
 /// An account as this one sees it, with what is between them.
@@ -181,5 +190,31 @@ impl CoreClient {
     /// Ends a snooze.
     pub fn unsnooze_person(&self, account_id: String) -> Result<(), CoreError> {
         Ok(self.hosted.unsnooze_person(&account_id)?)
+    }
+
+    /// A page of the people suggested to this account; `after` is the `next` of
+    /// the page before. At most 50 a page. Empty for an account that is out of
+    /// suggestions or suspended, and nothing says which community links two
+    /// people (0114). Asking one of them is `send_friend_request`.
+    #[uniffi::method(default(after = None, limit = 20))]
+    pub fn friend_suggestions(
+        &self,
+        after: Option<String>,
+        limit: u32,
+    ) -> Result<FriendSuggestions, CoreError> {
+        Ok(self.hosted.friend_suggestions(after.as_deref(), limit)?)
+    }
+
+    /// Whether this account takes part in suggestions; it does until it says
+    /// otherwise.
+    pub fn friend_suggestions_included(&self) -> Result<bool, CoreError> {
+        Ok(self.hosted.friend_suggestions_included()?)
+    }
+
+    /// Takes this account into or out of suggestions, both ways: out, it is
+    /// suggested to nobody and shown nobody (0114). A suspended account may
+    /// still change it.
+    pub fn set_friend_suggestions_included(&self, included: bool) -> Result<(), CoreError> {
+        Ok(self.hosted.set_friend_suggestions_included(included)?)
     }
 }
