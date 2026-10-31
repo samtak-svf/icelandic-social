@@ -21,6 +21,7 @@ import {
 } from "./identity/index.ts";
 import { communityRoutes } from "./modules/communities/index.ts";
 import { historyRoutes } from "./modules/history/index.ts";
+import { importRoutes } from "./modules/imports/index.ts";
 import { messagingRoutes } from "./modules/messaging/index.ts";
 import { moderationRoutes } from "./modules/moderation/index.ts";
 import { notificationRoutes, withdrawingRequestNotice } from "./modules/notifications/index.ts";
@@ -100,6 +101,9 @@ export function createApp() {
   socialRoutes(app);
   moderationRoutes(app);
   notificationRoutes(app);
+
+  // Importing a person's posts from an export file (decision 0119).
+  importRoutes(app);
 
   // The maintainer's jobs and restore, behind OPS_TOKEN (decision 0068).
   opsRoutes(app);

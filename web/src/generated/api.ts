@@ -1032,6 +1032,63 @@ export interface NotificationSettings {
 /** `off` writes nothing, `in_app` writes the notification and sends no push, `push` also pushes (decision 0106) */
 export type NotificationLevel = "off" | "in_app" | "push";
 
+export interface ImportFileUpload {
+  importId: string;
+  /** Every part but the last is this many bytes; the last is the remainder */
+  partSize: number;
+  /** How many parts to upload, numbered from 1 */
+  parts: number;
+}
+
+export interface CreateImportFile {
+  /** The ZIP's length in bytes */
+  size: number;
+}
+
+export interface ImportStatus {
+  state: "uploading" | "parsing" | "ready" | "publishing" | "done" | "failed" | "removing";
+  /** With failed, why: truncated, zip64, encrypted, unsupported, too_big, corrupt or no_posts */
+  failure: string | null;
+  counts: {
+    posts: number;
+    images: number;
+    videos: number;
+    /** Entries in a shape this does not read */
+    skipped: number;
+    /** Milliseconds since the epoch */
+    earliest: number | null;
+    /** Milliseconds since the epoch */
+    latest: number | null;
+  };
+}
+
+export interface ImportItemPage {
+  items: Array<ImportItem>;
+  /** The `next` of the page before */
+  next: string | null;
+}
+
+export interface ImportItem {
+  id: string;
+  /** The post's original date, milliseconds since the epoch */
+  at: number;
+  text: string;
+  images: number;
+  /** A video is not carried over (decision 0120) */
+  hasVideo: boolean;
+}
+
+export interface PublishImport {
+  /** Who reads the posts; friends when left out, since nothing is public unless chosen */
+  audience?: "friends" | "everyone";
+  /** Only posts from this date on */
+  from?: number;
+  /** Only posts up to this date */
+  to?: number;
+  /** Ids of posts to leave out */
+  excluded?: Array<string>;
+}
+
 // The operations a browser can call: those that take the session cookie,
 // or no credential and are not an app's alone.
 
@@ -3367,4 +3424,127 @@ export function setCommunityNotificationLevel(args: {
   | { status: 426; data: ApiError }
 > {
   return call("PUT", "/v1/communities/{communityId}/notification-level", args, init);
+}
+
+/** Start uploading another platform's export file (a ZIP of at most 4 GiB less a byte) */
+export function createImportFile(args: {
+  body: CreateImportFile;
+}, init?: CallInit): Promise<
+  | { status: 201; data: ImportFileUpload }
+  | { status: 400; data: ApiError }
+  | { status: 401; data: ApiError }
+  | { status: 403; data: ApiError }
+  | { status: 413; data: ApiError }
+  | { status: 426; data: ApiError }
+  | { status: 429; data: ApiError }
+> {
+  return call("POST", "/v1/imports/file", args, init);
+}
+
+/**
+ * Upload one part of an import file; a repeated part replaces the first
+ *
+ * The body is exactly the part's length, with a Content-Length.
+ */
+export function putImportPart(args: {
+  path: {
+    importId: string;
+    part: number;
+  };
+  body: Blob | ArrayBuffer;
+}, init?: CallInit): Promise<
+  | { status: 204; data: undefined }
+  | { status: 400; data: ApiError }
+  | { status: 401; data: ApiError }
+  | { status: 404; data: ApiError }
+  | { status: 409; data: ApiError }
+  | { status: 410; data: ApiError }
+  | { status: 426; data: ApiError }
+> {
+  return call("PUT", "/v1/imports/{importId}/parts/{part}", args, init, "application/octet-stream");
+}
+
+/** Finish the upload once every part is stored; the file is then read */
+export function completeImport(args: {
+  path: {
+    importId: string;
+  };
+}, init?: CallInit): Promise<
+  | { status: 204; data: undefined }
+  | { status: 400; data: ApiError }
+  | { status: 401; data: ApiError }
+  | { status: 404; data: ApiError }
+  | { status: 409; data: ApiError }
+  | { status: 410; data: ApiError }
+  | { status: 426; data: ApiError }
+> {
+  return call("POST", "/v1/imports/{importId}/complete", args, init);
+}
+
+/** Where an import stands, and what the file held */
+export function getImport(args: {
+  path: {
+    importId: string;
+  };
+}, init?: CallInit): Promise<
+  | { status: 200; data: ImportStatus }
+  | { status: 400; data: ApiError }
+  | { status: 401; data: ApiError }
+  | { status: 404; data: ApiError }
+  | { status: 426; data: ApiError }
+> {
+  return call("GET", "/v1/imports/{importId}", args, init);
+}
+
+/** Remove an import: the upload and preview at once, and every post it brought in */
+export function deleteImport(args: {
+  path: {
+    importId: string;
+  };
+}, init?: CallInit): Promise<
+  | { status: 204; data: undefined }
+  | { status: 400; data: ApiError }
+  | { status: 401; data: ApiError }
+  | { status: 404; data: ApiError }
+  | { status: 426; data: ApiError }
+> {
+  return call("DELETE", "/v1/imports/{importId}", args, init);
+}
+
+/** The posts the file held, oldest first, to choose from */
+export function listImportItems(args: {
+  path: {
+    importId: string;
+  };
+  query?: {
+    /** The `next` of the page before */
+    cursor?: string;
+  };
+}, init?: CallInit): Promise<
+  | { status: 200; data: ImportItemPage }
+  | { status: 400; data: ApiError }
+  | { status: 401; data: ApiError }
+  | { status: 404; data: ApiError }
+  | { status: 426; data: ApiError }
+> {
+  return call("GET", "/v1/imports/{importId}/items", args, init);
+}
+
+/** Publish the chosen posts to the caller's wall, under their original dates */
+export function publishImport(args: {
+  path: {
+    importId: string;
+  };
+  body: PublishImport;
+}, init?: CallInit): Promise<
+  | { status: 204; data: undefined }
+  | { status: 400; data: ApiError }
+  | { status: 401; data: ApiError }
+  | { status: 403; data: ApiError }
+  | { status: 404; data: ApiError }
+  | { status: 409; data: ApiError }
+  | { status: 426; data: ApiError }
+  | { status: 429; data: ApiError }
+> {
+  return call("POST", "/v1/imports/{importId}/publish", args, init);
 }

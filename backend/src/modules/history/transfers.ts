@@ -1,5 +1,6 @@
 import { db, mediaBucket } from "../../env/index.ts";
 import { type ApprovedLink, approvedLink, type Device } from "../../identity/index.ts";
+import { abortUpload, PART_SIZE, partLength, partsOf, uploadPart } from "../../shared/multipart.ts";
 
 // History from a sibling device (decision 0064, #300). The core seals the
 // history to the link's one-time X25519 key, so the Worker stores and hands
@@ -21,9 +22,6 @@ const HEADER = 4 + 1 + 32;
 export const MAX_HISTORY_CIPHERTEXT =
   HEADER + MAX_HISTORY + 16 * (Math.ceil(MAX_HISTORY / SEGMENT) + 1);
 
-/** Every part but the last; R2 wants them equal, and a Worker takes a body this size. */
-export const PART_SIZE = 64 * 1024 * 1024;
-
 /** A transfer is deleted this long after it starts, if the linked device has not deleted it. */
 export const TRANSFER_MS = 24 * 60 * 60 * 1000;
 
@@ -37,16 +35,6 @@ type Transfer = {
 };
 
 const keyOf = (linkId: string) => `history/${linkId}`;
-
-/** How many parts a ciphertext of `size` bytes takes. */
-const partsOf = (size: number) => Math.ceil(size / PART_SIZE);
-
-/** The length of part `part` (from 1) of a ciphertext of `size` bytes, or 0 for no such part. */
-function partLength(size: number, part: number): number {
-  const parts = partsOf(size);
-  if (part > parts) return 0;
-  return part < parts ? PART_SIZE : size - PART_SIZE * (parts - 1);
-}
 
 async function transferOf(env: Env, linkId: string): Promise<Transfer | null> {
   return db(env)
@@ -132,18 +120,20 @@ export async function putPart(
   if (transfer.completedAt !== null) return "conflict";
   const expected = partLength(transfer.size, part);
   if (expected === 0 || length !== expected) return "invalid_request";
-  const upload = mediaBucket(env).resumeMultipartUpload(keyOf(linkId), transfer.uploadId);
-  const { readable, writable } = new FixedLengthStream(length);
-  const [, uploaded] = await Promise.all([
-    body.pipeTo(writable),
-    upload.uploadPart(part, readable),
-  ]);
+  const etag = await uploadPart(
+    mediaBucket(env),
+    keyOf(linkId),
+    transfer.uploadId,
+    part,
+    length,
+    body,
+  );
   await db(env)
     .prepare(
       `INSERT INTO history_transfer_parts (link_id, part_number, etag) VALUES (?, ?, ?)
        ON CONFLICT (link_id, part_number) DO UPDATE SET etag = excluded.etag`,
     )
-    .bind(linkId, part, uploaded.etag)
+    .bind(linkId, part, etag)
     .run();
   return "ok";
 }
@@ -255,11 +245,7 @@ async function drop(env: Env, linkId: string, transfer: Transfer): Promise<void>
   if (transfer.completedAt !== null) {
     await mediaBucket(env).delete(keyOf(linkId));
   } else if (transfer.uploadId) {
-    try {
-      await mediaBucket(env).resumeMultipartUpload(keyOf(linkId), transfer.uploadId).abort();
-    } catch {
-      // An upload R2 no longer knows has nothing left to abort.
-    }
+    await abortUpload(mediaBucket(env), keyOf(linkId), transfer.uploadId);
   }
   await db(env).prepare("DELETE FROM history_transfers WHERE link_id = ?").bind(linkId).run();
 }

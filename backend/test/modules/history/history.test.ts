@@ -5,11 +5,8 @@ import { ApiError } from "../../../src/api/common.ts";
 import { createApp, DOCUMENT_INFO } from "../../../src/app.ts";
 import { toBase64 } from "../../../src/shared/bytes.ts";
 import { deleteAccountHistory, expireHistory } from "../../../src/modules/history/index.ts";
-import {
-  MAX_HISTORY_CIPHERTEXT,
-  PART_SIZE,
-  TRANSFER_MS,
-} from "../../../src/modules/history/transfers.ts";
+import { PART_SIZE } from "../../../src/shared/multipart.ts";
+import { MAX_HISTORY_CIPHERTEXT, TRANSFER_MS } from "../../../src/modules/history/transfers.ts";
 import { worker } from "../../main.ts";
 import { device, euEnv, phoneWithKey, revoke, webSession } from "../../support.ts";
 

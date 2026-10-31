@@ -7,6 +7,7 @@ import { log } from "./shared/log.ts";
 import { expireKeyPackages, expireLinkedDevices, expireSessions } from "./identity/index.ts";
 import { expireCommunities } from "./modules/communities/index.ts";
 import { expireHistory } from "./modules/history/index.ts";
+import { expireFiles } from "./modules/imports/index.ts";
 import { expireJobs, jobHealth, runJobs } from "./modules/jobs/index.ts";
 import { expireMedia } from "./modules/messaging/index.ts";
 import { expireLog, expireReports } from "./modules/moderation/index.ts";
@@ -52,6 +53,7 @@ export default {
     log("friend_requests.expired", { count: await expireFriendRequests(env) });
     log("person_snoozes.expired", { count: await expireSnoozes(env) });
     log("moderation_log.expired", { count: await expireLog(env) });
+    log("import_files.expired", { count: await expireFiles(env) });
     log("jobs.expired", { count: await expireJobs(env) });
     log("notifications.expired", { count: await expireNotifications(env) });
     const health = await jobHealth(env);
