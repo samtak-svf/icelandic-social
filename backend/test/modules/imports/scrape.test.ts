@@ -598,6 +598,190 @@ describe("the first collection", () => {
   });
 });
 
+describe("an answer with no posts", () => {
+  const nothing = { inputUrl: PROFILE, error: "no_items", errorDescription: "Empty or private" };
+  const refused = { inputUrl: PROFILE, error: "blocked", errorDescription: "Try later" };
+  const dueAt = async (importId: string) =>
+    (
+      await env.DB.prepare("SELECT next_run_at AS at FROM import_connections WHERE import_id = ?")
+        .bind(importId)
+        .first<{ at: number | null }>()
+    )?.at ?? null;
+  /** A published connection, and a way to change what the provider answers from now on. */
+  async function synced(owner: Person) {
+    const made = await imported(owner, [item("a", "Fyrsta")]);
+    const before = await connectionOf(owner, made.importId);
+    const answer = (rows: Item[]) => made.shown.splice(0, made.shown.length, ...rows);
+    return { ...made, before, answer };
+  }
+
+  it.each([
+    ["says it found nothing", [nothing]],
+    ["holds no rows", []],
+  ])("keeps the last good date when the provider %s, and tries tomorrow", async (_name, rows) => {
+    const owner = await person("Sigga");
+    const { importId, before, answer } = await synced(owner);
+    answer(rows);
+    await tick(E, DAY_MS + 1000);
+    const after = await connectionOf(owner, importId);
+    expect(after).toMatchObject({ state: "connected", outcome: "ok" });
+    expect(after.lastSyncAt).toBe(before.lastSyncAt);
+    expect(await dueAt(importId)).toBeGreaterThan(Date.now() + DAY_MS / 2);
+  });
+
+  it("brings in what was written during a spell the provider answered nothing", async () => {
+    const owner = await person("Sigga");
+    const { importId, before, answer, fake } = await synced(owner);
+    answer([nothing]);
+    await tick(E, DAY_MS + 1000);
+    // Before the run that answered nothing began, which a moved date would pass over.
+    const written = Number(before.lastSyncAt) + 1;
+    answer([item("n", "Skrifuð á meðan", { timestamp: written / 1000 })]);
+    await env.DB.prepare("UPDATE import_connections SET next_run_at = 1 WHERE import_id = ?")
+      .bind(importId)
+      .run();
+    await tick();
+    expect((await wall(owner)).map((p) => p.body)).toContain("Skrifuð á meðan");
+    const asked = fake.started.at(-1) as { onlyPostsNewerThan: string };
+    expect(asked.onlyPostsNewerThan).toBe(
+      new Date(Number(before.lastSyncAt)).toISOString().slice(0, 10),
+    );
+    expect((await connectionOf(owner, importId)).lastSyncAt).toBeGreaterThan(
+      Number(before.lastSyncAt),
+    );
+  });
+
+  it.each([
+    ["an error of another kind", [refused]],
+    ["rows it cannot read", [{ something: "else" }]],
+    ["an error beside the one for nothing", [nothing, refused]],
+  ])("counts %s as failed and tries again within the hour", async (_name, rows) => {
+    const owner = await person("Sigga");
+    const { importId, before, answer } = await synced(owner);
+    answer(rows);
+    await tick(E, DAY_MS + 1000);
+    const after = await connectionOf(owner, importId);
+    expect(after).toMatchObject({ state: "connected", outcome: "failed" });
+    expect(after.lastSyncAt).toBe(before.lastSyncAt);
+    expect(await dueAt(importId)).toBeLessThan(Date.now() + 2 * 60 * 60 * 1000);
+  });
+
+  it("counts an answer that is not a list as failed", async () => {
+    const owner = await person("Sigga");
+    const { importId, before } = await synced(owner);
+    const provider = globalThis.fetch;
+    vi.stubGlobal("fetch", async (input: RequestInfo | URL, init?: RequestInit) =>
+      new Request(input, init).url.includes("/datasets/")
+        ? Response.json({ data: "something else" })
+        : provider(input, init),
+    );
+    await tick(E, DAY_MS + 1000);
+    const after = await connectionOf(owner, importId);
+    expect(after.outcome).toBe("failed");
+    expect(after.lastSyncAt).toBe(before.lastSyncAt);
+  });
+
+  it("treats posts by someone else as an answer", async () => {
+    const owner = await person("Sigga");
+    const { importId, before, answer } = await synced(owner);
+    answer([item("x", "Annar skrifaði", { user: { id: "someone-else" } })]);
+    await tick(E, DAY_MS + 1000);
+    const after = await connectionOf(owner, importId);
+    expect(after.outcome).toBe("ok");
+    expect(after.lastSyncAt).toBeGreaterThan(Number(before.lastSyncAt));
+  });
+
+  it.each([
+    ["says it found nothing", [nothing]],
+    ["errs", [refused]],
+    ["holds no rows", []],
+  ])(
+    "does not count the first collection done when the provider %s, and waits for the person",
+    async (_name, rows) => {
+      const owner = await person("Sigga");
+      const connection = await connect(owner);
+      const shown: Item[] = [item("code", `Staðfesting ${connection.code}`)];
+      const fake = fakeProvider(() => shown);
+      await askForCheck(E, owner.accountId, connection.importId);
+      await tick();
+      expect((await connectionOf(owner, connection.importId)).state).toBe("importing");
+      shown.splice(0, 1, ...rows);
+      await tick();
+      expect(await connectionOf(owner, connection.importId)).toMatchObject({
+        state: "unproven",
+        outcome: "failed",
+        code: connection.code,
+        lastSyncAt: null,
+      });
+      expect(await dueAt(connection.importId)).toBeNull();
+      const files = await env.DB.prepare(
+        "SELECT COUNT(*) AS n FROM import_files WHERE import_id = ?",
+      )
+        .bind(connection.importId)
+        .first<{ n: number }>();
+      expect(files?.n).toBe(0);
+      const started = fake.started.length;
+      await tick(E, DAY_MS);
+      expect(fake.started).toHaveLength(started);
+
+      // Asking again goes the whole way, and the file of the failed try does not stand in the way.
+      shown.splice(
+        0,
+        shown.length,
+        item("code", `Staðfesting ${connection.code}`),
+        item("a", "Gamalt"),
+      );
+      expect(await askForCheck(E, owner.accountId, connection.importId)).toMatchObject({
+        state: "checking",
+      });
+      await tick();
+      await tick();
+      expect((await connectionOf(owner, connection.importId)).state).toBe("preview");
+    },
+  );
+
+  // A full part is followed by a read past the end, which holds no rows.
+  const fullPart = (prefix: string) =>
+    Array.from({ length: 10 }, (_, at) => item(`${prefix}${at}`, `Færsla ${at}`));
+
+  it("does not read the empty end of a full answer as a daily run with nothing", async () => {
+    const owner = await person("Sigga");
+    const { importId, before, answer } = await synced(owner);
+    answer(fullPart("n"));
+    await tick(E, DAY_MS + 1000);
+    const after = await connectionOf(owner, importId);
+    expect(after.outcome).toBe("ok");
+    expect(after.lastSyncAt).toBeGreaterThan(Number(before.lastSyncAt));
+  });
+
+  it("does not read the empty end of a full answer as a failed first collection", async () => {
+    const owner = await person("Sigga");
+    const { importId, code } = await connect(owner);
+    fakeProvider(() => [item("code", `Staðfesting ${code}`), ...fullPart("a").slice(1)]);
+    await askForCheck(E, owner.accountId, importId);
+    await tick();
+    await tick();
+    expect((await connectionOf(owner, importId)).state).toBe("preview");
+  });
+
+  it("tells a provider's error from a code not found when checking", async () => {
+    const owner = await person("Sigga");
+    const { importId } = await connect(owner);
+    const shown: Item[] = [refused];
+    fakeProvider(() => shown);
+    await askForCheck(E, owner.accountId, importId);
+    await tick();
+    expect(await connectionOf(owner, importId)).toMatchObject({
+      state: "unproven",
+      outcome: "failed",
+    });
+    shown.splice(0, 1, nothing);
+    await askForCheck(E, owner.accountId, importId);
+    await tick();
+    expect((await connectionOf(owner, importId)).outcome).toBe("not_found");
+  });
+});
+
 describe("addresses", () => {
   const settings = () => {
     const made = scrapeSettings(E);

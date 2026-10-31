@@ -187,7 +187,8 @@ const itemsJob = (env: Env, importId: string, runId: string, datasetId: string, 
 async function endRun(
   env: Env,
   row: Row,
-  next: { micros: number; phase?: Row["phase"]; authorId?: string; nextRunAt: number | null } & {
+  next: { micros: number; phase?: Row["phase"]; authorId?: string | null } & {
+    nextRunAt: number | null;
     outcome: Row["outcome"];
     synced?: number | null;
     also?: D1PreparedStatement[];
@@ -204,7 +205,7 @@ async function endRun(
       )
       .bind(
         next.phase ?? row.phase,
-        next.authorId ?? row.authorId,
+        next.authorId === undefined ? row.authorId : next.authorId,
         next.outcome,
         next.nextRunAt,
         next.synced ?? row.lastOkAt,
@@ -241,10 +242,11 @@ const collect: Handler = async (env, _key, payload) => {
     await itemsJob(env, importId, runId, run.datasetId, 0).run();
     return;
   }
-  const { items } = await readItems(settings, run.datasetId, 0, LIMIT.unproven);
+  const { items, answer } = await readItems(settings, run.datasetId, 0, LIMIT.unproven);
   const proof = items.find((item) => item.body.includes(row.code));
   if (!proof) {
-    await endRun(env, row, { micros: run.micros, outcome: "not_found", nextRunAt: null });
+    const outcome = answer === "failed" ? "failed" : "not_found";
+    await endRun(env, row, { micros: run.micros, outcome, nextRunAt: null });
     return;
   }
   await endRun(env, row, {
@@ -270,6 +272,23 @@ async function endFirstCollection(env: Env, row: Row, micros: number): Promise<v
       ? { nextRunAt: null, also: [previewReady(env, row.importId, 0)] }
       : { phase: "sync" as const, nextRunAt: Date.now() + SYNC_AFTER_MS }),
   });
+}
+
+/**
+ * The code was found a moment ago and now the profile shows nothing, which says the
+ * collection failed rather than that there is nothing to bring. Repeating it could cost a
+ * ceiling every hour, so the person asks again, within the checks a connection has.
+ */
+async function giveBackFirstCollection(env: Env, row: Row, micros: number): Promise<void> {
+  await dropFile(env, row.importId);
+  await endRun(env, row, {
+    micros,
+    outcome: "failed",
+    phase: "unproven",
+    authorId: null,
+    nextRunAt: null,
+  });
+  log("imports.scrape_failed", { code: "first_collection" });
 }
 
 function sourcePost(item: ScrapedItem) {
@@ -316,7 +335,7 @@ const importItems: Handler = async (env, _key, payload) => {
   const row = await rowOf(env, importId);
   const settings = scrapeSettings(env);
   if (!row || row.runId !== runId || !settings) return;
-  const { items, read } = await readItems(settings, datasetId, offset, ITEMS_PER_RUN);
+  const { items, read, answer } = await readItems(settings, datasetId, offset, ITEMS_PER_RUN);
   const first = row.phase === "backlog";
   if (first && offset === 0) await openPreview(env, importId);
   const imported = await takeItems(env, row, items);
@@ -327,13 +346,28 @@ const importItems: Handler = async (env, _key, payload) => {
   }
   // Read after the last part, since the figure lags the end of the run.
   const run = await readRun(settings, runId);
-  if (first) return endFirstCollection(env, row, run.micros);
+  // A later part only follows a full one, so that run has answered with rows.
+  const said = offset > 0 ? "posts" : answer;
+  if (first) {
+    if (said !== "posts") return giveBackFirstCollection(env, row, run.micros);
+    return endFirstCollection(env, row, run.micros);
+  }
+  if (said === "failed") {
+    await endRun(env, row, {
+      micros: run.micros,
+      outcome: "failed",
+      nextRunAt: Date.now() + HOUR_MS,
+    });
+    log("imports.scrape_failed", { code: "answer" });
+    return;
+  }
   await endRun(env, row, {
     micros: run.micros,
     outcome: "ok",
     nextRunAt: Date.now() + SYNC_AFTER_MS,
     // From when the run began, so that a post written while it ran is asked for next time.
-    synced: row.runStartedAt,
+    // An empty answer moves nothing: it may be an outage, and the next run asks from here.
+    ...(said === "posts" && { synced: row.runStartedAt }),
   });
 };
 
