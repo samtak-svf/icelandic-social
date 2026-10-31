@@ -8,6 +8,8 @@ export const strings = {
   app_name: "Hjal",
   /** Bottom tab: the conversation list. */
   tab_conversations: "Hjal",
+  /** Tab: the feed, the first place the app opens (decision 0116). */
+  tab_feed: "Fljótið",
   /** Bottom tab: own profile, invite link and the way to settings (docs/decisions/0034). */
   tab_me: "Ég",
   /** The conversation list when there is none yet; points at the invite link (docs/decisions/0022). */
@@ -477,6 +479,12 @@ export const strings = {
   post_publish: "Birta",
   /** A community with no posts yet. */
   posts_empty: "Engir póstar enn.",
+  /** The feed's empty state: what fills it (decision 0116). */
+  feed_empty: "Hér birtast póstar úr hópunum þínum, frá vinum þínum og af veggnum þínum. Skrifaðu fyrsta póstinn eða finndu hóp.",
+  /** Label of the picker in the feed composer: the own wall or a community the viewer may post in (decision 0116). */
+  feed_compose_target: "Hvert á pósturinn að fara?",
+  /** Option of the feed composer's picker: the viewer's own wall (decision 0116). */
+  feed_target_wall: "Minn veggur",
   /** How many comments a post has; opens the post. */
   post_comments: (args: { count: number }): string =>
     plural.select(args.count) === "one"

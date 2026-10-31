@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { useRef, useState } from "react";
+import { useId, useRef, useState } from "react";
 import { react, unreact, type Post } from "../generated/api.ts";
 import { strings } from "../generated/brand/strings.ts";
 import { Menu, MenuItem } from "../ui/menu.tsx";
@@ -9,47 +9,11 @@ import { tally } from "./reaction-tally.ts";
 import { outcome } from "./outcome.ts";
 import { useSuspended } from "./suspended.tsx";
 
-// What sits under a post's text (decision 0080): the reaction summary and the
-// Líkar, Athugasemd and Deila row.
+// What sits under a post's text (decision 0080): the Líkar, Athugasemd and Deila row.
+// The counts sit inside the pills (decision 0116); a screen reader gets them as the
+// pill's description, so the pill's name stays what the action is called.
 
 const LIKE = "👍";
-
-/**
- * The reactions as a line: the commonest emoji and their count, and the comments. Like the apps,
- * a post with neither has no line, and a count of none is not shown.
- */
-export function Summary({
-  post,
-  reactions,
-  linked,
-}: Readonly<{ post: Post; reactions: ReactionState; linked: boolean }>) {
-  const comments = strings.post_comments({ count: post.commentCount });
-  const top = reactions.emojis.slice(0, 3);
-  if (reactions.total === 0 && post.commentCount === 0) return null;
-  return (
-    <div className="flex items-center justify-between gap-2 text-sm text-muted-fg">
-      {reactions.total > 0 ? (
-        <span>
-          <span aria-hidden="true">{top.map((r) => r.emoji).join("")} </span>
-          {strings.reaction_count({ count: reactions.total })}
-        </span>
-      ) : (
-        <span />
-      )}
-      {post.commentCount === 0 ? null : linked ? (
-        <Link
-          to="/posts/$postId"
-          params={{ postId: post.postId }}
-          className="inline-flex min-h-11 items-center underline"
-        >
-          {comments}
-        </Link>
-      ) : (
-        <span>{comments}</span>
-      )}
-    </div>
-  );
-}
 
 // Each action leads with a glyph in the same 20 px box (GLYPH, ICON), so the emoji and the two
 // drawn icons line up. On compact a third of the screen has no room for an icon beside
@@ -60,6 +24,11 @@ const ICON = "hidden size-5 shrink-0 medium:block";
 const ACTION =
   "inline-flex min-h-11 min-w-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-md px-1 font-medium hover:bg-muted disabled:opacity-60";
 
+/** The number in a pill, drawn and hidden from a screen reader, which hears the phrase instead; none for zero. */
+function Count({ count }: Readonly<{ count: number }>) {
+  return count > 0 ? <span aria-hidden="true">{count}</span> : null;
+}
+
 /** Líkar, Athugasemd and Deila: three equal actions under the post. */
 export function ActionRow({
   post,
@@ -67,25 +36,39 @@ export function ActionRow({
   linked,
 }: Readonly<{ post: Post; reactions: ReactionState; linked: boolean }>) {
   const [told, setTold] = useState(false);
+  const commentsId = useId();
   return (
     <div className="grid grid-cols-3 border-y border-border py-1 text-sm">
       <LikeButton reactions={reactions} />
       {linked ? (
-        <Link to="/posts/$postId" params={{ postId: post.postId }} className={ACTION}>
+        <Link
+          to="/posts/$postId"
+          params={{ postId: post.postId }}
+          className={ACTION}
+          aria-describedby={post.commentCount > 0 ? commentsId : undefined}
+        >
           <CommentIcon />
           {strings.post_comment_action}
+          <Count count={post.commentCount} />
         </Link>
       ) : (
         <button
           type="button"
           className={ACTION}
+          aria-describedby={post.commentCount > 0 ? commentsId : undefined}
           onClick={() =>
             document.querySelector<HTMLTextAreaElement>("[data-comment-composer] textarea")?.focus()
           }
         >
           <CommentIcon />
           {strings.post_comment_action}
+          <Count count={post.commentCount} />
         </button>
+      )}
+      {post.commentCount > 0 && (
+        <span id={commentsId} className="sr-only">
+          {strings.post_comments({ count: post.commentCount })}
+        </span>
       )}
       <Menu
         className="flex min-w-0"
@@ -138,6 +121,7 @@ function LikeButton({ reactions }: Readonly<{ reactions: ReactionState }>) {
   const mine = reactions.mine;
   const shown = mine === null ? null : QUICK.find((q) => q.emoji === mine);
   const [all, setAll] = useState(false);
+  const totalId = useId();
 
   const later = (fn: () => void, ms: number) => {
     if (timer.current !== null) clearTimeout(timer.current);
@@ -165,6 +149,7 @@ function LikeButton({ reactions }: Readonly<{ reactions: ReactionState }>) {
         aria-pressed={mine !== null}
         aria-haspopup="true"
         aria-expanded={open}
+        aria-describedby={reactions.total > 0 ? totalId : undefined}
         disabled={reactions.busy || (suspended && mine === null)}
         className={`${ACTION} w-full aria-pressed:text-primary`}
         onPointerDown={(event) => {
@@ -197,7 +182,13 @@ function LikeButton({ reactions }: Readonly<{ reactions: ReactionState }>) {
           {mine ?? LIKE}
         </span>
         {shown ? shown.label : strings.post_like}
+        <Count count={reactions.total} />
       </button>
+      {reactions.total > 0 && (
+        <span id={totalId} className="sr-only">
+          {strings.reaction_count({ count: reactions.total })}
+        </span>
+      )}
       {open && (
         <div
           role="group"

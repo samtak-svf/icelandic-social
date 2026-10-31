@@ -17,7 +17,7 @@ export function useLeavePost(post: Post): () => void {
     if (post.wall === undefined) {
       void navigate({ to: "/communities/$communityId", params: { communityId: post.communityId } });
     } else if (post.wall.accountId === me?.accountId) {
-      void navigate({ to: "/" });
+      void navigate({ to: "/me" });
     } else {
       void navigate({ to: "/people/$accountId", params: { accountId: post.wall.accountId } });
     }
@@ -43,7 +43,7 @@ export function PostHomeLink({
     );
   }
   return post.wall.accountId === me?.accountId ? (
-    <Link to="/" className={className}>
+    <Link to="/me" className={className}>
       {children}
     </Link>
   ) : (

@@ -2,24 +2,16 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useId, useState, type FormEvent } from "react";
 import { useAccount } from "../account.tsx";
 import type { Problem } from "../problem.ts";
-import {
-  getFeed,
-  listCommunities,
-  myCommunities,
-  type Community,
-  type Post,
-} from "../generated/api.ts";
+import { getFeed, listCommunities, myCommunities, type Community } from "../generated/api.ts";
 import { strings } from "../generated/brand/strings.ts";
 import { CommunityList, CreateRow } from "../social/community-card.tsx";
 import { HubColumn } from "../social/hub-column.tsx";
 import { outcome, useLoad, type Outcome } from "../social/outcome.ts";
-import { usePaged } from "../social/paged.ts";
-import { PostView } from "../social/post.tsx";
-import { moderatesAs } from "../social/roles.tsx";
+import { PostFeed } from "../social/post-feed.tsx";
 import { LAYOUTS } from "../ui/layout.ts";
 import { useSizeClass } from "../ui/size-class.ts";
 import { Button, ProblemText, Status } from "../ui/kit.tsx";
-import { CardPlaceholders, Loading, RowPlaceholders } from "../ui/placeholder.tsx";
+import { Loading, RowPlaceholders } from "../ui/placeholder.tsx";
 
 // Communities (decision 0063) in three tabs (decision 0079): the feed of what
 // is new in them, the ones the person is in with the way to find others by
@@ -165,54 +157,14 @@ function Feed({ byId }: Readonly<{ byId: Map<string, Community> }>) {
       outcome(getFeed(before === undefined ? undefined : { query: { before } }), 200),
     [],
   );
-  const feed = usePaged(fetchPage, (post: Post) => post.postId);
-  const changed = feed.reload;
-  const loading = feed.items === null && feed.problem === null;
   return (
-    <section
-      aria-label={strings.communities_tab_feed}
-      aria-busy={loading}
-      className="mt-6 flex flex-col gap-4"
-    >
-      {loading && (
-        <Loading>
-          <CardPlaceholders />
-        </Loading>
-      )}
-      {feed.problem !== null && (
-        <Status>
-          <ProblemText problem={feed.problem} />
-        </Status>
-      )}
-      {feed.items?.length === 0 && !feed.hasMore && (
-        <p className="mt-2 text-muted-fg">{strings.communities_feed_empty}</p>
-      )}
-      {feed.items !== null && (
-        <ul className="flex flex-col gap-4">
-          {feed.items.map((post) => (
-            <li key={post.postId}>
-              <PostView
-                post={post}
-                linked
-                deleted={changed}
-                changed={changed}
-                moderates={moderatesAs(byId.get(post.communityId)?.role ?? null)}
-                community={context(byId.get(post.communityId))}
-              />
-            </li>
-          ))}
-        </ul>
-      )}
-      {feed.hasMore && feed.problem === null && <div ref={feed.sentinel} aria-hidden="true" />}
-    </section>
+    <PostFeed
+      fetchPage={fetchPage}
+      byId={byId}
+      label={strings.communities_tab_feed}
+      empty={strings.communities_feed_empty}
+    />
   );
-}
-
-/** What a feed card names of the community it comes from, or nothing for one not known here. */
-function context(community: Community | undefined) {
-  return community === undefined
-    ? null
-    : { communityId: community.communityId, name: community.name, photo: community.photo };
 }
 
 function Find() {

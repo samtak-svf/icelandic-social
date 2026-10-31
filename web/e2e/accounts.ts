@@ -13,13 +13,15 @@ async function atProvider(page: Page, person: string, name: string) {
   await page.getByRole("button").click();
 }
 
-/** Signs in with Google from the sign-in page as `name`; Ég shows it. */
+/** Signs in with Google from the sign-in page as `name`; the feed opens, Ég shows the name. */
 export async function signIn(page: Page, name: string, subject = newGoogleSubject()) {
   await page.goto(`${WEB}/`);
   await page.getByRole("heading", { name: strings.sign_in_title }).waitFor();
   await page.getByRole("link", { name: strings.sign_in_google }).click();
   await atProvider(page, subject, name);
   await page.waitForURL(`${WEB}/`);
+  await page.getByRole("link", { name: strings.tab_me }).click();
+  await page.waitForURL(`${WEB}/me`);
   await expect(page.getByText(name)).toBeVisible();
 }
 

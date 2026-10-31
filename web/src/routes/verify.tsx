@@ -35,7 +35,7 @@ function Verify() {
         <p role="status" className="mt-6">
           {verify === "linked" ? strings.verify_linked : strings.verify_merged}
         </p>
-        <Link to="/" className="mt-6 inline-flex min-h-11 items-center font-medium underline">
+        <Link to="/me" className="mt-6 inline-flex min-h-11 items-center font-medium underline">
           {strings.tab_me}
         </Link>
       </>
@@ -65,7 +65,7 @@ function Verify() {
           {strings.verify_action}
         </a>
         <Link
-          to="/"
+          to="/me"
           className="inline-flex min-h-11 items-center rounded-md border border-border-strong bg-surface px-4 font-medium text-fg"
         >
           {strings.verify_later}

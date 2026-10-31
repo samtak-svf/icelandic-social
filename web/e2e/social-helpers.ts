@@ -1,7 +1,7 @@
 import type { Browser, Locator, Page } from "@playwright/test";
 import { strings } from "../src/generated/brand/strings.ts";
 import { layoutOf } from "../src/ui/layout.ts";
-import { CLIENT, DEV, expect, serveOrigin } from "./origin.ts";
+import { CLIENT, DEV, expect, serveOrigin, WEB } from "./origin.ts";
 import { signInVerified } from "./accounts.ts";
 
 // What the social specs share: people in browsers of their own, the composer,
@@ -35,6 +35,16 @@ export async function person(
   await serveOrigin(page);
   await signInVerified(page, name);
   return page;
+}
+
+/** `a` asks `b` to be friends and `b` accepts, each on the other's screen. */
+export async function befriend(a: Page, b: Page) {
+  await a.goto(`${WEB}/people/${await accountOf(b)}`);
+  await a.getByRole("button", { name: strings.person_add_friend, exact: true }).click();
+  await expect(a.getByText(strings.person_request_sent, { exact: true })).toBeVisible();
+  await b.goto(`${WEB}/people/${await accountOf(a)}`);
+  await b.getByRole("button", { name: strings.person_accept, exact: true }).click();
+  await expect(b.getByText(strings.person_friends, { exact: true })).toBeVisible();
 }
 
 /** Writes a post in the composer's dialog (opened from its pill), or a comment in the box. */

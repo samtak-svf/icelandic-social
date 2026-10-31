@@ -1,36 +1,42 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useAccount } from "../account.tsx";
+import { useCallback } from "react";
+import { getHome, myCommunities } from "../generated/api.ts";
 import { strings } from "../generated/brand/strings.ts";
-import { WallScreen } from "../social/wall.tsx";
-import { validateWallSearch } from "../social/wall-tabs.tsx";
-import { Status } from "../ui/kit.tsx";
+import { PostComposer, type Target } from "../social/composer.tsx";
+import { outcome, useLoad } from "../social/outcome.ts";
+import { PostFeed } from "../social/post-feed.tsx";
+import { mayPostIn } from "../social/roles.tsx";
 
-// Ég (decisions 0034, 0039, 0115): one's own wall. The name comes from Google
-// or from Kenni and is never typed (decision 0043); the photo, the cover and
-// the bio are the owner's to change, from the wall itself. Settings stay
-// reachable from the shell.
-export const Route = createFileRoute("/")({
-  validateSearch: validateWallSearch,
-  component: MePage,
-});
+// Fljótið (decision 0116): what is new in the communities, among the friends
+// and on one's own wall, newest first, and the first place the app opens. The
+// composer on top writes on the wall unless another place is picked. Ég is
+// /me.
+export const Route = createFileRoute("/")({ component: Home });
 
-function MePage() {
-  const { state } = useAccount();
-  const { tab } = Route.useSearch();
-  const navigate = Route.useNavigate();
-  if (state.status !== "signed-in") {
-    return (
-      <>
-        <h1 className="sr-only">{strings.tab_me}</h1>
-        <Status>{strings.loading}</Status>
-      </>
-    );
-  }
+function Home() {
+  const [mine] = useLoad(useCallback(() => outcome(myCommunities(), 200), []));
+  const communities = mine?.ok ? mine.data.communities : [];
+  const byId = new Map(communities.map((c) => [c.communityId, c]));
+  const targets: Target[] = communities.filter(mayPostIn).map((c) => ({
+    communityId: c.communityId,
+    name: c.name,
+    anonymousAllowed: c.anonymousPosts,
+  }));
+  const fetchPage = useCallback(
+    (before: string | undefined) =>
+      outcome(getHome(before === undefined ? undefined : { query: { before } }), 200),
+    [],
+  );
   return (
-    <WallScreen
-      accountId={state.me.accountId}
-      tab={tab}
-      onTab={(next) => void navigate({ search: { tab: next }, replace: true })}
-    />
+    <>
+      <h1 className="sr-only">{strings.tab_feed}</h1>
+      <PostFeed
+        fetchPage={fetchPage}
+        byId={byId}
+        label={strings.tab_feed}
+        empty={strings.feed_empty}
+        compose={(reload) => <PostComposer wall targets={targets} posted={reload} />}
+      />
+    </>
   );
 }

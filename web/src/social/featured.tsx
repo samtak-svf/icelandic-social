@@ -2,7 +2,7 @@ import { Link } from "@tanstack/react-router";
 import type { Post } from "../generated/api.ts";
 import { strings } from "../generated/brand/strings.ts";
 import { Avatar } from "./avatar.tsx";
-import { postByline } from "./post.tsx";
+import { postByline } from "./post-heading.tsx";
 import { useMediaSrc } from "./viewer.tsx";
 
 // A community's featured posts (decision 0088): up to three cards, newest pin
