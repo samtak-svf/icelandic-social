@@ -68,7 +68,15 @@ describe("the shared problem text", () => {
   }
 });
 
-const KINDS = ["comment", "reply", "reaction", "join_approved", "moderated"] as const;
+const KINDS = [
+  "comment",
+  "reply",
+  "reaction",
+  "join_approved",
+  "moderated",
+  "friend_request",
+  "friend_accepted",
+] as const;
 function kindOf(kind: string): (typeof KINDS)[number] {
   const found = KINDS.find((k) => k === kind);
   if (found === undefined) throw new Error(`no notification kind ${kind}`);
