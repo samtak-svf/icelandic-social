@@ -34,7 +34,7 @@ export async function pendingQueue(
   const { results } = await db(env)
     .prepare(
       `SELECT post_id AS postId, community_id AS communityId, author_id AS authorId,
-              created_at AS createdAt, state, anonymous, audience
+              created_at AS createdAt, state, anonymous, audience, imported
          FROM post_index
         WHERE community_id = ?1 AND state = 'pending' AND anonymous = 1
           AND (?2 IS NULL OR created_at < ?2

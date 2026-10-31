@@ -28,6 +28,8 @@ export type Post = Omit<PostContent, "author" | "latestComment"> & {
   /** Whose wall it is on and who reads it; neither on a community's post (decision 0115). */
   wall?: { accountId: string };
   audience?: "friends" | "everyone";
+  /** It came from another platform (decision 0119); absent on a post written here. */
+  imported?: true;
   state: IndexedPost["state"];
   /** The community's moderators pinned it to the top of its feed (decision 0080). */
   pinned: boolean;
@@ -38,7 +40,7 @@ const hex = (n: number) =>
     b.toString(16).padStart(2, "0"),
   ).join("");
 
-const newPostId = () => `p_${hex(16)}`;
+export const newPostId = () => `p_${hex(16)}`;
 const newCommentId = (postId: string) => `${postId}-${hex(8)}`;
 
 const NONE: ReadonlySet<string> = new Set();
@@ -107,6 +109,7 @@ export async function render(
         state: row.state,
         pinned: featured.has(row.postId),
         ...wallFields(row),
+        ...(row.imported ? { imported: true as const } : {}),
       },
     ];
   });
@@ -235,12 +238,16 @@ export async function createPost(
     anonymous?: boolean;
     /** Makes it a wall post (decision 0115), which moves no community's unread count. */
     audience?: "friends" | "everyone";
+    /** What an import brings (decisions 0119, 0120): its own id and date, and how it came. */
+    postId?: string;
+    createdAt?: number;
+    imported?: "backlog" | "sync";
   },
 ): Promise<(Omit<PostContent, "latestComment"> & { latestComment: null }) | "invalid_media"> {
   const media = await unattached(env, communityId, author, input.media);
   if (!media) return "invalid_media";
-  const postId = newPostId();
-  const createdAt = Date.now();
+  const postId = input.postId ?? newPostId();
+  const createdAt = input.createdAt ?? Date.now();
   // An anonymous post waits for a moderator's approval (decision 0091) and
   // moves the community's unread count then, so a reader cannot tell it was written.
   const anonymous = input.anonymous === true;
@@ -249,8 +256,8 @@ export async function createPost(
     db(env)
       .prepare(
         `INSERT INTO post_index (post_id, community_id, author_id, created_at, state, anonymous,
-                                 audience)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+                                 audience, imported)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .bind(
         postId,
@@ -260,6 +267,7 @@ export async function createPost(
         anonymous ? "pending" : "visible",
         anonymous ? 1 : 0,
         input.audience ?? null,
+        input.imported ?? null,
       ),
     db(env)
       .prepare(

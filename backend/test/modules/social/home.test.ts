@@ -135,6 +135,7 @@ describe("the row check behind it", () => {
     audience: "friends" as Audience | null,
     wallOwner: "owner" as string | null,
     friend: 1,
+    imported: null,
     ...over,
   });
 

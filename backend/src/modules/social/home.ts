@@ -44,6 +44,7 @@ const WINDOW = (tombstones: boolean) => `
     JOIN post_index p ON p.community_id = s.community_id
      AND p.created_at <= ?2 AND p.created_at > ?3
    WHERE ${listed(tombstones)}
+     AND p.imported IS NOT 'backlog'
      AND (p.created_at < ?2 OR ?4 IS NULL OR p.post_id < ?4)
      AND ${UNBLOCKED("?1", "p.author_id")}
      AND (p.anonymous = 1 OR ${UNSNOOZED("?1", "p.author_id", "?5")})

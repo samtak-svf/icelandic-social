@@ -16,7 +16,7 @@ export const listed = (tombstones: boolean) =>
   tombstones ? "p.state IN ('visible', 'removed')" : "p.state = 'visible'";
 
 export const INDEXED = `p.post_id AS postId, p.community_id AS communityId, p.author_id AS authorId,
-       p.created_at AS createdAt, p.state, p.anonymous, p.audience`;
+       p.created_at AS createdAt, p.state, p.anonymous, p.audience, p.imported`;
 
 /** A cursor: the last post's time and id, or only a time to read before. */
 export function parseCursor(cursor: string | undefined): { t: number; id: string | null } | null {

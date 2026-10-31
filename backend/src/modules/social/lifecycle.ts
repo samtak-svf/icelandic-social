@@ -22,6 +22,37 @@ export async function dropSpace(env: Env, communityId: string): Promise<void> {
   );
 }
 
+/** Deletes posts of a community with their comments, reactions and images. */
+export async function deletePosts(env: Env, communityId: string, postIds: string[]): Promise<void> {
+  for (const postId of postIds) await space(env, communityId).deletePost(postId);
+  await deleteKeys(env, await unindex(env, communityId, postIds));
+}
+
+/**
+ * Deletes the posts a moderator has not taken down and answers with those they
+ * have, which stay as they are so that deleting cannot erase a moderator's record.
+ */
+export async function deleteUnlessModerated(
+  env: Env,
+  communityId: string,
+  postIds: string[],
+): Promise<string[]> {
+  const { results } = await db(env)
+    .prepare(
+      `SELECT post_id AS postId FROM post_index
+        WHERE post_id IN (SELECT value FROM json_each(?)) AND state IN ('removed', 'hidden')`,
+    )
+    .bind(JSON.stringify(postIds))
+    .all<{ postId: string }>();
+  const kept = results.map((r) => r.postId);
+  await deletePosts(
+    env,
+    communityId,
+    postIds.filter((id) => !kept.includes(id)),
+  );
+  return kept;
+}
+
 /**
  * Deletes everything `accountId` wrote in any space: its posts with their
  * comments, reactions and images, its comments, their images and reactions on other posts,
