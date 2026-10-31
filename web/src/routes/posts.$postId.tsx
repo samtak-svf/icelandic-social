@@ -1,9 +1,8 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
 import {
   createComment,
   deleteComment,
-  getCommunity,
   getPost,
   likeComment,
   unlikeComment,
@@ -16,13 +15,16 @@ import { Avatar } from "../social/avatar.tsx";
 import { relativeTime } from "../lib/relative-time.ts";
 import { commentThreads, isTombstone } from "../social/comments.ts";
 import { CommentImage } from "../social/comment-image.tsx";
-import { CommentComposer } from "../social/composer.tsx";
+import { CommentComposer } from "../social/comment-composer.tsx";
 import { DeleteButton } from "../social/delete-button.tsx";
 import { outcome, useLoad, when } from "../social/outcome.ts";
 import { authorName, PersonName } from "../social/author-name.tsx";
 import { PostView, StateMark, useMine } from "../social/post.tsx";
 import { isPostTombstone } from "../social/post-tombstone.tsx";
-import { moderatesAs, RoleBadge } from "../social/roles.tsx";
+import { RoleBadge } from "../social/roles.tsx";
+import { PostHomeLink, useLeavePost, useModerates } from "../social/post-home.tsx";
+import { RemoveWallComment } from "../social/wall-comment-remove.tsx";
+import { useMe } from "../account.tsx";
 import { ReportButton } from "../social/report.tsx";
 import { useSuspended } from "../social/suspended.tsx";
 import { Button, ProblemText, Status } from "../ui/kit.tsx";
@@ -60,9 +62,7 @@ function PostPage() {
 
 /** A removed post has no comments and nothing to write under; its author reads why elsewhere. */
 function RemovedPost({ post }: Readonly<{ post: Post }>) {
-  const navigate = useNavigate();
-  const gone = () =>
-    void navigate({ to: "/communities/$communityId", params: { communityId: post.communityId } });
+  const gone = useLeavePost(post);
   return (
     <>
       <h1 className="sr-only">{strings.post_title}</h1>
@@ -73,12 +73,12 @@ function RemovedPost({ post }: Readonly<{ post: Post }>) {
 
 function PostScreen({ post, reloadPost }: Readonly<{ post: Post; reloadPost: () => void }>) {
   const { postId, communityId } = post;
-  const navigate = useNavigate();
+  const leave = useLeavePost(post);
+  const moderates = useModerates(post);
+  const me = useMe();
+  const ownWall = post.wall !== undefined && post.wall.accountId === me?.accountId;
   const [comments, reloadComments] = useLoad(
     useCallback(() => outcome(listComments({ path: { postId } }), 200), [postId]),
-  );
-  const [community] = useLoad(
-    useCallback(() => outcome(getCommunity({ path: { communityId } }), 200), [communityId]),
   );
   const [replyingTo, setReplyingTo] = useState<Comment | null>(null);
   const changed = () => {
@@ -91,11 +91,7 @@ function PostScreen({ post, reloadPost }: Readonly<{ post: Post; reloadPost: () 
       <h1 className="sr-only">{strings.post_title}</h1>
       {/* -mt-6 takes back the page's top padding: the bar sits right under the header. */}
       <div className="sticky top-0 z-10 -mt-6 flex items-center gap-2 border-b border-border bg-bg">
-        <Link
-          to="/communities/$communityId"
-          params={{ communityId }}
-          className="inline-flex min-h-11 items-center gap-1 font-medium"
-        >
+        <PostHomeLink post={post} className="inline-flex min-h-11 items-center gap-1 font-medium">
           <svg
             aria-hidden="true"
             viewBox="0 0 24 24"
@@ -109,14 +105,14 @@ function PostScreen({ post, reloadPost }: Readonly<{ post: Post; reloadPost: () 
             <path d="m15 18-6-6 6-6" />
           </svg>
           {strings.post_back}
-        </Link>
+        </PostHomeLink>
       </div>
       <PostView
         post={post}
         linked={false}
         changed={reloadPost}
-        moderates={community?.ok === true && moderatesAs(community.data.role)}
-        deleted={() => void navigate({ to: "/communities/$communityId", params: { communityId } })}
+        moderates={moderates}
+        deleted={leave}
       />
       <section className="mt-3 flex flex-col gap-4">
         {comments?.ok && comments.data.comments.length === 0 && (
@@ -134,6 +130,7 @@ function PostScreen({ post, reloadPost }: Readonly<{ post: Post; reloadPost: () 
                 <CommentView
                   comment={thread.comment}
                   deleted={changed}
+                  removable={ownWall}
                   onReply={
                     !isTombstone(thread.comment) && thread.comment.state !== "removed"
                       ? () => setReplyingTo(thread.comment)
@@ -148,7 +145,7 @@ function PostScreen({ post, reloadPost }: Readonly<{ post: Post; reloadPost: () 
                     <ul className="ml-4 flex flex-col gap-3 border-l border-border pl-4">
                       {thread.replies.map((reply) => (
                         <li key={reply.commentId}>
-                          <CommentView comment={reply} deleted={changed} />
+                          <CommentView comment={reply} deleted={changed} removable={ownWall} />
                         </li>
                       ))}
                     </ul>
@@ -209,7 +206,14 @@ function CommentView({
   comment,
   deleted,
   onReply,
-}: Readonly<{ comment: Comment; deleted: () => void; onReply?: (() => void) | null }>) {
+  removable = false,
+}: Readonly<{
+  comment: Comment;
+  deleted: () => void;
+  onReply?: (() => void) | null;
+  /** Whether the reader owns the wall this comment is on, and may take it off. */
+  removable?: boolean;
+}>) {
   const mine = useMine(comment.author);
   const like = useCommentLike(comment);
   if (isTombstone(comment)) {
@@ -250,7 +254,10 @@ function CommentView({
             </Button>
           )}
           <LikeComment like={like} />
-          <span className="ml-auto">
+          <span className="ml-auto flex items-center gap-1">
+            {removable && !mine && (
+              <RemoveWallComment commentId={comment.commentId} removed={deleted} />
+            )}
             {mine ? (
               <DeleteButton
                 ask={strings.comment_delete_confirm}

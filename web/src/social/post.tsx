@@ -16,6 +16,8 @@ import { strings } from "../generated/brand/strings.ts";
 import { relativeTime } from "../lib/relative-time.ts";
 import { Dialog } from "../ui/dialog.tsx";
 import { DotsIcon, Menu, MenuItem } from "../ui/menu.tsx";
+import { AudienceDialog, AudienceMark } from "./audience.tsx";
+import { useSuspended } from "./suspended.tsx";
 import { authorName, PersonName } from "./author-name.tsx";
 import { Avatar } from "./avatar.tsx";
 import { ProblemText, Status } from "../ui/kit.tsx";
@@ -120,7 +122,8 @@ function LivePost({ post, linked, deleted, changed, moderates, community }: Post
             <time dateTime={new Date(post.createdAt).toISOString()} title={when(post.createdAt)}>
               {relativeTime(post.createdAt)}
             </time>
-            {community !== undefined && community !== null && (
+            <AudienceMark audience={post.audience} />
+            {post.wall === undefined && community !== undefined && community !== null && (
               <Link
                 to="/communities/$communityId"
                 params={{ communityId: community.communityId }}
@@ -263,6 +266,8 @@ function PostMenu({
   moderates,
 }: Readonly<{ post: Post; deleted: () => void; changed: () => void; moderates: boolean }>) {
   const mine = useMine(post.author);
+  const suspended = useSuspended();
+  const [audiencing, setAudiencing] = useState(false);
   const [reporting, setReporting] = useState(false);
   const [sent, setSent] = useState(false);
   const [problem, setProblem] = useState<Problem | null>(null);
@@ -307,6 +312,16 @@ function PostMenu({
                 {strings.poll_close}
               </MenuItem>
             )}
+            {mine && post.wall !== undefined && post.audience !== undefined && !suspended && (
+              <MenuItem
+                onSelect={() => {
+                  close();
+                  setAudiencing(true);
+                }}
+              >
+                {strings.wall_audience_label}
+              </MenuItem>
+            )}
             {moderates && (
               <MenuItem
                 onSelect={() => {
@@ -345,6 +360,14 @@ function PostMenu({
         <Status>
           <ProblemText problem={problem} />
         </Status>
+      )}
+      {audiencing && post.audience !== undefined && (
+        <AudienceDialog
+          postId={post.postId}
+          current={post.audience}
+          onClose={() => setAudiencing(false)}
+          changed={changed}
+        />
       )}
       {reporting && (
         <Dialog title={strings.report_title} onClose={() => setReporting(false)}>

@@ -1,13 +1,16 @@
 import {
   getCommunityAvatarSource,
   getCommunityCoverSource,
+  frameWallCover,
   getPhotoSource,
+  getWallCoverSource,
   setCommunityAvatar,
   setCommunityAvatarFrames,
   setCommunityCover,
   setCommunityCoverFrames,
   setPhoto,
   setPhotoFrames,
+  setWallCover,
 } from "../generated/api.ts";
 import type { Framing } from "../generated/frames.ts";
 import type { Problem } from "../problem.ts";
@@ -16,9 +19,10 @@ import { outcome, type Outcome } from "./outcome.ts";
 // The three images that are framed (decision 0086) and the calls that send
 // them: the master as it was chosen, then the framing the person made.
 
-/** Whose image it is: the account's photo, or a community's picture or cover. */
+/** Whose image it is: the account's photo or wall cover, or a community's picture or cover. */
 export type Target =
   | { kind: "account" }
+  | { kind: "wall" }
   | { kind: "picture"; communityId: string }
   | { kind: "cover"; communityId: string };
 
@@ -53,6 +57,9 @@ async function putMaster(target: Target, body: Blob): Promise<SendProblem | null
         200,
       );
       break;
+    case "wall":
+      done = await outcome(setWallCover({ body }), 200);
+      break;
   }
   // A 404 here is a missing community, not a missing master.
   if (!done.ok && done.status === 404) return done.problem;
@@ -78,6 +85,9 @@ export async function putFrames(target: Target, body: Framing): Promise<SendProb
         200,
       );
       break;
+    case "wall":
+      done = await outcome(frameWallCover({ body }), 200);
+      break;
   }
   return refusal(done);
 }
@@ -100,6 +110,9 @@ export async function getMaster(target: Target): Promise<Blob | SendProblem> {
         getCommunityCoverSource({ path: { communityId: target.communityId } }),
         200,
       );
+      break;
+    case "wall":
+      done = await outcome(getWallCoverSource(), 200);
       break;
   }
   if (done.ok) return done.data;

@@ -35,12 +35,13 @@ function Initials({ name, className }: Readonly<{ name: string | null; className
 }
 
 /** Whose picture it is: a person's account photo or a community's picture. */
-export type PictureKind = "person" | "community" | "cover";
+export type PictureKind = "person" | "community" | "cover" | "wallCover";
 
 const TEMPLATE = {
   person: "/v1/accounts/{accountId}/photo",
   community: "/v1/communities/{communityId}/avatar",
   cover: "/v1/communities/{communityId}/cover",
+  wallCover: "/v1/accounts/{accountId}/wall/cover",
 } as const;
 
 // A picture's address changes with its version, so what was fetched for one
@@ -59,7 +60,7 @@ function pictureUrl(
   let pending = fetched.get(key);
   if (pending === undefined) {
     const path: Record<string, string> =
-      kind === "person" ? { accountId: id } : { communityId: id };
+      kind === "person" || kind === "wallCover" ? { accountId: id } : { communityId: id };
     pending = call<{ status: number; data: unknown }>("GET", TEMPLATE[kind], {
       path,
       query: { v: version, frame },
@@ -87,10 +88,13 @@ export function Avatar({
   photo,
   className,
   local,
+  alt,
 }: Readonly<{
   kind: PictureKind;
   id: string;
   name: string | null;
+  /** What the picture is called, when it is not decoration beside the name (the owner's own photo). */
+  alt?: string;
   /** The picture's version, as the API gave it; null when there is none to show. */
   photo: string | null;
   className: string;
@@ -115,8 +119,8 @@ export function Avatar({
   return (
     <img
       src={src}
-      alt=""
-      aria-hidden="true"
+      alt={alt ?? ""}
+      aria-hidden={alt === undefined ? "true" : undefined}
       className={`shrink-0 bg-muted object-cover ${className}`}
     />
   );
@@ -136,8 +140,11 @@ export function Cover({
   version,
   className = "",
   local,
+  kind = "cover",
 }: Readonly<{
+  /** The community's id, or with `kind="wallCover"` the account's. */
   communityId: string;
+  kind?: "cover" | "wallCover";
   version: string | null;
   className?: string;
   /** A cover held in the browser and not yet sent (the create preview, decision 0087). */
@@ -151,14 +158,14 @@ export function Cover({
     let live = true;
     if (version === null) setSrc(null);
     else {
-      void pictureUrl("cover", communityId, version, frame).then((url) => {
+      void pictureUrl(kind, communityId, version, frame).then((url) => {
         if (live) setSrc(url);
       });
     }
     return () => {
       live = false;
     };
-  }, [communityId, version, frame]);
+  }, [kind, communityId, version, frame]);
   if (src === null) return null;
   return (
     <img

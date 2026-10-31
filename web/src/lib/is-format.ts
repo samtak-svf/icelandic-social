@@ -39,6 +39,13 @@ const IS_MONTHS_SHORT = [
 
 const pad2 = (n: number) => String(n).padStart(2, "0");
 
+/** "2026-10" (the month an account joined) as "október 2026". */
+export function formatIsMonth(month: string): string {
+  const [year, number] = month.split("-").map(Number);
+  const name = number === undefined ? undefined : IS_MONTHS[number - 1];
+  return year === undefined || name === undefined ? month : `${name} ${year}`;
+}
+
 /** "2. september 2026": the { dateStyle: "long" } shape. */
 export function formatIsDate(ms: number): string {
   const d = new Date(ms);
