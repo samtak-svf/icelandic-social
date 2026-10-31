@@ -1,7 +1,7 @@
 import SpjallCore
 import SwiftUI
 
-/// The tabs, the conversations, the communities and "Ég" (decisions 0044, 0063), the notifications behind the
+/// The tabs, Fljótið, the conversations, the communities and "Ég" (decisions 0044, 0063, 0116), the notifications behind the
 /// bell in the header of every screen (0109, 0111), and the screens they lead to. The communities and notifications
 /// are hosted content, kept apart from the conversations (decision 0060): their screens have stacks of their own
 /// and never touch the conversation store. Once per install the first launch's steps come before them (decision
@@ -9,7 +9,8 @@ import SwiftUI
 /// is, what arrives is on screen, so push announces none of it (decision 0025).
 struct HomeView: View {
     /// Where the reader is: a tab, or the notifications the bell opens, which are no tab (decision 0109).
-    enum Tab { case conversations, communities, notifications, me }
+    enum Tab { case feed, conversations, communities, notifications, me }
+    static let launchTab = Tab.feed
 
     enum Route: Hashable {
         case people
@@ -36,10 +37,12 @@ struct HomeView: View {
     @State private var list: ConversationsModel
     @State private var me: MeModel
     @State private var onboarding: OnboardingModel
-    @State private var tab = Tab.conversations
+    @State private var tab = HomeView.launchTab
     @State private var path: [Route] = []
     @State private var mePath: [MeRoute] = []
     @State private var communities: CommunitiesModel
+    @State private var feed: HomeModel
+    @State private var feedPath: [SocialRoute] = []
     @State private var notices: NotificationsModel
     @State private var suspension: SuspensionModel
     @State private var levels: NotificationLevelsModel
@@ -77,6 +80,7 @@ struct HomeView: View {
         _list = State(initialValue: ConversationsModel(account: signIn.account, live: socket))
         _me = State(initialValue: MeModel(account: signIn.account))
         _communities = State(initialValue: CommunitiesModel(social: social))
+        _feed = State(initialValue: HomeModel(social: social))
         _suspension = State(initialValue: SuspensionModel(social: social))
         _levels = State(initialValue: NotificationLevelsModel(social: social))
         _notices = State(initialValue: NotificationsModel(social: social, cancel: push.notifier.cancel))
@@ -94,7 +98,7 @@ struct HomeView: View {
                 // under them becomes a rail beside them, so a stack keeps its scroll position (decision 0087).
                 HStack(spacing: 0) {
                     if layout.navigation == .rail {
-                        NavRail(selection: noticesOver.active(tab), select: select, items: tabItems)
+                        NavRail(selection: noticesOver.active(tab), select: select, items: Self.tabItems)
                     }
                     VStack(spacing: 0) {
                         tabContent
@@ -102,7 +106,7 @@ struct HomeView: View {
                             .frame(maxWidth: .infinity)
                         // Only on the roots: what they lead to has the screen to itself.
                         if layout.navigation == .bar && atRoot {
-                            TabBar(selection: noticesOver.active(tab), select: select, items: tabItems)
+                            TabBar(selection: noticesOver.active(tab), select: select, items: Self.tabItems)
                         }
                     }
                 }
@@ -191,15 +195,19 @@ struct HomeView: View {
 
     /// Every route a stack holds open: the models of any other are let go.
     private var openRoutes: Set<AnyHashable> {
-        Set(path.map(AnyHashable.init) + communitiesPath.map(AnyHashable.init) + noticesPath.map(AnyHashable.init))
+        Set(
+            path.map(AnyHashable.init) + feedPath.map(AnyHashable.init) + communitiesPath.map(AnyHashable.init)
+                + noticesPath.map(AnyHashable.init))
     }
 
     private var layout: WindowLayout {
         layoutOf(width.map(windowClass(width:)), horizontalSizeClass: horizontalSizeClass)
     }
 
-    private var tabItems: [TabBar<Tab>.Item] {
+    /// The tabs of the bar, in order; the first is the one the app opens on (`launchTab`), and none carries a count.
+    static var tabItems: [TabBar<Tab>.Item] {
         [
+            .init(tab: .feed, label: localized(FeedStrings.tab), systemImage: "house"),
             .init(tab: .conversations, label: localized("tab_conversations"), systemImage: "bubble.left"),
             .init(tab: .communities, label: localized("tab_communities"), systemImage: "person.3"),
             .init(tab: .me, label: localized("tab_me"), systemImage: "person"),
@@ -211,6 +219,7 @@ struct HomeView: View {
     private func select(_ target: Tab) {
         if noticesOver.reselects(target, current: tab) {
             switch target {
+            case .feed: feedPath = []
             case .conversations: path = []
             case .communities: communitiesPath = []
             case .me: mePath = []
@@ -234,6 +243,7 @@ struct HomeView: View {
     /// The selected tab's screen and the stack it leads into.
     @ViewBuilder private var tabContent: some View {
         switch tab {
+        case .feed: socialStack($feedPath) { FeedView(model: feed) }
         case .conversations: conversationsStack
         case .communities:
             socialStack($communitiesPath) {
@@ -247,19 +257,7 @@ struct HomeView: View {
         }
     }
 
-    /// `Deila` on a post: the forward picker, sending the post as a card into each conversation picked (decision 0080).
-    private var postSharing: PostSharing {
-        let account = signIn.account
-        let live = socket
-        return PostSharing { postId in
-            PickModel(
-                account: account, live: live,
-                preview: { _ in Outgoing.post(postId) }
-            ) { account, to in
-                _ = try account.sharePost(postId, to: to)
-            }
-        }
-    }
+    private var postSharing: PostSharing { .forwarding(account: signIn.account, live: socket) }
 
     /// A shared post in a conversation: resolved through the communities' client, its image drawn from the same
     /// cache, and a tap opens the post on the communities tab (decision 0080).
@@ -352,12 +350,13 @@ struct HomeView: View {
         switch tab {
         case .communities: communitiesPath.last?.wide ?? true
         case .notifications: noticesPath.last?.wide ?? false
-        case .conversations, .me: false
+        case .feed, .conversations, .me: false
         }
     }
 
     private var atRoot: Bool {
         switch tab {
+        case .feed: feedPath.isEmpty
         case .conversations: path.isEmpty
         case .communities: communitiesPath.isEmpty
         case .notifications: noticesPath.isEmpty

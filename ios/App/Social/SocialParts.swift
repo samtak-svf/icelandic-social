@@ -118,111 +118,6 @@ struct ManageButton: View {
     }
 }
 
-/// Who wrote it (their photo and name open their person screen), the verified mark, a badge for an owner or a
-/// moderator, and when; `community` names the community a post from the hub's feed is in, with its picture, and
-/// `menu` is what the card offers at the row's end. `short` writes the age as "6 klst." (decision 0080).
-struct Byline<Menu: View>: View {
-    let author: Author?
-    /// The name an anonymous post shows in place of its author's (decision 0091).
-    var anonymousName: String?
-    let createdAt: UInt64
-    var community: Community?
-    var short = false
-    let menu: Menu
-
-    init(
-        author: Author?, anonymousName: String? = nil, createdAt: UInt64, community: Community? = nil,
-        short: Bool = false, @ViewBuilder menu: () -> Menu
-    ) {
-        self.author = author
-        self.anonymousName = anonymousName
-        self.createdAt = createdAt
-        self.community = community
-        self.short = short
-        self.menu = menu()
-    }
-
-    /// The name and the badge, which goes below the name when both do not fit on a line.
-    @ViewBuilder private var byline: some View {
-        NameWithMark(
-            name: anonymousName ?? authorName(author), verified: author?.verified == true, markSize: 12,
-            font: .sans(14, black: true))
-        RoleBadge(role: author?.role)
-    }
-
-    var body: some View {
-        HStack(spacing: 10) {
-            Avatar(
-                name: author?.name, kind: author?.verified == true ? .verified : .unverified, size: 34,
-                photo: author?.photoOf
-            ).personLink(author, anonymous: anonymousName != nil)
-            VStack(alignment: .leading, spacing: 2) {
-                ViewThatFits(in: .horizontal) {
-                    HStack(spacing: 4) { byline }
-                    VStack(alignment: .leading, spacing: 2) { byline }
-                }.personLink(author, anonymous: anonymousName != nil)
-                Text(verbatim: short ? relativeTime(createdAt) : postedAt(createdAt))
-                    .font(TypeStyle.meta)
-                    .foregroundStyle(BrandTokens.Colors.mutedFg)
-                if let community {
-                    HStack(spacing: 4) {
-                        LoadedPhoto(community.pictureOf) { image in
-                            Image(uiImage: image)
-                                .resizable()
-                                .scaledToFill()
-                                .frame(width: 14, height: 14)
-                                .clipShape(RoundedRectangle(cornerRadius: 4))
-                        } placeholder: {
-                            Image(systemName: "person.3.fill")
-                                .font(.system(size: 9, weight: .semibold))
-                        }
-                        .frame(width: 14, height: 14)
-                        .accessibilityHidden(true)
-                        Text(verbatim: community.name)
-                            .lineLimit(1)
-                    }
-                    .font(TypeStyle.meta)
-                    .foregroundStyle(BrandTokens.Colors.mutedFg)
-                }
-            }
-            Spacer(minLength: 8)
-            menu
-        }
-    }
-}
-
-/// `Eigandi` or `Stjórnandi` beside a name; nothing for a member, for no role and for a role a newer server added
-/// (decision 0080).
-struct RoleBadge: View {
-    let role: AuthorRole?
-
-    var body: some View {
-        if let key = key {
-            Text(key)
-                .font(.sans(10.5, black: true))
-                .foregroundStyle(BrandTokens.Colors.mutedFg)
-                .padding(.horizontal, 6)
-                .padding(.vertical, 2)
-                .background(BrandTokens.Colors.muted, in: Capsule())
-        }
-    }
-
-    private var key: LocalizedStringKey? {
-        switch role {
-        case .owner: LocalizedStringKey("community_role_owner")
-        case .moderator: LocalizedStringKey("community_role_moderator")
-        case .unknown, nil: nil
-        }
-    }
-}
-
-extension Byline where Menu == EmptyView {
-    /// A byline with nothing to offer at its end.
-    init(author: Author?, createdAt: UInt64, community: Community? = nil, short: Bool = false) {
-        self.init(author: author, createdAt: createdAt, community: community, short: short) { EmptyView() }
-    }
-}
-
 /// A post as a community's list, the hub's feed and its own screen show it, top to bottom as the groups readers know
 /// lay it out (decision 0080): who wrote it with a badge and the age, a pin marker, the text cut at five lines with
 /// `Sjá meira`, the images, a summary of the reactions, one row of `Líkar`, `Athugasemd` and `Deila`, the newest
@@ -270,7 +165,7 @@ struct PostCard: View {
                 if post.pinned { pinned }
                 Byline(
                     author: post.author, anonymousName: anonymousByline(post), createdAt: post.createdAt,
-                    community: community, short: true
+                    community: community, audience: post.audience, short: true
                 ) {
                     PostMenu(
                         pinned: post.pinned, onReport: onReport, onDelete: onDelete, onPin: onPin,

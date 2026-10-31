@@ -49,7 +49,7 @@
   "ios/App/Social/CommunityModel.swift": 814,
   "ios/App/Social/CommunitySheets.swift": 572,
   "ios/App/Social/Social.swift": 647,
-  "ios/App/Social/SocialParts.swift": 920,
+  "ios/App/Social/SocialParts.swift": 815,
   "ios/Tests/CommunityModelTests.swift": 667,
   "ios/Tests/FakeAccount.swift": 637,
   "ios/Tests/FakeSocial.swift": 703
