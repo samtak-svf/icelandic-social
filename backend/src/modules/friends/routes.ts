@@ -4,18 +4,22 @@ import {
   cancelFriendRequestRoute,
   declineFriendRequestRoute,
   endFriendshipRoute,
+  friendSuggestionSettingsRoute,
   getPersonRoute,
   listFriendRequestsRoute,
+  listFriendSuggestionsRoute,
   listFriendsRoute,
   listSnoozesRoute,
+  putFriendSuggestionSettingsRoute,
   sendFriendRequestRoute,
   snoozeRoute,
   unsnoozeRoute,
 } from "../../api/friends.ts";
 import type { AppEnv } from "../../http.ts";
-import { notSuspended } from "../../identity/index.ts";
+import { inSuggestions, notSuspended, setInSuggestions } from "../../identity/index.ts";
 import { fail } from "../../shared/errors.ts";
 import { log } from "../../shared/log.ts";
+import { decodeDirectoryCursor } from "../profiles/index.ts";
 import { friendList } from "./friendships.ts";
 import { personView } from "./person.ts";
 import {
@@ -28,6 +32,7 @@ import {
   type WithdrawNotice,
 } from "./requests.ts";
 import { snooze, snoozeList, unsnooze } from "./snoozes.ts";
+import { suggestions } from "./suggestions.ts";
 
 // The routes of friends (decision 0114). Sending a request is new contact, so a
 // suspension stops it (0115). Accepting, declining, cancelling and ending are
@@ -107,6 +112,24 @@ export function friendRoutes(
       return fail(c, 404, "not_found");
     }
     log("friend_request.declined", { accountId });
+    return c.body(null, 204);
+  });
+
+  app.openapi(listFriendSuggestionsRoute, async (c) => {
+    const { after, limit } = c.req.valid("query");
+    const cursor = after === undefined ? undefined : decodeDirectoryCursor(after);
+    if (cursor === null) return fail(c, 400, "invalid_request");
+    const found = await suggestions(c.env, c.var.session.accountId, { after: cursor, limit });
+    return c.json({ people: found.items, next: found.next }, 200);
+  });
+
+  app.openapi(friendSuggestionSettingsRoute, async (c) =>
+    c.json({ included: await inSuggestions(c.env, c.var.session.accountId) }, 200),
+  );
+
+  // Stepping out is the account's own safety, so a suspension does not stop it.
+  app.openapi(putFriendSuggestionSettingsRoute, async (c) => {
+    await setInSuggestions(c.env, c.var.session.accountId, c.req.valid("json").included);
     return c.body(null, 204);
   });
 

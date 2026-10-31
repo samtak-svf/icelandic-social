@@ -30,6 +30,19 @@ const OPEN_TO_RECIPIENT = "state = 'pending' AND created_at > ?";
 /** Stands for its sender, who cannot tell a declined request from a pending one. */
 const OPEN_TO_SENDER = "state IN ('pending', 'declined') AND created_at > ?";
 
+/** SQL: the request row `r` is inside its 90 days at `now`, a parameter, whatever became of it. */
+const INSIDE_RESEND = (now: string) => `r.created_at > ${now} - ${RESEND_MS}`;
+
+/**
+ * SQL: no request either way between `one` and `other` is inside its 90 days at `now`. It reads
+ * age alone, so a decline shows in nothing that uses it, and it covers anything pending or standing.
+ */
+export const NO_REQUEST_CLOCK = (one: string, other: string, now: string) =>
+  `NOT EXISTS (SELECT 1 FROM friend_requests r
+     WHERE ((r.from_account = ${one} AND r.to_account = ${other})
+         OR (r.from_account = ${other} AND r.to_account = ${one}))
+       AND ${INSIDE_RESEND(now)})`;
+
 /** Whether `from` has a request standing with `to`; a notice about it is still so. */
 export async function requestOpen(env: Env, from: string, to: string): Promise<boolean> {
   const found = await db(env)
@@ -121,14 +134,15 @@ export type Sent =
 async function earlierRequest(env: Env, from: string, to: string, now: number) {
   const last = await db(env)
     .prepare(
-      "SELECT state, created_at FROM friend_requests WHERE from_account = ? AND to_account = ?",
+      `SELECT r.state, r.created_at, ${INSIDE_RESEND("?3")} AS inside
+         FROM friend_requests r WHERE r.from_account = ?1 AND r.to_account = ?2`,
     )
-    .bind(from, to)
-    .first<{ state: string; created_at: number }>();
+    .bind(from, to, now)
+    .first<{ state: string; created_at: number; inside: number }>();
   if (last === null) return null;
   const stands = ["pending", "declined"].includes(last.state) && last.created_at > now - OPEN_MS;
   if (stands) return "stands";
-  return last.created_at > now - RESEND_MS ? "too_soon" : null;
+  return last.inside === 1 ? "too_soon" : null;
 }
 
 /**

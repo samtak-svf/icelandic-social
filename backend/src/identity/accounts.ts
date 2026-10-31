@@ -127,6 +127,27 @@ export async function setBio(
   ]);
 }
 
+/** Whether the account takes part in friend suggestions (decision 0114); true for one not set. */
+export async function inSuggestions(env: Env, accountId: string): Promise<boolean> {
+  const row = await db(env)
+    .prepare("SELECT in_suggestions AS included FROM accounts WHERE account_id = ?")
+    .bind(accountId)
+    .first<{ included: number }>();
+  return row?.included !== 0;
+}
+
+/** Takes the account into or out of friend suggestions, both ways (decision 0114). */
+export async function setInSuggestions(
+  env: Env,
+  accountId: string,
+  included: boolean,
+): Promise<void> {
+  await db(env)
+    .prepare("UPDATE accounts SET in_suggestions = ? WHERE account_id = ?")
+    .bind(included ? 1 : 0, accountId)
+    .run();
+}
+
 /**
  * Sets or clears the account's photo version and framing (decisions 0039, 0086), with `entries` in
  * the same write. False when the account no longer exists.

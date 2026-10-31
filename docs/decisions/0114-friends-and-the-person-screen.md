@@ -1,6 +1,6 @@
 # 0114. Friendship is mutual, and a name opens a person
 
-- Status: accepted; implemented on the server and the web (#375): requests, friendships, the person screen, the own lists, snooze and the two notification kinds, withheld from older clients since #376. Still to come: the kinds in the apps, the cover and bio with the wall (0115), and suggestions. Snooze takes effect on the server in `GET /v1/home` (0116)
+- Status: accepted; implemented on the server and the web (#375): requests, friendships, the person screen, the own lists, snooze and the two notification kinds, withheld from older clients since #376. Still to come: the kinds in the apps, the cover and bio with the wall (0115), and suggestions on the web and in the apps (their server side is built: `GET /v1/friend-suggestions`, `/v1/friend-suggestion-settings`). Snooze takes effect on the server in `GET /v1/home` (0116)
 - Date: 2026-10-30
 - Decided by: Guðröður Atli Jónsson
 - Amends: [0060](0060-a-social-platform-with-an-encrypted-messenger.md) (the graph holds friendships, not follows; feeds read friends),
@@ -113,6 +113,8 @@
   another person's list by inference. Never from contacts: contact matching stays ruled out (0034).
 - They leave out the blocked, friends, anyone pending and anyone inside the 90 days, are capped per page, and a
   setting takes an account out of them in both directions. **They are built last**, and nothing depends on them.
+  Built: the answer never says which community links two people, a suspended account is neither suggested nor shown
+  any (it could not ask them, 0115) and may still change the setting, and the setting goes with the account's row.
 
 ### Notifications
 

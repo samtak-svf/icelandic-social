@@ -1950,7 +1950,7 @@
     },
     "privacy_data_body": {
       "surfaces": ["web"],
-      "description": "Body on /privacy describing sign-in identities, Kenni HMAC, E2EE messages, profile photos and community content (decisions 0002, 0008, 0033, 0039, 0063, 0065)."
+      "description": "Body on /privacy describing sign-in identities, Kenni HMAC, E2EE messages, profile photos, community content and what friend suggestions are built from (decisions 0002, 0008, 0033, 0039, 0063, 0065, 0114)."
     },
     "privacy_retention_heading": {
       "surfaces": ["web"],

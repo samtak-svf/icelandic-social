@@ -77,7 +77,7 @@ export function nameKey(text: string): string {
 }
 
 /** A position in the directory: the last account's mark, name key and id. */
-type DirectoryCursor = { verified: 0 | 1; key: string; id: string };
+export type DirectoryCursor = { verified: 0 | 1; key: string; id: string };
 
 function encodeDirectoryCursor(cursor: DirectoryCursor): string {
   return base64url(
@@ -110,6 +110,55 @@ export function decodeDirectoryCursor(text: string): DirectoryCursor | null {
 /** `text` as a LIKE pattern matches it literally, with `ESCAPE '\\'`. */
 export const likeLiteral = (text: string) => text.replace(/[\\%_]/g, (c) => `\\${c}`);
 
+/** SQL: the account `a` has a name and a device the server serves, which is being in the directory. */
+export const IN_DIRECTORY = `a.display_name IS NOT NULL
+          AND EXISTS (SELECT 1 FROM devices d
+                       WHERE d.account_id = a.account_id AND d.revoked_at IS NULL)`;
+
+/** The directory's order: verified first, then by name key. */
+export const DIRECTORY_ORDER = "a.verified DESC, a.name_key, a.account_id";
+
+/** SQL: `a` comes after a cursor's parameters in that order, or the first is null for no cursor. */
+export const AFTER_DIRECTORY = (verified: string, key: string, id: string) =>
+  `(${verified} IS NULL OR a.verified < ${verified}
+               OR (a.verified = ${verified} AND (a.name_key > ${key} OR (a.name_key = ${key} AND a.account_id > ${id}))))`;
+
+/** The columns `directoryPage` reads, in that order and asked for one row past the limit. */
+export type DirectoryRow = {
+  accountId: string;
+  name: string | null;
+  verified: number;
+  key: string;
+  photo: string | null;
+  frames: string | null;
+};
+
+/** At most `limit` of `results` and the cursor of the next page, if `results` went past it. */
+export function directoryPage(
+  results: DirectoryRow[],
+  limit: number,
+): { items: Profile[]; next: string | null } {
+  const page = results.slice(0, limit);
+  const last = page.at(-1);
+  return {
+    items: page.map((r) => ({
+      accountId: r.accountId,
+      name: r.name,
+      verified: r.verified === 1,
+      photo: r.photo,
+      photoFrames: parseFraming(r.frames),
+    })),
+    next:
+      results.length > limit && last
+        ? encodeDirectoryCursor({
+            verified: last.verified === 1 ? 1 : 0,
+            key: last.key,
+            id: last.accountId,
+          })
+        : null,
+  };
+}
+
 /**
  * A page of the directory as `viewer` sees it (decision 0036): every account
  * with a name and a device the server serves, verified ones first, then by
@@ -129,10 +178,8 @@ export async function directory(
       `SELECT a.account_id AS accountId, a.display_name AS name, a.verified, a.name_key AS key,
               a.photo_version AS photo, a.photo_frames AS frames
          FROM accounts a
-        WHERE a.display_name IS NOT NULL
+        WHERE ${IN_DIRECTORY}
           AND a.account_id != ?1
-          AND EXISTS (SELECT 1 FROM devices d
-                       WHERE d.account_id = a.account_id AND d.revoked_at IS NULL)
           AND NOT EXISTS (SELECT 1 FROM blocks b
                            WHERE (b.blocker_account_id = ?1 AND b.blocked_account_id = a.account_id)
                               OR (b.blocker_account_id = a.account_id AND b.blocked_account_id = ?1))
@@ -140,9 +187,8 @@ export async function directory(
                OR a.name_key LIKE ?2 || '%' ESCAPE '\\'
                OR a.name_key LIKE '% ' || ?2 || '%' ESCAPE '\\'
                OR a.name_key LIKE '%-' || ?2 || '%' ESCAPE '\\')
-          AND (?3 IS NULL OR a.verified < ?3
-               OR (a.verified = ?3 AND (a.name_key > ?4 OR (a.name_key = ?4 AND a.account_id > ?5))))
-        ORDER BY a.verified DESC, a.name_key, a.account_id
+          AND ${AFTER_DIRECTORY("?3", "?4", "?5")}
+        ORDER BY ${DIRECTORY_ORDER}
         LIMIT ?6`,
     )
     .bind(
@@ -153,32 +199,7 @@ export async function directory(
       after?.id ?? null,
       limit + 1,
     )
-    .all<{
-      accountId: string;
-      name: string;
-      verified: number;
-      key: string;
-      photo: string | null;
-      frames: string | null;
-    }>();
-  const page = results.slice(0, limit);
-  const last = page.at(-1);
-  return {
-    // Blocked accounts are left out above, so every photo here may be shown.
-    items: page.map((r) => ({
-      accountId: r.accountId,
-      name: r.name,
-      verified: r.verified === 1,
-      photo: r.photo,
-      photoFrames: parseFraming(r.frames),
-    })),
-    next:
-      results.length > limit && last
-        ? encodeDirectoryCursor({
-            verified: last.verified === 1 ? 1 : 0,
-            key: last.key,
-            id: last.accountId,
-          })
-        : null,
-  };
+    .all<DirectoryRow>();
+  // Blocked accounts are left out above, so every photo here may be shown.
+  return directoryPage(results, limit);
 }

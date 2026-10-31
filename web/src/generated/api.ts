@@ -514,6 +514,18 @@ export interface FriendRequest {
   sentAt: number;
 }
 
+export interface FriendSuggestions {
+  /** Verified first, then by name */
+  people: Array<Profile>;
+  /** The cursor of the next page, null on the last */
+  next: string | null;
+}
+
+export interface FriendSuggestionSettings {
+  /** False takes the account out both ways: it is suggested to nobody and shown nobody */
+  included: boolean;
+}
+
 export interface SnoozeList {
   snoozed: Array<{
     person: Profile;
@@ -1434,6 +1446,47 @@ export function declineFriendRequest(args: {
   | { status: 426; data: ApiError }
 > {
   return call("POST", "/v1/friend-requests/{accountId}/decline", args, init);
+}
+
+/**
+ * People the caller shares an open community with (0114)
+ *
+ * Never from a private community, mutual friends or contacts, and nothing says which community links two people. Leaves out friends, either direction of a block or of a request in its 90 days, and a suspended or opted-out account. Empty for a caller who is opted out or suspended.
+ */
+export function listFriendSuggestions(args?: {
+  query?: {
+    /** From `next` */
+    after?: string;
+    limit?: number;
+  };
+}, init?: CallInit): Promise<
+  | { status: 200; data: FriendSuggestions }
+  | { status: 400; data: ApiError }
+  | { status: 401; data: ApiError }
+  | { status: 426; data: ApiError }
+> {
+  return call("GET", "/v1/friend-suggestions", args, init);
+}
+
+/** Whether the caller takes part in friend suggestions; it does until it says otherwise */
+export function friendSuggestionSettings(init?: CallInit): Promise<
+  | { status: 200; data: FriendSuggestionSettings }
+  | { status: 401; data: ApiError }
+  | { status: 426; data: ApiError }
+> {
+  return call("GET", "/v1/friend-suggestion-settings", undefined, init);
+}
+
+/** Take the caller into or out of friend suggestions, both ways */
+export function putFriendSuggestionSettings(args: {
+  body: FriendSuggestionSettings;
+}, init?: CallInit): Promise<
+  | { status: 204; data: undefined }
+  | { status: 400; data: ApiError }
+  | { status: 401; data: ApiError }
+  | { status: 426; data: ApiError }
+> {
+  return call("PUT", "/v1/friend-suggestion-settings", args, init);
 }
 
 /** The people the caller has snoozed, the soonest back first */
