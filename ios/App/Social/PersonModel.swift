@@ -12,6 +12,8 @@ final class PersonModel {
     private(set) var loaded = false
     private(set) var busy = false
     private(set) var problem: Problem?
+    /// The reader blocked this account from here: the screen has nothing left to show and goes back (decision 0114).
+    private(set) var blocked = false
 
     private let social: Social
     private var failed: (() async -> Void)?
@@ -54,6 +56,26 @@ final class PersonModel {
         let social = social
         let id = accountId
         await run(again: { await self.unsnooze() }) { try social.unsnoozePerson(id) }
+    }
+
+    /// Blocks the account (decision 0024). There is no person to read afterwards, since the route answers 404 after a
+    /// block, so the model says it is done instead of reading again.
+    func block() async {
+        guard !busy else { return }
+        let social = social
+        let id = accountId
+        busy = true
+        problem = nil
+        do {
+            try await offMain { try social.blockPerson(id) }
+            blocked = true
+            person = nil
+            failed = nil
+        } catch {
+            failed = { await self.block() }
+            problem = Problem(error)
+        }
+        busy = false
     }
 
     /// Makes the change, then reads the person again. A person who is not there, or is behind a block, is a

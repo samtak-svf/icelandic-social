@@ -10,6 +10,8 @@ struct FriendServer {
     var snoozed: [Snooze] = []
     /// Everyone the server knows, so a person can be asked for whatever the lists say of them.
     var known: [String: Author] = [:]
+    /// The accounts the reader blocked: the server answers 404 for their person.
+    var blocked: Set<String> = []
 }
 
 /// The friend calls of `FakeSocial` (decision 0114).
@@ -35,7 +37,7 @@ extension FakeSocial {
     func person(_ account: String) throws -> PersonProfile {
         try call("person \(account)")
         let state = server
-        guard let author = state.known[account] else { throw unreachable }
+        guard let author = state.known[account], !state.blocked.contains(account) else { throw unreachable }
         var relation = Relation.none
         if state.friends.contains(where: { $0.person.accountId == account }) { relation = .friends }
         if state.sent.contains(where: { $0.person.accountId == account }) { relation = .sent }
@@ -120,5 +122,15 @@ extension FakeSocial {
     func unsnoozePerson(_ account: String) throws {
         try call("unsnoozePerson \(account)")
         server.snoozed.removeAll { $0.person.accountId == account }
+    }
+}
+
+extension FakeSocial {
+    func blockPerson(_ account: String) throws {
+        try call("blockPerson \(account)")
+        var state = server
+        state.blocked.insert(account)
+        state.friends.removeAll { $0.person.accountId == account }
+        server = state
     }
 }

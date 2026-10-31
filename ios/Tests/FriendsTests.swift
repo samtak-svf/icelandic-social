@@ -148,6 +148,32 @@ final class FriendsTests: XCTestCase {
         XCTAssertEqual(model.person?.relation, .sent)
     }
 
+    func testBlockingEndsTheScreenAndTheServerThenAnswersNothing() async {
+        social.know(bera, as: .friends)
+        let model = await person(bera)
+        XCTAssertNotNil(model.person)
+        await model.block()
+        XCTAssertTrue(social.calls.contains("blockPerson b1"))
+        XCTAssertTrue(model.blocked)
+        XCTAssertNil(model.person)
+        XCTAssertNil(model.problem)
+        XCTAssertThrowsError(try social.person("b1"))
+        XCTAssertTrue(social.server.friends.isEmpty)
+    }
+
+    func testAFailedBlockKeepsThePersonAndRetriesIt() async {
+        social.know(bera, as: .none)
+        let model = await person(bera)
+        social.failOn = "blockPerson"
+        await model.block()
+        XCTAssertNotNil(model.problem)
+        XCTAssertFalse(model.blocked)
+        XCTAssertNotNil(model.person)
+        social.failOn = nil
+        await model.retry()
+        XCTAssertTrue(model.blocked)
+    }
+
     func testAFriendNoticeOpensThePersonWhoMadeIt() {
         let request = makeNotice("n1", .friendRequest, actor: bera, community: nil)
         XCTAssertEqual(noticeRoute(request), .person("b1"))

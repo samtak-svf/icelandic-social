@@ -8,6 +8,8 @@ struct PersonView: View {
     let social: Social
     @State private var ending = false
     @State private var reporting = false
+    @State private var blocking = false
+    @Environment(\.dismiss) private var dismiss
 
     var body: some View {
         ScrollView {
@@ -45,6 +47,16 @@ struct PersonView: View {
             Button("friend_end", role: .destructive) { Task { await model.end() } }
             Button("cancel", role: .cancel) {}
         }
+        .confirmationDialog(
+            Text(verbatim: model.person.map { localized("block_confirm", $0.shownName) } ?? ""),
+            isPresented: $blocking, titleVisibility: .visible
+        ) {
+            Button("block", role: .destructive) { Task { await model.block() } }
+            Button("cancel", role: .cancel) {}
+        }
+        .onChange(of: model.blocked) { _, blocked in
+            if blocked { dismiss() }
+        }
         .sheet(isPresented: $reporting) {
             ReportSheet(social: social, target: ReportTarget(kind: .account, id: model.accountId))
         }
@@ -63,6 +75,7 @@ struct PersonView: View {
                     Button("friend_end", role: .destructive) { ending = true }
                 }
                 Button("report_title", role: .destructive) { reporting = true }
+                Button("block", role: .destructive) { blocking = true }
             } label: {
                 Image(systemName: "ellipsis")
             }

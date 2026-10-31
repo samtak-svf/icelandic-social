@@ -22,6 +22,9 @@ protocol Friending: Sendable {
     /// Hides the account's posts from the home feed for 30 days; until when, in Unix milliseconds.
     func snoozePerson(_ account: String) throws -> UInt64
     func unsnoozePerson(_ account: String) throws
+    /// Blocks the account (decision 0024). The person screen then answers 404, a friendship between them ends and
+    /// neither reaches the other.
+    func blockPerson(_ account: String) throws
 }
 
 extension CoreAccount {
@@ -50,6 +53,8 @@ extension CoreAccount {
     func snoozePerson(_ account: String) throws -> UInt64 { try core().snoozePerson(accountId: account) }
 
     func unsnoozePerson(_ account: String) throws { try core().unsnoozePerson(accountId: account) }
+
+    func blockPerson(_ account: String) throws { _ = try core().block(account: account) }
 }
 
 extension PersonProfile {
