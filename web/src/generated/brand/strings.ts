@@ -208,7 +208,7 @@ export const strings = {
   loading: "Hleður…",
   /** Heading of the web's sign-in page (decision 0062). */
   sign_in_title: "Skráðu þig inn",
-  /** The web's settings page: its heading and its link in the navigation. */
+  /** The settings: the web's page heading and navigation link, and the apps' screen behind the gear on the wall. */
   settings_title: "Stillingar",
   /** Accessible name of the web's main navigation. */
   main_navigation: "Aðalvalmynd",
