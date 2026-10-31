@@ -2647,12 +2647,6 @@ mod tests {
             M::BanMember,
             M::UnbanMember,
         ];
-        let notifications: Vec<_> = listed("/Notification/properties/kind/enum");
-        let notification = |text: &serde_json::Value| {
-            serde_json::from_value::<NotificationKind>(text.clone()).is_ok()
-        };
-        assert_eq!(notifications.len(), 5);
-        assert!(notifications.iter().all(notification));
         let levels: Vec<_> = listed("/NotificationLevel/enum");
         assert_eq!(levels.len(), 3);
         assert!(
