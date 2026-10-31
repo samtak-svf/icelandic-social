@@ -5,4 +5,4 @@
 export { areFriends, endingFriendship, forgettingFriends } from "./friendships.ts";
 export { clearingRequests, expireRequests, requestOpen } from "./requests.ts";
 export { friendRoutes } from "./routes.ts";
-export { expireSnoozes } from "./snoozes.ts";
+export { expireSnoozes, UNSNOOZED } from "./snoozes.ts";

@@ -64,6 +64,23 @@ export function readsWall(
   return audience === "friends" && wall.friend;
 }
 
+/** Where a row of the home feed came from: a wall and whether its owner is a friend, or none. */
+export type HomeSource = { wallOwner: string | null; friend: number };
+
+/**
+ * Whether `viewer` reads a row of the home feed (decision 0116), which names its
+ * source so that this is asked per row: a page's walls through `spaceAccess`
+ * would be four statements each. A wall's row answers as `readsWall` does for
+ * that wall; a community's row holds no audience, because the viewer's membership
+ * is what brought it. A block hides either.
+ */
+export function readsHome(row: IndexedPost & HomeSource, viewer: Viewer): boolean {
+  if (viewer.hidden.includes(row.authorId)) return false;
+  if (row.wallOwner === null) return row.audience === null;
+  const wall = { ownerId: row.wallOwner, friend: row.friend === 1 };
+  return readsWall(wall, row.audience, viewer.account);
+}
+
 /** How `viewer` reads the wall at `communityId`, or null: no wall, or a block between them. */
 async function wallAccess(
   env: Env,

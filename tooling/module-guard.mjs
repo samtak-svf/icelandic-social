@@ -100,6 +100,21 @@ export const OWNERS = {
 /** The reads of another module's table, each with its reason. */
 export const READS = [
   {
+    module: "social",
+    table: "friendships",
+    why: "the home feed reaches a friend's wall through them, in one statement with no bound list of ids (decision 0116)",
+  },
+  {
+    module: "social",
+    table: "walls",
+    why: "the home feed reaches a friend's wall and the viewer's own through them, with `post_index` in one statement (decision 0116)",
+  },
+  {
+    module: "social",
+    table: "live_spaces",
+    why: "the home feed asks how old a wall in its sources is, to know when there is nothing older to read (decision 0116)",
+  },
+  {
     module: "identity",
     table: "platform_moderators",
     why: "the account's own /v1/me says whether it is a platform moderator, so its client shows the way to the queue (decision 0115)",
@@ -231,6 +246,7 @@ export const RAW = {
       "backend/src/modules/communities/walls.ts",
       "backend/src/modules/notifications/list.ts",
       "backend/src/modules/notifications/notify.ts",
+      "backend/src/modules/social/home.ts",
     ],
   },
 };

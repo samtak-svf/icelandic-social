@@ -96,6 +96,7 @@ describe("the delivery contract", () => {
       "get /v1/feed getFeed",
       "get /v1/friend-requests listFriendRequests",
       "get /v1/friends listFriends",
+      "get /v1/home getHome",
       "get /v1/invites/{token} resolveInvite",
       "get /v1/me getMe",
       "get /v1/me/communities myCommunities",
