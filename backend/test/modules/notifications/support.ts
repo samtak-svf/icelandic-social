@@ -1,6 +1,8 @@
 import { env } from "cloudflare:workers";
 import { runJobs } from "../../../src/modules/jobs/index.ts";
 import { jobHandlers } from "../../../src/modules/notifications/index.ts";
+import { CLIENT_HEADER } from "../../../src/shared/client-version.ts";
+import { worker } from "../../main.ts";
 import { community, ok, person, type Person } from "../../people.ts";
 import { euEnv } from "../../support.ts";
 
@@ -45,7 +47,13 @@ export type Page = {
   next: string | null;
 };
 
-export const inbox = async (one: Person) => ok<Page>(await one.call("GET", "/v1/notifications"));
+/** The inbox of a build that knows the reply kind: a request with no header is an older build. */
+export const inbox = async (one: Person) =>
+  ok<Page>(
+    await worker.fetch("https://spjall.test/v1/notifications", {
+      headers: { ...one.auth, [CLIENT_HEADER]: `android/${env.REPLY_NOTICE_CLIENT_VERSION}` },
+    }),
+  );
 
 /** A community with `author`, who made a post, and `readers`, who joined. */
 export async function scene(...names: string[]) {

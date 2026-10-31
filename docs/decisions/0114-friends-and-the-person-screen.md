@@ -136,6 +136,11 @@
   nullable `communityId` is a breaking change on paper and carries the label `api: breaking`; the withholding
   is why it breaks nobody.
 
+  _Note 2026-10-31 (#451):_ the lowest rung is below 0.17.0, whose core has no `reply` kind at all and drops
+  those rows from its list while its counters still count them. `REPLY_NOTICE_CLIENT_VERSION` (0.17.0, not a
+  floor) names the first version that knows the kind, and a client below it is shown the frozen set without
+  `reply` (`NoticeReach` `oldest`), in the list, the counts and mark-read.
+
 ### Deletion and privacy
 
 - **Deleting an account removes every row in both directions**: friendships, requests, snoozes and suggestion

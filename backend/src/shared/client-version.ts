@@ -5,6 +5,7 @@ import {
   friendNoticeClientVersions,
   minClientVersions,
   noticeClientVersions,
+  replyNoticeClientVersions,
   reportsNoticeClientVersions,
   wallNoticeClientVersions,
   suspensionNoticeClientVersions,
@@ -38,7 +39,14 @@ export type FloorRefusal =
   | { error: "client_too_old"; minVersion: string; updateUrl?: string };
 
 /** What a build reads of the notifications; `noticeReach` says which. */
-export type NoticeReach = "frozen" | "decoding" | "suspension" | "friends" | "wall" | "all";
+export type NoticeReach =
+  | "oldest"
+  | "frozen"
+  | "decoding"
+  | "suspension"
+  | "friends"
+  | "wall"
+  | "all";
 
 /** Where each mobile platform gets a current build (decision 0030). */
 export type UpdateUrls = { android: string; ios: string };
@@ -59,12 +67,14 @@ export function decodesEveryNotice(env: Env, header: string | undefined): boolea
 
 /**
  * How much of the notifications the build with this Spjall-Client can read
- * (decisions 0114, 0115): the frozen set, everything but a suspension's notice
+ * (decisions 0114, 0115): the frozen set without a reply, the frozen set, everything but a suspension's notice
  * and a friend's, everything but a friend's, everything but a wall's and reports
  * waiting, everything but reports waiting, or all of them.
  */
 export function noticeReach(env: Env, header: string | undefined): NoticeReach {
-  if (!decodesEveryNotice(env, header)) return "frozen";
+  if (!decodesEveryNotice(env, header)) {
+    return belowFloorOf(replyNoticeClientVersions(env), header) === null ? "frozen" : "oldest";
+  }
   if (belowFloorOf(suspensionNoticeClientVersions(env), header) !== null) return "decoding";
   if (belowFloorOf(friendNoticeClientVersions(env), header) !== null) return "suspension";
   if (belowFloorOf(wallNoticeClientVersions(env), header) !== null) return "friends";

@@ -20,8 +20,14 @@ const LIVE = `(n.community_id IS NULL OR EXISTS
 const LIVE_SPACES = `(n.community_id IS NULL OR EXISTS
   (SELECT 1 FROM live_spaces c WHERE c.community_id = n.community_id))`;
 
-/** The kinds an app below `NOTICE_CLIENT_VERSION` knows. Frozen: a new kind stays out of it. */
+/**
+ * The kinds an app from `REPLY_NOTICE_CLIENT_VERSION` up to `NOTICE_CLIENT_VERSION` knows.
+ * Frozen: a new kind stays out of it.
+ */
 const OLD_KINDS = ["comment", "reply", "reaction", "join_approved", "moderated"];
+
+/** The kinds an app below `REPLY_NOTICE_CLIENT_VERSION` knows: its core has no reply kind. */
+const OLDEST_KINDS = OLD_KINDS.filter((k) => k !== "reply");
 
 /** The actions on a notice such an app words correctly. Frozen, as the kinds are. */
 const OLD_ACTIONS = [
@@ -41,7 +47,9 @@ const OLD_ACTIONS = [
  * has no words for a friend's notice until it knows that kind (0114), nor for
  * reports waiting, which only the web words for now (0115). A wall's rows have a
  * community no such app could name, and they stay out until it knows them, as
- * does the clearing of a bio or a cover.
+ * does the clearing of a bio or a cover. An app below `REPLY_NOTICE_CLIENT_VERSION`
+ * has a core with no reply kind: it drops those rows from its list, but its counts
+ * would still include them, so they stay out of both.
  */
 export function shownTo(reach: NoticeReach): string {
   if (reach === "all") return LIVE_SPACES;
@@ -54,7 +62,7 @@ export function shownTo(reach: NoticeReach): string {
   if (reach === "decoding") {
     return `${noFriends} AND (n.action IS NULL OR n.action NOT IN ('suspend_account', 'unsuspend_account'))`;
   }
-  const kinds = OLD_KINDS.map((k) => `'${k}'`).join(", ");
+  const kinds = (reach === "oldest" ? OLDEST_KINDS : OLD_KINDS).map((k) => `'${k}'`).join(", ");
   const actions = OLD_ACTIONS.map((a) => `'${a}'`).join(", ");
   return `${LIVE} AND n.community_id IS NOT NULL AND n.kind IN (${kinds})
     AND (n.action IS NULL OR n.action IN (${actions}))`;

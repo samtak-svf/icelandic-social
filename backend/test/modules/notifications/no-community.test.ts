@@ -193,6 +193,16 @@ describe("what an old client is shown", () => {
     expect(await passes("all", "friend_request", null)).toBe(true);
   });
 
+  // An app below the first core with the reply kind does not know it (#451).
+  it("leaves out a reply from an app whose core has no such kind", async () => {
+    const owner = await person("Eigandi");
+    const id = await community(owner, "open");
+    expect(await passes("oldest", "comment", id)).toBe(true);
+    expect(await passes("oldest", "reply", id)).toBe(false);
+    expect(await passes("frozen", "reply", id)).toBe(true);
+    expect(await passes("all", "reply", id)).toBe(true);
+  });
+
   // An old app reads a new action as unknown and words it as a removal (0115).
   it("leaves out an action added after the release it knows", async () => {
     const owner = await person("Eigandi");
