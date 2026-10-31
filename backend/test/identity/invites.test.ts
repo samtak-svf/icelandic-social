@@ -194,7 +194,8 @@ describe("the link host", () => {
         target: {
           namespace: "android_app",
           package_name: ids.store.androidApplicationId,
-          sha256_cert_fingerprints: [],
+          // Google Play's app-signing certificate, in the one spelling Android compares.
+          sha256_cert_fingerprints: [expect.stringMatching(/^[0-9A-F]{2}(:[0-9A-F]{2}){31}$/)],
         },
       },
     ]);

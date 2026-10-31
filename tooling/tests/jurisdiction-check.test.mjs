@@ -144,6 +144,17 @@ describe("jurisdiction-check, config", () => {
     c.vars.APPLE_TEAM_ID = ids.appleInterim.teamId;
     expect(checkApns(c, own).join()).toMatch(/APPLE_TEAM_ID/);
   });
+
+  it("refuses a signing fingerprint Android would not match", () => {
+    const fingerprint = Array.from({ length: 32 }, () => "AB").join(":");
+    const c = config();
+    c.vars.ANDROID_CERT_SHA256 = fingerprint;
+    expect(checkApns(c, ids)).toEqual([]);
+    for (const wrong of [fingerprint.toLowerCase(), fingerprint.replaceAll(":", ""), "AB:CD"]) {
+      c.vars.ANDROID_CERT_SHA256 = wrong;
+      expect(checkApns(c, ids).join()).toMatch(/ANDROID_CERT_SHA256/);
+    }
+  });
 });
 
 describe("jurisdiction-check, live", () => {

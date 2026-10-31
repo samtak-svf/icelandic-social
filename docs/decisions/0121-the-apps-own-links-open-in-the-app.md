@@ -1,6 +1,7 @@
 # 0121. The app's own links open in the app
 
-- Status: accepted; designed, not yet implemented (#473)
+- Status: accepted; implemented in the apps and the association files, reaches phones with the next
+  store build; not yet walked on a phone (#473)
 - Date: 2026-10-31
 - Decided by: Guðröður Atli Jónsson, after showing on a phone that a post link and a community
   link in a message open the web app in the browser
