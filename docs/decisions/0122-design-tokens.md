@@ -1,6 +1,6 @@
 # 0122. Design tokens: type, radius and spacing beside colour
 
-- Status: accepted; implemented in the generators and the web radii (#471), type and spacing not yet read by a screen
+- Status: accepted; implemented in the generators, the web radii and Android type and radii (#471), spacing not yet read by a screen
 - Date: 2026-10-31
 - Decided by: Guðröður Atli Jónsson
 
@@ -26,11 +26,11 @@ metatype). The web theme gets `--radius-<role>` and `--text-<style>` with its li
 spacing and weight. Spacing is not emitted for the web: Tailwind's scale covers it. Swift tracking
 is in points (em times size), Kotlin keeps em.
 
-**What reads them.** Radii: the web now, through role classes such as `rounded-card`. The theme
+**What reads them.** Radii: the web and Android now, through role classes such as `rounded-card`. The theme
 clears Tailwind's radius scale, so `rounded-lg` and its siblings generated no CSS and rendered
 square; `tooling/tests/rounded-classes.test.mjs` fails on any `rounded-*` class in `web/src` that
-names no token. Type and spacing are generated but not yet read by a screen; the apps and the web
-adopt them in later changes.
+names no token. Android also reads type; `tooling/tests/android-radii.test.mjs` fails on a numeric radius in its
+source. Spacing is generated but not yet read by a screen; the apps and the web adopt it in later changes.
 
 **`brand-check` refuses** a brand missing any of the three groups, a type style naming an unknown
 family, a family and weight with no bundled face, and a token in the wrong unit.

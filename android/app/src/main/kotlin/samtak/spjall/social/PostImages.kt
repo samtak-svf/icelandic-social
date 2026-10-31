@@ -33,6 +33,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.withContext
+import samtak.spjall.brand.BrandTokens.Radius
 import samtak.spjall.brand.R
 import samtak.spjall.core.CoreException
 import samtak.spjall.core.Post
@@ -142,7 +143,7 @@ internal fun PostImageView(
     }
     val longest = with(LocalDensity.current) { SHOWN.dp.roundToPx() }
     val bitmap = rememberPhoto(path, longest)
-    val shaped = modifier.clip(RoundedCornerShape(RADIUS.dp))
+    val shaped = modifier.clip(RoundedCornerShape(Radius.THUMBNAIL_DP.dp))
     bitmap?.let {
         Image(
             bitmap = it,
@@ -180,7 +181,7 @@ fun PickedImages(
             Box {
                 val longest = with(LocalDensity.current) { THUMBNAIL.dp.roundToPx() * 2 }
                 val bitmap = rememberPhoto(path, longest)
-                val modifier = Modifier.size(THUMBNAIL.dp).clip(RoundedCornerShape(RADIUS.dp))
+                val modifier = Modifier.size(THUMBNAIL.dp).clip(RoundedCornerShape(Radius.THUMBNAIL_DP.dp))
                 bitmap?.let {
                     Image(bitmap = it, contentDescription = null, contentScale = ContentScale.Crop, modifier = modifier)
                 } ?: Box(modifier = modifier.background(Palette.muted))
@@ -205,7 +206,6 @@ private const val SHOWN = 480
 private const val THUMBNAIL = 72
 private const val REMOVE = 40
 private const val MARK = 22
-private const val RADIUS = 10
 private const val GAP = 6
 
 /** A tall or wide image alone is cropped to no more than this. */

@@ -37,6 +37,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import samtak.spjall.brand.BrandTokens.Radius
 import samtak.spjall.brand.R
 import samtak.spjall.core.Community
 import samtak.spjall.core.CommunityAudience
@@ -119,7 +120,7 @@ internal fun CoverBand(
     alt: String,
 ) {
     val rules = LocalFrameRules.current
-    val band = RoundedCornerShape(COVER_RADIUS.dp)
+    val band = RoundedCornerShape(Radius.CARD_DP.dp)
     val frame = rules.frameForWidth(FrameKind.COVER, windowWidthDp())
     val aspect = rules.aspect(FrameKind.COVER, frame)
     Box(
@@ -165,7 +166,6 @@ private fun AudienceLine(
     }
 }
 
-private const val COVER_RADIUS = 14
 private const val PICTURE = 72
 private const val PICTURE_OVERLAP = 36
 private const val PICTURE_BORDER = 3

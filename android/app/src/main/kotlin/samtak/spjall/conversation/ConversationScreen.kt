@@ -58,6 +58,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
+import samtak.spjall.brand.BrandTokens.Radius
 import samtak.spjall.brand.R
 import samtak.spjall.core.Conversation
 import samtak.spjall.core.ConversationState
@@ -166,7 +167,7 @@ private fun Banner(conversation: Conversation) {
             Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp, vertical = 8.dp)
-                .background(Palette.secondarySubtle, RoundedCornerShape(BANNER_RADIUS.dp))
+                .background(Palette.secondarySubtle, RoundedCornerShape(Radius.CARD_DP.dp))
                 .padding(horizontal = 14.dp, vertical = 13.dp),
     )
 }
@@ -361,7 +362,6 @@ private fun ModeLine(
 }
 
 private const val OLDER_AHEAD = 10
-private const val BANNER_RADIUS = 14
 private const val BUBBLE_PILL = 18
 private const val DOT = 6
 private const val SEND = 40

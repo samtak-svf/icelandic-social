@@ -16,6 +16,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import samtak.spjall.account.Problem
+import samtak.spjall.brand.BrandTokens.Radius
 import samtak.spjall.brand.R
 
 /** What went wrong, and a way to try again when trying again can help. */
@@ -28,7 +29,7 @@ fun ProblemCard(
     LaunchedEffect(problem) { if (problem == Problem.Suspended) refresh() }
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(Radius.POST_BUBBLE_DP.dp),
         colors = CardDefaults.cardColors(containerColor = Palette.secondarySubtle, contentColor = Palette.fg),
     ) {
         Column(modifier = Modifier.padding(16.dp)) {

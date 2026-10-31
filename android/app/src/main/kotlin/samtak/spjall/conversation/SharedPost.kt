@@ -33,6 +33,7 @@ import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import samtak.spjall.brand.BrandTokens.Radius
 import samtak.spjall.brand.R
 import samtak.spjall.core.Card
 import samtak.spjall.core.Content
@@ -98,7 +99,7 @@ internal fun QuoteAbove(
         // The other party's bubble is muted already, so the quote over it takes the paler cream.
         color = if (own) Palette.muted else Palette.bg,
         contentColor = foreground,
-        shape = RoundedCornerShape(QUOTE_RADIUS.dp),
+        shape = RoundedCornerShape(Radius.BUBBLE_DP.dp),
         modifier = Modifier.overlappedBy(OVERLAP.dp).semantics(mergeDescendants = true) { },
     ) {
         Box(
@@ -212,6 +213,5 @@ private const val COMMUNITY_PICTURE = 20
 private const val EXCERPT_LINES = 4
 private const val IMAGE_RATIO = 1.5f
 private const val QUOTE_LINES = 2
-private const val QUOTE_RADIUS = 18
 private const val OVERLAP = 8
 private const val ARROW = 12

@@ -31,6 +31,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
+import samtak.spjall.brand.BrandTokens.Radius
 import samtak.spjall.brand.R
 import samtak.spjall.core.AccountDevice
 import samtak.spjall.core.DeviceKind
@@ -202,7 +203,7 @@ private fun DeviceRow(
         horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         Box(
-            modifier = Modifier.size(WELL.dp).background(Palette.muted, RoundedCornerShape(WELL_RADIUS.dp)),
+            modifier = Modifier.size(WELL.dp).background(Palette.muted, RoundedCornerShape(Radius.WELL_DP.dp)),
             contentAlignment = Alignment.Center,
         ) {
             val icon = deviceIcon(device.kind)
@@ -238,7 +239,7 @@ private fun DeviceRow(
                 color = Palette.fg,
                 modifier =
                     Modifier
-                        .background(Palette.secondarySubtle, RoundedCornerShape(PILL_RADIUS.dp))
+                        .background(Palette.secondarySubtle, RoundedCornerShape(Radius.PILL_DP.dp))
                         .padding(horizontal = 8.dp, vertical = 4.dp),
             )
         }
@@ -251,9 +252,7 @@ private fun DeviceRow(
     }
 }
 
-private const val PILL_RADIUS = 22
 private const val WELL = 30
-private const val WELL_RADIUS = 8
 private const val ICON_SMALL = 16
 
 private val NAME = TextStyle(fontFamily = SansFamily, fontWeight = FontWeight.Black, fontSize = 14.5.sp)

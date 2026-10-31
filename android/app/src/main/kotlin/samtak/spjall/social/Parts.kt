@@ -37,6 +37,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import samtak.spjall.brand.BrandTokens.Radius
 import samtak.spjall.brand.R
 import samtak.spjall.core.Author
 import samtak.spjall.core.Card
@@ -108,8 +109,8 @@ fun SocialCard(
         modifier =
             modifier
                 .fillMaxWidth()
-                .background(Palette.surface, RoundedCornerShape(CARD_RADIUS.dp))
-                .border(BorderStroke(1.dp, Palette.border), RoundedCornerShape(CARD_RADIUS.dp))
+                .background(Palette.surface, RoundedCornerShape(Radius.CARD_DP.dp))
+                .border(BorderStroke(1.dp, Palette.border), RoundedCornerShape(Radius.CARD_DP.dp))
                 .padding(14.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
         content = content,
@@ -219,6 +220,5 @@ fun Composer(
     }
 }
 
-private const val CARD_RADIUS = 14
 internal const val PILL = 20
 internal const val TOUCH = 44

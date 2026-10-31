@@ -50,6 +50,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
+import samtak.spjall.brand.BrandTokens.Radius
 import samtak.spjall.brand.R
 import samtak.spjall.core.isLinkCode
 import samtak.spjall.me.Pill
@@ -140,7 +141,11 @@ private fun Scanning(
     }
     Text(stringResource(R.string.device_link_scan_hint), style = MaterialTheme.typography.bodyLarge)
     if (allowed) {
-        CameraView(isCode, actions::submit, Modifier.fillMaxWidth().aspectRatio(1f).clip(RoundedCornerShape(16.dp)))
+        CameraView(
+            isCode,
+            actions::submit,
+            Modifier.fillMaxWidth().aspectRatio(1f).clip(RoundedCornerShape(Radius.POST_BUBBLE_DP.dp)),
+        )
     } else {
         Text(stringResource(R.string.device_link_camera_denied), style = MaterialTheme.typography.bodyMedium)
     }

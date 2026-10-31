@@ -19,6 +19,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
+import samtak.spjall.brand.BrandTokens.Radius
 import samtak.spjall.brand.R
 import samtak.spjall.me.Confirm
 import samtak.spjall.ui.Palette
@@ -44,10 +45,10 @@ fun <T> Choices(
                         .heightIn(min = CHOICE_HEIGHT.dp)
                         .background(
                             if (on) Palette.primarySubtle else Palette.surface,
-                            RoundedCornerShape(CHOICE_RADIUS.dp),
+                            RoundedCornerShape(Radius.FIELD_DP.dp),
                         ).border(
                             BorderStroke(1.dp, if (on) Palette.primary else Palette.border),
-                            RoundedCornerShape(CHOICE_RADIUS.dp),
+                            RoundedCornerShape(Radius.FIELD_DP.dp),
                         ).selectable(selected = on, role = Role.Tab) { onSelect(value) }
                         .padding(horizontal = 16.dp),
                 verticalAlignment = Alignment.CenterVertically,
@@ -77,4 +78,3 @@ fun ConfirmDelete(
 }
 
 private const val CHOICE_HEIGHT = 44
-private const val CHOICE_RADIUS = 20

@@ -26,6 +26,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import samtak.spjall.brand.BrandTokens.Radius
 import samtak.spjall.brand.R
 import samtak.spjall.core.Author
 import samtak.spjall.core.Community
@@ -178,7 +179,7 @@ private fun Badge(
 
 private val ROW_SHAPE =
     androidx.compose.foundation.shape
-        .RoundedCornerShape(12.dp)
+        .RoundedCornerShape(Radius.PANE_DP.dp)
 private const val PICTURE = 44
 private const val PAIR = 28
 private const val PAIR_SHIFT = 16

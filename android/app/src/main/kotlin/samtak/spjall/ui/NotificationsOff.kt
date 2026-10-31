@@ -19,6 +19,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import samtak.spjall.brand.BrandTokens.Radius
 import samtak.spjall.brand.R
 
 /**
@@ -31,7 +32,7 @@ fun NotificationsOff(onSettings: () -> Unit) {
         modifier =
             Modifier
                 .fillMaxWidth()
-                .background(Palette.secondarySubtle, RoundedCornerShape(RADIUS.dp))
+                .background(Palette.secondarySubtle, RoundedCornerShape(Radius.CARD_DP.dp))
                 .padding(start = 14.dp, end = 14.dp, top = 12.dp, bottom = 2.dp),
         horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
@@ -45,7 +46,6 @@ fun NotificationsOff(onSettings: () -> Unit) {
     }
 }
 
-private const val RADIUS = 14
 private const val ICON = 18
 
 private val HINT =

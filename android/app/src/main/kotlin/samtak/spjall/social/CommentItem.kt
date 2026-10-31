@@ -32,6 +32,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import samtak.spjall.brand.BrandTokens.Radius
 import samtak.spjall.brand.R
 import samtak.spjall.core.Comment
 import samtak.spjall.core.ModerationState
@@ -94,7 +95,7 @@ private fun CommentBubble(comment: Comment) {
     Column(
         modifier =
             Modifier
-                .background(Palette.secondarySubtle, RoundedCornerShape(BUBBLE_RADIUS.dp))
+                .background(Palette.secondarySubtle, RoundedCornerShape(Radius.POST_BUBBLE_DP.dp))
                 .padding(horizontal = 12.dp, vertical = 8.dp),
     ) {
         StateMark(comment.state)

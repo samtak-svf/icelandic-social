@@ -42,6 +42,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import samtak.spjall.brand.BrandTokens.Radius
 import samtak.spjall.brand.R
 import samtak.spjall.social.SubHeader
 import samtak.spjall.ui.Avatar
@@ -170,8 +171,8 @@ internal fun Panel(content: @Composable ColumnScope.() -> Unit) {
         modifier =
             Modifier
                 .fillMaxWidth()
-                .background(Palette.surface, RoundedCornerShape(CARD_RADIUS.dp))
-                .border(1.dp, Palette.border, RoundedCornerShape(CARD_RADIUS.dp)),
+                .background(Palette.surface, RoundedCornerShape(Radius.BUBBLE_DP.dp))
+                .border(1.dp, Palette.border, RoundedCornerShape(Radius.BUBBLE_DP.dp)),
         content = content,
     )
 }
@@ -191,7 +192,7 @@ private fun InviteCard(
                         modifier =
                             Modifier
                                 .size(QR.dp)
-                                .border(1.dp, Palette.border, RoundedCornerShape(QR_RADIUS.dp))
+                                .border(1.dp, Palette.border, RoundedCornerShape(Radius.PANE_DP.dp))
                                 .padding(6.dp),
                     ) {
                         QrCode(
@@ -242,7 +243,7 @@ internal fun Pill(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
 ) {
-    val shape = RoundedCornerShape(PILL_RADIUS.dp)
+    val shape = RoundedCornerShape(Radius.PILL_DP.dp)
     if (filled) {
         Button(onClick = onClick, enabled = enabled, shape = shape, modifier = modifier.heightIn(min = PILL.dp)) {
             Text(text, style = PILL_TEXT, textAlign = TextAlign.Center)
@@ -278,11 +279,8 @@ internal fun Confirm(
 private const val AVATAR = 72
 private const val MARK = 22
 private const val MARK_LINK = 18
-private const val CARD_RADIUS = 18
 private const val QR = 104
-private const val QR_RADIUS = 12
 private const val PILL = 40
-private const val PILL_RADIUS = 22
 private const val ROTATE_WEIGHT = 1.4f
 
 internal val ACTION = TextStyle(fontFamily = SansFamily, fontWeight = FontWeight.Black, fontSize = 13.5.sp)

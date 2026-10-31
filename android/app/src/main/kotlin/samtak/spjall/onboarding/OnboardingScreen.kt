@@ -25,6 +25,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import samtak.spjall.brand.BrandTokens.Radius
 import samtak.spjall.brand.R
 import samtak.spjall.me.MeViewModel
 import samtak.spjall.onboarding.OnboardingViewModel.Step
@@ -144,7 +145,7 @@ private fun Primary(
     Button(
         onClick = onClick,
         enabled = enabled,
-        shape = RoundedCornerShape(PILL_RADIUS.dp),
+        shape = RoundedCornerShape(Radius.PILL_LG_DP.dp),
         modifier = Modifier.fillMaxWidth().heightIn(min = PILL.dp),
     ) {
         Text(stringResource(text), style = MaterialTheme.typography.titleMedium)
@@ -169,5 +170,4 @@ private fun Secondary(
 private const val AVATAR = 96
 private const val BELL = 56
 private const val PILL = 52
-private const val PILL_RADIUS = 26
 private const val TARGET = 48

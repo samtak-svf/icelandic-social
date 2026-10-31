@@ -28,6 +28,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import samtak.spjall.brand.BrandTokens.Radius
 import samtak.spjall.brand.R
 import samtak.spjall.ui.AppIcons
 import samtak.spjall.ui.Palette
@@ -77,7 +78,7 @@ fun VerifyScreen(
                 } else {
                     Button(
                         onClick = onVerify,
-                        shape = RoundedCornerShape(PILL_RADIUS.dp),
+                        shape = RoundedCornerShape(Radius.PILL_LG_DP.dp),
                         modifier = Modifier.fillMaxWidth().heightIn(min = PILL.dp),
                     ) {
                         Text(stringResource(R.string.verify_action), style = MaterialTheme.typography.titleMedium)
