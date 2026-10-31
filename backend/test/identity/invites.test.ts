@@ -200,6 +200,27 @@ describe("the link host", () => {
     ]);
   });
 
+  it("says where to report a security problem", async () => {
+    const response = await fetch("/.well-known/security.txt");
+    expect(response.status).toBe(200);
+    expect(response.headers.get("content-type")).toBe("text/plain; charset=utf-8");
+    const fields = (await response.text()).trim().split("\n");
+    const values = (name: string) =>
+      fields.filter((f) => f.startsWith(`${name}: `)).map((f) => f.slice(name.length + 2));
+    const repository = `https://github.com/${ids.services.githubSlug}`;
+    expect(values("Contact")).toEqual([
+      `${repository}/security/advisories/new`,
+      "mailto:samtak@samtak.is",
+    ]);
+    expect(values("Policy")).toEqual([`${repository}/security/policy`]);
+    expect(values("Canonical")).toEqual([`https://${ids.hosts.link}/.well-known/security.txt`]);
+    const expires = values("Expires");
+    expect(expires).toHaveLength(1);
+    const remaining = Date.parse(expires[0] ?? "") - Date.now();
+    expect(remaining).toBeGreaterThan(0);
+    expect(remaining).toBeLessThan(366 * 24 * 60 * 60 * 1000);
+  });
+
   it("hands /l/ links to the iOS app of the interim team", async () => {
     const response = await fetch("/.well-known/apple-app-site-association");
     expect(response.status).toBe(200);

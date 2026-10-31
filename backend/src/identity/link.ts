@@ -9,6 +9,7 @@ import { type Invite, resolveInvite } from "./invites.ts";
 // The page says no more than GET /v1/invites/{token} does.
 
 const TOKEN = /^[A-Za-z0-9_-]{16,128}$/;
+const SECURITY_TXT_LIFETIME_MS = 180 * 24 * 60 * 60 * 1000;
 
 const PAGE_HEADERS = {
   "content-type": "text/html; charset=utf-8",
@@ -111,6 +112,24 @@ function googleRedirect(url: URL): Response {
   });
 }
 
+/** RFC 9116. The routes are the ones SECURITY.md gives. Expires is a date the file must
+ * be reread by, and computed so that it cannot lapse unnoticed. */
+function securityTxt(): Response {
+  const repository = `https://github.com/${ids.services.githubSlug}`;
+  const expires = new Date(Date.now() + SECURITY_TXT_LIFETIME_MS).toISOString();
+  const fields = [
+    `Contact: ${repository}/security/advisories/new`,
+    "Contact: mailto:samtak@samtak.is",
+    `Expires: ${expires}`,
+    `Canonical: https://${ids.hosts.link}/.well-known/security.txt`,
+    `Policy: ${repository}/security/policy`,
+    "Preferred-Languages: is, en",
+  ];
+  return new Response(`${fields.join("\n")}\n`, {
+    headers: { "content-type": "text/plain; charset=utf-8" },
+  });
+}
+
 /** The link host's routes, outside the API and its contract. */
 export function linkHost() {
   const host = new Hono<{ Bindings: Env }>();
@@ -120,5 +139,6 @@ export function linkHost() {
   host.get("/oauth/google", (c) => googleRedirect(new URL(c.req.url)));
   host.get("/.well-known/assetlinks.json", (c) => assetLinks(c.env));
   host.get("/.well-known/apple-app-site-association", (c) => appleAppSiteAssociation(c.env));
+  host.get("/.well-known/security.txt", () => securityTxt());
   return host;
 }
