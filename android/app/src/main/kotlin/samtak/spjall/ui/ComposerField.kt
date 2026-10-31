@@ -27,6 +27,7 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
+import samtak.spjall.brand.BrandTokens.Radius
 
 /**
  * The rounded one-to-five-line field a message or a comment is written in, shared by both composers.
@@ -45,7 +46,7 @@ fun ComposerField(
 ) {
     val interaction = remember { MutableInteractionSource() }
     val focused by interaction.collectIsFocusedAsState()
-    val shape = RoundedCornerShape(FIELD_RADIUS.dp)
+    val shape = RoundedCornerShape(Radius.FIELD_DP.dp)
     val focusManager = LocalFocusManager.current
     val view = LocalView.current
     LifecycleEventEffect(Lifecycle.Event.ON_STOP) {
@@ -78,7 +79,6 @@ fun ComposerField(
 
 private const val COMPOSER_LINES = 5
 private const val FIELD_HEIGHT = 40
-private const val FIELD_RADIUS = 20
 private const val FIELD_EDGE = 1.5f
 
 private val FIELD =

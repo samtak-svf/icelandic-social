@@ -34,6 +34,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.unit.dp
+import samtak.spjall.brand.BrandTokens.Radius
 import samtak.spjall.brand.R
 import samtak.spjall.core.Content
 import samtak.spjall.core.Item
@@ -217,10 +218,10 @@ private fun lifter(
 /** Rounded all round but at the bottom corner on the sender's side. */
 private fun bubbleShape(own: Boolean) =
     RoundedCornerShape(
-        topStart = BUBBLE_RADIUS.dp,
-        topEnd = BUBBLE_RADIUS.dp,
-        bottomEnd = (if (own) TAIL_RADIUS else BUBBLE_RADIUS).dp,
-        bottomStart = (if (own) BUBBLE_RADIUS else TAIL_RADIUS).dp,
+        topStart = Radius.BUBBLE_DP.dp,
+        topEnd = Radius.BUBBLE_DP.dp,
+        bottomEnd = (if (own) TAIL_RADIUS else Radius.BUBBLE_DP).dp,
+        bottomStart = (if (own) Radius.BUBBLE_DP else TAIL_RADIUS).dp,
     )
 
 /** At most [fraction] of the width the parent offers: a bubble leaves room on the far side. */
@@ -347,7 +348,6 @@ internal fun readLine(
     }
 
 private val EMOJI = listOf("👍", "❤️", "😂", "😮", "😢", "🙏")
-private const val BUBBLE_RADIUS = 18
 
 /** A bubble's padding round its text. */
 internal const val PAD_X = 14

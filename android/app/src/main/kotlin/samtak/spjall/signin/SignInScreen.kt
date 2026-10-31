@@ -26,6 +26,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import samtak.spjall.brand.BrandTokens.Radius
 import samtak.spjall.brand.R
 import samtak.spjall.core.SignInProvider
 import samtak.spjall.signin.SignInViewModel.Invite
@@ -94,7 +95,7 @@ fun SignInScreen(
 private fun GoogleButton(onClick: () -> Unit) {
     OutlinedButton(
         onClick = onClick,
-        shape = RoundedCornerShape(PILL_RADIUS.dp),
+        shape = RoundedCornerShape(Radius.PILL_LG_DP.dp),
         border = BorderStroke(1.dp, Palette.border),
         colors = ButtonDefaults.outlinedButtonColors(containerColor = Palette.surface, contentColor = Palette.fg),
         modifier = Modifier.fillMaxWidth().heightIn(min = PILL.dp),
@@ -107,5 +108,4 @@ private fun GoogleButton(onClick: () -> Unit) {
 
 /** The design's pill: as tall as a thumb, fully rounded. */
 internal const val PILL = 52
-internal const val PILL_RADIUS = 26
 private const val G = 20

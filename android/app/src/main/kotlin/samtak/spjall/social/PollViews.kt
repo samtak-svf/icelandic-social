@@ -32,6 +32,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import samtak.spjall.brand.BrandTokens.Radius
 import samtak.spjall.brand.R
 import samtak.spjall.core.Poll
 import samtak.spjall.core.PollOption
@@ -101,7 +102,7 @@ private fun PollOptionRow(
                 .dimmedWhenSuspended()
                 .border(
                     BorderStroke(if (mine) 2.dp else 1.dp, if (mine) Palette.primary else Palette.border),
-                    RoundedCornerShape(8.dp),
+                    RoundedCornerShape(Radius.WELL_DP.dp),
                 ).selectable(selected = mine, enabled = enabled && !mine, role = Role.RadioButton) {
                     callbacks?.onVote?.invoke(option.optionId)
                 }.semantics { if (mine) contentDescription = "${option.text}, $yours" },
@@ -111,7 +112,7 @@ private fun PollOptionRow(
                 Modifier
                     .fillMaxHeight()
                     .fillMaxWidth(percent / PERCENT.toFloat())
-                    .background(Palette.primarySubtle, RoundedCornerShape(8.dp)),
+                    .background(Palette.primarySubtle, RoundedCornerShape(Radius.WELL_DP.dp)),
             )
         }
         Row(

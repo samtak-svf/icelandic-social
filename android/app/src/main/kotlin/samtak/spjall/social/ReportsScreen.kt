@@ -36,6 +36,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import samtak.spjall.brand.BrandTokens.Radius
 import samtak.spjall.brand.R
 import samtak.spjall.core.Card
 import samtak.spjall.core.Report
@@ -335,7 +336,7 @@ private fun Excerpt(card: Card?) {
         modifier =
             Modifier
                 .fillMaxWidth()
-                .background(Palette.secondarySubtle, RoundedCornerShape(10.dp))
+                .background(Palette.secondarySubtle, RoundedCornerShape(Radius.THUMBNAIL_DP.dp))
                 .padding(12.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {

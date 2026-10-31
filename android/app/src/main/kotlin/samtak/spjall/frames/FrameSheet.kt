@@ -49,6 +49,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import samtak.spjall.account.Problem
+import samtak.spjall.brand.BrandTokens.Radius
 import samtak.spjall.brand.R
 import samtak.spjall.core.Focus
 import samtak.spjall.core.Frame
@@ -65,7 +66,6 @@ val LocalFrameSession =
     compositionLocalOf<FrameSession> { error("no FrameSession provided") }
 
 private const val SQUARE_MAX_DP = 280
-private const val PANE_RADIUS = 12
 private const val GAP = 12
 
 /** The crop sheet as a full-screen dialog, shown while the [LocalFrameSession] has something to show. */
@@ -283,7 +283,7 @@ private fun Pane(
                 .then(if (frame == Frame.SQUARE) Modifier.widthIn(max = SQUARE_MAX_DP.dp) else Modifier)
                 .fillMaxWidth()
                 .aspectRatio(aspect.w.toFloat() / aspect.h)
-                .clip(RoundedCornerShape(PANE_RADIUS.dp))
+                .clip(RoundedCornerShape(Radius.PANE_DP.dp))
                 .testTag("frame-pane-$frame")
                 .pointerInput(frame, size, aspect) {
                     detectTransformGestures { centroid, pan, zoom, _ ->

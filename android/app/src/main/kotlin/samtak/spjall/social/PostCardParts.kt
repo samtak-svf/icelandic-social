@@ -41,6 +41,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import samtak.spjall.brand.BrandTokens.Radius
 import samtak.spjall.brand.R
 import samtak.spjall.conversation.EmojiPickerSheet
 import samtak.spjall.core.Author
@@ -277,7 +278,7 @@ internal fun CommentPreview(comment: Comment) {
             modifier =
                 Modifier
                     .weight(1f)
-                    .background(Palette.secondarySubtle, RoundedCornerShape(BUBBLE_RADIUS.dp))
+                    .background(Palette.secondarySubtle, RoundedCornerShape(Radius.POST_BUBBLE_DP.dp))
                     .padding(horizontal = 12.dp, vertical = 8.dp),
         ) {
             Text(text = comment.author.shownName(), style = MaterialTheme.typography.labelLarge)
@@ -308,7 +309,6 @@ internal fun WriteCommentPill(onComment: () -> Unit) {
     )
 }
 
-internal const val BUBBLE_RADIUS = 16
 private const val SUMMARY_KINDS = 3
 private const val STACK_FONT_SCALE = 1.3f
 private const val PREVIEW_LINES = 2

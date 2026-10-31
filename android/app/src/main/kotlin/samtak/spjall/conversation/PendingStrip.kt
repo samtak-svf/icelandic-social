@@ -28,6 +28,7 @@ import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import samtak.spjall.brand.BrandTokens.Radius
 import samtak.spjall.brand.R
 import samtak.spjall.media.rememberPhoto
 import samtak.spjall.ui.Palette
@@ -66,7 +67,7 @@ internal fun PendingStrip(
 private fun Thumbnail(path: String) {
     val longest = with(LocalDensity.current) { THUMBNAIL.dp.roundToPx() * 2 }
     val bitmap = rememberPhoto(path, longest)
-    val shape = RoundedCornerShape(THUMBNAIL_RADIUS.dp)
+    val shape = RoundedCornerShape(Radius.THUMBNAIL_DP.dp)
     val modifier = Modifier.size(THUMBNAIL.dp).clip(shape)
     bitmap?.let {
         Image(bitmap = it, contentDescription = null, contentScale = ContentScale.Crop, modifier = modifier)
@@ -78,7 +79,7 @@ private fun FileName(name: String) {
     Row(
         modifier =
             Modifier
-                .background(Palette.muted, RoundedCornerShape(THUMBNAIL_RADIUS.dp))
+                .background(Palette.muted, RoundedCornerShape(Radius.THUMBNAIL_DP.dp))
                 .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -95,4 +96,3 @@ private fun FileName(name: String) {
 }
 
 private const val THUMBNAIL = 56
-private const val THUMBNAIL_RADIUS = 10

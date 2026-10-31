@@ -21,6 +21,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
+import samtak.spjall.brand.BrandTokens
 import samtak.spjall.brand.BrandTokens.Colors
 import samtak.spjall.brand.BrandTokens.DarkColors
 import samtak.spjall.brand.BrandTokens.FontFiles
@@ -253,26 +254,32 @@ private val brandType =
         )
     }
 
-/** The design's own sizes, where a Material role is not close enough. */
+/** The design's own sizes, where a Material role is not close enough. They come from the generated tokens. */
 object Type {
     /** A screen title in the cream band: condensed capitals. */
-    val screenTitle =
-        TextStyle(fontFamily = HeadlineFamily, fontWeight = FontWeight.ExtraBold, fontSize = 30.sp, lineHeight = 32.sp)
+    val screenTitle = BrandTokens.Type.SCREEN_TITLE.toTextStyle()
 
     /** The account name on Ég. */
-    val accountName = screenTitle.copy(fontSize = 24.sp, lineHeight = 26.sp)
+    val accountName = BrandTokens.Type.ACCOUNT_NAME.toTextStyle()
 
     /** Small capitals over a section, a day in a conversation. */
-    val sectionLabel =
-        TextStyle(fontFamily = SansFamily, fontWeight = FontWeight.Black, fontSize = 10.sp, letterSpacing = 0.14.em)
+    val sectionLabel = BrandTokens.Type.SECTION_LABEL.toTextStyle()
 
     /** A message's text. */
-    val bubble =
-        TextStyle(fontFamily = SansFamily, fontWeight = FontWeight.Medium, fontSize = 14.5.sp, lineHeight = 21.sp)
+    val bubble = BrandTokens.Type.BUBBLE.toTextStyle()
 
     /** Time and read state under a message, a row's time. */
-    val meta = TextStyle(fontFamily = SansFamily, fontWeight = FontWeight.Black, fontSize = 10.sp, lineHeight = 13.sp)
+    val meta = BrandTokens.Type.META.toTextStyle()
 }
+
+private fun BrandTokens.Type.Style.toTextStyle() =
+    TextStyle(
+        fontFamily = if (family == "headline") HeadlineFamily else SansFamily,
+        fontWeight = FontWeight(weight),
+        fontSize = size.sp,
+        lineHeight = lineHeight?.sp ?: TextUnit.Unspecified,
+        letterSpacing = letterSpacing?.em ?: TextUnit.Unspecified,
+    )
 
 private val lightScheme = brandColors(BrandPalette.Light, dark = false)
 private val darkScheme = brandColors(BrandPalette.Dark, dark = true)
