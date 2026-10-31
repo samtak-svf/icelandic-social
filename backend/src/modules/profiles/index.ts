@@ -4,4 +4,14 @@
 
 export { accountRoutes } from "./people.ts";
 export { deleteAccountPhoto, photoRoutes, removePhoto } from "./photos.ts";
-export { likeLiteral, nameKey } from "./profiles.ts";
+export {
+  AFTER_DIRECTORY,
+  decodeDirectoryCursor,
+  DIRECTORY_ORDER,
+  type DirectoryCursor,
+  directoryPage,
+  type DirectoryRow,
+  IN_DIRECTORY,
+  likeLiteral,
+  nameKey,
+} from "./profiles.ts";

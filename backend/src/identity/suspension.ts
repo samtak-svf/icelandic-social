@@ -13,7 +13,13 @@ import { fail } from "../shared/errors.ts";
 export type Suspension = { until: number | null };
 
 /** The one predicate. An end date in the past is simply not read as a suspension, so no job runs. */
-const STANDS = "suspended_at IS NOT NULL AND (suspended_until IS NULL OR suspended_until > ?)";
+const standsOn = (row: string, now: string) =>
+  `${row}suspended_at IS NOT NULL AND (${row}suspended_until IS NULL OR ${row}suspended_until > ${now})`;
+
+const STANDS = standsOn("", "?");
+
+/** SQL: no suspension stands at `now`, a parameter, on the accounts row `alias`. */
+export const NOT_SUSPENDED = (alias: string, now: string) => `NOT (${standsOn(`${alias}.`, now)})`;
 
 /** The statement that reads the suspension of `accountId`, for a batch. */
 export function suspensionRead(env: Env, accountId: string): D1PreparedStatement {

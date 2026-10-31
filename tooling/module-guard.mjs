@@ -207,12 +207,12 @@ export const READS = [
   {
     module: "friends",
     table: "community_members",
-    why: "a person's screen shows the communities two people share, in one query (decision 0114)",
+    why: "a person's screen shows the communities two people share, and suggestions read who shares an open one, each in one query (decision 0114)",
   },
   {
     module: "friends",
     table: "live_communities",
-    why: "a person's screen shows only shared communities that are not deleted",
+    why: "a person's screen and suggestions read only communities that are not deleted",
   },
   {
     module: "notifications",

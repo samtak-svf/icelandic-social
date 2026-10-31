@@ -71,6 +71,25 @@ const SnoozeList = z
   })
   .openapi("SnoozeList");
 
+const FriendSuggestions = z
+  .object({
+    people: z.array(Profile).openapi({ description: "Verified first, then by name" }),
+    next: z
+      .string()
+      .nullable()
+      .openapi({ description: "The cursor of the next page, null on the last" }),
+  })
+  .openapi("FriendSuggestions");
+
+const FriendSuggestionSettings = z
+  .object({
+    included: z.boolean().openapi({
+      description:
+        "False takes the account out both ways: it is suggested to nobody and shown nobody",
+    }),
+  })
+  .openapi("FriendSuggestionSettings");
+
 const noRequest = { 404: errorResponse("not_found: no such standing request") };
 const friendLimit = errorResponse("friend_limit: one of the two already has 1,000 friends");
 
@@ -207,6 +226,60 @@ export const declineFriendRequestRoute = createRoute({
   security: ACCOUNT,
   request: { params: account },
   responses: { 204: { description: "Declined" }, ...INVALID, ...noRequest, ...AUTHED },
+});
+
+export const listFriendSuggestionsRoute = createRoute({
+  method: "get",
+  path: "/v1/friend-suggestions",
+  operationId: "listFriendSuggestions",
+  tags: ["friends"],
+  summary: "People the caller shares an open community with (0114)",
+  description:
+    "Never from a private community, mutual friends or contacts, and nothing says which community links two people. Leaves out friends, either direction of a block or of a request in its 90 days, and a suspended or opted-out account. Empty for a caller who is opted out or suspended.",
+  security: ACCOUNT,
+  request: {
+    query: z.object({
+      after: z.string().min(1).max(600).optional().openapi({ description: "From `next`" }),
+      limit: z.coerce.number().int().min(1).max(50).default(20),
+    }),
+  },
+  responses: {
+    200: {
+      description: "A page",
+      content: { "application/json": { schema: FriendSuggestions } },
+    },
+    400: errorResponse("invalid_request: the query, or a cursor not from `next`"),
+    ...AUTHED,
+  },
+});
+
+export const friendSuggestionSettingsRoute = createRoute({
+  method: "get",
+  path: "/v1/friend-suggestion-settings",
+  operationId: "friendSuggestionSettings",
+  tags: ["friends"],
+  summary: "Whether the caller takes part in friend suggestions; it does until it says otherwise",
+  security: ACCOUNT,
+  responses: {
+    200: {
+      description: "The setting",
+      content: { "application/json": { schema: FriendSuggestionSettings } },
+    },
+    ...AUTHED,
+  },
+});
+
+export const putFriendSuggestionSettingsRoute = createRoute({
+  method: "put",
+  path: "/v1/friend-suggestion-settings",
+  operationId: "putFriendSuggestionSettings",
+  tags: ["friends"],
+  summary: "Take the caller into or out of friend suggestions, both ways",
+  security: ACCOUNT,
+  request: {
+    body: { required: true, content: { "application/json": { schema: FriendSuggestionSettings } } },
+  },
+  responses: { 204: { description: "Stored" }, ...INVALID, ...AUTHED },
 });
 
 export const listSnoozesRoute = createRoute({

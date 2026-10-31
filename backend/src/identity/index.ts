@@ -9,14 +9,17 @@ export {
   type Device,
   dropAccount,
   dropDeadPushToken,
+  inSuggestions,
   orphans,
   type PushTarget,
   pushTarget,
   revokeAllDevices,
   setBio,
+  setInSuggestions,
   setPhotoVersion,
 } from "./accounts.ts";
 export {
+  NOT_SUSPENDED,
   notSuspended,
   setSuspension,
   suspendedAmong,

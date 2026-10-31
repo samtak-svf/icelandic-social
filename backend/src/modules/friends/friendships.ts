@@ -30,6 +30,10 @@ export function endingFriendship(env: Env, one: string, other: string) {
   ];
 }
 
+/** SQL: `one` and `other` are not friends; either direction's row says so, since both are written together. */
+export const NOT_FRIENDS = (one: string, other: string) =>
+  `NOT EXISTS (SELECT 1 FROM friendships f WHERE f.account_id = ${one} AND f.friend_id = ${other})`;
+
 export async function areFriends(env: Env, one: string, other: string): Promise<boolean> {
   const found = await db(env)
     .prepare("SELECT 1 FROM friendships WHERE account_id = ? AND friend_id = ?")

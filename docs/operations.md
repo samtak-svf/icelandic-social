@@ -43,7 +43,8 @@ cannot send the header; staging is for tools and browsers.
 
 Behind the gate, anyone signs in as anyone: `login_hint=<subject>` at the fake Google starts a
 session with no invite. `POST /dev/jobs` runs the minute cron, `POST /dev/operator-invite`
-writes an operator invite, and `POST /dev/platform-moderator?account=<id>` makes a moderator.
+writes an operator invite, `POST /dev/platform-moderator?account=<id>` makes a moderator, and
+`POST /dev/phone?account=<id>` gives an account a device row, so it enters the directory and the suggestions.
 
 **What it may not hold.** Nothing real: no real person, kennitala, address, photo or message,
 and nothing copied from production, since anyone with the gate can read all of it. No secret but

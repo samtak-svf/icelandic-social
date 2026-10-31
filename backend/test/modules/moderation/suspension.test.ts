@@ -156,6 +156,7 @@ const NOT_REFUSED: Record<string, readonly string[]> = {
   // Saying no, ending and keeping away are a person's own safety, and an accept
   // only answers someone who asked (decision 0114).
   friends: [
+    "putFriendSuggestionSettings",
     "acceptFriendRequest",
     "declineFriendRequest",
     "cancelFriendRequest",

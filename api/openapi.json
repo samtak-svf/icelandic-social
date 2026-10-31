@@ -1768,6 +1768,41 @@
           "sentAt"
         ]
       },
+      "FriendSuggestions": {
+        "type": "object",
+        "properties": {
+          "people": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Profile"
+            },
+            "description": "Verified first, then by name"
+          },
+          "next": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The cursor of the next page, null on the last"
+          }
+        },
+        "required": [
+          "people",
+          "next"
+        ]
+      },
+      "FriendSuggestionSettings": {
+        "type": "object",
+        "properties": {
+          "included": {
+            "type": "boolean",
+            "description": "False takes the account out both ways: it is suggested to nobody and shown nobody"
+          }
+        },
+        "required": [
+          "included"
+        ]
+      },
       "SnoozeList": {
         "type": "object",
         "properties": {
@@ -8434,6 +8469,200 @@
           },
           "404": {
             "description": "not_found: no such standing request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "426": {
+            "description": "client_too_old: Spjall-Client names a version below the floor; minVersion says which",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/friend-suggestions": {
+      "get": {
+        "operationId": "listFriendSuggestions",
+        "tags": [
+          "friends"
+        ],
+        "summary": "People the caller shares an open community with (0114)",
+        "description": "Never from a private community, mutual friends or contacts, and nothing says which community links two people. Leaves out friends, either direction of a block or of a request in its 90 days, and a suspended or opted-out account. Empty for a caller who is opted out or suspended.",
+        "security": [
+          {
+            "deviceToken": []
+          },
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 600,
+              "description": "From `next`"
+            },
+            "required": false,
+            "description": "From `next`",
+            "name": "after",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50,
+              "default": 20
+            },
+            "required": false,
+            "name": "limit",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A page",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FriendSuggestions"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid_request: the query, or a cursor not from `next`",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No device token or session the route takes, or one that is not valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "426": {
+            "description": "client_too_old: Spjall-Client names a version below the floor; minVersion says which",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/friend-suggestion-settings": {
+      "get": {
+        "operationId": "friendSuggestionSettings",
+        "tags": [
+          "friends"
+        ],
+        "summary": "Whether the caller takes part in friend suggestions; it does until it says otherwise",
+        "security": [
+          {
+            "deviceToken": []
+          },
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The setting",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FriendSuggestionSettings"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No device token or session the route takes, or one that is not valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "426": {
+            "description": "client_too_old: Spjall-Client names a version below the floor; minVersion says which",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "operationId": "putFriendSuggestionSettings",
+        "tags": [
+          "friends"
+        ],
+        "summary": "Take the caller into or out of friend suggestions, both ways",
+        "security": [
+          {
+            "deviceToken": []
+          },
+          {
+            "session": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FriendSuggestionSettings"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Stored"
+          },
+          "400": {
+            "description": "The request does not match the schema",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No device token or session the route takes, or one that is not valid",
             "content": {
               "application/json": {
                 "schema": {

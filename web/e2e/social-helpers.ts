@@ -177,6 +177,13 @@ export async function platformModerator(page: Page) {
   expect((await fetch(url, { method: "POST" })).status).toBe(204);
 }
 
+/** Gives the person in `page` a phone, as installing the app does, through the dev Worker. */
+export async function withPhone(page: Page) {
+  const accountId = await accountOf(page);
+  const url = `${DEV}/dev/phone?account=${encodeURIComponent(accountId)}`;
+  expect((await fetch(url, { method: "POST" })).status).toBe(204);
+}
+
 /** Runs the jobs that are due, as the minute cron would (backend/dev/worker.ts). */
 export async function runJobs() {
   expect((await fetch(`${DEV}/dev/jobs`, { method: "POST" })).status).toBe(204);

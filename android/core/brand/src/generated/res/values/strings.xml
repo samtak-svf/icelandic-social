@@ -1240,6 +1240,14 @@
     <string name="friends_sort_newest">Nýjustu fyrst</string>
     <!-- Sort friends by name. -->
     <string name="friends_sort_name">Eftir nafni</string>
+    <!-- Heading of the suggested people on the friends list (decision 0114). -->
+    <string name="friends_suggested">Fólk sem þú gætir þekkt</string>
+    <!-- Heading of the friend suggestions section in Settings (decision 0114). -->
+    <string name="suggestions_setting_title">Tillögur að vinum</string>
+    <!-- Switch: take part in friend suggestions, which works both ways. -->
+    <string name="suggestions_setting_label">Taka þátt í tillögum</string>
+    <!-- Under the switch: off means nobody sees the reader suggested and the reader sees no suggestions. -->
+    <string name="suggestions_setting_hint">Ef slökkt er sér enginn þig í tillögum og þú sérð engar.</string>
     <!-- A notification: someone asked the reader to be friends. {name} is that person. -->
     <string name="notice_friend_request">%1$s sendi þér vinabeiðni.</string>
     <!-- A notification: someone accepted the reader's friend request. {name} is that person. -->

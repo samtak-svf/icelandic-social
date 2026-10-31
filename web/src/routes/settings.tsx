@@ -6,6 +6,7 @@ import { endOtherSessions, endSession, listSessions, type SessionInfo } from "..
 import { strings } from "../generated/brand/strings.ts";
 import { formatIsDate } from "../lib/is-format.ts";
 import { NotificationSettingsSection } from "../social/notification-settings.tsx";
+import { SuggestionSettingsSection } from "../social/suggestion-settings.tsx";
 import { deviceIcon } from "../ui/device-icon.tsx";
 import { Button, ProblemText, Status } from "../ui/kit.tsx";
 import { VerifyCta } from "../ui/verify.tsx";
@@ -154,6 +155,7 @@ function Settings() {
         )}
       </section>
       <NotificationSettingsSection />
+      <SuggestionSettingsSection />
       <section className="mt-10">
         <Button
           tone="primary"
