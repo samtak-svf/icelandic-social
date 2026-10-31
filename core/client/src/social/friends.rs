@@ -1,8 +1,13 @@
-//! Friends and snoozes (0114) as the client offers them.
+//! Friends, snoozes and suggestions (0114) as the client offers them.
 
 use super::{id, search};
-use crate::api::{FriendPage, FriendRequests, FriendSort, Person, Relation, Snooze, Transport};
+use crate::api::{
+    FriendPage, FriendRequests, FriendSort, FriendSuggestions, Person, Relation, Snooze, Transport,
+};
 use crate::{ClientError, Hosted};
+
+/// The largest page of suggestions the server takes.
+const MAX_SUGGESTION_PAGE: u32 = 50;
 
 /// Friends.
 impl<T: Transport> Hosted<T> {
@@ -74,5 +79,28 @@ impl<T: Transport> Hosted<T> {
     pub fn unsnooze_person(&self, account: &str) -> Result<(), ClientError> {
         id(account, "account id")?;
         Ok(self.api()?.unsnooze_person(account)?)
+    }
+
+    /// A page of the people suggested to this account; `after` is the `next`
+    /// of the page before. At most 50 a page. Asking one of them is
+    /// `send_friend_request`.
+    pub fn friend_suggestions(
+        &self,
+        after: Option<&str>,
+        size: u32,
+    ) -> Result<FriendSuggestions, ClientError> {
+        let size = size.clamp(1, MAX_SUGGESTION_PAGE);
+        Ok(self.api()?.friend_suggestions(search(after), size)?)
+    }
+
+    /// Whether this account takes part in suggestions.
+    pub fn friend_suggestions_included(&self) -> Result<bool, ClientError> {
+        Ok(self.api()?.friend_suggestions_included()?)
+    }
+
+    /// Takes this account into or out of suggestions, both ways: out, it is
+    /// suggested to nobody and shown nobody (0114).
+    pub fn set_friend_suggestions_included(&self, included: bool) -> Result<(), ClientError> {
+        Ok(self.api()?.set_friend_suggestions_included(included)?)
     }
 }

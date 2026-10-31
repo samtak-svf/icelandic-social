@@ -11,7 +11,7 @@ mod relay;
 use app::{Phone, phone};
 use relay::Relay;
 use spjall_core::CoreError;
-use spjall_core::client::HttpResponse;
+use spjall_core::client::{HttpMethod, HttpResponse};
 use spjall_core::social::{
     FriendSort, HomePage, PostTarget, Relation, WallAudience, default_post_target,
 };
@@ -133,5 +133,78 @@ fn a_refusal_reaches_the_app_as_the_existing_error() {
     assert!(
         matches!(&refused, CoreError::Refused { status: 403, code, .. } if code == "suspended"),
         "{refused:?}"
+    );
+}
+
+/// The apps' section: the row and its cursor.
+#[test]
+fn suggestions_reach_the_app_as_author_rows_with_a_cursor() {
+    let relay = Relay::new();
+    let a1 = phone(&relay, "a", "a1");
+    answer(
+        &a1,
+        200,
+        r#"{"people":[{"accountId":"b","name":null,"verified":true,"photo":"ph_1",
+            "photoFrames":null}],"next":"c2"}"#,
+    );
+    let page = a1.client.friend_suggestions(None, 20).unwrap();
+    assert_eq!(page.people[0].account_id, "b");
+    assert_eq!(page.people[0].name, None);
+    assert!(page.people[0].verified);
+    assert_eq!(page.people[0].photo.as_deref(), Some("ph_1"));
+    assert_eq!(page.next.as_deref(), Some("c2"));
+    assert_eq!(last_path(&a1), "/v1/friend-suggestions?limit=20");
+    answer(&a1, 200, r#"{"people":[],"next":null}"#);
+    let page = a1.client.friend_suggestions(page.next, 20).unwrap();
+    assert_eq!(page.next, None);
+    assert_eq!(last_path(&a1), "/v1/friend-suggestions?after=c2&limit=20");
+}
+
+/// The apps' switch, both ways, through to what goes on the wire.
+#[test]
+fn the_suggestion_switch_reaches_the_app() {
+    let relay = Relay::new();
+    let a1 = phone(&relay, "a", "a1");
+    answer(&a1, 200, r#"{"included":false}"#);
+    assert!(!a1.client.friend_suggestions_included().unwrap());
+    answer(&a1, 204, "");
+    a1.client.set_friend_suggestions_included(false).unwrap();
+    let seen = a1.app.seen.lock().unwrap();
+    let write = seen.last().unwrap();
+    assert_eq!(write.path, "/v1/friend-suggestion-settings");
+    assert!(
+        matches!(write.method, HttpMethod::Put),
+        "{:?}",
+        write.method
+    );
+    assert_eq!(write.body.as_deref(), Some(r#"{"included":false}"#));
+}
+
+/// A refused write and an answer off the contract are the errors the apps
+/// already read, so the switch can go back and the section can stay away.
+#[test]
+fn a_refused_or_malformed_suggestion_call_is_the_existing_error() {
+    let relay = Relay::new();
+    let a1 = phone(&relay, "a", "a1");
+    answer(&a1, 429, r#"{"error":"rate_limited","requestId":"r1"}"#);
+    let refused = a1
+        .client
+        .set_friend_suggestions_included(false)
+        .unwrap_err();
+    assert!(
+        matches!(&refused, CoreError::Refused { status: 429, code, .. } if code == "rate_limited"),
+        "{refused:?}"
+    );
+    answer(&a1, 200, r#"{"people":"nobody","next":null}"#);
+    let malformed = a1.client.friend_suggestions(None, 20).unwrap_err();
+    assert!(
+        matches!(malformed, CoreError::Protocol { .. }),
+        "{malformed:?}"
+    );
+    answer(&a1, 200, r#"{}"#);
+    let malformed = a1.client.friend_suggestions_included().unwrap_err();
+    assert!(
+        matches!(malformed, CoreError::Protocol { .. }),
+        "{malformed:?}"
     );
 }

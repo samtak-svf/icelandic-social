@@ -1,4 +1,4 @@
-//! Friends and snoozes (0114) as the client reads them.
+//! Friends, snoozes and suggestions (0114) as the client reads them.
 
 #![allow(clippy::disallowed_methods)] // tests use files
 
@@ -203,5 +203,159 @@ fn a_friends_notices_have_their_own_levels() {
             (NotificationKind::FriendAccepted, NotificationLevel::InApp),
         ]
     );
+    phone.sent();
+}
+
+/// A suggestion is the row a friend is: the server's profile, photo and all, and
+/// a cursor to the next page.
+#[test]
+fn a_suggestion_reads_as_the_row_a_friend_has_with_its_cursor() {
+    let phone = Phone::signed_in();
+    let mut row = author("acc_b");
+    row["photo"] = json!("ph_1");
+    row["photoFrames"] = Value::Null;
+    phone.answer(200, json!({ "people": [row], "next": "c2" }));
+    phone.answer(200, json!({ "people": [], "next": null }));
+    let hosted = phone.client.hosted();
+    let first = hosted.friend_suggestions(None, 20).unwrap();
+    assert_eq!(first.people[0].account_id, "acc_b");
+    assert_eq!(first.people[0].name.as_deref(), Some("Sigrún Jónsdóttir"));
+    assert!(first.people[0].verified);
+    assert_eq!(first.people[0].photo.as_deref(), Some("ph_1"));
+    assert_eq!(first.next.as_deref(), Some("c2"));
+    let last = hosted
+        .friend_suggestions(first.next.as_deref(), 20)
+        .unwrap();
+    assert!(last.people.is_empty());
+    assert_eq!(last.next, None);
+    let sent = phone.sent();
+    assert_eq!(sent[0].0, Method::Get);
+    assert_eq!(sent[0].1, "/v1/friend-suggestions?limit=20");
+    assert_eq!(sent[1].1, "/v1/friend-suggestions?after=c2&limit=20");
+}
+
+/// The server refuses a limit outside 1 to 50, and a blank cursor is not one.
+#[test]
+fn a_page_of_suggestions_stays_within_what_the_server_takes() {
+    let phone = Phone::signed_in();
+    let page = json!({ "people": [], "next": null });
+    phone.answer(200, page.clone());
+    phone.answer(200, page);
+    let hosted = phone.client.hosted();
+    hosted.friend_suggestions(Some("  "), 500).unwrap();
+    hosted.friend_suggestions(None, 0).unwrap();
+    let sent = phone.sent();
+    assert_eq!(sent[0].1, "/v1/friend-suggestions?limit=50");
+    assert_eq!(sent[1].1, "/v1/friend-suggestions?limit=1");
+}
+
+#[test]
+fn the_suggestion_setting_reads_both_ways() {
+    let phone = Phone::signed_in();
+    phone.answer(200, json!({ "included": true }));
+    phone.answer(200, json!({ "included": false }));
+    let hosted = phone.client.hosted();
+    assert!(hosted.friend_suggestions_included().unwrap());
+    assert!(!hosted.friend_suggestions_included().unwrap());
+    let sent = phone.sent();
+    assert_eq!(sent[0].0, Method::Get);
+    assert_eq!(sent[0].1, "/v1/friend-suggestion-settings");
+}
+
+/// Stepping out and back in are the one write, and the body says which.
+#[test]
+fn opting_out_of_suggestions_writes_what_it_says() {
+    let phone = Phone::signed_in();
+    phone.ok();
+    phone.ok();
+    let hosted = phone.client.hosted();
+    hosted.set_friend_suggestions_included(false).unwrap();
+    hosted.set_friend_suggestions_included(true).unwrap();
+    let sent = phone.sent();
+    assert_eq!(
+        sent,
+        [
+            (
+                Method::Put,
+                "/v1/friend-suggestion-settings".to_owned(),
+                json!({ "included": false })
+            ),
+            (
+                Method::Put,
+                "/v1/friend-suggestion-settings".to_owned(),
+                json!({ "included": true })
+            ),
+        ]
+    );
+}
+
+/// An answer that is not the contract's says so rather than reading as nobody
+/// suggested, or as taking part.
+#[test]
+fn a_malformed_suggestion_answer_is_an_error_not_an_empty_page() {
+    let phone = Phone::signed_in();
+    let hosted = phone.client.hosted();
+    for (body, what) in [
+        (json!({ "next": null }), "listFriendSuggestions"),
+        (
+            json!({ "people": [{ "accountId": "acc_b" }], "next": null }),
+            "listFriendSuggestions",
+        ),
+    ] {
+        phone.answer(200, body);
+        let read = hosted.friend_suggestions(None, 20);
+        assert!(
+            matches!(read, Err(ClientError::Transport(ApiError::Malformed(w))) if w == what),
+            "{read:?}"
+        );
+    }
+    phone.answer(200, json!({ "included": "yes" }));
+    let read = hosted.friend_suggestions_included();
+    assert!(
+        matches!(
+            read,
+            Err(ClientError::Transport(ApiError::Malformed(
+                "friendSuggestionSettings"
+            )))
+        ),
+        "{read:?}"
+    );
+    phone.sent();
+}
+
+/// A refused write did not happen, and the app has to hear that: the switch must
+/// not read as off while the account is still suggested.
+#[test]
+fn a_refused_opt_out_stays_typed() {
+    let phone = Phone::signed_in();
+    phone.answer(
+        400,
+        json!({ "error": "invalid_request", "requestId": "r1" }),
+    );
+    let refused = phone.client.hosted().set_friend_suggestions_included(false);
+    let Err(ClientError::Transport(ApiError::Refused {
+        status: 400, code, ..
+    })) = refused
+    else {
+        panic!("{refused:?}")
+    };
+    assert_eq!(code, "invalid_request");
+    phone.sent();
+}
+
+/// Any refusal of the read, a server's 404 among them, stays the typed error and
+/// never reads as nobody to suggest.
+#[test]
+fn a_refused_suggestion_read_is_not_an_empty_page() {
+    let phone = Phone::signed_in();
+    phone.answer(404, json!({ "error": "not_found", "requestId": "r1" }));
+    let refused = phone.client.hosted().friend_suggestions(None, 20);
+    let Err(ClientError::Transport(ApiError::Refused {
+        status: 404, code, ..
+    })) = refused
+    else {
+        panic!("{refused:?}")
+    };
+    assert_eq!(code, "not_found");
     phone.sent();
 }

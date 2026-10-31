@@ -1,6 +1,6 @@
-//! Friends and snoozes (0114) as the server answers them.
+//! Friends, snoozes and suggestions (0114) as the server answers them.
 
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use super::{Api, ApiError, Author, CardCommunity, Method, Transport, with_query};
 use crate::frames::Framing;
@@ -89,6 +89,21 @@ pub struct FriendRequests {
 pub struct Snooze {
     pub person: Author,
     pub until: u64,
+}
+
+/// `listFriendSuggestions`: a page of the people suggested to the caller,
+/// verified first, then by name, and the cursor of the next page, none on the
+/// last. Nothing says which community links two people (0114).
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+pub struct FriendSuggestions {
+    pub people: Vec<Author>,
+    pub next: Option<String>,
+}
+
+/// `friendSuggestionSettings`, and the body of its write.
+#[derive(Serialize, Deserialize)]
+struct SuggestionSettings {
+    included: bool,
 }
 
 #[derive(Deserialize)]
@@ -180,5 +195,33 @@ impl<T: Transport> Api<'_, T> {
     /// `unsnoozePerson`.
     pub fn unsnooze_person(&self, account: &str) -> Result<(), ApiError> {
         self.done(Method::Delete, format!("/v1/snoozes/{account}"), None)
+    }
+
+    /// `listFriendSuggestions`.
+    pub fn friend_suggestions(
+        &self,
+        after: Option<&str>,
+        limit: u32,
+    ) -> Result<FriendSuggestions, ApiError> {
+        let limit = limit.to_string();
+        let params = [("after", after), ("limit", Some(limit.as_str()))];
+        let path = with_query("/v1/friend-suggestions", &params);
+        self.call(Method::Get, path, None, "listFriendSuggestions")
+    }
+
+    /// `friendSuggestionSettings`: whether the caller takes part.
+    pub fn friend_suggestions_included(&self) -> Result<bool, ApiError> {
+        let path = "/v1/friend-suggestion-settings".to_owned();
+        let settings: SuggestionSettings =
+            self.call(Method::Get, path, None, "friendSuggestionSettings")?;
+        Ok(settings.included)
+    }
+
+    /// `putFriendSuggestionSettings`: false takes the caller out both ways, so
+    /// it is suggested to nobody and shown nobody (0114).
+    pub fn set_friend_suggestions_included(&self, included: bool) -> Result<(), ApiError> {
+        let path = "/v1/friend-suggestion-settings".to_owned();
+        let body = Self::json(&SuggestionSettings { included });
+        self.done(Method::Put, path, body)
     }
 }

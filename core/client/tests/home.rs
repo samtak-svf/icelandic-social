@@ -245,6 +245,8 @@ fn the_contract_has_every_field_the_client_reads() {
     let schemas = &contract["components"]["schemas"];
     for (schema, fields) in [
         ("Post", &["wall", "audience"][..]),
+        ("FriendSuggestions", &["people", "next"][..]),
+        ("FriendSuggestionSettings", &["included"][..]),
         (
             "Person",
             &[
@@ -285,6 +287,9 @@ fn the_contract_has_every_field_the_client_reads() {
         ("/v1/friend-requests/{accountId}", "put"),
         ("/v1/friend-requests/{accountId}/accept", "post"),
         ("/v1/friend-requests/{accountId}/decline", "post"),
+        ("/v1/friend-suggestions", "get"),
+        ("/v1/friend-suggestion-settings", "get"),
+        ("/v1/friend-suggestion-settings", "put"),
         ("/v1/snoozes", "get"),
         ("/v1/snoozes/{accountId}", "put"),
         ("/v1/people/{accountId}", "get"),
