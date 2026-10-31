@@ -48,10 +48,16 @@ function Pictures({
   if (n.actorCount < 2 || second === undefined) return one(first, "size-10");
   return (
     <span className="relative block size-10">
-      <span data-testid="notice-face" className="absolute left-4 top-4 rounded-md ring-2 ring-surface">
+      <span
+        data-testid="notice-face"
+        className="absolute left-4 top-4 rounded-md ring-2 ring-surface"
+      >
         {one(second, "size-6 text-[10px]")}
       </span>
-      <span data-testid="notice-face" className="absolute left-0 top-0 rounded-md ring-2 ring-surface">
+      <span
+        data-testid="notice-face"
+        className="absolute left-0 top-0 rounded-md ring-2 ring-surface"
+      >
         {one(first, "size-6 text-[10px]")}
       </span>
     </span>
