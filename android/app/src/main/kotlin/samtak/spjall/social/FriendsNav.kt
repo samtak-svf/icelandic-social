@@ -92,6 +92,7 @@ internal fun PersonRoute(
     nav: NavController,
     tab: Boolean,
     settings: () -> Unit = {},
+    friends: () -> Unit = { nav.navigate(SocialRoutes.FRIENDS) },
     choosePhoto: () -> Unit = {},
     reframePhoto: () -> Unit = {},
     removePhoto: () -> Unit = {},
@@ -129,6 +130,8 @@ internal fun PersonRoute(
             override fun unsnooze() = model.unsnooze()
 
             override fun settings() = settings()
+
+            override fun friends() = friends()
 
             override fun openPost(postId: String) = nav.navigate(SocialRoutes.post(postId))
 

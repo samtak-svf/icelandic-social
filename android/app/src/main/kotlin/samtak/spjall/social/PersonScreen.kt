@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
@@ -126,7 +127,20 @@ private fun ProfileCard(
                     color = Palette.fg,
                 )
                 val friends = profile.friendCount
-                Muted(pluralStringResource(R.plurals.person_friend_count, friends.toInt(), friends.toLong()))
+                val count = pluralStringResource(R.plurals.person_friend_count, friends.toInt(), friends.toLong())
+                if (own) {
+                    // The web's link to /friends (0114); the touch target is 48 dp, the text in line with the name.
+                    Box(
+                        modifier =
+                            Modifier
+                                .sizeIn(minWidth = 48.dp, minHeight = 48.dp)
+                                .clickable(role = Role.Button, onClick = actions::friends)
+                                .testTag("friend-count"),
+                        contentAlignment = Alignment.CenterStart,
+                    ) { Muted(count) }
+                } else {
+                    Muted(count)
+                }
                 if (profile.relation != Relation.ONESELF && profile.relation != Relation.UNKNOWN) {
                     val mutual = profile.mutualCount
                     Muted(pluralStringResource(R.plurals.person_mutual_count, mutual.toInt(), mutual.toLong()))

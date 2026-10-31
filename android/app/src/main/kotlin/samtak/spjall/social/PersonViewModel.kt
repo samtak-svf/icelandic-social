@@ -13,10 +13,12 @@ import kotlinx.coroutines.withContext
 import samtak.spjall.account.Problem
 import samtak.spjall.account.problem
 import samtak.spjall.core.CommunityImage
+import samtak.spjall.core.CommunityImagePage
 import samtak.spjall.core.CoreException
 import samtak.spjall.core.FrameKind
 import samtak.spjall.core.PersonProfile
 import samtak.spjall.core.Post
+import samtak.spjall.core.PostPage
 import samtak.spjall.core.ReportReason
 import samtak.spjall.core.ReportTarget
 import samtak.spjall.core.ReportTargetKind
@@ -80,6 +82,43 @@ class PersonViewModel(
 
     fun load() {
         perform(::load) {}
+    }
+
+    /**
+     * Back on this screen: what may have changed elsewhere, with nothing on it moving. The pages of posts and images
+     * further down stay, so a reader coming back from a post is where they were; a failure leaves what is in view.
+     */
+    fun refresh() {
+        if (!_state.value.loaded) return load()
+        if (_state.value.busy) return
+        viewModelScope.launch {
+            val fresh =
+                try {
+                    withContext(io) { fetch() }
+                } catch (_: CoreException) {
+                    return@launch
+                }
+            _state.update {
+                val (posts, postsNext) =
+                    keepingOlder(fresh.posts.posts, fresh.posts.next, it.posts, it.postsNext) { post -> post.postId }
+                val (images, imagesNext) =
+                    if (fresh.images == null) {
+                        it.images to it.imagesNext
+                    } else {
+                        keepingOlder(fresh.images.images, fresh.images.next, it.images, it.imagesNext) { image ->
+                            image.mediaId
+                        }
+                    }
+                it.copy(
+                    profile = fresh.profile,
+                    wall = fresh.wall,
+                    posts = posts,
+                    postsNext = postsNext,
+                    images = images,
+                    imagesNext = imagesNext,
+                )
+            }
+        }
     }
 
     fun add() = perform(::add) { social.sendFriendRequest(accountId) }
@@ -171,7 +210,17 @@ class PersonViewModel(
                     }
                 failed = null
                 attachments.spent()
-                _state.update { it.copy(posts = listOf(post) + it.posts, draft = "", publishing = false) }
+                // A post with images changes the Myndir tab: it asks again the next time it is opened.
+                _state.update {
+                    it.copy(
+                        posts = listOf(post) + it.posts,
+                        draft = "",
+                        publishing = false,
+                        images = emptyList(),
+                        imagesNext = null,
+                        imagesLoaded = false,
+                    )
+                }
             } catch (e: CoreException) {
                 val notice = e.imageNotice()
                 // A media id the server no longer knows (over a day old): the next try uploads again.
@@ -285,6 +334,15 @@ class PersonViewModel(
             null
         }
 
+    /** Everything the screen shows. The images are asked for only if the tab has been opened: it asks for itself. */
+    private fun fetch() =
+        Fresh(
+            social.person(accountId),
+            social.wall(accountId),
+            social.wallPosts(accountId, null),
+            if (_state.value.imagesLoaded) social.wallImages(accountId, null) else null,
+        )
+
     /** Runs [action], if any, then asks for the profile again; a refusal leaves the old profile in view. */
     private fun perform(
         again: () -> Unit,
@@ -294,18 +352,20 @@ class PersonViewModel(
         _state.update { it.copy(busy = true, problem = null) }
         viewModelScope.launch {
             try {
-                val (profile, wall, page) =
+                val fresh =
                     withContext(io) {
                         action()
-                        Triple(social.person(accountId), social.wall(accountId), social.wallPosts(accountId, null))
+                        fetch()
                     }
                 failed = null
                 _state.update {
                     it.copy(
-                        profile = profile,
-                        wall = wall,
-                        posts = page.posts,
-                        postsNext = page.next,
+                        profile = fresh.profile,
+                        wall = fresh.wall,
+                        posts = fresh.posts.posts,
+                        postsNext = fresh.posts.next,
+                        images = fresh.images?.images ?: it.images,
+                        imagesNext = if (fresh.images != null) fresh.images.next else it.imagesNext,
                         loaded = true,
                         busy = false,
                     )
@@ -317,3 +377,11 @@ class PersonViewModel(
         }
     }
 }
+
+/** What [PersonViewModel.load] asks the core for; [images] only when the Myndir tab has been opened. */
+private class Fresh(
+    val profile: PersonProfile,
+    val wall: WallProfile,
+    val posts: PostPage,
+    val images: CommunityImagePage?,
+)

@@ -52,10 +52,16 @@ final class WallModel {
         wall = try? await offMain { try social.wall(id) }
         do {
             let page = try await offMain { try social.wallPosts(id, before: nil, limit: Self.page) }
-            posts = page.posts
-            next = page.next
+            // Coming back from a post asks again: the pages further down stay, so the reader is where they were.
+            (posts, next) = keepingOlder(page.posts, page.next, posts, next, id: \.postId)
             postsLoaded = true
             failed = nil
+            // The gallery shows what the server holds now: a post written in the feed may have added to it.
+            if imagesLoaded {
+                let images = try await offMain { try social.wallImages(id, cursor: nil, limit: Self.page) }
+                (self.images, imagesNext) = keepingOlder(
+                    images.images, images.next, self.images, imagesNext, id: \.mediaId)
+            }
         } catch {
             failed = { await self.load() }
             problem = Problem(error)
@@ -144,6 +150,10 @@ final class WallModel {
             }
             attachments.finish()
             posts.insert(created, at: 0)
+            // A post with images changes the gallery: it asks again when it is opened.
+            images = []
+            imagesNext = nil
+            imagesLoaded = false
             draft = ""
             failed = nil
             posted = true
@@ -343,4 +353,15 @@ final class WallModel {
         }
         busy = false
     }
+}
+
+/// A first page asked for again, with the older pages already `shown` kept below it. When the page's last row is not
+/// among them (a whole page is new, or that row is gone) there is nothing to join to, and the page stands alone.
+func keepingOlder<Row>(
+    _ page: [Row], _ pageNext: String?, _ shown: [Row], _ shownNext: String?, id: (Row) -> String
+) -> ([Row], String?) {
+    guard pageNext != nil, let last = page.last.map(id), let at = shown.firstIndex(where: { id($0) == last }),
+        at < shown.count - 1
+    else { return (page, pageNext) }
+    return (page + shown[(at + 1)...], shownNext)
 }

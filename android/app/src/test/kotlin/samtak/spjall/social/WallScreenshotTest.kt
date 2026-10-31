@@ -105,5 +105,5 @@ class WallScreenshotTest {
     }
 }
 
-private inline fun <reified T> wallNone(): T =
+internal inline fun <reified T> wallNone(): T =
     Proxy.newProxyInstance(T::class.java.classLoader, arrayOf(T::class.java)) { _, _, _ -> null } as T

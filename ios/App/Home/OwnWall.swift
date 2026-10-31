@@ -6,7 +6,8 @@ struct OwnWall: View {
     let me: MeModel
     let social: Social
     let models: RouteModels
-    let onSettings: () -> Void
+    /// Pushes a screen of the Me tab: the settings behind the gear, the friends behind the friend count.
+    let open: (HomeView.MeRoute) -> Void
 
     var body: some View {
         Group {
@@ -14,7 +15,8 @@ struct OwnWall: View {
                 let route = SocialRoute.person(id)
                 PersonView(
                     model: models.model(for: route) { PersonModel(social: social, accountId: id) }, social: social,
-                    onSettings: onSettings, own: me
+                    onSettings: { open(.settings) }, own: me,
+                    onFriends: { open(.friends) }
                 )
                 .id(id)
             } else {

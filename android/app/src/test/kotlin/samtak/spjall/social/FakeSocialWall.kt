@@ -31,6 +31,9 @@ open class FakeSocialWall :
     SocialWall {
     val walls = mutableMapOf<String, WallProfile>()
     val wallPostsOf = mutableMapOf<String, MutableList<Post>>()
+
+    /** Set, the wall's posts come in pages of this size; the cursor is the last post's id. */
+    var wallPageSize: Int? = null
     val wallImagesOf = mutableMapOf<String, List<CommunityImage>>()
 
     /** What the next wall write answers with instead of succeeding; a test sets it to a refusal. */
@@ -54,7 +57,10 @@ open class FakeSocialWall :
         before: String?,
     ): PostPage {
         call("wallPosts $accountId ${before.orEmpty()}".trim())
-        return PostPage(wallPostsOf[accountId].orEmpty().toList(), null)
+        val all = wallPostsOf[accountId].orEmpty().toList()
+        val size = wallPageSize ?: return PostPage(all, null)
+        val rest = if (before == null) all else all.drop(all.indexOfFirst { it.postId == before } + 1)
+        return PostPage(rest.take(size), if (rest.size > size) rest[size - 1].postId else null)
     }
 
     override fun wallImages(
