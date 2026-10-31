@@ -11,6 +11,7 @@ import {
 } from "../env/index.ts";
 import { fail } from "../shared/errors.ts";
 import { log } from "../shared/log.ts";
+import { seal, unseal } from "../shared/seal.ts";
 import { enrol, randomToken } from "./accounts.ts";
 import type { Caller, Linked } from "./linking.ts";
 import { authorizationUrl, type Person, unavailable, webAuthorized } from "./providers.ts";
@@ -55,61 +56,12 @@ type Flow = {
 const encoder = new TextEncoder();
 
 /**
- * The key the flow cookie is sealed with: derived from the kennitala HMAC key,
- * the one secret every Worker that signs anyone in has, under its own label so
- * it is useless for anything else. A rotation of that key fails only the
- * flows started in the ten minutes before it.
+ * The flow cookie is sealed under the kennitala HMAC key, the one secret every
+ * Worker that signs anyone in has, with its own label so it is useless for
+ * anything else. A rotation of that key fails only the flows started in the ten
+ * minutes before it.
  */
-async function flowKey(env: Env) {
-  const base = await crypto.subtle.importKey(
-    "raw",
-    encoder.encode(kennitalaKeys(env).key),
-    "HKDF",
-    false,
-    ["deriveKey"],
-  );
-  return crypto.subtle.deriveKey(
-    {
-      name: "HKDF",
-      hash: "SHA-256",
-      salt: new Uint8Array(),
-      info: encoder.encode("web sign-in flow"),
-    },
-    base,
-    { name: "AES-GCM", length: 256 },
-    false,
-    ["encrypt", "decrypt"],
-  );
-}
-
-async function seal(env: Env, flow: Flow): Promise<string> {
-  const iv = crypto.getRandomValues(new Uint8Array(12));
-  const sealed = await crypto.subtle.encrypt(
-    { name: "AES-GCM", iv },
-    await flowKey(env),
-    encoder.encode(JSON.stringify(flow)),
-  );
-  return `${base64url(iv)}.${base64url(new Uint8Array(sealed))}`;
-}
-
-const fromBase64url = (text: string) =>
-  Uint8Array.from(atob(text.replaceAll("-", "+").replaceAll("_", "/")), (c) => c.charCodeAt(0));
-
-/** The flow a cookie seals, or null for one this Worker did not seal. */
-async function unseal(env: Env, cookie: string): Promise<Flow | null> {
-  const [iv, sealed] = cookie.split(".");
-  if (!iv || !sealed || !/^[A-Za-z0-9_-]+$/.test(iv + sealed)) return null;
-  try {
-    const plain = await crypto.subtle.decrypt(
-      { name: "AES-GCM", iv: fromBase64url(iv) },
-      await flowKey(env),
-      fromBase64url(sealed),
-    );
-    return JSON.parse(new TextDecoder().decode(plain)) as Flow;
-  } catch {
-    return null;
-  }
-}
+const FLOW_LABEL = "web sign-in flow";
 
 /**
  * Where the browser goes once signed in: a path on the web host, and nothing
@@ -132,7 +84,7 @@ export type LinkOrJoin = (
 ) => Promise<{ ok: Linked } | { error: "identity_taken" | "already_linked" }>;
 
 /** The browser's live session, or null; a renewal reaches the cookie too. */
-async function signedIn(c: Context<AppEnv>) {
+export async function signedIn(c: Context<AppEnv>) {
   const secret = getCookie(c, SESSION_COOKIE, "host");
   if (!secret || !SESSION_SECRET.test(secret)) return null;
   const found = await sessionForSecret(c.env, secret);
@@ -175,7 +127,12 @@ async function start(c: Context<AppEnv>, name: ProviderName) {
     log("sign_in.failed", { code: "discovery_failed", provider: name, requestId: c.var.requestId });
     return fail(c, 503, unavailable(name));
   }
-  setCookie(c, FLOW_COOKIE, await seal(c.env, flow), sessionCookie(flow.expires));
+  setCookie(
+    c,
+    FLOW_COOKIE,
+    await seal(kennitalaKeys(c.env).key, FLOW_LABEL, flow),
+    sessionCookie(flow.expires),
+  );
   c.header("cache-control", "no-store");
   return c.redirect(location, 302);
 }
@@ -184,7 +141,7 @@ async function start(c: Context<AppEnv>, name: ProviderName) {
 async function flowOf(c: Context<AppEnv>, name: ProviderName) {
   const cookie = getCookie(c, FLOW_COOKIE, "host");
   deleteCookie(c, FLOW_COOKIE, sessionCookie(0));
-  const flow = cookie ? await unseal(c.env, cookie) : null;
+  const flow = cookie ? await unseal<Flow>(kennitalaKeys(c.env).key, FLOW_LABEL, cookie) : null;
   const state = c.req.query("state");
   const fresh = flow && flow.provider === name && flow.expires > Date.now();
   return fresh && state === flow.state ? flow : null;

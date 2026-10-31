@@ -1057,6 +1057,37 @@ export interface ImportConnectionList {
   connections: Array<ImportConnection>;
 }
 
+export interface ImportPageList {
+  available: boolean;
+  offers: Array<ImportPageOffer>;
+  connections: Array<ImportPageConnection>;
+}
+
+export interface ImportPageOffer {
+  pageId: string;
+  pageName: string;
+}
+
+export interface ImportPageConnection {
+  importId: string;
+  pageId: string;
+  pageName: string;
+  /** preview: the first collection waits to be chosen from, under the import's routes */
+  state: "importing" | "preview" | "connected";
+  /** How the last run ended; expired means the person has to sign in there again */
+  outcome: "expired" | "failed" | "ok" | null;
+  /** Posts brought in so far */
+  posts: number;
+  /** Milliseconds since the epoch */
+  lastSyncAt: number | null;
+}
+
+export interface CreateImportPage {
+  pageId: string;
+  /** Who reads the posts; friends when left out, since nothing is public unless chosen */
+  audience?: "friends" | "everyone";
+}
+
 export interface ImportFileUpload {
   importId: string;
   /** Every part but the last is this many bytes; the last is the remainder */
@@ -3508,6 +3539,47 @@ export function deleteImportConnection(args: {
   | { status: 426; data: ApiError }
 > {
   return call("DELETE", "/v1/imports/connections/{importId}", args, init);
+}
+
+/** Whether the page feed is on, the pages on offer, and the caller's connections */
+export function listImportPages(init?: CallInit): Promise<
+  | { status: 200; data: ImportPageList }
+  | { status: 401; data: ApiError }
+  | { status: 426; data: ApiError }
+> {
+  return call("GET", "/v1/imports/pages", undefined, init);
+}
+
+/** Connect a page on offer to the caller */
+export function createImportPage(args: {
+  body: CreateImportPage;
+}, init?: CallInit): Promise<
+  | { status: 201; data: ImportPageConnection }
+  | { status: 400; data: ApiError }
+  | { status: 401; data: ApiError }
+  | { status: 403; data: ApiError }
+  | { status: 404; data: ApiError }
+  | { status: 409; data: ApiError }
+  | { status: 426; data: ApiError }
+  | { status: 429; data: ApiError }
+  | { status: 503; data: ApiError }
+> {
+  return call("POST", "/v1/imports/pages", args, init);
+}
+
+/** Stop a page connection and remove every post it brought in */
+export function deleteImportPage(args: {
+  path: {
+    importId: string;
+  };
+}, init?: CallInit): Promise<
+  | { status: 204; data: undefined }
+  | { status: 400; data: ApiError }
+  | { status: 401; data: ApiError }
+  | { status: 404; data: ApiError }
+  | { status: 426; data: ApiError }
+> {
+  return call("DELETE", "/v1/imports/pages/{importId}", args, init);
 }
 
 /** Start uploading another platform's export file (a ZIP of at most 4 GiB less a byte) */

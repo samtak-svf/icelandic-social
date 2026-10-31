@@ -131,6 +131,10 @@ const REFUSED: Record<string, { allowed: number; call: (s: Setting) => Promise<R
     allowed: 503,
     call: (s) => s.one.call("POST", `/v1/imports/connections/im_${"0".repeat(32)}/check`),
   },
+  createImportPage: {
+    allowed: 503,
+    call: (s) => s.one.call("POST", "/v1/imports/pages", { pageId: "1" }),
+  },
   publishImport: {
     allowed: 404,
     call: (s) => s.one.call("POST", `/v1/imports/im_${"0".repeat(32)}/publish`, {}),
@@ -207,6 +211,7 @@ const NOT_REFUSED: Record<string, readonly string[]> = {
     "completeImport",
     "deleteImport",
     "deleteImportConnection",
+    "deleteImportPage",
     "setPhoto",
     "removePhoto",
     "setPhotoFrames",

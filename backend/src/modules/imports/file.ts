@@ -26,11 +26,13 @@ export const PUBLISH = "imports.publish";
 
 /** A connection whose first collection is dealt with goes on to its daily runs. */
 export const beginSync = (env: Env, importId: string, now: number) =>
-  db(env)
-    .prepare(
-      "UPDATE import_connections SET phase = 'sync', next_run_at = ? WHERE import_id = ? AND phase = 'backlog'",
-    )
-    .bind(now + SYNC_AFTER_MS, importId);
+  ["import_connections", "import_page_connections"].map((table) =>
+    db(env)
+      .prepare(
+        `UPDATE ${table} SET phase = 'sync', next_run_at = ? WHERE import_id = ? AND phase = 'backlog'`,
+      )
+      .bind(now + SYNC_AFTER_MS, importId),
+  );
 
 type FileState = "uploading" | "parsing" | "ready" | "publishing" | "done" | "failed";
 
@@ -71,7 +73,7 @@ export async function fileOf(
               COALESCE(f.videos, 0) AS videos, COALESCE(f.skipped, 0) AS skipped,
               f.earliest, f.latest
          FROM import_sources s LEFT JOIN import_files f ON f.import_id = s.import_id
-        WHERE s.import_id = ? AND s.account_id = ? AND s.kind IN ('file', 'profile')`,
+        WHERE s.import_id = ? AND s.account_id = ? AND s.kind IN ('file', 'profile', 'page')`,
     )
     .bind(importId, accountId)
     .first<Omit<FileRow, "removing"> & { removing: number }>();
@@ -252,15 +254,23 @@ export async function removeFile(
   importId: string,
 ): Promise<"ok" | "not_found"> {
   if (!(await fileOf(env, accountId, importId))) return "not_found";
-  await db(env)
-    .prepare(
-      `UPDATE import_connections
-          SET next_run_at = NULL, run_id = NULL, run_started_at = NULL, run_month = NULL,
-              run_ceiling = NULL
-        WHERE import_id = ?`,
-    )
-    .bind(importId)
-    .run();
+  await db(env).batch([
+    db(env)
+      .prepare(
+        `UPDATE import_connections
+            SET next_run_at = NULL, run_id = NULL, run_started_at = NULL, run_month = NULL,
+                run_ceiling = NULL
+          WHERE import_id = ?`,
+      )
+      .bind(importId),
+    // The token goes now: a removal may take a while and nothing reads with it again.
+    db(env)
+      .prepare(
+        `UPDATE import_page_connections SET next_run_at = NULL, run_started_at = NULL, token = ''
+          WHERE import_id = ?`,
+      )
+      .bind(importId),
+  ]);
   if (!(await requestRemoval(env, accountId, importId))) return "not_found";
   await dropFile(env, importId);
   return "ok";
@@ -281,7 +291,7 @@ export async function expireFiles(env: Env, now = Date.now()): Promise<number> {
     if (state !== "publishing") {
       await db(env).prepare("DELETE FROM import_sources WHERE import_id = ?").bind(importId).run();
     } else {
-      await beginSync(env, importId, now).run();
+      await db(env).batch(beginSync(env, importId, now));
     }
   }
   return results.length;
