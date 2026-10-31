@@ -12,13 +12,30 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import samtak.spjall.account.Problem
 import samtak.spjall.account.problem
+import samtak.spjall.core.CommunityImage
 import samtak.spjall.core.CoreException
+import samtak.spjall.core.FrameKind
 import samtak.spjall.core.PersonProfile
+import samtak.spjall.core.Post
+import samtak.spjall.core.ReportReason
+import samtak.spjall.core.ReportTarget
+import samtak.spjall.core.ReportTargetKind
+import samtak.spjall.core.WallAudience
+import samtak.spjall.core.WallProfile
+import samtak.spjall.frames.FrameRequest
+import samtak.spjall.frames.newImageRequest
+import samtak.spjall.frames.storedImageRequest
+import java.io.File
+
+/** The tabs of a wall (0115). */
+enum class WallTab { POSTS, ABOUT, IMAGES }
 
 /**
- * One account as this one sees it (decision 0114): the relation between them and the action each relation has,
- * and the snooze. The profile is asked for again after each action, so the screen shows what the server holds.
+ * One account's wall as this one sees it (decisions 0114, 0115): the relation between them and the action each
+ * relation has, the snooze, the wall's posts and images, and on this account's own wall the composer, the bio and
+ * the cover. The profile is asked for again after each action, so the screen shows what the server holds.
  */
+@Suppress("TooManyFunctions")
 class PersonViewModel(
     private val accountId: String,
     private val social: Social,
@@ -29,6 +46,20 @@ class PersonViewModel(
         val loaded: Boolean = false,
         val busy: Boolean = false,
         val problem: Problem? = null,
+        val wall: WallProfile? = null,
+        val tab: WallTab = WallTab.POSTS,
+        val posts: List<Post> = emptyList(),
+        val postsNext: String? = null,
+        val images: List<CommunityImage> = emptyList(),
+        val imagesNext: String? = null,
+        val imagesLoaded: Boolean = false,
+        val draft: String = "",
+        val audience: WallAudience = WallAudience.FRIENDS,
+        val publishing: Boolean = false,
+        /** The account was reported from this screen. */
+        val reported: Boolean = false,
+        /** The account was blocked from this screen: it has nothing more to show. */
+        val blocked: Boolean = false,
     )
 
     private val _state = MutableStateFlow(State())
@@ -62,6 +93,137 @@ class PersonViewModel(
         failed?.invoke()
     }
 
+    /** Blocks the account; the route answers 404 after (0114), so the screen leaves. */
+    fun block() {
+        viewModelScope.launch {
+            attempt { social.blockPerson(accountId) } ?: return@launch
+            _state.update { it.copy(blocked = true) }
+        }
+    }
+
+    fun report(
+        reason: ReportReason,
+        note: String,
+    ) {
+        viewModelScope.launch {
+            attempt { social.report(ReportTarget(ReportTargetKind.ACCOUNT, accountId), reason, note) } ?: return@launch
+            _state.update { it.copy(reported = true) }
+        }
+    }
+
+    fun selectTab(tab: WallTab) {
+        _state.update { it.copy(tab = tab) }
+        if (tab == WallTab.IMAGES && !_state.value.imagesLoaded) moreImages()
+    }
+
+    fun morePosts() {
+        val before = _state.value.postsNext ?: return
+        viewModelScope.launch {
+            val page = attempt { social.wallPosts(accountId, before) } ?: return@launch
+            _state.update { it.copy(posts = it.posts + page.posts, postsNext = page.next) }
+        }
+    }
+
+    fun moreImages() {
+        val s = _state.value
+        if (s.imagesLoaded && s.imagesNext == null) return
+        viewModelScope.launch {
+            val page = attempt { social.wallImages(accountId, s.imagesNext) } ?: return@launch
+            _state.update { it.copy(images = it.images + page.images, imagesNext = page.next, imagesLoaded = true) }
+        }
+    }
+
+    fun onDraft(text: String) = _state.update { it.copy(draft = text) }
+
+    fun onAudience(audience: WallAudience) = _state.update { it.copy(audience = audience) }
+
+    /** Writes the draft on this account's own wall, to the chosen audience. */
+    fun publish() {
+        val s = _state.value
+        if (s.publishing || s.draft.isBlank()) return
+        _state.update { it.copy(publishing = true, problem = null) }
+        viewModelScope.launch {
+            val post = attempt { social.createWallPost(s.draft.trim(), emptyList(), null, s.audience) }
+            _state.update {
+                val sent = it.copy(publishing = false, draft = "")
+                if (post == null) sent.copy(draft = it.draft) else sent.copy(posts = listOf(post) + it.posts)
+            }
+        }
+    }
+
+    /** Changes who may read one of this account's wall posts; the card shows the new audience once it holds. */
+    fun setAudience(
+        postId: String,
+        audience: WallAudience,
+    ) {
+        viewModelScope.launch {
+            attempt { social.setPostAudience(postId, audience) } ?: return@launch
+            _state.update { s ->
+                s.copy(posts = s.posts.map { if (it.postId == postId) it.copy(audience = audience) else it })
+            }
+        }
+    }
+
+    fun deletePost(postId: String) {
+        viewModelScope.launch {
+            attempt { social.deletePost(postId) } ?: return@launch
+            _state.update { s -> s.copy(posts = s.posts.filterNot { it.postId == postId }) }
+        }
+    }
+
+    fun react(
+        postId: String,
+        emoji: String,
+    ) {
+        viewModelScope.launch {
+            attempt { social.react(postId, emoji) } ?: return@launch
+            val fresh = attempt { social.post(postId) } ?: return@launch
+            _state.update { s -> s.copy(posts = s.posts.map { if (it.postId == postId) fresh else it }) }
+        }
+    }
+
+    /** Sets the bio; blank clears it. */
+    fun saveBio(text: String) = changeWall { social.setBio(text.trim()) }
+
+    fun removeCover() = changeWall { social.removeWallCover() }
+
+    /** The request to frame a cover the person has just picked: [read] makes its master. */
+    fun coverRequest(read: () -> File): FrameRequest =
+        newImageRequest(FrameKind.COVER, read) { file, framing ->
+            social.setWallCover(file.path)
+            social.setWallCoverFraming(framing)
+            _state.update { it.copy(wall = social.wall(accountId)) }
+        }
+
+    /** The request to frame the cover again from its stored master; [temp] makes the file it comes down to. */
+    fun reframeCoverRequest(temp: () -> File): FrameRequest =
+        storedImageRequest(
+            FrameKind.COVER,
+            { _state.value.wall?.coverFrames },
+            { social.wallCoverSource(it) },
+            temp,
+        ) { framing ->
+            social.setWallCoverFraming(framing)
+            _state.update { it.copy(wall = social.wall(accountId)) }
+        }
+
+    private fun changeWall(change: () -> Unit) {
+        viewModelScope.launch {
+            attempt { change() } ?: return@launch
+            val wall = attempt { social.wall(accountId) } ?: return@launch
+            _state.update { it.copy(wall = wall) }
+        }
+    }
+
+    /** Runs [call] off the main thread; a refusal becomes the screen's problem and the result is null. */
+    private suspend fun <T : Any> attempt(call: () -> T): T? =
+        try {
+            withContext(io) { call() }
+        } catch (e: CoreException) {
+            _state.update { it.copy(problem = e.problem()) }
+            null
+        }
+
     /** Runs [action], if any, then asks for the profile again; a refusal leaves the old profile in view. */
     private fun perform(
         again: () -> Unit,
@@ -71,13 +233,22 @@ class PersonViewModel(
         _state.update { it.copy(busy = true, problem = null) }
         viewModelScope.launch {
             try {
-                val profile =
+                val (profile, wall, page) =
                     withContext(io) {
                         action()
-                        social.person(accountId)
+                        Triple(social.person(accountId), social.wall(accountId), social.wallPosts(accountId, null))
                     }
                 failed = null
-                _state.update { it.copy(profile = profile, loaded = true, busy = false) }
+                _state.update {
+                    it.copy(
+                        profile = profile,
+                        wall = wall,
+                        posts = page.posts,
+                        postsNext = page.next,
+                        loaded = true,
+                        busy = false,
+                    )
+                }
             } catch (e: CoreException) {
                 failed = again
                 _state.update { it.copy(busy = false, loaded = true, problem = e.problem()) }

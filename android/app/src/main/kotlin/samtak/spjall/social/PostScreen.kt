@@ -46,6 +46,7 @@ import samtak.spjall.ui.Palette
 import samtak.spjall.ui.ProblemCard
 
 /** One post, its comments oldest first, and the box to add one. */
+@Suppress("CyclomaticComplexMethod")
 @Composable
 fun PostScreen(
     state: PostViewModel.State,
@@ -61,16 +62,22 @@ fun PostScreen(
     if (target != null && target.id in state.reported) reporting = null
     // This account's own post or comment it asked to delete, as reporting keys it, until it confirms or cancels.
     var deleting by rememberSaveable { mutableStateOf<String?>(null) }
+    val post = state.post
+    // On this account's own wall, another's comment is removed with a reason its writer reads (0115).
+    var removing by rememberSaveable { mutableStateOf<String?>(null) }
+    val ownsWall = post?.wallOwner != null && post.wallOwner == state.me?.id
     val delete: (String, Author) -> (() -> Unit)? = { key, author ->
-        { deleting = key }.takeIf {
-            author.accountId == state.me?.id
+        when {
+            author.accountId == state.me?.id -> ({ deleting = key })
+            ownsWall -> ({ removing = key })
+            else -> null
         }
     }
-    val post = state.post
+    val openPerson = LocalOpenPerson.current
     Surface(modifier = Modifier.fillMaxSize(), color = Palette.bg, contentColor = Palette.fg) {
         Column(modifier = Modifier.windowInsetsPadding(WindowInsets.safeDrawing.only(SUB_SCREEN_SIDES))) {
             SubHeader(stringResource(R.string.post_title), onBack = {
-                post?.let { actions.community(it.communityId) }
+                post?.let { p -> p.wallOwner?.let { openPerson?.invoke(it) } ?: actions.community(p.communityId) }
             })
             SuspendedNotice()
             if (state.busy) LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
@@ -101,7 +108,14 @@ fun PostScreen(
             if (post?.isTombstone() == false) ReplyBox(state, actions, focus)
         }
     }
-    Dialogs(target, deleting?.let(::target), actions, onReported = { reporting = null }) { deleting = null }
+    Dialogs(
+        target,
+        deleting?.let(::target),
+        removing?.let(::target),
+        actions,
+        onReported = { reporting = null },
+        onRemoved = { removing = null },
+    ) { deleting = null }
 }
 
 /** The post itself at the head of the screen, with its poll when it is one. */
@@ -218,12 +232,23 @@ private fun ReplyBox(
 private fun Dialogs(
     reporting: ReportTarget?,
     deleting: ReportTarget?,
+    removing: ReportTarget?,
     actions: PostActions,
     onReported: () -> Unit,
+    onRemoved: () -> Unit,
     onDeleted: () -> Unit,
 ) {
     reporting?.let {
         ReportDialog(onSend = { reason, note -> actions.report(it, reason, note) }, onDismiss = onReported)
+    }
+    removing?.let { doomed ->
+        RemoveCommentDialog(
+            onRemove = { reason ->
+                actions.deleteComment(doomed.id, reason)
+                onRemoved()
+            },
+            onDismiss = onRemoved,
+        )
     }
     deleting?.let { doomed ->
         val post = doomed.kind == ReportTargetKind.POST

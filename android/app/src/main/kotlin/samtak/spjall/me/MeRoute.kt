@@ -19,8 +19,11 @@ import samtak.spjall.BuildConfig
 import samtak.spjall.brand.R
 import samtak.spjall.core.coreVersion
 import samtak.spjall.frames.LocalFrameSession
+import samtak.spjall.social.PersonRoute
+import samtak.spjall.social.PersonViewModel
 import samtak.spjall.social.SocialRoutes
 import samtak.spjall.social.WithNotificationLevels
+import samtak.spjall.social.WithSocialHost
 import samtak.spjall.ui.AppRoutes
 import samtak.spjall.ui.notificationsOff
 import samtak.spjall.ui.openNotificationSettings
@@ -37,6 +40,7 @@ internal fun MeRoute(
     graph: AppGraph,
     owner: ViewModelStoreOwner,
     onSignedOut: () -> Unit,
+    onBack: (() -> Unit)? = null,
 ) {
     val context = LocalContext.current
     val me: MeViewModel =
@@ -101,6 +105,45 @@ internal fun MeRoute(
             coreVersion(),
         )
     WithNotificationLevels(graph.social) {
-        MeScreen(state, actions, notificationsOff = notificationsOff, version = version)
+        MeScreen(state, actions, notificationsOff = notificationsOff, version = version, onBack = onBack)
+    }
+}
+
+/**
+ * Ég as the wall (decision 0115): this account's own wall, with a gear that opens [MeRoute]'s settings. The account
+ * is the one [MeViewModel] holds, so nothing shows until it has loaded.
+ */
+@Composable
+internal fun OwnWallRoute(
+    signIns: Int,
+    nav: NavController,
+    graph: AppGraph,
+    owner: ViewModelStoreOwner,
+) {
+    val me: MeViewModel =
+        viewModel(viewModelStoreOwner = owner, key = "me-$signIns") { MeViewModel(graph.account) }
+    val state by me.state.collectAsStateWithLifecycle()
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { me.load() }
+    val id = state.me?.accountId ?: return
+    val wall: PersonViewModel =
+        viewModel(key = "wall-$id") { PersonViewModel(id, graph.social) }
+    val frames = LocalFrameSession.current
+    val cover =
+        rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
+            uri?.let { frames.open(wall.coverRequest { graph.files.master(it) }) }
+        }
+    WithSocialHost(
+        graph.social,
+        openStatements = { nav.navigate(SocialRoutes.STATEMENTS) },
+        openPerson = { nav.navigate(SocialRoutes.person(it)) },
+    ) {
+        PersonRoute(
+            wall,
+            nav,
+            tab = true,
+            settings = { nav.navigate(AppRoutes.SETTINGS) },
+            chooseCover = { cover.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
+            reframeCover = { frames.open(wall.reframeCoverRequest(graph.files::temp)) },
+        )
     }
 }

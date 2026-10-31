@@ -387,47 +387,11 @@ private fun PostEntry(
         state,
         focusComment = focusComment,
         actions =
-            object : PostActions {
-                override fun community(communityId: String) = nav.leavePostForCommunity(communityId)
-
-                override fun vote(optionId: String) = model.vote(optionId)
-
-                override fun withdrawVote() = model.withdrawVote()
-
-                override fun closePoll() = model.closePoll()
-
-                override fun deletePost() = model.deletePost()
-
-                override fun deleteComment(commentId: String) = model.deleteComment(commentId)
-
-                override fun draft(text: String) = model.draft(text)
-
-                override fun send() = model.send()
-
-                override fun addImage() =
-                    image.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
-
-                override fun removeImage() = model.unpick()
-
-                override fun onReplyTo(comment: samtak.spjall.core.Comment?) = model.onReplyTo(comment)
-
-                override fun react(emoji: String) = model.react(emoji)
-
-                override fun likeComment(commentId: String) = model.likeComment(commentId)
-
-                override fun pin(pinned: Boolean) = model.pin(pinned)
-
-                override fun sendToConversation(postId: String) = sharePost(postId)
-
-                override fun report(
-                    target: ReportTarget,
-                    reason: ReportReason,
-                    note: String,
-                ) = model.report(target, reason, note)
-
-                override fun more() = model.more()
-
-                override fun retry() = model.retry()
-            },
+            postActions(
+                model,
+                nav,
+                sharePost,
+                add = { image.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
+            ),
     )
 }

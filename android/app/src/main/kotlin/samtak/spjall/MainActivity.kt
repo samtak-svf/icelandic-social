@@ -52,6 +52,7 @@ import samtak.spjall.frames.FrameSession
 import samtak.spjall.frames.FrameSheet
 import samtak.spjall.frames.LocalFrameSession
 import samtak.spjall.me.MeRoute
+import samtak.spjall.me.OwnWallRoute
 import samtak.spjall.me.link.LinkRoute
 import samtak.spjall.onboarding.OnboardingRoute
 import samtak.spjall.onboarding.OnboardingViewModel
@@ -255,7 +256,10 @@ class MainActivity : ComponentActivity() {
                 startDestination = AppRoutes.LIST,
             ) {
                 composable(AppRoutes.LIST) { ConversationsRoute(list, nav) }
-                composable(AppRoutes.ME) { MeRoute(signIns, nav, graph, this@MainActivity, ::signedOut) }
+                composable(AppRoutes.ME) { OwnWallRoute(signIns, nav, graph, this@MainActivity) }
+                composable(AppRoutes.SETTINGS) {
+                    MeRoute(signIns, nav, graph, this@MainActivity, ::signedOut, onBack = { nav.popBackStack() })
+                }
                 socialScreens(
                     graph.social,
                     graph.account,

@@ -40,7 +40,7 @@ fun profile(
  */
 @Suppress("TooManyFunctions")
 open class FakeSocialFriends :
-    FakeSocialNotifications(),
+    FakeSocialWall(),
     SocialFriends {
     /** Every account the person screen can open, by id. */
     val people = mutableMapOf<String, PersonProfile>()
@@ -128,6 +128,11 @@ open class FakeSocialFriends :
     override fun unsnoozePerson(accountId: String) {
         call("unsnoozePerson $accountId")
         snoozedUntil.remove(accountId)
+    }
+
+    override fun blockPerson(accountId: String) {
+        call("blockPerson $accountId")
+        people.remove(accountId)
     }
 
     private companion object {

@@ -94,7 +94,9 @@ class PostViewModel(
                 val tombstone = post.isTombstone()
                 val page = if (tombstone) null else withContext(io) { social.comments(id, null, PAGE) }
                 val me = _state.value.me ?: withContext(io) { social.me() }
-                val community = if (tombstone) null else withContext(io) { social.community(post.communityId) }
+                // A wall post's community id is the wall's, which is no community to ask for (0115).
+                val wall = post.wallOwner != null
+                val community = if (tombstone || wall) null else withContext(io) { social.community(post.communityId) }
                 failed = null
                 _state.update {
                     it.copy(
@@ -102,7 +104,7 @@ class PostViewModel(
                         comments = page?.comments.orEmpty(),
                         next = page?.next,
                         me = me,
-                        writes = community?.writes(now()) == true,
+                        writes = if (wall) !tombstone else community?.writes(now()) == true,
                         moderates = community?.moderates == true,
                         loaded = true,
                         busy = false,
@@ -338,11 +340,16 @@ class PostViewModel(
         }
     }
 
-    /** Deletes this account's own comment; it leaves the list, and the post counts one fewer. */
-    fun deleteComment(commentId: String) {
+    /** Deletes this account's own comment; with a [reason] it is another's on this wall, removed by its owner. */
+    fun deleteComment(
+        commentId: String,
+        reason: String? = null,
+    ) {
         viewModelScope.launch {
             try {
-                withContext(io) { social.deleteComment(commentId) }
+                withContext(io) {
+                    if (reason == null) social.deleteComment(commentId) else social.removeWallComment(commentId, reason)
+                }
                 _state.update { s ->
                     val left = s.comments.filterNot { it.commentId == commentId }
                     val gone = left.size < s.comments.size

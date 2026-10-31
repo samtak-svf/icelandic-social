@@ -9,7 +9,8 @@ import samtak.spjall.core.Relation
 import samtak.spjall.core.Snooze
 
 /** The friend calls of [Social] (decision 0114), apart so each file stays under the cap. */
-interface SocialFriends {
+@Suppress("TooManyFunctions")
+interface SocialFriends : SocialWall {
     /** An account as this one sees it; `Refused` 404 for none, or when a block stands between them. */
     fun person(accountId: String): PersonProfile
 
@@ -45,12 +46,17 @@ interface SocialFriends {
 
     /** Ends a snooze. */
     fun unsnoozePerson(accountId: String)
+
+    /** Blocks an account (0114): it can no longer message this one, and its person screen answers 404. */
+    fun blockPerson(accountId: String)
 }
 
 /** [SocialFriends] over the core's client. */
+@Suppress("TooManyFunctions")
 class CoreFriends(
     private val lazyClient: Lazy<CoreClient>,
-) : SocialFriends {
+) : SocialFriends,
+    SocialWall by CoreWall(lazyClient) {
     private val client by lazyClient
 
     override fun person(accountId: String) = client.person(accountId)
@@ -77,4 +83,8 @@ class CoreFriends(
     override fun snoozePerson(accountId: String) = client.snoozePerson(accountId)
 
     override fun unsnoozePerson(accountId: String) = client.unsnoozePerson(accountId)
+
+    override fun blockPerson(accountId: String) {
+        client.block(accountId)
+    }
 }

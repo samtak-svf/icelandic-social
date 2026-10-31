@@ -13,14 +13,19 @@ import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -43,19 +48,28 @@ import samtak.spjall.ui.NameWithMark
 import samtak.spjall.ui.Palette
 import samtak.spjall.ui.PhotoOf
 import samtak.spjall.ui.ProblemCard
+import samtak.spjall.ui.ScreenHeader
 import samtak.spjall.ui.SectionLabel
 import samtak.spjall.ui.calendarDate
+import samtak.spjall.ui.wallCoverOf
 
-/** One account as this one sees it (decision 0114): who they are, how they stand to this account, and what to do. */
+/**
+ * One account's wall as this one sees it (decisions 0114, 0115): the cover and who they are, how they stand to this
+ * account and what to do, then the tabs. [tab] is the own wall as a tab, which has no way back and a gear.
+ */
 @Composable
 fun PersonScreen(
     state: PersonViewModel.State,
     actions: PersonActions,
+    tab: Boolean = false,
 ) {
     val profile = state.profile
+    val own = profile?.relation == Relation.ONESELF
+    LaunchedEffect(state.blocked) { if (state.blocked) actions.back() }
     Surface(modifier = Modifier.fillMaxSize(), color = Palette.bg, contentColor = Palette.fg) {
         Column(modifier = Modifier.windowInsetsPadding(WindowInsets.safeDrawing.only(SUB_SCREEN_SIDES))) {
-            SubHeader(profile?.let { it.name ?: stringResource(R.string.person_unnamed) }.orEmpty(), actions::back)
+            val title = profile?.let { it.name ?: stringResource(R.string.person_unnamed) }.orEmpty()
+            if (tab) ScreenHeader(title) else SubHeader(title, actions::back)
             SuspendedNotice()
             if (state.busy) LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
             LazyColumn(
@@ -64,11 +78,9 @@ fun PersonScreen(
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
                 state.problem?.let { problem -> item(key = "problem") { ProblemCard(problem) { actions.retry() } } }
-                profile?.let { item(key = "profile") { ProfileCard(it, !state.busy, actions) } }
-                profile?.takeIf { it.mutualFriends.isNotEmpty() }?.let { item(key = "mutual") { Mutual(it, actions) } }
-                profile?.takeIf { it.sharedCommunities.isNotEmpty() }?.let {
-                    item(key = "communities") { Shared(it, actions) }
-                }
+                if (state.reported) item(key = "reported") { Muted(stringResource(R.string.report_sent)) }
+                profile?.let { item(key = "profile") { ProfileCard(it, state, !state.busy, actions) } }
+                profile?.let { wallTabs(it, state, own, actions) }
             }
         }
     }
@@ -77,10 +89,13 @@ fun PersonScreen(
 @Composable
 private fun ProfileCard(
     profile: PersonProfile,
+    state: PersonViewModel.State,
     enabled: Boolean,
     actions: PersonActions,
 ) {
+    val own = profile.relation == Relation.ONESELF
     SocialCard {
+        CoverBand(wallCoverOf(profile.accountId, state.wall?.cover), stringResource(R.string.wall_cover_alt))
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
             Avatar(
                 name = profile.name,
@@ -88,7 +103,7 @@ private fun ProfileCard(
                 size = 64.dp,
                 photo = profile.photo?.let { PhotoOf(profile.accountId, it) },
             )
-            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 NameWithMark(
                     name = profile.name ?: stringResource(R.string.person_unnamed),
                     verified = profile.verified,
@@ -102,7 +117,16 @@ private fun ProfileCard(
                     Muted(pluralStringResource(R.plurals.person_mutual_count, mutual.toInt(), mutual.toLong()))
                 }
             }
+            if (own) {
+                IconButton(onClick = actions::settings, modifier = Modifier.testTag("gear")) {
+                    Icon(Icons.Filled.Settings, stringResource(R.string.tab_me))
+                }
+            } else if (profile.relation != Relation.UNKNOWN) {
+                PersonMenu(profile, actions)
+            }
         }
+        state.wall?.bio?.let { Text(it, style = MaterialTheme.typography.bodyMedium) }
+        state.wall?.let { Muted(stringResource(R.string.wall_joined, monthName(it.joinedMonth))) }
         RelationPart(profile, enabled, actions)
         SnoozePart(profile, enabled, actions)
     }
@@ -201,7 +225,7 @@ private fun Choice(
 }
 
 @Composable
-private fun Mutual(
+internal fun Mutual(
     profile: PersonProfile,
     actions: PersonActions,
 ) {
@@ -214,7 +238,7 @@ private fun Mutual(
 }
 
 @Composable
-private fun Shared(
+internal fun Shared(
     profile: PersonProfile,
     actions: PersonActions,
 ) {

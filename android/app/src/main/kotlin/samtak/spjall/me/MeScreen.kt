@@ -50,6 +50,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import samtak.spjall.brand.R
+import samtak.spjall.social.SubHeader
 import samtak.spjall.ui.Avatar
 import samtak.spjall.ui.AvatarKind
 import samtak.spjall.ui.CancelButton
@@ -74,11 +75,13 @@ fun MeScreen(
     actions: MeActions,
     notificationsOff: Boolean = false,
     version: String? = null,
+    onBack: (() -> Unit)? = null,
 ) {
     Surface(modifier = Modifier.fillMaxSize(), color = Palette.bg, contentColor = Palette.fg) {
         // The title stays in its band and the rest scrolls under it (0053), as on the list.
         Column(modifier = Modifier.windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal))) {
-            ScreenHeader(stringResource(R.string.tab_me))
+            val title = stringResource(R.string.tab_me)
+            if (onBack == null) ScreenHeader(title) else SubHeader(title, onBack)
             MeContent(state, actions, notificationsOff, version)
         }
     }

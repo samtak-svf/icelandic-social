@@ -141,6 +141,7 @@ class PhotoCache<T : Any>(
                     PhotoKind.Account -> account.photoFramed(photo.owner, photo.version, photo.frame)
                     PhotoKind.CommunityPicture -> social.communityPictureFramed(photo.owner, photo.version, photo.frame)
                     PhotoKind.CommunityCover -> social.communityCoverFramed(photo.owner, photo.version, photo.frame)
+                    PhotoKind.WallCover -> social.wallCoverFramed(photo.owner, photo.version, photo.frame)
                     // The core's own copy of a group's photo is already on disk (0094).
                     PhotoKind.GroupFile -> photo.owner
                 }
@@ -166,7 +167,8 @@ class CorePhotos(
     private val pictures = PhotoCache(account, social) { decodePhoto(it, SIDE)?.asImageBitmap() }
     private val covers = PhotoCache(account, social) { decodePhoto(it, COVER_SIDE)?.asImageBitmap() }
 
-    private fun of(photo: PhotoOf) = if (photo.kind == PhotoKind.CommunityCover) covers else pictures
+    private fun of(photo: PhotoOf) =
+        if (photo.kind == PhotoKind.CommunityCover || photo.kind == PhotoKind.WallCover) covers else pictures
 
     override fun kept(photo: PhotoOf) = of(photo).kept(photo)
 

@@ -9,6 +9,8 @@ import androidx.navigation.NavController
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.composable
 import samtak.spjall.core.FriendSort
+import samtak.spjall.core.ReportReason
+import samtak.spjall.core.WallAudience
 import samtak.spjall.ui.rememberBack
 
 // The friends screen and the person screen over their view models (decision 0114).
@@ -78,12 +80,25 @@ internal fun Person(
     nav: NavController,
 ) {
     val model: PersonViewModel = viewModel(key = "person-$accountId") { PersonViewModel(accountId, social) }
+    PersonRoute(model, nav, tab = false)
+}
+
+/** The wall of [model]'s account as a screen; [tab] is this account's own, where the gear opens the settings. */
+@Composable
+internal fun PersonRoute(
+    model: PersonViewModel,
+    nav: NavController,
+    tab: Boolean,
+    settings: () -> Unit = {},
+    chooseCover: () -> Unit = {},
+    reframeCover: () -> Unit = {},
+) {
     val state by model.state.collectAsStateWithLifecycle()
     val back = rememberBack(nav)
     PersonScreen(
         state,
         object : PersonActions {
-            override fun back() = back()
+            override fun back() = if (tab) nav.navigate(SocialRoutes.FRIENDS) else back()
 
             override fun retry() = model.retry()
 
@@ -104,6 +119,50 @@ internal fun Person(
             override fun snooze() = model.snooze()
 
             override fun unsnooze() = model.unsnooze()
+
+            override fun settings() = settings()
+
+            override fun openPost(postId: String) = nav.navigate(SocialRoutes.post(postId))
+
+            override fun selectTab(tab: WallTab) = model.selectTab(tab)
+
+            override fun morePosts() = model.morePosts()
+
+            override fun moreImages() = model.moreImages()
+
+            override fun draft(text: String) = model.onDraft(text)
+
+            override fun audience(audience: WallAudience) = model.onAudience(audience)
+
+            override fun publish() = model.publish()
+
+            override fun postAudience(
+                postId: String,
+                audience: WallAudience,
+            ) = model.setAudience(postId, audience)
+
+            override fun deletePost(postId: String) = model.deletePost(postId)
+
+            override fun react(
+                postId: String,
+                emoji: String,
+            ) = model.react(postId, emoji)
+
+            override fun saveBio(text: String) = model.saveBio(text)
+
+            override fun chooseCover() = chooseCover()
+
+            override fun reframeCover() = reframeCover()
+
+            override fun removeCover() = model.removeCover()
+
+            override fun report(
+                reason: ReportReason,
+                note: String,
+            ) = model.report(reason, note)
+
+            override fun block() = model.block()
         },
+        tab = tab,
     )
 }

@@ -8,6 +8,7 @@ import samtak.spjall.social.SocialRoutes
 internal object AppRoutes {
     const val LIST = "conversations"
     const val ME = "me"
+    const val SETTINGS = "settings"
     const val VERIFY = "verify"
     const val LINK = "link"
     const val PEOPLE = "people"
