@@ -397,7 +397,7 @@ class CommunityViewModel(
         viewModelScope.launch {
             try {
                 withContext(io) { social.deletePost(postId) }
-                _state.update { s -> s.copy(posts = s.posts.filterNot { it.postId == postId }) }
+                _state.update { s -> s.copy(posts = s.posts.without(postId)) }
             } catch (e: CoreException) {
                 _state.update { it.copy(problem = e.problem()) }
             }

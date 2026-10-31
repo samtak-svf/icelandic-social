@@ -7,7 +7,7 @@
   "android/app/src/main/kotlin/samtak/spjall/conversation/MessageMenu.kt": 416,
   "android/app/src/main/kotlin/samtak/spjall/social/CommunityManage.kt": 412,
   "android/app/src/main/kotlin/samtak/spjall/social/CommunityViewModel.kt": 671,
-  "android/app/src/main/kotlin/samtak/spjall/social/Social.kt": 581,
+  "android/app/src/main/kotlin/samtak/spjall/social/Social.kt": 572,
   "android/app/src/test/kotlin/samtak/spjall/account/FakeAccount.kt": 594,
   "android/app/src/test/kotlin/samtak/spjall/conversation/ConversationInfoScreenshotTest.kt": 421,
   "android/app/src/test/kotlin/samtak/spjall/conversation/ConversationScreenshotTest.kt": 405,

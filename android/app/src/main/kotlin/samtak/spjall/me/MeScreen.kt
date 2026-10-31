@@ -80,7 +80,7 @@ fun MeScreen(
     Surface(modifier = Modifier.fillMaxSize(), color = Palette.bg, contentColor = Palette.fg) {
         // The title stays in its band and the rest scrolls under it (0053), as on the list.
         Column(modifier = Modifier.windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal))) {
-            val title = stringResource(R.string.tab_me)
+            val title = stringResource(if (onBack == null) R.string.tab_me else R.string.settings_title)
             if (onBack == null) ScreenHeader(title) else SubHeader(title, onBack)
             MeContent(state, actions, notificationsOff, version)
         }

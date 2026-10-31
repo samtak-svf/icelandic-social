@@ -144,16 +144,7 @@ private fun WallComposer(
         ) {
             ComposerAttachments(state.picked, state.poll, state.imageNotice, state.publishing || suspended(), actions)
             Text(stringResource(R.string.wall_audience_label), style = MaterialTheme.typography.labelMedium)
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                WallAudience.entries.forEach { audience ->
-                    FilterChip(
-                        selected = state.audience == audience,
-                        onClick = { actions.audience(audience) },
-                        label = { Text(stringResource(audienceLabel(audience))) },
-                        modifier = Modifier.heightIn(min = 48.dp).testTag("compose-audience-${audience.name}"),
-                    )
-                }
-            }
+            AudienceChips(state.audience, actions::audience)
             Muted(stringResource(R.string.wall_not_encrypted_notice))
         }
     }

@@ -278,7 +278,7 @@ class PersonViewModel(
         _state.update { s ->
             val done = s.copy(answering = s.answering - postId)
             if (changed != null) {
-                done.copy(posts = done.posts.map { if (it.postId == changed.postId) changed else it })
+                done.copy(posts = done.posts.replacing(changed))
             } else {
                 done.copy(problem = problem)
             }
@@ -301,7 +301,7 @@ class PersonViewModel(
     fun deletePost(postId: String) {
         viewModelScope.launch {
             attempt { social.deletePost(postId) } ?: return@launch
-            _state.update { s -> s.copy(posts = s.posts.filterNot { it.postId == postId }) }
+            _state.update { s -> s.copy(posts = s.posts.without(postId)) }
         }
     }
 
@@ -312,7 +312,7 @@ class PersonViewModel(
         viewModelScope.launch {
             attempt { social.react(postId, emoji) } ?: return@launch
             val fresh = attempt { social.post(postId) } ?: return@launch
-            _state.update { s -> s.copy(posts = s.posts.map { if (it.postId == postId) fresh else it }) }
+            _state.update { s -> s.copy(posts = s.posts.replacing(fresh)) }
         }
     }
 

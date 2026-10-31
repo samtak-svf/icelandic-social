@@ -133,8 +133,7 @@ private fun ProfileCard(
             }
             if (own) {
                 IconButton(onClick = actions::settings, modifier = Modifier.testTag("gear")) {
-                    // settings_title: the gear's label is tab_me until that string has an android surface.
-                    Icon(Icons.Filled.Settings, stringResource(R.string.tab_me))
+                    Icon(Icons.Filled.Settings, stringResource(R.string.settings_title))
                 }
             } else if (profile.relation != Relation.UNKNOWN) {
                 PersonMenu(profile, actions)

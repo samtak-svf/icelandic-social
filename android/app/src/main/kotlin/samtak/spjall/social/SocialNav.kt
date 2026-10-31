@@ -42,6 +42,7 @@ fun NavGraphBuilder.socialScreens(
         content: @Composable (NavBackStackEntry) -> Unit,
     ) = hostedScreen(social, nav, route, content)
 
+    screen(SocialRoutes.FEED) { FeedRoute(social, files, nav, sharePost) }
     screen(SocialRoutes.COMMUNITIES) { Communities(social, account, nav, sharePost) }
     screen(SocialRoutes.NOTIFICATIONS) { NotificationsRoute(social, nav, read, dismissNotice) }
     screen(SocialRoutes.NEW_COMMUNITY) { NewCommunity(social, files, nav) }

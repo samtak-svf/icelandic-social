@@ -33,7 +33,8 @@ import samtak.spjall.core.ReportTarget
 interface Social :
     SocialNotifications,
     SocialFriends,
-    SocialComments {
+    SocialComments,
+    SocialHome {
     /** A page of the communities this account may see, [query] matching their names; [after] is the `next` before. */
     fun communities(
         query: String?,
@@ -101,12 +102,6 @@ interface Social :
 
     /** This account: its id, to tell its own posts and comments from others', and its name and photo. */
     fun me(): OwnAccount
-
-    /** A page of posts across every community this account belongs to. */
-    fun feed(
-        before: String?,
-        limit: UInt,
-    ): PostPage
 
     /** A page of a community's posts, newest first; [before] is the `next` of the page before. */
     fun communityPosts(
@@ -337,7 +332,8 @@ class CoreSocial private constructor(
 ) : Social,
     SocialNotifications by CoreNotifications(lazyClient),
     SocialFriends by CoreFriends(lazyClient),
-    SocialComments by CoreComments(lazyClient) {
+    SocialComments by CoreComments(lazyClient),
+    SocialHome by CoreHome(lazyClient) {
     constructor(open: () -> CoreClient) : this(lazy(open))
 
     private val client by lazyClient
@@ -394,11 +390,6 @@ class CoreSocial private constructor(
     ) = client.setCommunityRole(communityId, accountId, role)
 
     override fun me() = client.me().own()
-
-    override fun feed(
-        before: String?,
-        limit: UInt,
-    ) = client.feed(before, limit)
 
     override fun communityPosts(
         communityId: String,

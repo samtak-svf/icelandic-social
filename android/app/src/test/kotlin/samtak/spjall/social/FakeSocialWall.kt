@@ -27,7 +27,7 @@ fun wallOf(
 /** The wall half of [FakeSocial], in memory (0115): what a test puts in [walls] and [wallPostsOf] is what it reads. */
 @Suppress("TooManyFunctions")
 open class FakeSocialWall :
-    FakeSocialNotifications(),
+    FakeSocialHome(),
     SocialWall {
     val walls = mutableMapOf<String, WallProfile>()
     val wallPostsOf = mutableMapOf<String, MutableList<Post>>()
