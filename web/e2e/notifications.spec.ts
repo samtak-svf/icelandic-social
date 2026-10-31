@@ -118,11 +118,9 @@ test("a community set to off sends no row, another community still does, and the
 
   await a.goto(WEB);
   await a.getByRole("link", { name: new RegExp(strings.notifications_title) }).click();
-  const reacted = a
-    .getByRole("listitem")
-    .filter({
-      has: a.getByText(strings.notice_reaction({ name: "Björn Prófsson" }), { exact: true }),
-    });
+  const reacted = a.getByRole("listitem").filter({
+    has: a.getByText(strings.notice_reaction({ name: "Björn Prófsson" }), { exact: true }),
+  });
   // The row of the community left alone is there, so an empty list cannot pass for the quiet one.
   await expect(reacted.filter({ hasText: loudName })).toHaveCount(1);
   await expect(reacted.filter({ hasText: quietName })).toHaveCount(0);
