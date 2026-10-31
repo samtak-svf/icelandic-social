@@ -1,3 +1,4 @@
+import Foundation
 import SpjallCore
 
 @testable import Spjall
@@ -8,6 +9,9 @@ struct WallServer {
     var posts: [String: [Post]] = [:]
     var images: [String: [CommunityImage]] = [:]
     var removed: [String: String] = [:]
+    /// The cover version of each account that has one, and whether its master was kept.
+    var covers: [String: String] = [:]
+    var hasMaster = true
 }
 
 /// The wall calls of `FakeSocial` (decisions 0115, 0116).
@@ -20,8 +24,8 @@ extension FakeSocial {
     func wall(_ account: String) throws -> WallProfile {
         try call("wall \(account)")
         return WallProfile(
-            accountId: account, wallId: "w-\(account)", bio: walls.bios[account], cover: nil, coverFrames: nil,
-            joinedMonth: "2026-03")
+            accountId: account, wallId: "w-\(account)", bio: walls.bios[account], cover: walls.covers[account],
+            coverFrames: nil, joinedMonth: "2026-03")
     }
 
     func wallPosts(_ account: String, before: String?, limit: UInt32) throws -> PostPage {
@@ -36,13 +40,67 @@ extension FakeSocial {
         return CommunityImagePage(images: found, next: next)
     }
 
-    func createWallPost(body: String, audience: WallAudience) throws -> Post {
-        try call("createWallPost \(body) \(audience)")
+    func createWallPost(body: String, media: [String], poll: [String]?, audience: WallAudience) throws -> Post {
+        let attached = "media=\(media.joined(separator: ",")) poll=\(poll ?? [])"
+        try call("createWallPost \(body) \(audience) \(attached)")
         var created = makePost("w-made\(walls.posts["a1"]?.count ?? 0)", "w-a1", body: body, author: jon)
         created.wallOwner = "a1"
         created.audience = audience
         walls.posts["a1", default: []].insert(created, at: 0)
         return created
+    }
+
+    /// `edit` for a post on a wall; not found when no wall has it.
+    func editWall(_ id: String, _ change: (inout Post) throws -> Void) throws -> Post {
+        for account in walls.posts.keys {
+            guard let index = walls.posts[account]?.firstIndex(where: { $0.postId == id }) else { continue }
+            var found = walls.posts[account]![index]
+            try change(&found)
+            walls.posts[account]![index] = found
+            return found
+        }
+        throw CoreError.Refused(status: 404, code: "not_found", requestId: nil)
+    }
+
+    func uploadWallImage(path: String) throws -> PostImage {
+        let name = URL(filePath: path).lastPathComponent
+        try call("uploadWallImage \(name)")
+        if let refused = refuseImage { throw refused }
+        return PostImage(mediaId: "m-\(name)", width: 640, height: 480)
+    }
+
+    func setWallCover(path: String) throws -> String {
+        try call("setWallCover")
+        walls.covers["a1"] = "v1"
+        return "v1"
+    }
+
+    func removeWallCover() throws {
+        try call("removeWallCover")
+        walls.covers["a1"] = nil
+    }
+
+    func wallCover(_ account: String, version: String) throws -> String? {
+        try call("wallCover \(account) \(version)")
+        return nil
+    }
+
+    func wallCoverFramed(_ account: String, version: String, frame: Frame) throws -> String? {
+        try call("wallCoverFramed \(account) \(version) \(frame)")
+        return nil
+    }
+
+    func setWallCoverFraming(_ framing: Framing) throws -> String {
+        try call("setWallCoverFraming")
+        walls.covers["a1"] = "v2"
+        return "v2"
+    }
+
+    func wallCoverSource(path: String) throws -> Bool {
+        try call("wallCoverSource")
+        guard walls.hasMaster else { return false }
+        try Data("master".utf8).write(to: URL(filePath: path))
+        return true
     }
 
     func setPostAudience(_ post: String, audience: WallAudience) throws {

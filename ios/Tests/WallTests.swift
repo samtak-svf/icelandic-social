@@ -73,7 +73,7 @@ final class WallTests: XCTestCase {
         model.audience = .everyone
         model.draft = "  Nýtt  "
         await model.publish()
-        XCTAssertTrue(social.calls.contains("createWallPost Nýtt everyone"))
+        XCTAssertTrue(social.calls.contains { $0.hasPrefix("createWallPost Nýtt everyone") })
         XCTAssertEqual(model.posts.first?.body, "Nýtt")
         XCTAssertEqual(model.posts.first?.audience, .everyone)
         XCTAssertEqual(model.draft, "")

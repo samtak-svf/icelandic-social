@@ -376,7 +376,7 @@ final class FakeSocial: Social, @unchecked Sendable {
             posts[community]![index] = found
             return found
         }
-        throw notFound
+        return try editWall(id, change)
     }
 
     func votePoll(_ post: String, option: String) throws -> Post {

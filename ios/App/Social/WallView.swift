@@ -15,6 +15,7 @@ struct WallView: View {
             if let problem = model.problem {
                 ProblemCard(problem: problem) { Task { await model.retry() } }
             }
+            WallCover(model: model, own: own)
             WallBio(model: model, own: own)
             WallTabRow(model: model)
             switch model.tab {
@@ -24,6 +25,7 @@ struct WallView: View {
             }
         }
         .task { await model.load() }
+        .onChange(of: suspension, initial: true) { _, now in model.suspension = now }
     }
 }
 
@@ -114,7 +116,7 @@ func wallTabLabel(_ tab: WallModel.Tab) -> LocalizedStringKey {
 private struct WallPosts: View {
     let model: WallModel
     let own: Bool
-    @Environment(\.suspension) private var suspension
+    @State private var composing = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -123,7 +125,12 @@ private struct WallPosts: View {
                 EmptyState(systemImage: "text.bubble", text: "posts_empty")
             }
             ForEach(model.posts, id: \.postId) { post in
-                PostCard(post: post, linked: true, writes: false, onReact: { _ in })
+                PostCard(
+                    post: post, linked: true, writes: model.writes,
+                    onReact: { emoji in Task { await model.react(post.postId, emoji) } },
+                    onVote: { option in Task { await model.vote(post.postId, option: option) } },
+                    onWithdrawVote: { Task { await model.withdrawVote(post.postId) } },
+                    onClosePoll: model.canClose(post) ? { Task { await model.closePoll(post.postId) } } : nil)
             }
             if model.next != nil {
                 Color.clear.frame(height: 1).task(id: model.next) { await model.more() }
@@ -131,31 +138,36 @@ private struct WallPosts: View {
         }
     }
 
-    private var draft: Binding<String> { Binding(get: { model.draft }, set: { model.draft = $0 }) }
-
     private var audience: Binding<WallAudience> {
         Binding(get: { model.audience }, set: { model.audience = $0 })
     }
 
     @ViewBuilder private var composer: some View {
         SuspendedNotice()
-        VStack(alignment: .leading, spacing: 8) {
-            TextField("post_compose_prompt", text: draft, axis: .vertical)
-                .textFieldStyle(.roundedBorder)
-                .accessibilityLabel(Text("post_compose"))
-            Picker("wall_audience_label", selection: audience) {
-                Text("wall_audience_friends").tag(WallAudience.friends)
-                Text("wall_audience_everyone").tag(WallAudience.everyone)
+        Button {
+            composing = true
+        } label: {
+            PillLabel(text: "post_compose", filled: true)
+        }
+        .buttonStyle(.plain)
+        .disabled(!model.writes)
+        .sheet(isPresented: $composing) {
+            PostComposerSheet(
+                draft: Binding(get: { model.draft }, set: { model.draft = $0 }),
+                attachments: model.attachments, sendable: model.publishable, busy: model.busy,
+                problem: model.problem, retry: { await model.retry() }, publish: { await model.publish() }
+            ) {
+                VStack(alignment: .leading, spacing: 8) {
+                    Picker("wall_audience_label", selection: audience) {
+                        Text("wall_audience_friends").tag(WallAudience.friends)
+                        Text("wall_audience_everyone").tag(WallAudience.everyone)
+                    }
+                    .pickerStyle(.segmented)
+                    SocialNote(text: "wall_not_encrypted_notice")
+                }
+                .padding(.horizontal, 12)
+                .padding(.top, 8)
             }
-            .pickerStyle(.segmented)
-            SocialNote(text: "wall_not_encrypted_notice")
-            Button {
-                Task { await model.publish() }
-            } label: {
-                PillLabel(text: "post_publish", filled: true)
-            }
-            .buttonStyle(.plain)
-            .disabled(!mayWrite(suspension, model.publishable) || model.busy)
         }
     }
 }
