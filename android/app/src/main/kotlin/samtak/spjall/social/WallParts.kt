@@ -59,6 +59,7 @@ internal fun monthName(month: String): String =
 internal fun LazyListScope.wallTabs(
     profile: PersonProfile,
     state: PersonViewModel.State,
+    attached: Attached,
     own: Boolean,
     actions: PersonActions,
     reportPost: (String) -> Unit,
@@ -86,7 +87,7 @@ internal fun LazyListScope.wallTabs(
         }
     }
     when (state.tab) {
-        WallTab.POSTS -> postsTab(state, own, actions, reportPost)
+        WallTab.POSTS -> postsTab(state, attached, own, actions, reportPost)
         WallTab.ABOUT -> aboutTab(profile, state, own, actions)
         WallTab.IMAGES -> imagesTab(state, actions)
     }
@@ -94,11 +95,12 @@ internal fun LazyListScope.wallTabs(
 
 private fun LazyListScope.postsTab(
     state: PersonViewModel.State,
+    attached: Attached,
     own: Boolean,
     actions: PersonActions,
     reportPost: (String) -> Unit,
 ) {
-    if (own) item(key = "composer") { WallComposer(state, actions) }
+    if (own) item(key = "composer") { WallComposer(state, attached, actions) }
     if (state.loaded && state.posts.isEmpty()) item(key = "posts-empty") { Muted(stringResource(R.string.posts_empty)) }
     items(state.posts.size, key = { "post-${state.posts[it].postId}" }) { index ->
         val post = state.posts[index]
@@ -129,6 +131,7 @@ private fun LazyListScope.postsTab(
 @Composable
 private fun WallComposer(
     state: PersonViewModel.State,
+    attached: Attached,
     actions: PersonActions,
 ) {
     SocialCard {
@@ -140,9 +143,15 @@ private fun WallComposer(
             onText = actions::draft,
             onSend = actions::publish,
             modifier = Modifier.testTag("wall-composer"),
-            ready = state.postable,
+            ready = attached.postable(state.draft),
         ) {
-            ComposerAttachments(state.picked, state.poll, state.imageNotice, state.publishing || suspended(), actions)
+            ComposerAttachments(
+                attached.picked,
+                attached.poll,
+                attached.notice,
+                state.publishing || suspended(),
+                actions,
+            )
             Text(stringResource(R.string.wall_audience_label), style = MaterialTheme.typography.labelMedium)
             AudienceChips(state.audience, actions::audience)
             Muted(stringResource(R.string.wall_not_encrypted_notice))

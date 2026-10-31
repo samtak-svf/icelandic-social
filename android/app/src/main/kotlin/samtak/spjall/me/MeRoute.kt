@@ -127,11 +127,11 @@ internal fun OwnWallRoute(
         }
     val images =
         rememberLauncherForActivityResult(ActivityResultContracts.PickMultipleVisualMedia(IMAGES)) { uris ->
-            wall.pick(uris.map(graph.files::pickedPhoto))
+            wall.attachments.pick(uris.map(graph.files::pickedPhoto))
         }
     val image =
         rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
-            uri?.let { wall.pick(listOf(graph.files.pickedPhoto(it))) }
+            uri?.let { wall.attachments.pick(listOf(graph.files.pickedPhoto(it))) }
         }
     WithSocialHost(
         graph.social,
@@ -149,9 +149,9 @@ internal fun OwnWallRoute(
             chooseCover = { cover.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
             reframeCover = { frames.open(wall.reframeCoverRequest(graph.files::temp)) },
             addImage = {
-                if (wall.roomForImage()) {
+                if (wall.attachments.roomForImage()) {
                     val request = PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
-                    if (wall.room() > 1) images.launch(request) else image.launch(request)
+                    if (wall.attachments.room() > 1) images.launch(request) else image.launch(request)
                 }
             },
         )

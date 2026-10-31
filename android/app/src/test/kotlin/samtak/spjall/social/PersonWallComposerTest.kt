@@ -26,6 +26,9 @@ import java.io.File
 
 /** Images and polls on the wall composer, and a poll on a wall post (0115): the community's rules, on a wall. */
 @OptIn(ExperimentalCoroutinesApi::class)
+private val PersonViewModel.attached get() = attachments.state.value
+private val PersonViewModel.postable get() = attached.postable(state.value.draft)
+
 class PersonWallComposerTest {
     private val dispatcher = StandardTestDispatcher()
     private val social = FakeSocial()
@@ -46,10 +49,10 @@ class PersonWallComposerTest {
         val file = File.createTempFile("wall", ".jpg")
         file.writeText("jpeg")
         file.deleteOnExit()
-        model.pick(listOf(Picked("image/jpeg", file.length()) { file }))
+        model.attachments.pick(listOf(Picked("image/jpeg", file.length()) { file }))
         advanceUntilIdle()
         val state = model.state.value
-        return state.picked.single()
+        return model.attached.picked.single()
     }
 
     @Test
@@ -63,7 +66,7 @@ class PersonWallComposerTest {
             assertTrue("uploadWallImage $path" in social.calls)
             assertEquals(listOf("m1"), social.lastWallMedia)
             val state = model.state.value
-            assertTrue(state.picked.isEmpty())
+            assertTrue(model.attached.picked.isEmpty())
             assertEquals("", state.draft)
             assertEquals(1, state.posts.size)
         }
@@ -79,7 +82,7 @@ class PersonWallComposerTest {
             advanceUntilIdle()
             val state = model.state.value
             assertEquals("Mynd", state.draft)
-            assertEquals(listOf(path), state.picked)
+            assertEquals(listOf(path), model.attached.picked)
             assertNotNull(state.problem)
             assertTrue(state.posts.isEmpty())
             assertTrue(!state.publishing)
@@ -95,60 +98,60 @@ class PersonWallComposerTest {
             model.publish()
             advanceUntilIdle()
             val state = model.state.value
-            assertEquals(CommunityViewModel.ImageNotice.TooLarge, state.imageNotice)
+            assertEquals(CommunityViewModel.ImageNotice.TooLarge, model.attached.notice)
             assertEquals("Mynd", state.draft)
-            assertEquals(1, state.picked.size)
+            assertEquals(1, model.attached.picked.size)
         }
 
     @Test
     fun aPollIsWrittenWithItsOptionsAndAFailedPublishKeepsIt() =
         runTest(dispatcher) {
             val model = model()
-            model.togglePoll()
-            model.pollOption(0, " Já ")
-            model.pollOption(1, "Nei")
+            model.attachments.togglePoll()
+            model.attachments.option(0, " Já ")
+            model.attachments.option(1, "Nei")
             model.onDraft("Spurning")
             social.wallFailure = CoreException.Refused(500u, "x", null)
             model.publish()
             advanceUntilIdle()
-            assertEquals(listOf(" Já ", "Nei"), model.state.value.poll)
+            assertEquals(listOf(" Já ", "Nei"), model.attached.poll)
             assertNotNull(model.state.value.problem)
             social.wallFailure = null
             model.publish()
             advanceUntilIdle()
             assertEquals(listOf("Já", "Nei"), social.lastWallPoll)
-            assertNull(model.state.value.poll)
+            assertNull(model.attached.poll)
         }
 
     @Test
     fun aPollNeedsValidOptionsAndExcludesImages() =
         runTest(dispatcher) {
             val model = model()
-            model.togglePoll()
+            model.attachments.togglePoll()
             model.onDraft("Spurning")
-            assertTrue(!model.state.value.postable)
-            model.pollOption(0, "Já")
-            model.pollOption(1, "Nei")
-            assertTrue(model.state.value.postable)
+            assertTrue(!model.postable)
+            model.attachments.option(0, "Já")
+            model.attachments.option(1, "Nei")
+            assertTrue(model.postable)
             val file = File.createTempFile("wall", ".jpg")
             file.deleteOnExit()
-            model.pick(listOf(Picked("image/jpeg", 4) { file }))
+            model.attachments.pick(listOf(Picked("image/jpeg", 4) { file }))
             advanceUntilIdle()
-            assertEquals(emptyList<String>(), model.state.value.picked)
-            model.togglePoll()
+            assertEquals(emptyList<String>(), model.attached.picked)
+            model.attachments.togglePoll()
             picked(model)
-            model.togglePoll()
-            assertNull(model.state.value.poll)
+            model.attachments.togglePoll()
+            assertNull(model.attached.poll)
         }
 
     @Test
     fun anImageOverTheLimitIsLeftOutWithANotice() =
         runTest(dispatcher) {
             val model = model()
-            model.pick(listOf(Picked("image/jpeg", IMAGE_LIMIT + 1) { error("not read") }))
+            model.attachments.pick(listOf(Picked("image/jpeg", IMAGE_LIMIT + 1) { error("not read") }))
             advanceUntilIdle()
-            assertEquals(CommunityViewModel.ImageNotice.TooLarge, model.state.value.imageNotice)
-            assertEquals(emptyList<String>(), model.state.value.picked)
+            assertEquals(CommunityViewModel.ImageNotice.TooLarge, model.attached.notice)
+            assertEquals(emptyList<String>(), model.attached.picked)
         }
 
     @Test

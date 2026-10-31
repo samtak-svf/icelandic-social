@@ -99,6 +99,7 @@ internal fun PersonRoute(
     addImage: () -> Unit = {},
 ) {
     val state by model.state.collectAsStateWithLifecycle()
+    val attached by model.attachments.state.collectAsStateWithLifecycle()
     val back = rememberBack(nav)
     PersonScreen(
         state,
@@ -179,18 +180,18 @@ internal fun PersonRoute(
 
             override fun addImage() = addImage()
 
-            override fun removeImage(path: String) = model.unpick(path)
+            override fun removeImage(path: String) = model.attachments.unpick(path)
 
-            override fun togglePoll() = model.togglePoll()
+            override fun togglePoll() = model.attachments.togglePoll()
 
             override fun pollOption(
                 index: Int,
                 text: String,
-            ) = model.pollOption(index, text)
+            ) = model.attachments.option(index, text)
 
-            override fun addPollOption() = model.addPollOption()
+            override fun addPollOption() = model.attachments.addOption()
 
-            override fun removePollOption(index: Int) = model.removePollOption(index)
+            override fun removePollOption(index: Int) = model.attachments.removeOption(index)
 
             override fun vote(
                 postId: String,
@@ -202,5 +203,6 @@ internal fun PersonRoute(
             override fun closePoll(postId: String) = model.closePoll(postId)
         },
         tab = tab,
+        attached = attached,
     )
 }

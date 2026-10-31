@@ -63,6 +63,7 @@ fun PersonScreen(
     state: PersonViewModel.State,
     actions: PersonActions,
     tab: Boolean = false,
+    attached: Attached = Attached(),
 ) {
     val profile = state.profile
     val own = profile?.relation == Relation.ONESELF
@@ -84,7 +85,7 @@ fun PersonScreen(
                 state.problem?.let { problem -> item(key = "problem") { ProblemCard(problem) { actions.retry() } } }
                 if (state.reported) item(key = "reported") { Muted(stringResource(R.string.report_sent)) }
                 profile?.let { item(key = "profile") { ProfileCard(it, state, !state.busy, actions) } }
-                profile?.let { wallTabs(it, state, own, actions) { reportingPost = it } }
+                profile?.let { wallTabs(it, state, attached, own, actions) { reportingPost = it } }
             }
         }
     }
