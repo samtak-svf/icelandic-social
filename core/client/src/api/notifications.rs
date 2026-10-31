@@ -19,6 +19,10 @@ pub enum NotificationKind {
     JoinApproved,
     /// A moderator acted on the caller's content; `action` says how.
     Moderated,
+    /// An account asked the caller to be friends (0114).
+    FriendRequest,
+    /// An account took the caller's request (0114).
+    FriendAccepted,
 }
 
 /// How loudly the caller is told (0106): nothing, a row in the list, or a
@@ -44,12 +48,14 @@ pub struct NotificationSettings {
 
 /// The kinds, in the order `NotificationSettings::kinds` lists them, with
 /// the name the server keys them by.
-const NOTIFICATION_KINDS: [(NotificationKind, &str); 5] = [
+const NOTIFICATION_KINDS: [(NotificationKind, &str); 7] = [
     (NotificationKind::Comment, "comment"),
     (NotificationKind::Reply, "reply"),
     (NotificationKind::Reaction, "reaction"),
     (NotificationKind::JoinApproved, "join_approved"),
     (NotificationKind::Moderated, "moderated"),
+    (NotificationKind::FriendRequest, "friend_request"),
+    (NotificationKind::FriendAccepted, "friend_accepted"),
 ];
 
 #[derive(Deserialize)]
@@ -96,6 +102,10 @@ pub enum NotificationAction {
     ReviewUpheld,
     /// The caller's review came back: the action was undone (0115).
     ReviewOverturned,
+    /// A platform moderator cleared the caller's bio (0115); no community.
+    ClearAccountBio,
+    /// A platform moderator cleared the caller's cover (0115); no community.
+    ClearAccountCover,
     #[serde(other)]
     Unknown,
 }
@@ -343,9 +353,8 @@ mod contract_tests {
     use super::NotificationKind;
 
     /// The Worker keeps these from an app below its version floor (`shownTo`), so
-    /// this core never decodes them: a friend's notice until the app has friends,
-    /// the moderators' notice until it has a queue.
-    const WITHHELD: [&str; 3] = ["friend_request", "friend_accepted", "reports_waiting"];
+    /// this core never decodes them: the moderators' notice until it has a queue.
+    const WITHHELD: [&str; 1] = ["reports_waiting"];
 
     #[test]
     fn core_decodes_every_kind_the_worker_lets_it_see() {
@@ -362,7 +371,7 @@ mod contract_tests {
             .iter()
             .partition(|kind| WITHHELD.contains(&kind.as_str().unwrap()));
         assert_eq!(held.len(), WITHHELD.len());
-        assert_eq!(shown.len(), 5);
+        assert_eq!(shown.len(), 7);
         assert!(shown.iter().copied().all(decodes));
         assert!(!held.iter().copied().any(decodes));
     }

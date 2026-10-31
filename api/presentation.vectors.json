@@ -1,5 +1,5 @@
 {
-  "$comment": "Shared by the web (web/src/lib/presentation.vectors.test.ts), Android (PresentationVectorsTest) and iOS (PresentationVectorsTests): each must reproduce every expected value exactly (#275). All instants are UTC ISO-8601; zone is the time zone a stamp is read in (Atlantic/Reykjavik, UTC all year). relativeTime: the whole units the age of at seen from now rounds down to, key is the strings key (brand/strings.contract.json) and count the {count} it is given; key null means the age is over four weeks and the platform shows the date, expected, in the short form with the year. An instant after now reads as now. initials: the first letter of the first word and of the last word (one letter for one word), upper-cased; words are split on spaces only, so a hyphenated name is one word; none gives ?. stamp and listStamp: a conversation row's stamp in zone, with the word for yesterday lower-cased; stamp is the pure function of an instant, now and the zone, and listStamp is the entry point the lists call, which reads now from an argument instead of the clock. problem: the strings key for a failed call (a refusal with code suspended reads problem_suspended here; its end date is not in the refusal, so the problem_suspended_until form is chosen from the account's own suspension and is tested beside each app): outcome unreachable (no answer) or refused (status and the server's error code, null when the body had none), with codes no platform names mapping to error_generic. A store key has no vectors: every platform draws it at random and only wraps it (#275). notice: the sentence and badge of a notification row (decisions 0103, 0104): kind, actors (the names of the newest actors the page carries, newest first; null for a deleted account) and actorCount (every distinct actor) give the strings key and its args. comment, reply and reaction take the plain key for one actor (or none left), _two for two (name the newest, other the next) and _many for three or more (name the newest, count the others, actorCount minus one); join_approved and moderated name nobody, and moderated with action decline_anonymous_post reads notice_anonymous_declined, suspend_account notice_account_suspended and unsuspend_account notice_account_unsuspended. An arg of null is a deleted account and reads as person_deleted. badge is the mark on the row's picture: emoji (the reaction's own), comment, approved or moderator.",
+  "$comment": "Shared by the web (web/src/lib/presentation.vectors.test.ts), Android (PresentationVectorsTest) and iOS (PresentationVectorsTests): each must reproduce every expected value exactly (#275). All instants are UTC ISO-8601; zone is the time zone a stamp is read in (Atlantic/Reykjavik, UTC all year). relativeTime: the whole units the age of at seen from now rounds down to, key is the strings key (brand/strings.contract.json) and count the {count} it is given; key null means the age is over four weeks and the platform shows the date, expected, in the short form with the year. An instant after now reads as now. initials: the first letter of the first word and of the last word (one letter for one word), upper-cased; words are split on spaces only, so a hyphenated name is one word; none gives ?. stamp and listStamp: a conversation row's stamp in zone, with the word for yesterday lower-cased; stamp is the pure function of an instant, now and the zone, and listStamp is the entry point the lists call, which reads now from an argument instead of the clock. problem: the strings key for a failed call (a refusal with code suspended reads problem_suspended here; its end date is not in the refusal, so the problem_suspended_until form is chosen from the account's own suspension and is tested beside each app): outcome unreachable (no answer) or refused (status and the server's error code, null when the body had none), with codes no platform names mapping to error_generic. A store key has no vectors: every platform draws it at random and only wraps it (#275). notice: the sentence and badge of a notification row (decisions 0103, 0104): kind, actors (the names of the newest actors the page carries, newest first; null for a deleted account) and actorCount (every distinct actor) give the strings key and its args. comment, reply and reaction take the plain key for one actor (or none left), _two for two (name the newest, other the next) and _many for three or more (name the newest, count the others, actorCount minus one); join_approved and moderated name nobody, and moderated with action decline_anonymous_post reads notice_anonymous_declined, suspend_account notice_account_suspended and unsuspend_account notice_account_unsuspended. An arg of null is a deleted account and reads as person_deleted. badge is the mark on the row's picture: emoji (the reaction's own), comment, approved or moderator. noticeNext: notice cases the released core does not decode yet, under the same rules: friend_request and friend_accepted name their one actor (badge friend), and moderated with action clear_account_bio reads notice_account_bio_cleared and clear_account_cover notice_account_cover_cleared. The apps pin a released core, so their suites read notice alone; the change that takes the core with these kinds moves the cases into notice.",
   "zone": "Atlantic/Reykjavik",
   "relativeTime": [
     {
@@ -622,6 +622,66 @@
       "actorCount": 0,
       "action": "unsuspend_account",
       "key": "notice_account_unsuspended",
+      "args": {},
+      "badge": "moderator"
+    }
+  ],
+  "noticeNext": [
+    {
+      "kind": "friend_request",
+      "actors": ["Garðar Pálsson"],
+      "actorCount": 1,
+      "key": "notice_friend_request",
+      "args": {
+        "name": "Garðar Pálsson"
+      },
+      "badge": "friend"
+    },
+    {
+      "kind": "friend_request",
+      "actors": [null],
+      "actorCount": 1,
+      "key": "notice_friend_request",
+      "args": {
+        "name": null
+      },
+      "badge": "friend"
+    },
+    {
+      "kind": "friend_accepted",
+      "actors": ["Garðar Pálsson"],
+      "actorCount": 1,
+      "key": "notice_friend_accepted",
+      "args": {
+        "name": "Garðar Pálsson"
+      },
+      "badge": "friend"
+    },
+    {
+      "kind": "friend_accepted",
+      "actors": [null],
+      "actorCount": 1,
+      "key": "notice_friend_accepted",
+      "args": {
+        "name": null
+      },
+      "badge": "friend"
+    },
+    {
+      "kind": "moderated",
+      "actors": [],
+      "actorCount": 0,
+      "action": "clear_account_bio",
+      "key": "notice_account_bio_cleared",
+      "args": {},
+      "badge": "moderator"
+    },
+    {
+      "kind": "moderated",
+      "actors": [],
+      "actorCount": 0,
+      "action": "clear_account_cover",
+      "key": "notice_account_cover_cleared",
       "args": {},
       "badge": "moderator"
     }

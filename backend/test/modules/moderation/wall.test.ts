@@ -308,7 +308,7 @@ const belowWall = () => [
   "android/0.17.7",
   `android/${env.NOTICE_CLIENT_VERSION}`,
   `android/${env.SUSPENSION_NOTICE_CLIENT_VERSION}`,
-  `android/${env.FRIEND_NOTICE_CLIENT_VERSION}`,
+  "android/0.20.9",
 ];
 
 const kinds = async (one: Person, client: string) => {
@@ -370,7 +370,7 @@ describe("a wall's owner", () => {
     for (const version of [
       env.NOTICE_CLIENT_VERSION,
       env.SUSPENSION_NOTICE_CLIENT_VERSION,
-      env.FRIEND_NOTICE_CLIENT_VERSION,
+      "0.20.9",
     ]) {
       expect(await kinds(owner, `android/${version}`)).toEqual([]);
     }

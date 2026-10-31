@@ -36,6 +36,10 @@ pub enum NotificationAction {
     ReviewUpheld,
     /// This account's review came back: the action was undone (0115).
     ReviewOverturned,
+    /// A platform moderator cleared this account's bio (0115); no community.
+    ClearAccountBio,
+    /// A platform moderator cleared this account's cover (0115); no community.
+    ClearAccountCover,
     Unknown,
 }
 
@@ -54,6 +58,10 @@ pub enum SocialNotificationKind {
     /// A moderator acted on this account's post or comment; `action` says
     /// how.
     Moderated,
+    /// An account asked this one to be friends (0114): `actor` names it.
+    FriendRequest,
+    /// An account took this one's request (0114): `actor` names it.
+    FriendAccepted,
 }
 
 /// Something addressed to this account. It carries ids, never the
@@ -119,6 +127,8 @@ impl From<api::Notification> for SocialNotification {
                 K::Reaction => SocialNotificationKind::Reaction,
                 K::JoinApproved => SocialNotificationKind::JoinApproved,
                 K::Moderated => SocialNotificationKind::Moderated,
+                K::FriendRequest => SocialNotificationKind::FriendRequest,
+                K::FriendAccepted => SocialNotificationKind::FriendAccepted,
             },
             actor,
             actors,
@@ -145,6 +155,8 @@ impl From<SocialNotificationKind> for api::NotificationKind {
             K::Reaction => Self::Reaction,
             K::JoinApproved => Self::JoinApproved,
             K::Moderated => Self::Moderated,
+            K::FriendRequest => Self::FriendRequest,
+            K::FriendAccepted => Self::FriendAccepted,
         }
     }
 }
@@ -158,6 +170,8 @@ impl From<api::NotificationKind> for SocialNotificationKind {
             K::Reaction => Self::Reaction,
             K::JoinApproved => Self::JoinApproved,
             K::Moderated => Self::Moderated,
+            K::FriendRequest => Self::FriendRequest,
+            K::FriendAccepted => Self::FriendAccepted,
         }
     }
 }

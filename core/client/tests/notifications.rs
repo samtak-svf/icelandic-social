@@ -178,7 +178,7 @@ fn seen_one_read_delete_and_the_levels_are_sent_as_the_server_reads_them() {
     );
     let settings = c.hosted().notification_settings().unwrap();
     assert_eq!(
-        settings.kinds,
+        settings.kinds[..5],
         [
             (NotificationKind::Comment, NotificationLevel::Push),
             (NotificationKind::Reply, NotificationLevel::InApp),

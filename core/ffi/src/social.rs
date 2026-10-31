@@ -7,11 +7,19 @@
 use std::path::Path;
 
 use spjall_client::api;
+pub mod friends;
+pub mod home;
 pub mod moderation_reviews;
 pub mod notifications;
+pub mod posts;
+pub mod wall;
+pub use friends::*;
+pub use home::*;
 pub use moderation_reviews::*;
 pub use notifications::*;
+pub use posts::*;
 pub use spjall_client::api::{JoinRequest, JoinState};
+pub use wall::*;
 
 use crate::CoreError;
 use crate::client::CoreClient;
@@ -370,142 +378,6 @@ pub enum ModerationState {
     Pending,
     Hidden,
     Removed,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
-pub struct Post {
-    pub post_id: String,
-    pub community_id: String,
-    /// None on an anonymous post to every reader but its author (0091).
-    pub author: Option<Author>,
-    /// Posted without the author's name (0091).
-    #[uniffi(default = false)]
-    pub anonymous: bool,
-    /// This account wrote it (0091).
-    #[uniffi(default = false)]
-    pub mine: bool,
-    pub body: String,
-    pub images: Vec<PostImage>,
-    /// Unix milliseconds.
-    pub created_at: u64,
-    /// Each emoji this account can see, most used first (0100).
-    pub emojis: Vec<EmojiCount>,
-    /// This account's own emoji, if any.
-    pub my_emoji: Option<String>,
-    pub comment_count: u64,
-    /// The newest comment this account may read, for a preview (0080).
-    #[uniffi(default = None)]
-    pub latest_comment: Option<Comment>,
-    pub state: ModerationState,
-    /// A moderator pinned it to the top of the community (0080).
-    #[uniffi(default = false)]
-    pub pinned: bool,
-    /// Present when the post is a poll (0090).
-    #[uniffi(default = None)]
-    pub poll: Option<Poll>,
-}
-
-/// A poll's options and counts (0090). No field says who voted or how.
-#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
-pub struct Poll {
-    pub options: Vec<PollOption>,
-    /// How many votes the poll has, always shown.
-    pub total: u64,
-    /// The option this account voted for.
-    pub mine: Option<String>,
-    /// It takes no more votes and shows its results to every reader.
-    pub closed: bool,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
-pub struct PollOption {
-    pub option_id: String,
-    pub text: String,
-    /// None until this account has voted, unless it sees results at once.
-    pub votes: Option<u64>,
-}
-
-impl From<api::Poll> for Poll {
-    fn from(poll: api::Poll) -> Self {
-        let api::Poll {
-            total,
-            mine,
-            closed,
-            options,
-        } = poll;
-
-        Self {
-            options: options
-                .into_iter()
-                .map(
-                    |api::PollOption {
-                         option_id,
-                         text,
-                         votes,
-                     }| PollOption {
-                        option_id,
-                        text,
-                        votes,
-                    },
-                )
-                .collect(),
-            total,
-            mine,
-            closed,
-        }
-    }
-}
-
-impl From<api::Post> for Post {
-    fn from(post: api::Post) -> Self {
-        let api::Post {
-            post_id,
-            community_id,
-            author,
-            anonymous,
-            mine,
-            body,
-            media,
-            created_at,
-            my_emoji,
-            comment_count,
-            latest_comment,
-            state,
-            pinned,
-            poll,
-            emojis,
-        } = post;
-
-        Self {
-            post_id,
-            community_id,
-            author,
-            anonymous,
-            mine,
-            body,
-            images: media.into_iter().map(Into::into).collect(),
-            created_at,
-            emojis: emojis
-                .into_iter()
-                .map(|api::EmojiCount { emoji, count }| EmojiCount { emoji, count })
-                .collect(),
-            my_emoji,
-            comment_count,
-            latest_comment: latest_comment.map(Into::into),
-            state,
-            pinned,
-            poll: poll.map(Into::into),
-        }
-    }
-}
-
-/// A page of a community's posts, newest first. A page may be short, or
-/// empty, with more after it.
-#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
-pub struct PostPage {
-    pub posts: Vec<Post>,
-    /// The `before` of the next, older page; none on the last.
-    pub next: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
