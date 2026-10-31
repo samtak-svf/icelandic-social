@@ -1,6 +1,7 @@
 # 0119. Importing a person's own content from another platform
 
-- Status: accepted; amended by 0120; designed, not yet implemented (#461)
+- Status: accepted; amended by 0120; implemented for the export file, its removal and the web screens,
+  not yet our own export or a listed destination (#461)
 - Date: 2026-10-31
 - Decided by: the overseer, on Guðröður Atli Jónsson's question of how people can bring their data here and how public content can sync; his to overturn
 - Amended by: [0120](0120-feeding-the-import-from-public-profiles-and-pages.md) (collection from a person's own public profile, with proof it is theirs, and a page through the source platform's API)
@@ -64,9 +65,10 @@ and safe to combine.
 
 ## Open
 
-- **The parser waits on a real export file.** Exports of this kind are known to write UTF-8 bytes as
-  separate escapes, which breaks Icelandic letters unless the import repairs them. That has to be
-  seen on a real file, not assumed.
+- **The parser has not yet seen a real export file.** Exports of this kind are known to write UTF-8
+  bytes as separate escapes, which breaks Icelandic letters unless the import repairs them. The repair
+  is built and changes only text that round-trips to valid UTF-8, and it has run on synthetic escapes.
+  It still has to be seen on a real file, not assumed.
 - **Whether a deletion at the source reaches us.** An incremental transfer probably does not say.
   Until that is measured, removal here is the person's own action.
 - **Iceland only on the web and the API.** Decision 0085 covers the stores. A lock on the web and the
