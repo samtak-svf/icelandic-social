@@ -5,6 +5,9 @@ use crate::is_id;
 /// The web host's origin, as `hosts.web` in `identifiers/ids.json` names it; a test holds them equal.
 const WEB_ORIGIN: &str = "https://spjall.samtak.is";
 
+/// The web's own pages beside `/communities/<id>`, which read as an id but name no community.
+const FIXED_COMMUNITY_ROUTES: [&str; 1] = ["new"];
+
 /// A screen of the app that a web address stands for.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum OwnLink {
@@ -23,7 +26,7 @@ pub fn own_link(link: &str) -> Option<OwnLink> {
         return is_id(id).then(|| OwnLink::Post(id.to_owned()));
     }
     let id = path.strip_prefix("/communities/")?;
-    is_id(id).then(|| OwnLink::Community(id.to_owned()))
+    (is_id(id) && !FIXED_COMMUNITY_ROUTES.contains(&id)).then(|| OwnLink::Community(id.to_owned()))
 }
 
 #[cfg(test)]
@@ -48,6 +51,36 @@ mod tests {
             own_link(&format!("{WEB_ORIGIN}/communities/c_a-1")),
             Some(OwnLink::Community("c_a-1".into()))
         );
+    }
+
+    #[test]
+    #[allow(clippy::disallowed_methods)] // a test reads the route files
+    fn no_page_of_the_web_reads_as_an_id() {
+        let routes = concat!(env!("CARGO_MANIFEST_DIR"), "/../../web/src/routes");
+        let mut pages = 0;
+        for entry in std::fs::read_dir(routes).unwrap() {
+            let name = entry.unwrap().file_name().into_string().unwrap();
+            let Some(page) = name.strip_suffix(".tsx") else {
+                continue;
+            };
+            for parent in ["posts", "communities"] {
+                let Some(child) = page.strip_prefix(parent).and_then(|p| p.strip_prefix('.'))
+                else {
+                    continue;
+                };
+                let first = child.split('.').next().unwrap();
+                if first.starts_with('$') || first == "index" {
+                    continue;
+                }
+                pages += 1;
+                assert_eq!(
+                    own_link(&format!("{WEB_ORIGIN}/{parent}/{first}")),
+                    None,
+                    "{name}"
+                );
+            }
+        }
+        assert!(pages > 0, "no fixed page found under {routes}");
     }
 
     #[test]
