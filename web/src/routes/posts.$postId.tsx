@@ -230,7 +230,7 @@ function CommentView({
       />
       <div className="flex min-w-0 flex-1 flex-col gap-1">
         <StateMark state={comment.state} />
-        <div className="flex w-fit max-w-full flex-col gap-1 rounded-2xl bg-muted px-3 py-2">
+        <div className="flex w-fit max-w-full flex-col gap-1 rounded-post-bubble bg-muted px-3 py-2">
           <span className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm font-semibold">
             <PersonName author={comment.author} />
             <RoleBadge role={comment.author.role} />

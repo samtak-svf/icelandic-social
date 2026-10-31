@@ -425,6 +425,50 @@ describe("brand-gen", () => {
     expect(problems).toContain("fonts assets/fonts/A.txt: missing");
   });
 
+  it("emits type, radius and spacing tokens for every platform", () => {
+    const root = fixture();
+    editJson(root, `brand/${BRAND}/tokens.json`, (t) => {
+      t.type["screen-title"].$value.fontSize = { value: 31, unit: "px" };
+      t.type["section-label"].$value.letterSpacing = { value: 0.2, unit: "em" };
+    });
+    const out = generated(root);
+    const kotlin = out(KOTLIN);
+    expect(kotlin).toMatch(
+      /object Type \{[\s\S]*val SCREEN_TITLE = Style\("headline", 800, 31f, 32f, null\)/,
+    );
+    expect(kotlin).toContain('val SECTION_LABEL = Style("sans", 900, 10f, null, 0.2f)');
+    expect(kotlin).toContain("const val POST_BUBBLE_DP: Int = 16");
+    expect(kotlin).toContain("const val SPACE_2_DP: Int = 2");
+    const swift = out("ios/Generated/BrandTokens.swift");
+    expect(swift).toContain(
+      'static let screenTitle = Style(family: "headline", weight: 800, size: 31, lineHeight: 32, tracking: 0)',
+    );
+    expect(swift).toContain("tracking: 2)"); // 0.2em of 10pt, in points
+    expect(swift).toContain("static let postBubble: CGFloat = 16");
+    expect(swift).toContain("static let space2: CGFloat = 2");
+    const theme = out(`${WEB}/theme.css`);
+    expect(theme).toContain("--text-screen-title: 31px;");
+    expect(theme).toContain("--text-screen-title--line-height: 32px;");
+    expect(theme).toContain("--text-screen-title--font-weight: 800;");
+    expect(theme).toContain("--text-section-label--letter-spacing: 0.2em;");
+    expect(theme).not.toContain("--text-section-label--line-height");
+    expect(theme).not.toContain("--text-*: initial");
+    expect(theme).toContain("--radius-card: 14px;");
+    expect(theme).not.toContain("--spacing");
+  });
+
+  it("refuses a type or spacing token in the wrong unit", () => {
+    for (const edit of [
+      (/** @type {any} */ t) => (t.type.bubble.$value.fontSize.unit = "rem"),
+      (/** @type {any} */ t) => (t.type.bubble.$value.lineHeight.unit = "em"),
+      (/** @type {any} */ t) => (t.spacing["space-4"].$value.unit = "rem"),
+    ]) {
+      const root = fixture();
+      editJson(root, `brand/${BRAND}/tokens.json`, edit);
+      expect(generate(BRAND, root).problems.join()).toMatch(/unit/);
+    }
+  });
+
   it("renders icons byte-identically, the iOS one without alpha", () => {
     const manifest = readJson(`brand/${BRAND}/brand.json`);
     const svg = readFileSync(join(ROOT, "brand", BRAND, manifest.icon.foreground), "utf8");

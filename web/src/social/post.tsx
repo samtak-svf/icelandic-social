@@ -146,7 +146,7 @@ function LatestComment({ comment }: Readonly<{ comment: Comment }>) {
         photo={comment.author.photo}
         className="size-8 rounded-full text-xs"
       />
-      <div className="flex min-w-0 flex-1 flex-col gap-1 rounded-2xl bg-muted px-3 py-2">
+      <div className="flex min-w-0 flex-1 flex-col gap-1 rounded-post-bubble bg-muted px-3 py-2">
         <Link
           to="/posts/$postId"
           params={{ postId: comment.postId }}

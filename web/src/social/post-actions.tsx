@@ -193,7 +193,7 @@ function LikeButton({ reactions }: Readonly<{ reactions: ReactionState }>) {
         <div
           role="group"
           aria-label={strings.post_reactions_more}
-          className="absolute bottom-full left-0 z-20 flex flex-col gap-1 rounded-2xl border border-border bg-surface p-1 shadow-lg"
+          className="absolute bottom-full left-0 z-20 flex flex-col gap-1 rounded-post-bubble border border-border bg-surface p-1 shadow-lg"
           onKeyDown={(event) => {
             if (event.key === "Escape") setOpen(false);
           }}

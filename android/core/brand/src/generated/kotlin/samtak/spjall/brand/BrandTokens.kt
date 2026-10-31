@@ -110,5 +110,50 @@ object BrandTokens {
 
     object Radius {
         const val MD_DP: Int = 6
+        const val WELL_DP: Int = 8
+        const val THUMBNAIL_DP: Int = 10
+        const val PANE_DP: Int = 12
+        const val CARD_DP: Int = 14
+        const val POST_BUBBLE_DP: Int = 16
+        const val BUBBLE_DP: Int = 18
+        const val FIELD_DP: Int = 20
+        const val PILL_DP: Int = 22
+        const val PILL_LG_DP: Int = 26
+    }
+
+    /** The gaps the design repeats, in dp. */
+    object Spacing {
+        const val SPACE_2_DP: Int = 2
+        const val SPACE_4_DP: Int = 4
+        const val SPACE_6_DP: Int = 6
+        const val SPACE_8_DP: Int = 8
+        const val SPACE_10_DP: Int = 10
+        const val SPACE_12_DP: Int = 12
+        const val SPACE_14_DP: Int = 14
+        const val SPACE_16_DP: Int = 16
+        const val SPACE_20_DP: Int = 20
+        const val SPACE_24_DP: Int = 24
+    }
+
+    /** The type the design repeats: family key (see Fonts), weight, size in sp, line height in sp, tracking in em. */
+    object Type {
+        class Style(
+            val family: String,
+            val weight: Int,
+            val size: Float,
+            val lineHeight: Float?,
+            val letterSpacing: Float?,
+        )
+
+        /** A screen title in the cream band: condensed capitals. */
+        val SCREEN_TITLE = Style("headline", 800, 30f, 32f, null)
+        /** The account name on the account screen. */
+        val ACCOUNT_NAME = Style("headline", 800, 24f, 26f, null)
+        /** Small capitals over a section, a day in a conversation. */
+        val SECTION_LABEL = Style("sans", 900, 10f, null, 0.14f)
+        /** A message's text. */
+        val BUBBLE = Style("sans", 500, 14.5f, 21f, null)
+        /** Time and read state under a message, a row's time. */
+        val META = Style("sans", 900, 10f, 13f, null)
     }
 }

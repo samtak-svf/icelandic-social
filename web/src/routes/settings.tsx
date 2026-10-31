@@ -111,7 +111,7 @@ function Settings() {
                 className="flex flex-wrap items-center justify-between gap-3 p-4"
               >
                 <div className="flex items-center gap-3">
-                  <span className="flex size-[30px] items-center justify-center rounded-lg bg-muted">
+                  <span className="flex size-[30px] items-center justify-center rounded-well bg-muted">
                     {deviceIcon(session.kind)}
                   </span>
                   <div>

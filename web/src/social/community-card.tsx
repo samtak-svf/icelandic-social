@@ -63,7 +63,7 @@ function CommunityCard({
           id={community.communityId}
           name={community.name}
           photo={community.photo}
-          className="size-10 rounded-lg"
+          className="size-10 rounded-thumbnail"
         />
         <span className="flex min-w-0 flex-col justify-center">
           <span className={`truncate ${unread ? "font-bold" : "font-semibold"}`}>
@@ -119,7 +119,7 @@ export function CreateRow() {
     >
       <span
         aria-hidden="true"
-        className="flex size-10 items-center justify-center rounded-lg bg-muted text-2xl"
+        className="flex size-10 items-center justify-center rounded-thumbnail bg-muted text-2xl"
       >
         +
       </span>

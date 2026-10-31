@@ -119,7 +119,7 @@ export function CommentComposer({
             rows={1}
             placeholder={placeholder}
             onChange={(event) => setText(event.target.value)}
-            className="field-sizing-content max-h-[7.5rem] min-h-11 min-w-0 flex-1 resize-none rounded-3xl bg-muted px-4 py-2.5 leading-6"
+            className="field-sizing-content max-h-[7.5rem] min-h-11 min-w-0 flex-1 resize-none rounded-field bg-muted px-4 py-2.5 leading-6"
           />
           <label
             htmlFor={`${id}-image`}

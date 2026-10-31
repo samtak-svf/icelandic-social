@@ -22,6 +22,41 @@ describe("brand-check", () => {
     expect(checkBrand(BRAND).problems).toEqual([]);
   });
 
+  it("fails a brand missing a type, radius or spacing group", () => {
+    for (const group of ["type", "radius", "spacing"]) {
+      const problems = problemsAfter((root) =>
+        editJson(root, `brand/${BRAND}/tokens.json`, (t) => {
+          delete t[group];
+        }),
+      );
+      expect(problems).toContain(`tokens.json ${group}: missing`);
+    }
+  });
+
+  it("keeps every spacing token a multiple of 2", () => {
+    const spacing = readJson(`brand/${BRAND}/tokens.json`).spacing;
+    const values = Object.entries(spacing)
+      .filter(([name]) => !name.startsWith("$"))
+      .map(([, token]) => /** @type {any} */ (token).$value.value);
+    expect(values.length).toBeGreaterThan(0);
+    expect(values.filter((v) => v % 2 !== 0)).toEqual([]);
+  });
+
+  it("fails a type style naming an unknown family or one with no bundled face", () => {
+    const edit = (/** @type {(t: any) => void} */ change) =>
+      problemsAfter((root) => editJson(root, `brand/${BRAND}/tokens.json`, change)).join("\n");
+    expect(
+      edit((t) => {
+        t.type.bubble.$value.fontFamily = "{font.nope}";
+      }),
+    ).toContain("tokens.json type.bubble: font family {font.nope} is not a font token");
+    expect(
+      edit((t) => {
+        t.type.bubble.$value.fontWeight = 700;
+      }),
+    ).toContain("tokens.json type.bubble: sans/700 has no bundled face in brand.json fonts");
+  });
+
   it("fails when a brand drops a key", () => {
     const problems = problemsAfter((root) =>
       editJson(root, STRINGS, (s) => {

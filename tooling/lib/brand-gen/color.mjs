@@ -46,10 +46,65 @@ export function radii(tokens) {
   return Object.entries(tokens.radius ?? {})
     .filter(([name]) => !name.startsWith("$"))
     .map(([name, token]) => {
-      const { value, unit } = /** @type {any} */ (token).$value;
-      if (unit !== "px") throw new Error(`radius.${name}: unit ${unit}, expected px`);
-      return { name, value };
+      return { name, value: inUnit(`radius.${name}`, /** @type {any} */ (token).$value, "px") };
     });
+}
+
+/**
+ * @param {string} where e.g. `type.bubble`
+ * @param {any} dimension a DTCG `{ value, unit }`
+ * @param {string} unit
+ */
+function inUnit(where, dimension, unit) {
+  if (dimension.unit !== unit)
+    throw new Error(`${where}: unit ${dimension.unit}, expected ${unit}`);
+  return /** @type {number} */ (dimension.value);
+}
+
+/**
+ * Type styles with the family alias resolved to the font token's key. Size and
+ * line height are in sp/pt, letter spacing in em.
+ *
+ * @typedef {{ name: string, family: string, weight: number, size: number, lineHeight?: number, letterSpacing?: number, description?: string }} TypeStyle
+ * @param {any} tokens parsed tokens.json
+ * @returns {TypeStyle[]}
+ */
+export function typeStyles(tokens) {
+  return Object.entries(tokens.type ?? {})
+    .filter(([name]) => !name.startsWith("$"))
+    .map(([name, token]) => {
+      const t = /** @type {any} */ (token);
+      const v = t.$value;
+      const family = /^\{font\.([a-z0-9-]+)\}$/.exec(v.fontFamily)?.[1];
+      if (family === undefined)
+        throw new Error(`type.${name}: fontFamily ${v.fontFamily} is not a {font.*} alias`);
+      return {
+        name,
+        family,
+        weight: v.fontWeight,
+        size: inUnit(`type.${name}.fontSize`, v.fontSize, "px"),
+        ...(v.lineHeight && { lineHeight: inUnit(`type.${name}.lineHeight`, v.lineHeight, "px") }),
+        ...(v.letterSpacing && {
+          letterSpacing: inUnit(`type.${name}.letterSpacing`, v.letterSpacing, "em"),
+        }),
+        description: t.$description,
+      };
+    });
+}
+
+/**
+ * Spacing in points/dp, like the radii.
+ *
+ * @param {any} tokens parsed tokens.json
+ * @returns {Array<{ name: string, value: number }>}
+ */
+export function spacing(tokens) {
+  return Object.entries(tokens.spacing ?? {})
+    .filter(([name]) => !name.startsWith("$"))
+    .map(([name, token]) => ({
+      name,
+      value: inUnit(`spacing.${name}`, /** @type {any} */ (token).$value, "px"),
+    }));
 }
 
 /** @param {number} byte */

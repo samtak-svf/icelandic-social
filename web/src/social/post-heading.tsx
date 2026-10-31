@@ -89,7 +89,7 @@ export function PostHeading({
           id={community.communityId}
           name={community.name}
           photo={community.photo}
-          className="size-10 rounded-lg"
+          className="size-10 rounded-thumbnail"
         />
         <span className="absolute -bottom-1 -right-1 rounded-full border-2 border-bg">
           <PostPicture post={post} className="size-5 rounded-full text-[0.5rem]" />

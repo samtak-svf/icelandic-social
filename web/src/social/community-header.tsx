@@ -156,7 +156,7 @@ export function CommunityHeader({
       <Cover
         communityId={communityId}
         version={community.cover}
-        className="rounded-lg"
+        className="rounded-card"
         local={preview?.cover}
       />
       <div className="flex items-end gap-3">
@@ -165,7 +165,7 @@ export function CommunityHeader({
           id={communityId}
           name={community.name}
           photo={community.photo}
-          className="size-20 rounded-xl text-2xl"
+          className="size-20 rounded-pill text-2xl"
           local={preview?.photo}
         />
         <div className="flex min-w-0 flex-col">

@@ -142,7 +142,7 @@ export function CommunityPictures({
             id={communityId}
             name={community.name}
             photo={community.photo}
-            className="size-14 rounded-lg text-xl"
+            className="size-14 rounded-post-bubble text-xl"
           />
         }
       />
