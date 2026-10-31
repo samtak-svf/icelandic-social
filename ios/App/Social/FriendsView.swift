@@ -17,6 +17,7 @@ struct FriendsView: View {
                     IncomingSection(model: model)
                     FriendsSection(model: model, text: $text)
                     SentSection(model: model)
+                    SuggestedSection(model: model)
                     SnoozedSection(model: model)
                 }
             }
@@ -32,7 +33,10 @@ struct FriendsView: View {
                 ProblemCard(problem: problem) { Task { await model.retry() } }.padding(16)
             }
         }
-        .task { await model.load() }
+        .task {
+            await model.load()
+            await model.suggestions.load()
+        }
     }
 }
 
@@ -158,6 +162,43 @@ private struct SnoozedSection: View {
                         .padding(.trailing, 12)
                     }
                 }
+            }
+        }
+    }
+}
+
+/// Below the lists: no heading at all when nobody is to be shown. A long name gives way to the button.
+private struct SuggestedSection: View {
+    let model: FriendsModel
+
+    var body: some View {
+        let people = model.suggestions.people
+        if !people.isEmpty {
+            CardLabel(key: "friends_suggested")
+            Panel {
+                ForEach(Array(people.enumerated()), id: \.element.accountId) { index, person in
+                    if index > 0 { Hairline() }
+                    HStack(spacing: 0) {
+                        AuthorLinkRow(author: person, lineLimit: 2)
+                        Button {
+                            Task { await model.ask(person.accountId) }
+                        } label: {
+                            PillLabel(text: "person_add_friend", filled: true, wide: false)
+                                .frame(minHeight: 44)
+                        }
+                        .buttonStyle(.plain)
+                        .fixedSize()
+                        .layoutPriority(1)
+                        .disabled(model.busy)
+                        .padding(.trailing, 12)
+                    }
+                }
+            }
+            if model.suggestions.next != nil {
+                Color.clear.frame(height: 1)
+                    .task(id: model.suggestions.wantsMore) {
+                        if model.suggestions.wantsMore { await model.suggestions.more() }
+                    }
             }
         }
     }

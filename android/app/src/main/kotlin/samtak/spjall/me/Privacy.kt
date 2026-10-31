@@ -120,16 +120,17 @@ internal fun ColumnScope.BlockedSection(
 }
 
 @Composable
-private fun Toggle(
+internal fun Toggle(
     text: String,
     hint: String?,
     checked: Boolean,
     enabled: Boolean,
     onChange: (Boolean) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     Row(
         modifier =
-            Modifier
+            modifier
                 .fillMaxWidth()
                 .toggleable(value = checked, enabled = enabled, role = Role.Switch, onValueChange = onChange)
                 .padding(horizontal = 14.dp, vertical = 12.dp),

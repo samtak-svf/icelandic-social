@@ -12,8 +12,10 @@ import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.Button
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.OutlinedButton
@@ -22,6 +24,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
@@ -92,6 +95,7 @@ private fun FriendsList(
             item(key = "sent-label") { SectionLabel(stringResource(R.string.friends_sent)) }
             items(state.sent, key = { "out-" + it.person.accountId }) { SentRow(it, !state.busy, actions) }
         }
+        suggestions(state, actions)
         if (state.snoozes.isNotEmpty()) {
             item(key = "snoozed-label") { SectionLabel(stringResource(R.string.friends_snoozed)) }
             items(state.snoozes, key = { "z-" + it.person.accountId }) { snooze ->
@@ -104,6 +108,27 @@ private fun FriendsList(
                 }
             }
         }
+    }
+}
+
+/** Below the requests sent: no heading at all while there is nobody to show (0114). */
+private fun LazyListScope.suggestions(
+    state: FriendsViewModel.State,
+    actions: FriendsActions,
+) {
+    if (state.suggestions.isEmpty()) return
+    item(key = "suggested-label") { SectionLabel(stringResource(R.string.friends_suggested)) }
+    items(state.suggestions, key = { "s-" + it.accountId }) { person ->
+        PersonRow(person = person, detail = null, onOpen = { actions.open(person.accountId) }) {
+            Button(
+                onClick = { actions.ask(person.accountId) },
+                enabled = !state.busy,
+                modifier = Modifier.heightIn(min = 48.dp).testTag("suggestion-ask"),
+            ) { Text(stringResource(R.string.person_add_friend)) }
+        }
+    }
+    if (state.suggestionsNext != null) {
+        item(key = "suggested-more") { LaunchedEffect(state.suggestionsNext) { actions.moreSuggestions() } }
     }
 }
 

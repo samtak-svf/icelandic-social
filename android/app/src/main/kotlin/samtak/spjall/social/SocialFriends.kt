@@ -4,6 +4,7 @@ import samtak.spjall.core.CoreClient
 import samtak.spjall.core.FriendPage
 import samtak.spjall.core.FriendRequests
 import samtak.spjall.core.FriendSort
+import samtak.spjall.core.FriendSuggestions
 import samtak.spjall.core.PersonProfile
 import samtak.spjall.core.Relation
 import samtak.spjall.core.Snooze
@@ -49,6 +50,18 @@ interface SocialFriends : SocialWall {
 
     /** Blocks an account (0114): it can no longer message this one, and its person screen answers 404. */
     fun blockPerson(accountId: String)
+
+    /** A page of the people this account may know; [after] is the `next` before, null `next` on the last page. */
+    fun friendSuggestions(
+        after: String?,
+        limit: UInt,
+    ): FriendSuggestions
+
+    /** Whether this account takes part in suggestions, both ways (0114). */
+    fun friendSuggestionsIncluded(): Boolean
+
+    /** Takes this account in or out of suggestions. */
+    fun setFriendSuggestionsIncluded(included: Boolean)
 }
 
 /** [SocialFriends] over the core's client. */
@@ -87,4 +100,13 @@ class CoreFriends(
     override fun blockPerson(accountId: String) {
         client.block(accountId)
     }
+
+    override fun friendSuggestions(
+        after: String?,
+        limit: UInt,
+    ) = client.friendSuggestions(after, limit)
+
+    override fun friendSuggestionsIncluded() = client.friendSuggestionsIncluded()
+
+    override fun setFriendSuggestionsIncluded(included: Boolean) = client.setFriendSuggestionsIncluded(included)
 }

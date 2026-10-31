@@ -201,6 +201,8 @@ struct PersonLinks: View {
 struct AuthorLinkRow: View {
     let author: Author
     var detail: String?
+    /// Cuts a long name short, so a button beside the row keeps its room.
+    var lineLimit: Int?
 
     var body: some View {
         NavigationLink(value: SocialRoute.person(author.accountId)) {
@@ -209,7 +211,9 @@ struct AuthorLinkRow: View {
                     name: author.name, kind: author.verified ? .verified : .unverified, size: 36, photo: author.photoOf)
                 VStack(alignment: .leading, spacing: 2) {
                     NameWithMark(
-                        name: authorName(author), verified: author.verified, markSize: 12, font: .sans(14, black: true))
+                        name: authorName(author), verified: author.verified, markSize: 12, font: .sans(14, black: true)
+                    )
+                    .lineLimit(lineLimit)
                     if let detail {
                         Text(verbatim: detail).font(TypeStyle.meta).foregroundStyle(BrandTokens.Colors.mutedFg)
                     }

@@ -24,6 +24,12 @@ interface FriendsActions {
     fun cancel(accountId: String)
 
     fun unsnooze(accountId: String)
+
+    /** Asks a suggested person to be friends. */
+    fun ask(accountId: String)
+
+    /** The end of the suggestions came into view: the next page. */
+    fun moreSuggestions()
 }
 
 /** What the person screen asks of its view model. */

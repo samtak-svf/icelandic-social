@@ -10,6 +10,7 @@ struct SettingsSection: View {
     let me: Me
     let notificationsOff: Bool
     let levels: NotificationLevelsModel
+    let suggestions: SuggestionSettingsModel
     let communityNames: [String: String]
     let onLink: () -> Void
     let onStatements: () -> Void
@@ -48,6 +49,7 @@ struct SettingsSection: View {
                 NotificationsOff()
             }
             NotificationSettingsSection(levels: levels, names: communityNames)
+            SuggestionSettingsSection(model: suggestions)
             Button(action: onFriends) {
                 PillLabel(text: "person_friends", filled: false, wide: false)
             }
