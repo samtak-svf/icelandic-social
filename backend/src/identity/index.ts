@@ -20,6 +20,7 @@ export {
   notSuspended,
   setSuspension,
   suspendedAmong,
+  suspendedRefusal,
   suspension,
   type Suspension,
 } from "./suspension.ts";

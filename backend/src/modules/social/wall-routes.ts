@@ -11,7 +11,13 @@ import {
 } from "../../api/walls.ts";
 import { db } from "../../env/index.ts";
 import type { AppEnv } from "../../http.ts";
-import { accountProfile, blockedEither, notSuspended, setBio } from "../../identity/index.ts";
+import {
+  accountProfile,
+  blockedEither,
+  notSuspended,
+  setBio,
+  suspendedRefusal,
+} from "../../identity/index.ts";
 import { CLIENT_HEADER, decodesEveryNotice } from "../../shared/client-version.ts";
 import { fail } from "../../shared/errors.ts";
 import { log } from "../../shared/log.ts";
@@ -165,8 +171,11 @@ export function wallRoutes(app: OpenAPIHono<AppEnv>): void {
     return meta.changes > 0 ? c.body(null, 204) : fail(c, 404, "not_found");
   });
 
-  app.openapi(notSuspended(setBioRoute), async (c) => {
+  // Clearing is taking back, like a cover's removal, so a suspension refuses only new text.
+  app.openapi(setBioRoute, async (c) => {
     const bio = c.req.valid("json").bio.trim();
+    const refused = bio === "" ? null : await suspendedRefusal(c);
+    if (refused) return refused;
     if (LINE_BREAK.test(bio) || Array.from(bio).length > MAX_BIO) {
       return fail(c, 400, "invalid_request");
     }

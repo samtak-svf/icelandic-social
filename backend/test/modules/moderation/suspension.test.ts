@@ -427,6 +427,19 @@ describe("what a suspended account still does (decision 0115)", () => {
     expect((await s.one.call("DELETE", "/v1/wall/cover")).status).toBe(204);
   });
 
+  it("clears its bio, and may not write a new one", async () => {
+    const platform = await platformModerator("Samtak");
+    const s = await setting();
+    expect((await s.one.call("PUT", "/v1/me/bio", { bio: "Smiður" })).status).toBe(204);
+    await suspend(platform, s.one);
+    expect((await s.one.call("PUT", "/v1/me/bio", { bio: "Annað" })).status).toBe(403);
+    expect((await s.one.call("PUT", "/v1/me/bio", { bio: "  " })).status).toBe(204);
+    const wall = await ok<{ bio: string | null }>(
+      await s.one.call("GET", `/v1/accounts/${s.one.accountId}/wall`),
+    );
+    expect(wall.bio).toBeNull();
+  });
+
   it("takes back a reaction and a vote it gave before", async () => {
     const platform = await platformModerator("Samtak");
     const s = await setting();
