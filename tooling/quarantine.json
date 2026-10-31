@@ -18,7 +18,7 @@
     },
     {
       "file": "tooling/old-client/old_client/main.rs",
-      "name": "the_last_store_release_reads_this_worker",
+      "name": "the_oldest_kept_release_reads_this_worker",
       "reason": "Needs cf dev --mode interop and a checkout of the recorded core tag; old-client.yml runs it with --ignored."
     },
     {

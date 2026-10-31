@@ -1,5 +1,5 @@
-//! The core of the last store release against the Worker of the tree under
-//! test: every read goes through that core's own decoding, with that release's
+//! The core of the oldest store release we keep working against the Worker of
+//! the tree under test: every read goes through that core's own decoding, with that release's
 //! Spjall-Client. old-client.yml copies this file into the tests of a checkout
 //! of the tag tooling/old-client/release.json records, so it is compiled against
 //! that API and never against the core of this tree.
@@ -199,7 +199,7 @@ fn reports_notice_withheld(moderator: &Phone) {
 
 #[test]
 #[ignore = "needs `cf dev --mode interop` of the tree under test; run by old-client.yml"]
-fn the_last_store_release_reads_this_worker() {
+fn the_oldest_kept_release_reads_this_worker() {
     let run = SystemTime::now()
         .duration_since(SystemTime::UNIX_EPOCH)
         .unwrap()

@@ -166,7 +166,7 @@ and opens an issue when one survives; `check:drills` in `pnpm check` keeps every
 applying. The first run found one: the retention tests aged rows by the constant they
 were checking, so 300 days passed as 30. Add a drill with each new critical rule.
 
-## The last store release against this Worker
+## The oldest store release we keep working against this Worker
 
 A phone keeps its core until its owner updates. `old-client.yml` compiles
 `tooling/old-client/old_client/` in a checkout of the core tag
@@ -187,8 +187,11 @@ stay with [Checking by hand on a phone](#checking-by-hand-on-a-phone), on an ins
 The check covers those four reads, not every route, and `release.json` carries the Android
 and iOS release as one, because both shipped the same core so far.
 
-Move `release.json` in the PR after a store release: its daily `recorded-release` job goes red when
-the last `android-play` build has another core, and never fails a PR for it.
+`release.json` names the oldest build we promise to keep working, not the newest: the current core
+against the current Worker is `interop.yml`'s, and the test asserts what that old build is denied, so
+naming a build past a floor would make it false. A store release does not move it. Raise it by hand
+in a PR once no tester's phone is left below the next build, and adapt the test to that core's API
+and floors in the same PR.
 
 ## Coverage floor
 
