@@ -1,3 +1,4 @@
+import { communityPosts, parseCursor } from "./post-page.ts";
 import type { OpenAPIHono } from "@hono/zod-openapi";
 import {
   communityPostsRoute,
@@ -10,7 +11,6 @@ import {
   getPostMediaRoute,
   getPostRoute,
   listCommentsRoute,
-  MAX_SOCIAL_UPLOAD,
   reactRoute,
   unreactRoute,
   uploadSocialMediaRoute,
@@ -19,7 +19,7 @@ import { communityImagesRoute } from "../../api/community-gallery.ts";
 import { voteRoute, withdrawVoteRoute } from "../../api/polls.ts";
 import { likeCommentRoute, unlikeCommentRoute } from "../../api/social-hub.ts";
 import type { AppEnv } from "../../http.ts";
-import { space, withinLimit } from "../../env/index.ts";
+import { space } from "../../env/index.ts";
 import { blockedEither, notSuspended } from "../../identity/index.ts";
 import { CLIENT_HEADER, decodesEveryNotice } from "../../shared/client-version.ts";
 import { fail } from "../../shared/errors.ts";
@@ -27,7 +27,14 @@ import { log } from "../../shared/log.ts";
 import { markRead } from "../communities/index.ts";
 import { notice } from "../jobs/index.ts";
 import { cardRoutes } from "./cards.ts";
-import { commentAccess, postAccess, refusal, replyRefusal, spaceAccess } from "./access.ts";
+import {
+  commentAccess,
+  ownWallComment,
+  postAccess,
+  refusal,
+  replyRefusal,
+  spaceAccess,
+} from "./access.ts";
 import { authors, named } from "./bylines.ts";
 import { removedPost, renderListed } from "./tombstones.ts";
 import {
@@ -36,19 +43,10 @@ import {
   deleteKeys,
   postImageOwner,
   readImage,
-  upload,
 } from "./media.ts";
-import {
-  communityPosts,
-  createPost,
-  feed,
-  noteAuthor,
-  parseCursor,
-  render,
-  viewPost,
-  unindex,
-  writeComment,
-} from "./posts.ts";
+import { createPost, feed, noteAuthor, render, viewPost, unindex, writeComment } from "./posts.ts";
+import { storedUpload } from "./upload.ts";
+import { invalidPost, wallRoutes } from "./wall-routes.ts";
 
 // The routes of a community's content (decisions 0060, 0063). Each asks
 // access.ts whether the caller may see what it names before anything else.
@@ -56,25 +54,19 @@ import {
 
 export function socialRoutes(app: OpenAPIHono<AppEnv>): void {
   cardRoutes(app);
+  wallRoutes(app);
 
   app.openapi(notSuspended(createPostRoute), async (c) => {
     const { accountId } = c.var.session;
     const { communityId } = c.req.valid("param");
     const access = await spaceAccess(c.env, accountId, communityId);
-    if (!access) return fail(c, 404, "not_found");
+    // A wall is posted on by its own route, which says who reads it (0115).
+    if (!access || access.wall) return fail(c, 404, "not_found");
     const refused = refusal(access);
     if (refused) return fail(c, 403, refused);
     const input = c.req.valid("json");
     if (input.anonymous && !access.standing.anonymousPosts) return fail(c, 409, "anonymous_off");
-    if (input.body === "" && input.media.length === 0) return fail(c, 400, "invalid_request");
-    // A poll's body is its question, and it takes no image; its options differ (decision 0090).
-    if (input.poll) {
-      const texts = input.poll.options;
-      const distinct = new Set(texts.map((t) => t.toLowerCase())).size === texts.length;
-      if (input.body === "" || input.media.length > 0 || !distinct) {
-        return fail(c, 400, "invalid_request");
-      }
-    }
+    if (invalidPost(input)) return fail(c, 400, "invalid_request");
     const created = await createPost(c.env, communityId, accountId, {
       body: input.body,
       media: input.media,
@@ -108,34 +100,19 @@ export function socialRoutes(app: OpenAPIHono<AppEnv>): void {
     const refuse = async <T>(answer: T) => (await body?.cancel(), answer);
     const access = await spaceAccess(c.env, accountId, communityId);
     if (!access) return refuse(fail(c, 404, "not_found"));
-    const refused = refusal(access);
+    // On a wall, whoever reads it may attach an image to a comment (0115).
+    const refused = access.wall ? null : refusal(access);
     if (refused) return refuse(fail(c, 403, refused));
-    if (!(await withinLimit(c.env, "photos", `social:${accountId}`))) {
-      log("request.rate_limited", { code: "photos", requestId: c.var.requestId });
-      return refuse(fail(c, 429, "rate_limited"));
-    }
-    const length = Number(c.req.header("content-length") ?? Number.NaN);
-    if (!Number.isSafeInteger(length) || length < 1 || !body) {
-      return refuse(fail(c, 400, "invalid_request"));
-    }
-    if (length > MAX_SOCIAL_UPLOAD) return refuse(fail(c, 413, "too_large"));
-    let stored: Awaited<ReturnType<typeof upload>>;
-    try {
-      stored = await upload(c.env, communityId, accountId, body, length);
-    } catch {
-      // The body ended short of, or ran past, its Content-Length.
-      return fail(c, 400, "invalid_request");
-    }
-    if (stored === "invalid_image") return fail(c, 400, "invalid_image");
-    log("social_media.stored", { accountId, communityId, size: length });
-    return c.json(stored, 200);
+    const stored = await storedUpload(c, communityId, accountId);
+    return "error" in stored ? fail(c, stored.status, stored.error) : c.json(stored, 200);
   });
 
   app.openapi(communityPostsRoute, async (c) => {
     const { communityId } = c.req.valid("param");
     const { before, limit, q } = c.req.valid("query");
     const access = await spaceAccess(c.env, c.var.session.accountId, communityId);
-    if (!access) return fail(c, 404, "not_found");
+    // A wall's posts are read through the wall's route, which knows its audience (0115).
+    if (!access || access.wall) return fail(c, 404, "not_found");
     // Featured posts keep their place in time, marked (decision 0088).
     const featured = new Set(await space(c.env, communityId).featured());
     const knowing = decodesEveryNotice(c.env, c.req.header(CLIENT_HEADER));
@@ -155,7 +132,7 @@ export function socialRoutes(app: OpenAPIHono<AppEnv>): void {
     const { communityId } = c.req.valid("param");
     const { cursor, limit } = c.req.valid("query");
     const access = await spaceAccess(c.env, c.var.session.accountId, communityId);
-    if (!access) return fail(c, 404, "not_found");
+    if (!access || access.wall) return fail(c, 404, "not_found");
     const page = await communityImages(c.env, communityId, access.viewer.hidden, cursor, limit);
     return c.json({ images: page.rows, next: page.next }, 200);
   });
@@ -268,7 +245,10 @@ export function socialRoutes(app: OpenAPIHono<AppEnv>): void {
 
   app.openapi(deleteCommentRoute, async (c) => {
     const { accountId } = c.var.session;
-    const found = await commentAccess(c.env, accountId, c.req.valid("param").commentId);
+    const { commentId } = c.req.valid("param");
+    const found =
+      (await commentAccess(c.env, accountId, commentId)) ??
+      (await ownWallComment(c.env, accountId, commentId));
     if (!found) return fail(c, 404, "not_found");
     const { post, comment } = found;
     if (comment.author !== accountId) return fail(c, 403, "not_author");

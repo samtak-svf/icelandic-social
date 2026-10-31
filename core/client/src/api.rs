@@ -2698,7 +2698,7 @@ mod tests {
         // A log entry holds every action a moderator or a platform moderator
         // takes; each contract value reads as itself rather than as `Unknown`.
         let logged = listed("/ModerationLogEntry/properties/action/enum");
-        assert_eq!(logged.len(), 29);
+        assert_eq!(logged.len(), 32);
         assert!(logged.iter().all(|value| {
             serde_json::from_value::<ModerationLogAction>(value.clone())
                 .is_ok_and(|action| action != ModerationLogAction::Unknown)

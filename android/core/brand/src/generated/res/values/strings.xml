@@ -554,6 +554,56 @@
     <string name="community_read_more">Lesa meira</string>
     <!-- Says a community's content is hosted on a server and is not end-to-end encrypted (decisions 0060, 0063). -->
     <string name="community_not_encrypted_notice">Efni í hópum er hýst á þjóni og er ekki dulkóðað enda á milli.</string>
+    <!-- Says a wall's content is hosted on a server and is not end-to-end encrypted (decision 0115). -->
+    <string name="wall_not_encrypted_notice">Efni á veggnum er hýst á þjóni og er ekki dulkóðað enda á milli.</string>
+    <!-- The tab of a wall's posts (decision 0115). -->
+    <string name="wall_tab_posts">Innlegg</string>
+    <!-- The tab of a wall's bio and joined month (decision 0115). -->
+    <string name="wall_tab_about">Um</string>
+    <!-- The tab of the images in the wall's posts the viewer may read (decision 0115). -->
+    <string name="wall_tab_images">Myndir</string>
+    <!-- The label of the short text an account writes about itself (decision 0115). -->
+    <string name="wall_bio_label">Um mig</string>
+    <!-- The placeholder of the bio field (decision 0115). -->
+    <string name="wall_bio_placeholder">Segðu frá þér í nokkrum orðum</string>
+    <!-- Says the bio is longer than the limit (decision 0115). -->
+    <string name="wall_bio_too_long">Textinn er of langur.</string>
+    <!-- When the account joined, its month and year (decision 0115). -->
+    <string name="wall_joined">Skráð í %1$s</string>
+    <!-- The alt text of an account's cover (decision 0115). -->
+    <string name="wall_cover_alt">Forsíðumynd</string>
+    <!-- The label of the audience picker on a wall post (decision 0115). -->
+    <string name="wall_audience_label">Hverjir lesa þetta</string>
+    <!-- The audience of a wall post that only the owner's friends read (decision 0115). -->
+    <string name="wall_audience_friends">Vinir</string>
+    <!-- The audience of a wall post that every signed-in account reads (decision 0115). -->
+    <string name="wall_audience_everyone">Allir innskráðir</string>
+    <!-- The owner's action of removing a comment from their wall (decision 0115). -->
+    <string name="wall_comment_remove">Fjarlægja athugasemd</string>
+    <!-- The confirmation of removing a comment from one's wall (decision 0115). -->
+    <string name="wall_comment_remove_confirm">Fjarlægja athugasemdina af veggnum þínum? Sá sem skrifaði hana fær að vita það.</string>
+    <!-- The label of the reason asked of an owner removing a comment (decision 0115). -->
+    <string name="wall_comment_remove_reason">Ástæða</string>
+    <!-- Marks a report in the platform's queue as being of a wall's content (decision 0115). -->
+    <string name="moderation_report_on_wall">Á vegg</string>
+    <!-- The logged decision of clearing an account's bio (decision 0115). -->
+    <string name="moderation_decision_clear_account_bio">Textinn um aðganginn var fjarlægður.</string>
+    <!-- The logged decision of clearing an account's cover (decision 0115). -->
+    <string name="moderation_decision_clear_account_cover">Forsíðumyndin var fjarlægð.</string>
+    <!-- The logged read of a reported wall post by a platform moderator (decision 0115). -->
+    <string name="moderation_decision_read_reported">Tilkynnt efni var lesið.</string>
+    <!-- Tells an account its bio was cleared (decision 0115). -->
+    <string name="notice_account_bio_cleared">Stjórnandi fjarlægði textann um þig af aðganginum þínum.</string>
+    <!-- Tells an account its cover was cleared (decision 0115). -->
+    <string name="notice_account_cover_cleared">Stjórnandi fjarlægði forsíðumyndina af aðganginum þínum.</string>
+    <!-- The platform moderator's action of clearing an account's bio (decision 0115). -->
+    <string name="platform_clear_bio">Fjarlægja textann um aðganginn</string>
+    <!-- The confirmation of clearing a bio (decision 0115). -->
+    <string name="platform_clear_bio_confirm">Fjarlægja textann af aðganginum? Aðgerðin er skráð í aðgerðaskrá Samtaks.</string>
+    <!-- The platform moderator's action of clearing an account's cover (decision 0115). -->
+    <string name="platform_clear_cover">Fjarlægja forsíðumynd aðgangsins</string>
+    <!-- The confirmation of clearing a cover (decision 0115). -->
+    <string name="platform_clear_cover_confirm">Fjarlægja forsíðumyndina af aðganginum? Aðgerðin er skráð í aðgerðaskrá Samtaks.</string>
     <!-- Owner action: change a community's name, description or audience. -->
     <string name="community_edit">Breyta hópi</string>
     <!-- Title of the screen holding a moderator's and the owner's tools (decision 0079). -->

@@ -7,7 +7,7 @@ export { MAX_FEATURED } from "./do/space-schema.ts";
 export { dropSpace, forgetAccount } from "./lifecycle.ts";
 export { commentAccess, postAccess } from "./access.ts";
 export { deletePending, pendingAnonymous, pendingQueue, publishPending } from "./anonymous.ts";
-export { commentMedia, deleteUnattached } from "./media.ts";
+export { commentMedia, deleteUnattached, postMedia, readImage } from "./media.ts";
 export {
   commentContent,
   keptText,

@@ -36,6 +36,7 @@ const person = (photo: string | null) => ({
 
 const report = (over: Partial<Report> = {}): Report => ({
   reportId: "rep1",
+  onWall: false,
   communityId: null,
   target: { kind: "account", id: "acc1" },
   targetAccount: person("v1"),

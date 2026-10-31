@@ -1,3 +1,4 @@
+import { INDEXED, listed, parseCursor } from "./post-page.ts";
 import { db, space } from "../../env/index.ts";
 import { blockedEither, UNBLOCKED } from "../../identity/index.ts";
 import { notePost } from "../communities/index.ts";
@@ -24,6 +25,9 @@ export type Post = Omit<PostContent, "author" | "latestComment"> & {
   /** The viewer wrote it. */
   mine: boolean;
   latestComment: (Omit<CommentContent, "author"> & { author: Author; media: MediaRef[] }) | null;
+  /** Whose wall it is on and who reads it; neither on a community's post (decision 0115). */
+  wall?: { accountId: string };
+  audience?: "friends" | "everyone";
   state: IndexedPost["state"];
   /** The community's moderators pinned it to the top of its feed (decision 0080). */
   pinned: boolean;
@@ -102,74 +106,15 @@ export async function render(
             : null,
         state: row.state,
         pinned: featured.has(row.postId),
+        ...wallFields(row),
       },
     ];
   });
 }
 
-/** The posts a list holds: a client that knows a tombstone gets the removed too (0115). */
-const listed = (tombstones: boolean) =>
-  tombstones ? "p.state IN ('visible', 'removed')" : "p.state = 'visible'";
-
-const INDEXED = `p.post_id AS postId, p.community_id AS communityId, p.author_id AS authorId,
-       p.created_at AS createdAt, p.state, p.anonymous`;
-
-/** A cursor: the last post's time and id, or only a time to read before. */
-export function parseCursor(cursor: string | undefined): { t: number; id: string | null } | null {
-  if (cursor === undefined) return null;
-  const at = cursor.indexOf("-");
-  return at < 0
-    ? { t: Number(cursor), id: null }
-    : { t: Number(cursor.slice(0, at)), id: cursor.slice(at + 1) };
-}
-
-/**
- * A community's visible posts, newest first, with `tombstones` the removed in
- * their places, but those a block hides from the viewer. With `query` (decision
- * 0079) the community's own space names the posts whose text matches it, so the
- * index reads only those, and every page and its `next` follow the same rule
- * without the search: keyset pagination, visibility and block filtering stay
- * exact. Featured posts keep their place in time (decision 0088). A search finds
- * only what can be read.
- */
-export async function communityPosts(
-  env: Env,
-  communityId: string,
-  viewer: Viewer,
-  before: string | undefined,
-  limit: number,
-  tombstones: boolean,
-  query?: string,
-): Promise<{ rows: IndexedPost[]; next: string | null }> {
-  const cursor = parseCursor(before);
-  const text = query?.trim() ?? "";
-  const matched = text ? await space(env, communityId).searchPosts(text) : null;
-  if (matched !== null && matched.length === 0) return { rows: [], next: null };
-  const { results } = await db(env)
-    .prepare(
-      `SELECT ${INDEXED} FROM post_index p
-        WHERE p.community_id = ?1 AND ${listed(tombstones && matched === null)}
-          AND p.author_id NOT IN (SELECT value FROM json_each(?2))
-          AND (?3 IS NULL OR p.created_at < ?3
-               OR (p.created_at = ?3 AND (?4 IS NULL OR p.post_id < ?4)))
-          AND (?5 = 1 OR p.post_id IN (SELECT value FROM json_each(?6)))
-        ORDER BY p.created_at DESC, p.post_id DESC LIMIT ?7`,
-    )
-    .bind(
-      communityId,
-      JSON.stringify(viewer.hidden),
-      cursor?.t ?? null,
-      cursor?.id ?? null,
-      matched === null ? 1 : 0,
-      JSON.stringify(matched ?? []),
-      limit + 1,
-    )
-    .all<IndexedPost>();
-  const page = results.slice(0, limit);
-  const last = page.at(-1);
-  const next = results.length > limit && last ? `${last.createdAt}-${last.postId}` : null;
-  return { rows: page, next };
-}
+/** What a wall post carries beyond a community's (decision 0115); nothing on the latter. */
+export const wallFields = (row: IndexedPost) =>
+  row.audience === null ? {} : { wall: { accountId: row.authorId }, audience: row.audience };
 
 /**
  * The posts a community features (decision 0088) as `viewer` reads them,
@@ -283,7 +228,14 @@ export async function createPost(
   env: Env,
   communityId: string,
   author: string,
-  input: { body: string; media: string[]; poll?: string[]; anonymous?: boolean },
+  input: {
+    body: string;
+    media: string[];
+    poll?: string[] | undefined;
+    anonymous?: boolean;
+    /** Makes it a wall post (decision 0115), which moves no community's unread count. */
+    audience?: "friends" | "everyone";
+  },
 ): Promise<(Omit<PostContent, "latestComment"> & { latestComment: null }) | "invalid_media"> {
   const media = await unattached(env, communityId, author, input.media);
   if (!media) return "invalid_media";
@@ -293,11 +245,12 @@ export async function createPost(
   // moves the community's unread count then, so a reader cannot tell it was written.
   const anonymous = input.anonymous === true;
   await db(env).batch([
-    ...(anonymous ? [] : notePost(env, communityId, author, createdAt)),
+    ...(anonymous || input.audience ? [] : notePost(env, communityId, author, createdAt)),
     db(env)
       .prepare(
-        `INSERT INTO post_index (post_id, community_id, author_id, created_at, state, anonymous)
-         VALUES (?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO post_index (post_id, community_id, author_id, created_at, state, anonymous,
+                                 audience)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
       )
       .bind(
         postId,
@@ -306,6 +259,7 @@ export async function createPost(
         createdAt,
         anonymous ? "pending" : "visible",
         anonymous ? 1 : 0,
+        input.audience ?? null,
       ),
     db(env)
       .prepare(

@@ -105,6 +105,36 @@
         "shared.nom": "sameiginlegur",
         "shared.nom.pl": "sameiginlegir"
       }
+    },
+    "wall": {
+      "bin": {
+        "headword": "veggur",
+        "guid": "cbd77d95bcc98e329bf0ccf847c60a85"
+      },
+      "gender": "kk",
+      "forms": {
+        "nom": "veggur",
+        "nom.def": "veggurinn",
+        "acc": "vegg",
+        "acc.def": "vegginn",
+        "dat": "vegg",
+        "dat.def": "veggnum",
+        "gen": "veggjar",
+        "gen.def": "veggjarins",
+        "nom.pl": "veggir",
+        "nom.pl.def": "veggirnir",
+        "acc.pl": "veggi",
+        "acc.pl.def": "veggina",
+        "dat.pl": "veggjum",
+        "dat.pl.def": "veggjunum",
+        "gen.pl": "veggja",
+        "gen.pl.def": "veggjanna"
+      },
+      "variants": {
+        "gen": "veggs",
+        "gen.def": "veggsins"
+      },
+      "agreement": {}
     }
   },
   "compounds": [

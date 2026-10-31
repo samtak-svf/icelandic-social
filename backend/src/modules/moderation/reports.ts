@@ -8,7 +8,7 @@ import type {
   TARGET_STATES,
 } from "../../api/moderation.ts";
 import { suspendedAmong } from "../../identity/index.ts";
-import { standing } from "../communities/index.ts";
+import { standing, wallsAmong } from "../communities/index.ts";
 import { notice } from "../jobs/index.ts";
 import { withdrawingReportsWaiting } from "../notifications/index.ts";
 import {
@@ -38,7 +38,7 @@ async function placeOf(
   reporter: string,
   kind: Kind,
   id: string,
-): Promise<{ communityId: string | null; targetAccount: string | null } | null> {
+): Promise<{ communityId: string | null; targetAccount: string | null; wall?: boolean } | null> {
   switch (kind) {
     case "post": {
       const found = await postAccess(env, reporter, id);
@@ -47,12 +47,19 @@ async function placeOf(
         found && {
           communityId: found.post.communityId,
           targetAccount: found.post.anonymous === 1 ? null : found.post.authorId,
+          wall: found.access.wall !== null,
         }
       );
     }
     case "comment": {
       const found = await commentAccess(env, reporter, id);
-      return found && { communityId: found.post.communityId, targetAccount: found.comment.author };
+      return (
+        found && {
+          communityId: found.post.communityId,
+          targetAccount: found.comment.author,
+          wall: found.access.wall !== null,
+        }
+      );
     }
     case "community": {
       const found = await standing(env, reporter, id);
@@ -72,9 +79,14 @@ export async function fileReport(
   const { kind, id } = input.target;
   const place = await placeOf(env, reporter, kind, id);
   if (!place) return false;
-  // Samtak answers for unlawful content, and for communities and accounts (0063).
+  // Samtak answers for unlawful content, for communities and accounts (0063), and
+  // for all of a wall, whose owner is no moderator of it (0115).
   const toPlatform =
-    input.toPlatform || input.reason === "unlawful" || kind === "community" || kind === "account";
+    input.toPlatform ||
+    input.reason === "unlawful" ||
+    kind === "community" ||
+    kind === "account" ||
+    place.wall === true;
   const reportId = `r_${hex(16)}`;
   await db(env).batch([
     db(env)
@@ -151,11 +163,12 @@ async function standingOf(
   env: Env,
   r: Row,
   known: boolean,
+  walls: ReadonlySet<string>,
 ): Promise<(typeof TARGET_STANDINGS)[number] | null> {
   if (r.target_kind === "community") return null;
   // A deleted account's reports keep no account (ON DELETE SET NULL).
   if (r.target_account === null || !known) return "gone";
-  if (r.community_id === null) return null;
+  if (r.community_id === null || walls.has(r.community_id)) return null;
   const there = await standing(env, r.target_account, r.community_id, { deleted: true });
   if (!there?.role) return there?.banned ? "banned" : "not_member";
   if (there.role === "owner") return "owner";
@@ -236,6 +249,7 @@ export async function reportPage(
           page.flatMap((r) => r.target_account ?? []),
         )
       : new Set<string>();
+  const walls = await wallsAmong(env, [...new Set(page.flatMap((r) => r.community_id ?? []))]);
   const last = page.at(-1);
   return {
     reports: await Promise.all(
@@ -244,6 +258,7 @@ export async function reportPage(
         communityId: r.community_id,
         target: { kind: r.target_kind, id: r.target_id },
         targetAccount: named(r.target_account),
+        onWall: r.community_id !== null && walls.has(r.community_id),
         targetSuspended: r.target_account !== null && suspended.has(r.target_account),
         targetAnonymous: anonymous.has(r.target_id),
         reason: r.reason,
@@ -257,7 +272,7 @@ export async function reportPage(
         // An anonymous post's author stands nowhere a report shows (decision 0091).
         targetStanding: anonymous.has(r.target_id)
           ? null
-          : await standingOf(env, r, known(r.target_account)),
+          : await standingOf(env, r, known(r.target_account), walls),
         targetState: await stateOf(env, r),
         // A comment's report carries its image, so the moderator sees it (decision 0082).
         targetMedia: (media.get(r.target_id) ?? []).map((m) => m.mediaId),
@@ -271,6 +286,8 @@ export type OpenReport = {
   reportId: string;
   communityId: string | null;
   toPlatform: boolean;
+  targetKind: Kind;
+  targetId: string;
   targetAccount: string | null;
 };
 
@@ -279,11 +296,17 @@ export async function openReport(env: Env, reportId: string): Promise<OpenReport
   const row = await db(env)
     .prepare(
       `SELECT community_id AS communityId, to_platform AS toPlatform,
-              target_account AS targetAccount
+              target_kind AS targetKind, target_id AS targetId, target_account AS targetAccount
          FROM reports WHERE report_id = ? AND state = 'open'`,
     )
     .bind(reportId)
-    .first<{ communityId: string | null; toPlatform: number; targetAccount: string | null }>();
+    .first<{
+      communityId: string | null;
+      toPlatform: number;
+      targetKind: Kind;
+      targetId: string;
+      targetAccount: string | null;
+    }>();
   return row && { ...row, reportId, toPlatform: row.toPlatform === 1 };
 }
 

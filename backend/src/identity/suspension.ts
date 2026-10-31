@@ -1,3 +1,4 @@
+import type { Context } from "hono";
 import { createMiddleware } from "hono/factory";
 import { db } from "../env/index.ts";
 import type { AppEnv } from "../http.ts";
@@ -57,12 +58,18 @@ export async function setSuspension(
   ]);
 }
 
-const refuseWhileSuspended = createMiddleware<AppEnv>(async (c, next) => {
+/** The answer that refuses the caller while a suspension stands, or null; for a route only part of which is refused. */
+export async function suspendedRefusal(c: Context<AppEnv>) {
   const stands = await suspension(c.env, c.var.session.accountId);
-  if (!stands) return next();
+  return stands && fail(c, 403, "suspended", stands.until === null ? {} : { until: stands.until });
+}
+
+const refuseWhileSuspended = createMiddleware<AppEnv>(async (c, next) => {
+  const refused = await suspendedRefusal(c);
+  if (!refused) return next();
   // A refusal cancels the body, so a client that is uploading stops sending it.
   await c.req.raw.body?.cancel();
-  return fail(c, 403, "suspended", stands.until === null ? {} : { until: stands.until });
+  return refused;
 });
 
 /** `route`, refused to a suspended account before anything else about the request is read. */

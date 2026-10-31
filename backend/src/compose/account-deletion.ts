@@ -1,5 +1,6 @@
 import { dropAccount, orphans, revokeAllDevices } from "../identity/index.ts";
-import { handOverCommunities } from "../modules/communities/index.ts";
+import { handOverCommunities, purgeWall } from "../modules/communities/index.ts";
+import { communityLifecycle } from "./community-lifecycle.ts";
 import { deleteAccountHistory } from "../modules/history/index.ts";
 import { forgetFriends } from "./friends.ts";
 import { leaveConversations } from "../modules/messaging/index.ts";
@@ -23,6 +24,8 @@ export async function deleteAccount(env: Env, accountId: string): Promise<void> 
   // its memberships go with its row (0063).
   await forgetAccount(env, accountId);
   await handOverCommunities(env, accountId);
+  // Its wall goes whole, the comments others wrote there with it (0115).
+  await purgeWall(env, accountId, communityLifecycle);
   // Its friendships, requests and snoozes go both ways, and the notices it caused (0114).
   await forgetFriends(env, accountId);
   // A history transfer's row would go with the account, its bytes would not.

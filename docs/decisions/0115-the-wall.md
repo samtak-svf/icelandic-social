@@ -1,6 +1,6 @@
 # 0115. The wall: an account's posts, for friends by default, moderated by the platform
 
-- Status: accepted; designed, not yet implemented; the platform moderation screen and action route (#374), the statement of reasons, the single review, the tombstone, suspension and the notice of reports waiting (#374) implemented, the rest still to come
+- Status: accepted; designed, not yet implemented; the platform moderation screen and action route (#374), the statement of reasons, the single review, the tombstone, suspension and the notice of reports waiting (#374) and the wall's backend (#377) implemented, the rest still to come
 - Date: 2026-10-30
 - Decided by: Guðröður Atli Jónsson
 - Amends: [0044](0044-no-fljotid-in-v1.md) ("There is no wall"; settles the report and moderation it asked for),
@@ -122,14 +122,20 @@ what the platform has today is too little to open walls on.
    One review per log entry, asked for by the person whose content it was; a platform moderator decides, never the
    one who acted or asked. A cleared photo cannot come back, and the person is told so. Overturning restores only when
    no later hide or remove of the same content stands: the older decision falls, the newer one is not undone by it, and
-   the person is told the content does not come back. An overturn that does restore writes two entries in one batch,
+   the person is told the content does not come back. **The review queue withholds a wall's text** (decided 2026-10-31
+   by the overseeing session, which Guðröður may overrule): the read rule below keeps a wall away from anyone without
+   an open report, and a review is not one, so that rule wins over a reviewer seeing the content; the reviewer decides
+   from the log entry and its reason. An overturn that does restore writes two entries in one batch,
    `review_overturned` and `restore_post` or `restore_comment`, so the replay of a restored space (0068) reads only
    what it always read; one that restores nothing writes only `review_overturned`.
 4. **Suspension**, which does not exist: a column on `accounts`, timed or open. It stops posts, comments, reactions,
    friend requests and creating or joining a community. It does not touch conversations, which are end-to-end
    encrypted and which a person may need. The person is told and has one review. Built: poll votes and inviting are
    refused as well, and moderating in a community they already moderate continues
-   (`backend/src/identity/suspension.ts`); friend requests and editing take the same seam when they exist. The log
+   (`backend/src/identity/suspension.ts`); friend requests and editing take the same seam when they exist. Taking back
+   continues, so a suspended account may remove its cover and clear its bio but not write a new one; it cannot change a
+   post's audience, and may delete the post. The bio's half was decided 2026-10-31 by the overseeing session, which
+   Guðröður may overrule. The log
    entry keeps the end date it was decided with (`moderation_log.suspended_until`), so a statement, the log and a
    review card say how long it was for after the account's own columns have moved on; no date means until a moderator
    lifts it. A notice about it goes only to a client that words it, `SUSPENSION_NOTICE_CLIENT_VERSION`: 0.19.0 decodes

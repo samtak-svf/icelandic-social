@@ -103,6 +103,30 @@ export async function dropDeadPushToken(
     .run();
 }
 
+/** What a wall shows of `accountId`, or null when there is no such account (decision 0115). */
+export async function accountProfile(
+  env: Env,
+  accountId: string,
+): Promise<{ bio: string | null; createdAt: number } | null> {
+  return db(env)
+    .prepare("SELECT bio, created_at AS createdAt FROM accounts WHERE account_id = ?")
+    .bind(accountId)
+    .first<{ bio: string | null; createdAt: number }>();
+}
+
+/** Sets or clears the account's bio, with `entries` in the same write (decision 0115). */
+export async function setBio(
+  env: Env,
+  accountId: string,
+  bio: string | null,
+  entries: D1PreparedStatement[] = [],
+): Promise<void> {
+  await db(env).batch([
+    db(env).prepare("UPDATE accounts SET bio = ? WHERE account_id = ?").bind(bio, accountId),
+    ...entries,
+  ]);
+}
+
 /**
  * Sets or clears the account's photo version and framing (decisions 0039, 0086), with `entries` in
  * the same write. False when the account no longer exists.

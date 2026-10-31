@@ -51,6 +51,7 @@ import {
   withdraw,
 } from "./membership.ts";
 import { communityImageRoutes } from "./images.ts";
+import { wallImageRoutes } from "./wall-images.ts";
 import { type LifecycleHooks, markDeleted, restore } from "./lifecycle.ts";
 
 // The routes of communities and membership (decision 0063). A log line
@@ -281,4 +282,5 @@ export function communityRoutes(app: OpenAPIHono<AppEnv>, hooks: LifecycleHooks)
   });
 
   communityImageRoutes(app, hooks);
+  wallImageRoutes(app);
 }

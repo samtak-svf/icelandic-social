@@ -6,7 +6,7 @@ import { fail } from "../shared/errors.ts";
 import { opsToken } from "../env/index.ts";
 import { jobHandlers } from "../compose/job-handlers.ts";
 import { log } from "../shared/log.ts";
-import { communityExists } from "../modules/communities/index.ts";
+import { spaceExists } from "../modules/communities/index.ts";
 import { drainJobs, jobsOverview, retryJobs } from "../modules/jobs/index.ts";
 import { commentModeration } from "../modules/moderation/index.ts";
 import { restoreSpace } from "../modules/social/index.ts";
@@ -84,7 +84,7 @@ export function opsRoutes(app: OpenAPIHono<AppEnv>) {
       return fail(c, 400, "invalid_request");
     }
     // A deleted community's space was deleted with it, and is not brought back.
-    if (!(await communityExists(c.env, input.communityId))) return fail(c, 404, "not_found");
+    if (!(await spaceExists(c.env, input.communityId))) return fail(c, 404, "not_found");
     const target = at === undefined ? { bookmark: input.bookmark as string } : { at };
     try {
       const moderated = await commentModeration(c.env, input.communityId);

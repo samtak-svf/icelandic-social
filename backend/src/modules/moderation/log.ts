@@ -22,6 +22,7 @@ type Logged =
   | Action
   | PlatformAction
   | "close_report"
+  | "read_reported"
   | "delete_community"
   | "restore_community"
   | (typeof COMMUNITY_IMAGE_ACTIONS)[number]

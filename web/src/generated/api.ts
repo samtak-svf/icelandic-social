@@ -580,6 +580,11 @@ export interface Community {
 export interface Post {
   postId: string;
   communityId: string;
+  /** Whose wall the post is on; absent on a post in a community (decision 0115) */
+  wall?: {
+    accountId: string;
+  };
+  audience?: WallAudience;
   /** Null on an anonymous post to every reader but its author (decision 0091): no account id, name, picture, mark or role. The author sees their own byline, with `mine` */
   author: Author | null;
   /** Posted without the author's name (decision 0091) */
@@ -619,6 +624,9 @@ export interface Post {
   /** A moderator features it (decision 0088); it is also in the community's `featured`. The API keeps it in its place in the feed, marked; on an expanded screen a client leaves it out of the community feed because the aside shows it (decision 0092). `getFeed` never marks it */
   pinned: boolean;
 }
+
+/** Who reads this wall post; absent on a post in a community */
+export type WallAudience = "friends" | "everyone";
 
 export interface Author {
   accountId: string;
@@ -707,6 +715,10 @@ export interface CommunityCoverSet {
   version: string;
 }
 
+export interface WallCoverSet {
+  version: string;
+}
+
 /** What a reference shows, by its kind; `unavailable` when the caller may not see it */
 export type Card = {
   kind: "unavailable";
@@ -760,6 +772,19 @@ export type Card = {
 export interface Ref {
   kind: "post" | "comment" | "community";
   id: string;
+}
+
+export interface WallProfile {
+  accountId: string;
+  /** Null until the account's first post or cover */
+  wallId: string | null;
+  bio: string | null;
+  /** The cover's version, or null */
+  cover: string | null;
+  /** How the cover is framed, or null */
+  coverFrames: Framing;
+  /** `YYYY-MM`, the month of joining and no more */
+  joinedMonth: string;
 }
 
 export interface PostPage {
@@ -867,6 +892,11 @@ export interface ModerationReviewDecision {
   reason: string;
 }
 
+export interface ReportedWallContent {
+  body: string | null;
+  media: Array<string>;
+}
+
 export interface ReportPage {
   reports: Array<Report>;
   /** The cursor of the next page */
@@ -879,6 +909,8 @@ export interface Report {
   communityId: string | null;
   target: ReportTarget;
   targetAccount: Author | null;
+  /** The post or comment is on a person's wall; read it through `readReportedWallContent` (decision 0115) */
+  onWall: boolean;
   /** That account is suspended now, in the platform's queue; always false in a community's, which is not told (decision 0115) */
   targetSuspended: boolean;
   reason: "unlawful" | "harassment" | "spam" | "other";
@@ -888,7 +920,7 @@ export interface Report {
   createdAt: number;
   closedAt: number | null;
   /** How it was closed: the action taken, `dismissed`, or `community_deleted`; null while open */
-  decision: "hide_post" | "remove_post" | "restore_post" | "hide_comment" | "remove_comment" | "restore_comment" | "mute_member" | "unmute_member" | "remove_member" | "ban_member" | "unban_member" | "clear_account_photo" | "suspend_account" | "unsuspend_account" | "dismissed" | "community_deleted" | null;
+  decision: "hide_post" | "remove_post" | "restore_post" | "hide_comment" | "remove_comment" | "restore_comment" | "mute_member" | "unmute_member" | "remove_member" | "ban_member" | "unban_member" | "clear_account_photo" | "clear_account_bio" | "clear_account_cover" | "suspend_account" | "unsuspend_account" | "dismissed" | "community_deleted" | null;
   /** The reason the action gave, or the closing resolution; null while open */
   resolution: string | null;
   /** Who closed it; null while open, when the community's deletion did, or once deleted */
@@ -915,7 +947,7 @@ export interface ModerationLogEntry {
   actor: Author | null;
   /** Done as one of Samtak's platform moderators */
   asPlatform: boolean;
-  action: "hide_post" | "remove_post" | "restore_post" | "hide_comment" | "remove_comment" | "restore_comment" | "mute_member" | "unmute_member" | "remove_member" | "ban_member" | "unban_member" | "clear_account_photo" | "suspend_account" | "unsuspend_account" | "close_report" | "delete_community" | "restore_community" | "set_community_picture" | "remove_community_picture" | "set_community_cover" | "remove_community_cover" | "pin_post" | "unpin_post" | "close_poll" | "anonymous_posts_on" | "anonymous_posts_off" | "reveal_author" | "review_upheld" | "review_overturned";
+  action: "hide_post" | "remove_post" | "restore_post" | "hide_comment" | "remove_comment" | "restore_comment" | "mute_member" | "unmute_member" | "remove_member" | "ban_member" | "unban_member" | "clear_account_photo" | "clear_account_bio" | "clear_account_cover" | "suspend_account" | "unsuspend_account" | "close_report" | "read_reported" | "delete_community" | "restore_community" | "set_community_picture" | "remove_community_picture" | "set_community_cover" | "remove_community_cover" | "pin_post" | "unpin_post" | "close_poll" | "anonymous_posts_on" | "anonymous_posts_off" | "reveal_author" | "review_upheld" | "review_overturned";
   target: {
     kind: "post" | "comment" | "community" | "account" | "report";
     id: string;
@@ -2112,6 +2144,78 @@ export function getCommunityCoverSource(args: {
 }
 
 /**
+ * Set or replace the caller's cover (decision 0086)
+ *
+ * The body is an image of at most 10 MB, with a Content-Length. It is not end-to-end encrypted.
+ */
+export function setWallCover(args: {
+  body: Blob | ArrayBuffer;
+}, init?: CallInit): Promise<
+  | { status: 200; data: WallCoverSet }
+  | { status: 400; data: ApiError }
+  | { status: 401; data: ApiError }
+  | { status: 403; data: ApiError }
+  | { status: 413; data: ApiError }
+  | { status: 426; data: ApiError }
+  | { status: 429; data: ApiError }
+> {
+  return call("PUT", "/v1/wall/cover", args, init, "application/octet-stream");
+}
+
+/** Remove the caller's cover */
+export function removeWallCover(init?: CallInit): Promise<
+  | { status: 204; data: undefined }
+  | { status: 401; data: ApiError }
+  | { status: 426; data: ApiError }
+> {
+  return call("DELETE", "/v1/wall/cover", undefined, init);
+}
+
+/** Frame the caller's cover again (decision 0086) */
+export function frameWallCover(args: {
+  body: Framing;
+}, init?: CallInit): Promise<
+  | { status: 200; data: WallCoverSet }
+  | { status: 400; data: ApiError }
+  | { status: 401; data: ApiError }
+  | { status: 403; data: ApiError }
+  | { status: 404; data: ApiError }
+  | { status: 409; data: ApiError }
+  | { status: 426; data: ApiError }
+  | { status: 429; data: ApiError }
+> {
+  return call("PATCH", "/v1/wall/cover/frames", args, init);
+}
+
+/** The caller's cover master, to frame it again (decision 0086) */
+export function getWallCoverSource(init?: CallInit): Promise<
+  | { status: 200; data: Blob }
+  | { status: 401; data: ApiError }
+  | { status: 404; data: ApiError }
+  | { status: 426; data: ApiError }
+> {
+  return call("GET", "/v1/wall/cover/source", undefined, init);
+}
+
+/** A person's cover, a WebP */
+export function getWallCover(args: {
+  path: {
+    accountId: string;
+  };
+  query?: {
+    frame?: "compact" | "medium" | "expanded";
+  };
+}, init?: CallInit): Promise<
+  | { status: 200; data: Blob }
+  | { status: 400; data: ApiError }
+  | { status: 401; data: ApiError }
+  | { status: 404; data: ApiError }
+  | { status: 426; data: ApiError }
+> {
+  return call("GET", "/v1/accounts/{accountId}/wall/cover", args, init);
+}
+
+/**
  * Resolve references to cards
  *
  * The card of each reference, in the order given. A reference to what the caller may not see, or to nothing, resolves to an `unavailable` card, whatever the reason.
@@ -2129,6 +2233,143 @@ export function resolveCards(args: {
   | { status: 426; data: ApiError }
 > {
   return call("POST", "/v1/cards", args, init);
+}
+
+/** A person's wall: bio, cover and month of joining */
+export function getWall(args: {
+  path: {
+    accountId: string;
+  };
+}, init?: CallInit): Promise<
+  | { status: 200; data: WallProfile }
+  | { status: 400; data: ApiError }
+  | { status: 401; data: ApiError }
+  | { status: 404; data: ApiError }
+  | { status: 426; data: ApiError }
+> {
+  return call("GET", "/v1/accounts/{accountId}/wall", args, init);
+}
+
+/** The wall posts the caller may read, newest first */
+export function listWallPosts(args: {
+  path: {
+    accountId: string;
+  };
+  query?: {
+    /** The `next` of the page before */
+    before?: string;
+    limit?: number;
+  };
+}, init?: CallInit): Promise<
+  | { status: 200; data: PostPage }
+  | { status: 400; data: ApiError }
+  | { status: 401; data: ApiError }
+  | { status: 404; data: ApiError }
+  | { status: 426; data: ApiError }
+> {
+  return call("GET", "/v1/accounts/{accountId}/wall/posts", args, init);
+}
+
+/** The images of the wall posts the caller may read, newest first */
+export function listWallImages(args: {
+  path: {
+    accountId: string;
+  };
+  query?: {
+    /** The `next` of the page before */
+    cursor?: string;
+    limit?: number;
+  };
+}, init?: CallInit): Promise<
+  | { status: 200; data: CommunityImagePage }
+  | { status: 400; data: ApiError }
+  | { status: 401; data: ApiError }
+  | { status: 404; data: ApiError }
+  | { status: 426; data: ApiError }
+> {
+  return call("GET", "/v1/accounts/{accountId}/wall/images", args, init);
+}
+
+/**
+ * Post on the caller's own wall
+ *
+ * As a post in a community, and not end-to-end encrypted either.
+ */
+export function createWallPost(args: {
+  body: {
+    body?: string;
+    media?: Array<string>;
+    /** Makes the post a poll (decision 0090): the body is the question and is required, there are two to six distinct options, and no image */
+    poll?: {
+      options: Array<string>;
+    };
+    audience?: WallAudience;
+  };
+}, init?: CallInit): Promise<
+  | { status: 200; data: Post }
+  | { status: 400; data: ApiError }
+  | { status: 401; data: ApiError }
+  | { status: 403; data: ApiError }
+  | { status: 426; data: ApiError }
+> {
+  return call("POST", "/v1/wall/posts", args, init);
+}
+
+/** Upload an image for a post on the caller's own wall */
+export function uploadWallMedia(args: {
+  body: Blob | ArrayBuffer;
+}, init?: CallInit): Promise<
+  | { status: 200; data: SocialMedia }
+  | { status: 400; data: ApiError }
+  | { status: 401; data: ApiError }
+  | { status: 403; data: ApiError }
+  | { status: 413; data: ApiError }
+  | { status: 426; data: ApiError }
+  | { status: 429; data: ApiError }
+> {
+  return call("POST", "/v1/wall/media", args, init, "application/octet-stream");
+}
+
+/**
+ * Change who reads a wall post
+ *
+ * Only its author may. It applies from the next read.
+ */
+export function setPostAudience(args: {
+  path: {
+    postId: string;
+  };
+  body: {
+    audience: WallAudience;
+  };
+}, init?: CallInit): Promise<
+  | { status: 204; data: undefined }
+  | { status: 400; data: ApiError }
+  | { status: 401; data: ApiError }
+  | { status: 403; data: ApiError }
+  | { status: 404; data: ApiError }
+  | { status: 426; data: ApiError }
+> {
+  return call("PATCH", "/v1/posts/{postId}/audience", args, init);
+}
+
+/**
+ * Set or clear the caller's bio
+ *
+ * At most 120 characters and no line break; an empty text clears it.
+ */
+export function setBio(args: {
+  body: {
+    bio: string;
+  };
+}, init?: CallInit): Promise<
+  | { status: 204; data: undefined }
+  | { status: 400; data: ApiError }
+  | { status: 401; data: ApiError }
+  | { status: 403; data: ApiError }
+  | { status: 426; data: ApiError }
+> {
+  return call("PUT", "/v1/me/bio", args, init);
 }
 
 /**
@@ -2635,6 +2876,70 @@ export function decideModerationReview(args: {
 }
 
 /**
+ * Remove a comment on the caller's own wall
+ *
+ * It is logged with the owner as actor, its text is kept for 90 days and its author is told. There is no review: it is their wall to keep.
+ */
+export function removeWallComment(args: {
+  path: {
+    /** The post's id, a hyphen, and the comment's own part */
+    commentId: string;
+  };
+  body: {
+    reason: string;
+  };
+}, init?: CallInit): Promise<
+  | { status: 204; data: undefined }
+  | { status: 400; data: ApiError }
+  | { status: 401; data: ApiError }
+  | { status: 404; data: ApiError }
+  | { status: 426; data: ApiError }
+> {
+  return call("POST", "/v1/wall/comments/{commentId}/remove", args, init);
+}
+
+/**
+ * What an open report on a wall says was written
+ *
+ * A platform moderator reads a wall post or comment only here, on an open report, and each read is a moderation log entry.
+ */
+export function readReportedWallContent(args: {
+  path: {
+    reportId: string;
+  };
+}, init?: CallInit): Promise<
+  | { status: 200; data: ReportedWallContent }
+  | { status: 400; data: ApiError }
+  | { status: 401; data: ApiError }
+  | { status: 403; data: ApiError }
+  | { status: 404; data: ApiError }
+  | { status: 426; data: ApiError }
+> {
+  return call("GET", "/v1/moderation/reports/{reportId}/target", args, init);
+}
+
+/**
+ * An image of what an open report on a wall names, as WebP
+ *
+ * As `readReportedWallContent`: on an open report, and each read is logged.
+ */
+export function readReportedWallImage(args: {
+  path: {
+    reportId: string;
+    mediaId: string;
+  };
+}, init?: CallInit): Promise<
+  | { status: 200; data: Blob }
+  | { status: 400; data: ApiError }
+  | { status: 401; data: ApiError }
+  | { status: 403; data: ApiError }
+  | { status: 404; data: ApiError }
+  | { status: 426; data: ApiError }
+> {
+  return call("GET", "/v1/moderation/reports/{reportId}/media/{mediaId}", args, init);
+}
+
+/**
  * Feature a post in the community
  *
  * A community features up to three posts, shown apart from its feed (decision 0088). Only the owner and the moderators pin, and each change is a moderation log entry. A removed or deleted post is unpinned. A fourth is refused: release one first.
@@ -2813,7 +3118,7 @@ export function moderate(args: {
  */
 export function moderatePlatform(args: {
   body: {
-    action: "clear_account_photo" | "suspend_account" | "unsuspend_account";
+    action: "clear_account_photo" | "clear_account_bio" | "clear_account_cover" | "suspend_account" | "unsuspend_account";
     /** The account's id */
     targetId: string;
     reason: string;

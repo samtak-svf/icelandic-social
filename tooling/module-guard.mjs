@@ -69,6 +69,8 @@ export const OWNERS = {
   media: "messaging",
   communities: "communities",
   live_communities: "communities",
+  live_spaces: "communities",
+  walls: "communities",
   community_members: "communities",
   community_join_requests: "communities",
   community_invitations: "communities",
@@ -197,6 +199,16 @@ export const READS = [
     table: "live_communities",
     why: "a person's screen shows only shared communities that are not deleted",
   },
+  {
+    module: "notifications",
+    table: "live_spaces",
+    why: "a notice about a wall post or comment is written and shown like a community's (decision 0115)",
+  },
+  {
+    module: "moderation",
+    table: "walls",
+    why: "the review queue withholds what a wall's author wrote, in the one query that lists it (decision 0115)",
+  },
 ];
 
 /**
@@ -209,6 +221,16 @@ export const RAW = {
     files: [
       "backend/src/modules/communities/communities.ts",
       "backend/src/modules/communities/lifecycle.ts",
+      "backend/src/modules/communities/walls.ts",
+    ],
+  },
+  // What must see a wall too; everything else reads a community and nothing else (0115).
+  live_spaces: {
+    view: "live_communities",
+    files: [
+      "backend/src/modules/communities/walls.ts",
+      "backend/src/modules/notifications/list.ts",
+      "backend/src/modules/notifications/notify.ts",
     ],
   },
 };

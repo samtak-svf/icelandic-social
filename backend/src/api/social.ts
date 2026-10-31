@@ -9,7 +9,10 @@ import {
   RATE_LIMITED,
 } from "./common.ts";
 import { ReactionBody, ReactionFields } from "./reaction-kinds.ts";
-import { Poll, POLL_OPTIONS } from "./poll-schema.ts";
+import { Poll } from "./poll-schema.ts";
+import { MediaId, POST_FIELDS, WallAudience } from "./post-fields.ts";
+
+export { MAX_BIO, MediaId, POST_FIELDS, WallAudience } from "./post-fields.ts";
 
 // A community's content (decisions 0060, 0063): posts, comments on them and
 // one reaction per account on each. It is hosted and access-controlled, not
@@ -20,9 +23,6 @@ import { Poll, POLL_OPTIONS } from "./poll-schema.ts";
 /** The largest image a post takes, before it is re-encoded. */
 export const MAX_SOCIAL_UPLOAD = 10 * 1024 * 1024;
 
-/** How many images a post holds. */
-const MAX_POST_MEDIA = 4;
-
 export { emojiOfKind, kindOfEmoji, REACTIONS, type ReactionKind } from "./reaction-kinds.ts";
 
 const CommunityId = OpaqueId;
@@ -31,7 +31,6 @@ export const CommentId = OpaqueId.openapi({
   example: "p_3f9a1b2c3d4e5f60718293a4b5c6d7e8-0a1b2c3d4e5f6071",
   description: "The post's id, a hyphen, and the comment's own part",
 });
-export const MediaId = OpaqueId.openapi({ example: "sm_3f9a1b2c3d4e5f60718293a4b5c6d7e8" });
 
 const State = z.enum(["visible", "hidden", "removed"]).openapi({
   description: "Only a moderator sees what is not visible: hidden or removed by a moderator",
@@ -86,6 +85,12 @@ export const Post = z
   .object({
     postId: PostId,
     communityId: CommunityId,
+    wall: z.object({ accountId: OpaqueId }).optional().openapi({
+      description: "Whose wall the post is on; absent on a post in a community (decision 0115)",
+    }),
+    audience: WallAudience.optional().openapi({
+      description: "Who reads this wall post; absent on a post in a community",
+    }),
     // A union, not `.nullable()` plus `.openapi()`, as `latestComment` below.
     author: z.union([Author, z.null()]).openapi({
       description:
@@ -162,6 +167,7 @@ export const MEMBERS_REPLY = {
 };
 
 const post = z.object({ postId: PostId });
+
 const tags = ["social"];
 
 export const createPostRoute = createRoute({
@@ -180,24 +186,13 @@ export const createPostRoute = createRoute({
       content: {
         "application/json": {
           schema: z.object({
-            body: z.string().trim().max(5000).default(""),
-            media: z.array(MediaId).max(MAX_POST_MEDIA).default([]),
+            body: POST_FIELDS.body,
+            media: POST_FIELDS.media,
             anonymous: z.boolean().default(false).openapi({
               description:
                 "Without the author's name (decision 0091): only where the community allows it, and it waits for a moderator's approval before anyone else sees it",
             }),
-            poll: z
-              .object({
-                options: z
-                  .array(z.string().trim().min(1).max(POLL_OPTIONS.textMax))
-                  .min(POLL_OPTIONS.min)
-                  .max(POLL_OPTIONS.max),
-              })
-              .optional()
-              .openapi({
-                description:
-                  "Makes the post a poll (decision 0090): the body is the question and is required, there are two to six distinct options, and no image",
-              }),
+            poll: POST_FIELDS.poll,
           }),
         },
       },

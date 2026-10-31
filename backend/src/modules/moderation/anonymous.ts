@@ -83,7 +83,9 @@ export function anonymousRoutes(app: OpenAPIHono<AppEnv>): void {
     const { accountId } = c.var.session;
     const found = await postAccess(c.env, accountId, c.req.valid("param").postId);
     // Reading a post is the first condition, so a reveal tells a stranger nothing.
-    if (!found || found.post.anonymous !== 1) return fail(c, 404, "not_found");
+    if (!found || found.post.anonymous !== 1 || found.access.wall) {
+      return fail(c, 404, "not_found");
+    }
     const me: Standing = found.access.standing;
     if (!moderates(me) && !me.platformModerator) return fail(c, 403, "not_permitted");
     const { postId, communityId, authorId } = found.post;

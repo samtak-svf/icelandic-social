@@ -83,6 +83,19 @@ export function reportsNoticeClientVersions(env: Env): Record<Client, string> {
 }
 
 /**
+ * The versions from which a client words a wall's notices and the clearing of a
+ * bio or a cover (decision 0115), the same shape as `noticeClientVersions`.
+ */
+export function wallNoticeClientVersions(env: Env): Record<Client, string> {
+  const floors = minClientVersions(env);
+  return {
+    android: env.WALL_NOTICE_CLIENT_VERSION,
+    ios: env.WALL_NOTICE_CLIENT_VERSION,
+    web: floors.web,
+  };
+}
+
+/**
  * Where a mobile client below its floor gets a current build (decision 0030):
  * the URL each platform's var names, else the brand's Android link and
  * TestFlight's scheme.

@@ -6,13 +6,22 @@ import {
 } from "../../api/moderation.ts";
 import {
   canRead,
+  clearWallCover,
   moderates,
   sanction,
   standing,
+  wallAt,
+  wallOf,
   type Sanction,
   type Standing,
 } from "../communities/index.ts";
-import { setSuspension, suspension, type Suspension } from "../../identity/index.ts";
+import {
+  accountProfile,
+  setBio,
+  setSuspension,
+  suspension,
+  type Suspension,
+} from "../../identity/index.ts";
 import { removePhoto } from "../profiles/index.ts";
 import {
   authors,
@@ -164,6 +173,42 @@ async function reaches(
   return !target.content && !applies(verb, standingThere) ? "not_found" : null;
 }
 
+/**
+ * The same on a wall (decision 0115): only a platform moderator acts there, on a
+ * post or a comment, since a wall has no members to mute or ban. Everyone else
+ * hears that there is no such community, as on any other route.
+ */
+async function actOnWall(
+  env: Env,
+  accountId: string,
+  communityId: string,
+  input: Input,
+): Promise<Refusal | null> {
+  if (!(await isPlatformModerator(env, accountId))) return "not_found";
+  if (ACTIONS[input.action] === "account") return "invalid_request";
+  const target = await targetOf(env, communityId, input);
+  if (!target) return "not_found";
+  if (await isPlatformModerator(env, target.targetAccount)) return "not_permitted";
+  const report = await reportOf(env, { platformModerator: true }, communityId, input);
+  if (typeof report === "string") return report;
+  const entries = [
+    entry(env, {
+      communityId,
+      actorId: accountId,
+      asPlatform: true,
+      action: input.action,
+      targetKind: ACTIONS[input.action],
+      targetId: input.targetId,
+      targetAccount: target.targetAccount,
+      reason: input.reason,
+    }),
+    ...(report ? closing(env, report.reportId, accountId, input.action, input.reason) : []),
+    ...told(env, accountId, communityId, input, target),
+  ];
+  await apply(env, communityId, input, target, entries);
+  return null;
+}
+
 /** Does `input` as `accountId` in `communityId`; what refused it, or null when done. */
 export async function act(
   env: Env,
@@ -173,6 +218,8 @@ export async function act(
 ): Promise<Refusal | null> {
   if ((input.action === "mute_member") !== (input.until !== undefined)) return "invalid_request";
   if (input.until !== undefined && input.until <= Date.now()) return "invalid_request";
+  if ((await wallAt(env, communityId)) !== null)
+    return actOnWall(env, accountId, communityId, input);
   const me = await actor(env, accountId, communityId);
   if (typeof me === "string") return me;
 
@@ -212,7 +259,7 @@ export async function act(
 const ON_ACCOUNT: Record<
   PlatformAction,
   {
-    applies: (target: Author, suspended: Suspension | null) => boolean;
+    applies: (env: Env, target: Author, suspended: Suspension | null) => boolean | Promise<boolean>;
     write: (
       env: Env,
       accountId: string,
@@ -222,15 +269,24 @@ const ON_ACCOUNT: Record<
   }
 > = {
   clear_account_photo: {
-    applies: (target) => target.photo !== null,
+    applies: (_, target) => target.photo !== null,
     write: (env, accountId, entries) => removePhoto(env, accountId, entries),
+  },
+  clear_account_bio: {
+    applies: async (env, target) =>
+      ((await accountProfile(env, target.accountId))?.bio ?? null) !== null,
+    write: (env, accountId, entries) => setBio(env, accountId, null, entries),
+  },
+  clear_account_cover: {
+    applies: async (env, target) => ((await wallOf(env, target.accountId))?.cover ?? null) !== null,
+    write: (env, accountId, entries) => clearWallCover(env, accountId, entries),
   },
   suspend_account: {
     applies: () => true,
     write: (env, accountId, entries, until) => setSuspension(env, accountId, { until }, entries),
   },
   unsuspend_account: {
-    applies: (_, suspended) => suspended !== null,
+    applies: (_, __, suspended) => suspended !== null,
     write: (env, accountId, entries) => setSuspension(env, accountId, null, entries),
   },
 };
@@ -261,7 +317,9 @@ export async function actOnAccount(
   }
   const target = (await authors(env, [input.targetId])).get(input.targetId);
   const does = ON_ACCOUNT[input.action];
-  if (!target || !does.applies(target, await suspension(env, input.targetId))) return "not_found";
+  if (!target || !(await does.applies(env, target, await suspension(env, input.targetId)))) {
+    return "not_found";
+  }
   const report = await reportOf(env, { platformModerator: true }, null, input);
   if (typeof report === "string") return report;
   if (report && report.targetAccount !== input.targetId) return "not_found";

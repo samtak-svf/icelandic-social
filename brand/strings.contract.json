@@ -1311,6 +1311,109 @@
       "surfaces": ["android", "ios", "web"],
       "description": "Says a community's content is hosted on a server and is not end-to-end encrypted (decisions 0060, 0063)."
     },
+    "wall_not_encrypted_notice": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "Says a wall's content is hosted on a server and is not end-to-end encrypted (decision 0115)."
+    },
+    "wall_tab_posts": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "The tab of a wall's posts (decision 0115)."
+    },
+    "wall_tab_about": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "The tab of a wall's bio and joined month (decision 0115)."
+    },
+    "wall_tab_images": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "The tab of the images in the wall's posts the viewer may read (decision 0115)."
+    },
+    "wall_bio_label": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "The label of the short text an account writes about itself (decision 0115)."
+    },
+    "wall_bio_placeholder": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "The placeholder of the bio field (decision 0115)."
+    },
+    "wall_bio_too_long": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "Says the bio is longer than the limit (decision 0115)."
+    },
+    "wall_joined": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "When the account joined, its month and year (decision 0115).",
+      "placeholders": {
+        "month": "string"
+      }
+    },
+    "wall_cover_alt": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "The alt text of an account's cover (decision 0115)."
+    },
+    "wall_audience_label": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "The label of the audience picker on a wall post (decision 0115)."
+    },
+    "wall_audience_friends": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "The audience of a wall post that only the owner's friends read (decision 0115)."
+    },
+    "wall_audience_everyone": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "The audience of a wall post that every signed-in account reads (decision 0115)."
+    },
+    "wall_comment_remove": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "The owner's action of removing a comment from their wall (decision 0115)."
+    },
+    "wall_comment_remove_confirm": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "The confirmation of removing a comment from one's wall (decision 0115)."
+    },
+    "wall_comment_remove_reason": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "The label of the reason asked of an owner removing a comment (decision 0115)."
+    },
+    "moderation_report_on_wall": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "Marks a report in the platform's queue as being of a wall's content (decision 0115)."
+    },
+    "moderation_decision_clear_account_bio": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "The logged decision of clearing an account's bio (decision 0115)."
+    },
+    "moderation_decision_clear_account_cover": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "The logged decision of clearing an account's cover (decision 0115)."
+    },
+    "moderation_decision_read_reported": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "The logged read of a reported wall post by a platform moderator (decision 0115)."
+    },
+    "notice_account_bio_cleared": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "Tells an account its bio was cleared (decision 0115)."
+    },
+    "notice_account_cover_cleared": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "Tells an account its cover was cleared (decision 0115)."
+    },
+    "platform_clear_bio": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "The platform moderator's action of clearing an account's bio (decision 0115)."
+    },
+    "platform_clear_bio_confirm": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "The confirmation of clearing a bio (decision 0115)."
+    },
+    "platform_clear_cover": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "The platform moderator's action of clearing an account's cover (decision 0115)."
+    },
+    "platform_clear_cover_confirm": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "The confirmation of clearing a cover (decision 0115)."
+    },
     "community_edit": {
       "surfaces": ["android", "ios", "web"],
       "description": "Owner action: change a community's name, description or audience."

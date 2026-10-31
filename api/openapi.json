@@ -2014,6 +2014,23 @@
             "pattern": "^[A-Za-z0-9_-]{1,128}$",
             "example": "c_9f3a1b"
           },
+          "wall": {
+            "type": "object",
+            "properties": {
+              "accountId": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9_-]{1,128}$",
+                "example": "c_9f3a1b"
+              }
+            },
+            "required": [
+              "accountId"
+            ],
+            "description": "Whose wall the post is on; absent on a post in a community (decision 0115)"
+          },
+          "audience": {
+            "$ref": "#/components/schemas/WallAudience"
+          },
           "author": {
             "anyOf": [
               {
@@ -2166,6 +2183,14 @@
           "state",
           "pinned"
         ]
+      },
+      "WallAudience": {
+        "type": "string",
+        "enum": [
+          "friends",
+          "everyone"
+        ],
+        "description": "Who reads this wall post; absent on a post in a community"
       },
       "Author": {
         "type": "object",
@@ -2490,6 +2515,19 @@
           "version"
         ]
       },
+      "WallCoverSet": {
+        "type": "object",
+        "properties": {
+          "version": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,128}$",
+            "example": "c_9f3a1b"
+          }
+        },
+        "required": [
+          "version"
+        ]
+      },
       "Card": {
         "oneOf": [
           {
@@ -2745,6 +2783,62 @@
           "id"
         ],
         "description": "A stable reference to a post, a comment or a community"
+      },
+      "WallProfile": {
+        "type": "object",
+        "properties": {
+          "accountId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,128}$",
+            "example": "c_9f3a1b"
+          },
+          "wallId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^[A-Za-z0-9_-]{1,128}$",
+            "example": "c_9f3a1b",
+            "description": "Null until the account's first post or cover"
+          },
+          "bio": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "cover": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^[A-Za-z0-9_-]{1,128}$",
+            "example": "c_9f3a1b",
+            "description": "The cover's version, or null"
+          },
+          "coverFrames": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Framing"
+              },
+              {
+                "description": "How the cover is framed, or null"
+              }
+            ]
+          },
+          "joinedMonth": {
+            "type": "string",
+            "description": "`YYYY-MM`, the month of joining and no more"
+          }
+        },
+        "required": [
+          "accountId",
+          "wallId",
+          "bio",
+          "cover",
+          "coverFrames",
+          "joinedMonth"
+        ]
       },
       "PostPage": {
         "type": "object",
@@ -3167,6 +3261,29 @@
           "reason"
         ]
       },
+      "ReportedWallContent": {
+        "type": "object",
+        "properties": {
+          "body": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "media": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,128}$",
+              "example": "sm_3f9a1b2c3d4e5f60718293a4b5c6d7e8"
+            }
+          }
+        },
+        "required": [
+          "body",
+          "media"
+        ]
+      },
       "ReportPage": {
         "type": "object",
         "properties": {
@@ -3217,6 +3334,10 @@
                 "type": "null"
               }
             ]
+          },
+          "onWall": {
+            "type": "boolean",
+            "description": "The post or comment is on a person's wall; read it through `readReportedWallContent` (decision 0115)"
           },
           "targetSuspended": {
             "type": "boolean",
@@ -3269,6 +3390,8 @@
               "ban_member",
               "unban_member",
               "clear_account_photo",
+              "clear_account_bio",
+              "clear_account_cover",
               "suspend_account",
               "unsuspend_account",
               "dismissed",
@@ -3346,6 +3469,7 @@
           "communityId",
           "target",
           "targetAccount",
+          "onWall",
           "targetSuspended",
           "reason",
           "note",
@@ -3427,9 +3551,12 @@
               "ban_member",
               "unban_member",
               "clear_account_photo",
+              "clear_account_bio",
+              "clear_account_cover",
               "suspend_account",
               "unsuspend_account",
               "close_report",
+              "read_reported",
               "delete_community",
               "restore_community",
               "set_community_picture",
@@ -11685,6 +11812,411 @@
         }
       }
     },
+    "/v1/wall/cover": {
+      "put": {
+        "operationId": "setWallCover",
+        "tags": [
+          "walls"
+        ],
+        "summary": "Set or replace the caller's cover (decision 0086)",
+        "description": "The body is an image of at most 10 MB, with a Content-Length. It is not end-to-end encrypted.",
+        "security": [
+          {
+            "deviceToken": []
+          },
+          {
+            "session": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/octet-stream": {
+              "schema": {
+                "type": "string",
+                "format": "binary"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Stored",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WallCoverSet"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid_request: no Content-Length, or a body of another length; invalid_image: not an image the server can decode",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No device token or session the route takes, or one that is not valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "suspended: the account is suspended now, with `until` when it ends (decision 0115)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "too_large: more than the upload limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "426": {
+            "description": "client_too_old: Spjall-Client names a version below the floor; minVersion says which",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "rate_limited: too many requests in the last minute; try again later",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "removeWallCover",
+        "tags": [
+          "walls"
+        ],
+        "summary": "Remove the caller's cover",
+        "security": [
+          {
+            "deviceToken": []
+          },
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No cover, whether there was one or not"
+          },
+          "401": {
+            "description": "No device token or session the route takes, or one that is not valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "426": {
+            "description": "client_too_old: Spjall-Client names a version below the floor; minVersion says which",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/wall/cover/frames": {
+      "patch": {
+        "operationId": "frameWallCover",
+        "tags": [
+          "walls"
+        ],
+        "summary": "Frame the caller's cover again (decision 0086)",
+        "security": [
+          {
+            "deviceToken": []
+          },
+          {
+            "session": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Framing"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Stored",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WallCoverSet"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid_request: a framing outside the image; invalid_image: a master that no longer decodes",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No device token or session the route takes, or one that is not valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "suspended: the account is suspended now, with `until` when it ends (decision 0115)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "not_found: no cover",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "no_master: a cover stored before masters were kept",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "426": {
+            "description": "client_too_old: Spjall-Client names a version below the floor; minVersion says which",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "rate_limited: too many requests in the last minute; try again later",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/wall/cover/source": {
+      "get": {
+        "operationId": "getWallCoverSource",
+        "tags": [
+          "walls"
+        ],
+        "summary": "The caller's cover master, to frame it again (decision 0086)",
+        "security": [
+          {
+            "deviceToken": []
+          },
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The master",
+            "content": {
+              "image/webp": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No device token or session the route takes, or one that is not valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "not_found: no cover, or one stored before masters were kept",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "426": {
+            "description": "client_too_old: Spjall-Client names a version below the floor; minVersion says which",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/accounts/{accountId}/wall/cover": {
+      "get": {
+        "operationId": "getWallCover",
+        "tags": [
+          "walls"
+        ],
+        "summary": "A person's cover, a WebP",
+        "security": [
+          {
+            "deviceToken": []
+          },
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,128}$",
+              "example": "c_9f3a1b"
+            },
+            "required": true,
+            "name": "accountId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "compact",
+                "medium",
+                "expanded"
+              ]
+            },
+            "required": false,
+            "name": "frame",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The image",
+            "content": {
+              "image/webp": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request does not match the schema",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No device token or session the route takes, or one that is not valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "not_found: no such cover the caller can see",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "426": {
+            "description": "client_too_old: Spjall-Client names a version below the floor; minVersion says which",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/cards": {
       "post": {
         "operationId": "resolveCards",
@@ -11758,6 +12290,697 @@
           },
           "401": {
             "description": "No device token or session the route takes, or one that is not valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "426": {
+            "description": "client_too_old: Spjall-Client names a version below the floor; minVersion says which",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/accounts/{accountId}/wall": {
+      "get": {
+        "operationId": "getWall",
+        "tags": [
+          "walls"
+        ],
+        "summary": "A person's wall: bio, cover and month of joining",
+        "security": [
+          {
+            "deviceToken": []
+          },
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,128}$",
+              "example": "c_9f3a1b"
+            },
+            "required": true,
+            "name": "accountId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The wall",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WallProfile"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request does not match the schema",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No device token or session the route takes, or one that is not valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "not_found: no such account the caller can see",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "426": {
+            "description": "client_too_old: Spjall-Client names a version below the floor; minVersion says which",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/accounts/{accountId}/wall/posts": {
+      "get": {
+        "operationId": "listWallPosts",
+        "tags": [
+          "walls"
+        ],
+        "summary": "The wall posts the caller may read, newest first",
+        "security": [
+          {
+            "deviceToken": []
+          },
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,128}$",
+              "example": "c_9f3a1b"
+            },
+            "required": true,
+            "name": "accountId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{1,16}(-[A-Za-z0-9_-]{1,160})?$",
+              "description": "The `next` of the page before"
+            },
+            "required": false,
+            "description": "The `next` of the page before",
+            "name": "before",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50,
+              "default": 20
+            },
+            "required": false,
+            "name": "limit",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A page",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PostPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request does not match the schema",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No device token or session the route takes, or one that is not valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "not_found: no such account the caller can see",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "426": {
+            "description": "client_too_old: Spjall-Client names a version below the floor; minVersion says which",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/accounts/{accountId}/wall/images": {
+      "get": {
+        "operationId": "listWallImages",
+        "tags": [
+          "walls"
+        ],
+        "summary": "The images of the wall posts the caller may read, newest first",
+        "security": [
+          {
+            "deviceToken": []
+          },
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,128}$",
+              "example": "c_9f3a1b"
+            },
+            "required": true,
+            "name": "accountId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{1,16}(-[A-Za-z0-9_-]{1,160})?$",
+              "description": "The `next` of the page before"
+            },
+            "required": false,
+            "description": "The `next` of the page before",
+            "name": "cursor",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50,
+              "default": 20
+            },
+            "required": false,
+            "name": "limit",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A page",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommunityImagePage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request does not match the schema",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No device token or session the route takes, or one that is not valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "not_found: no such account the caller can see",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "426": {
+            "description": "client_too_old: Spjall-Client names a version below the floor; minVersion says which",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/wall/posts": {
+      "post": {
+        "operationId": "createWallPost",
+        "tags": [
+          "walls"
+        ],
+        "summary": "Post on the caller's own wall",
+        "description": "As a post in a community, and not end-to-end encrypted either.",
+        "security": [
+          {
+            "deviceToken": []
+          },
+          {
+            "session": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "body": {
+                    "type": "string",
+                    "maxLength": 5000,
+                    "default": ""
+                  },
+                  "media": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "pattern": "^[A-Za-z0-9_-]{1,128}$",
+                      "example": "sm_3f9a1b2c3d4e5f60718293a4b5c6d7e8"
+                    },
+                    "maxItems": 4,
+                    "default": []
+                  },
+                  "poll": {
+                    "type": "object",
+                    "properties": {
+                      "options": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 80
+                        },
+                        "minItems": 2,
+                        "maxItems": 6
+                      }
+                    },
+                    "required": [
+                      "options"
+                    ],
+                    "description": "Makes the post a poll (decision 0090): the body is the question and is required, there are two to six distinct options, and no image"
+                  },
+                  "audience": {
+                    "$ref": "#/components/schemas/WallAudience"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Posted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Post"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid_request: neither a text nor an image, or a poll with no question, repeated options or an image; invalid_media: an image that is not the caller's upload to this wall, or is already in a post",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No device token or session the route takes, or one that is not valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "suspended: the account is suspended now, with `until` when it ends (decision 0115)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "426": {
+            "description": "client_too_old: Spjall-Client names a version below the floor; minVersion says which",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/wall/media": {
+      "post": {
+        "operationId": "uploadWallMedia",
+        "tags": [
+          "walls"
+        ],
+        "summary": "Upload an image for a post on the caller's own wall",
+        "security": [
+          {
+            "deviceToken": []
+          },
+          {
+            "session": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/octet-stream": {
+              "schema": {
+                "type": "string",
+                "format": "binary"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Stored",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SocialMedia"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid_request: no Content-Length, or a body of another length; invalid_image: not an image the server can decode",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No device token or session the route takes, or one that is not valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "suspended: the account is suspended now, with `until` when it ends (decision 0115)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "too_large: more than the upload limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "426": {
+            "description": "client_too_old: Spjall-Client names a version below the floor; minVersion says which",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "rate_limited: too many requests in the last minute; try again later",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/posts/{postId}/audience": {
+      "patch": {
+        "operationId": "setPostAudience",
+        "tags": [
+          "walls"
+        ],
+        "summary": "Change who reads a wall post",
+        "description": "Only its author may. It applies from the next read.",
+        "security": [
+          {
+            "deviceToken": []
+          },
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,128}$",
+              "example": "p_3f9a1b2c3d4e5f60718293a4b5c6d7e8"
+            },
+            "required": true,
+            "name": "postId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "audience": {
+                    "$ref": "#/components/schemas/WallAudience"
+                  }
+                },
+                "required": [
+                  "audience"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Changed"
+          },
+          "400": {
+            "description": "The request does not match the schema",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No device token or session the route takes, or one that is not valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "suspended: the account is suspended now, with `until` when it ends (decision 0115)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "not_found: no such wall post by the caller",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "426": {
+            "description": "client_too_old: Spjall-Client names a version below the floor; minVersion says which",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/me/bio": {
+      "put": {
+        "operationId": "setBio",
+        "tags": [
+          "walls"
+        ],
+        "summary": "Set or clear the caller's bio",
+        "description": "At most 120 characters and no line break; an empty text clears it.",
+        "security": [
+          {
+            "deviceToken": []
+          },
+          {
+            "session": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "bio": {
+                    "type": "string",
+                    "maxLength": 480
+                  }
+                },
+                "required": [
+                  "bio"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Set"
+          },
+          "400": {
+            "description": "The request does not match the schema",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No device token or session the route takes, or one that is not valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "suspended: the account is suspended now, with `until` when it ends (decision 0115)",
             "content": {
               "application/json": {
                 "schema": {
@@ -14176,6 +15399,298 @@
         }
       }
     },
+    "/v1/wall/comments/{commentId}/remove": {
+      "post": {
+        "operationId": "removeWallComment",
+        "tags": [
+          "walls"
+        ],
+        "summary": "Remove a comment on the caller's own wall",
+        "description": "It is logged with the owner as actor, its text is kept for 90 days and its author is told. There is no review: it is their wall to keep.",
+        "security": [
+          {
+            "deviceToken": []
+          },
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,128}$",
+              "example": "p_3f9a1b2c3d4e5f60718293a4b5c6d7e8-0a1b2c3d4e5f6071",
+              "description": "The post's id, a hyphen, and the comment's own part"
+            },
+            "required": true,
+            "description": "The post's id, a hyphen, and the comment's own part",
+            "name": "commentId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 500
+                  }
+                },
+                "required": [
+                  "reason"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Removed"
+          },
+          "400": {
+            "description": "The request does not match the schema",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No device token or session the route takes, or one that is not valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "not_found: no such comment on the caller's wall",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "426": {
+            "description": "client_too_old: Spjall-Client names a version below the floor; minVersion says which",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/moderation/reports/{reportId}/target": {
+      "get": {
+        "operationId": "readReportedWallContent",
+        "tags": [
+          "walls"
+        ],
+        "summary": "What an open report on a wall says was written",
+        "description": "A platform moderator reads a wall post or comment only here, on an open report, and each read is a moderation log entry.",
+        "security": [
+          {
+            "deviceToken": []
+          },
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,128}$",
+              "example": "c_9f3a1b"
+            },
+            "required": true,
+            "name": "reportId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The text and images",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportedWallContent"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request does not match the schema",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No device token or session the route takes, or one that is not valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "not_permitted: not a platform moderator",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "not_found: no such open report on a wall post or comment",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "426": {
+            "description": "client_too_old: Spjall-Client names a version below the floor; minVersion says which",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/moderation/reports/{reportId}/media/{mediaId}": {
+      "get": {
+        "operationId": "readReportedWallImage",
+        "tags": [
+          "walls"
+        ],
+        "summary": "An image of what an open report on a wall names, as WebP",
+        "description": "As `readReportedWallContent`: on an open report, and each read is logged.",
+        "security": [
+          {
+            "deviceToken": []
+          },
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,128}$",
+              "example": "c_9f3a1b"
+            },
+            "required": true,
+            "name": "reportId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,128}$",
+              "example": "sm_3f9a1b2c3d4e5f60718293a4b5c6d7e8"
+            },
+            "required": true,
+            "name": "mediaId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The image",
+            "content": {
+              "image/webp": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request does not match the schema",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No device token or session the route takes, or one that is not valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "not_permitted: not a platform moderator",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "not_found: no such open report on a wall post or comment",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "426": {
+            "description": "client_too_old: Spjall-Client names a version below the floor; minVersion says which",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/communities/{communityId}/posts/{postId}/pin": {
       "put": {
         "operationId": "pinPost",
@@ -15057,6 +16572,8 @@
                     "type": "string",
                     "enum": [
                       "clear_account_photo",
+                      "clear_account_bio",
+                      "clear_account_cover",
                       "suspend_account",
                       "unsuspend_account"
                     ]

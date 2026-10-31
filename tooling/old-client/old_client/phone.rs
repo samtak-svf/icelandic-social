@@ -219,6 +219,32 @@ impl Phone {
         assert!(answer.status().is_success(), "{path}: {}", answer.status());
     }
 
+    /// A POST as a build that decodes everything, which must succeed: its JSON.
+    pub fn knowing_made(&self, path: &str, body: &Value) -> Value {
+        let mut answer = agent()
+            .post(format!("{}{path}", base()))
+            .header("authorization", self.token())
+            .header("spjall-client", KNOWING)
+            .header("content-type", "application/json")
+            .send(body.to_string())
+            .unwrap();
+        assert!(answer.status().is_success(), "{path}: {}", answer.status());
+        let body = answer.body_mut().read_to_string().unwrap();
+        serde_json::from_str(&body).unwrap()
+    }
+
+    /// A PUT of JSON as a build that decodes everything, which must succeed.
+    pub fn knowing_put_json(&self, path: &str, body: &Value) {
+        let answer = agent()
+            .put(format!("{}{path}", base()))
+            .header("authorization", self.token())
+            .header("spjall-client", KNOWING)
+            .header("content-type", "application/json")
+            .send(body.to_string())
+            .unwrap();
+        assert!(answer.status().is_success(), "{path}: {}", answer.status());
+    }
+
     /// A PUT with no body as a build that decodes everything, which must succeed.
     pub fn knowing_put(&self, path: &str) {
         let answer = agent()

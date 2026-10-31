@@ -18,7 +18,8 @@ export async function closePoll(env: Env, accountId: string, postId: string) {
   const there = space(env, communityId);
   const status = await there.pollStatus(postId);
   if (status === "none") return "not_found" as const;
-  const asModerator = authorId !== accountId && moderates(found.access.standing);
+  const asModerator =
+    authorId !== accountId && found.access.wall === null && moderates(found.access.standing);
   if (authorId !== accountId && !asModerator) return "not_permitted" as const;
   // Closing a closed poll changes and logs nothing.
   if (status === "open") {

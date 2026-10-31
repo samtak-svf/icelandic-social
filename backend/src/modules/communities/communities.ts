@@ -196,7 +196,7 @@ export async function standing(
   const row = await db(env)
     .prepare(
       `SELECT ${COLUMNS} FROM communities c ${MEMBERSHIP}
-        WHERE c.community_id = ?2
+        WHERE c.community_id = ?2 AND c.kind = 'community'
           AND (c.deleted_at IS NULL
                OR (?3 = 1 AND EXISTS (SELECT 1 FROM platform_moderators p
                                        WHERE p.account_id = ?1)))`,
@@ -222,18 +222,9 @@ export function view(
 }
 
 /** A new community id: 16 random bytes, hex. */
-function newCommunityId(): string {
+export function newCommunityId(): string {
   const bytes = crypto.getRandomValues(new Uint8Array(16));
   return `cm_${Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("")}`;
-}
-
-/** Whether `communityId` exists, read-only or not. */
-export async function communityExists(env: Env, communityId: string): Promise<boolean> {
-  const row = await db(env)
-    .prepare("SELECT 1 AS found FROM live_communities WHERE community_id = ?")
-    .bind(communityId)
-    .first<{ found: number }>();
-  return row !== null;
 }
 
 /** Whether Kenni verified the account (decision 0063: only a verified account creates). */

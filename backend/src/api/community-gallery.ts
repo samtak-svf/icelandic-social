@@ -20,6 +20,19 @@ const CommunityImage = z
     description: "An image to fetch with `getPostMedia` under its `postId` (decision 0089)",
   });
 
+/** One page of images, of a community's or a wall's (decisions 0089, 0115). */
+export const COMMUNITY_IMAGE_PAGE = json(
+  "A page",
+  z
+    .object({
+      images: z.array(CommunityImage),
+      next: z.string().nullable().openapi({
+        description: "The cursor of the next, older page, or null when there is none",
+      }),
+    })
+    .openapi("CommunityImagePage"),
+);
+
 export const communityImagesRoute = createRoute({
   method: "get",
   path: "/v1/communities/{communityId}/images",
@@ -37,17 +50,7 @@ export const communityImagesRoute = createRoute({
     }),
   },
   responses: {
-    200: json(
-      "A page",
-      z
-        .object({
-          images: z.array(CommunityImage),
-          next: z.string().nullable().openapi({
-            description: "The cursor of the next, older page, or null when there is none",
-          }),
-        })
-        .openapi("CommunityImagePage"),
-    ),
+    200: COMMUNITY_IMAGE_PAGE,
     ...INVALID,
     ...AUTHED,
     ...NO_COMMUNITY,

@@ -65,6 +65,8 @@ const STATED: ReadonlySet<string | null> = new Set([
   "hide_comment",
   "remove_comment",
   "clear_account_photo",
+  "clear_account_bio",
+  "clear_account_cover",
   "suspend_account",
   "review_upheld",
   "review_overturned",

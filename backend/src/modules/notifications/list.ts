@@ -16,6 +16,10 @@ const KEPT_MS = 90 * 24 * 60 * 60 * 1000;
 const LIVE = `(n.community_id IS NULL OR EXISTS
   (SELECT 1 FROM live_communities c WHERE c.community_id = n.community_id))`;
 
+/** The same with a wall's, for a client that knows them (0115). */
+const LIVE_SPACES = `(n.community_id IS NULL OR EXISTS
+  (SELECT 1 FROM live_spaces c WHERE c.community_id = n.community_id))`;
+
 /** The kinds an app below `NOTICE_CLIENT_VERSION` knows. Frozen: a new kind stays out of it. */
 const OLD_KINDS = ["comment", "reply", "reaction", "join_approved", "moderated"];
 
@@ -35,11 +39,15 @@ const OLD_ACTIONS = [
  * it as a removal, so that stays out as well (0115). An app that decodes every
  * row may still word a suspension that way, until its core knows the action, and
  * has no words for a friend's notice until it knows that kind (0114), nor for
- * reports waiting, which only the web words for now (0115).
+ * reports waiting, which only the web words for now (0115). A wall's rows have a
+ * community no such app could name, and they stay out until it knows them, as
+ * does the clearing of a bio or a cover.
  */
 export function shownTo(reach: NoticeReach): string {
-  if (reach === "all") return LIVE;
-  const noQueue = `${LIVE} AND n.kind <> 'reports_waiting'`;
+  if (reach === "all") return LIVE_SPACES;
+  if (reach === "wall") return `${LIVE_SPACES} AND n.kind <> 'reports_waiting'`;
+  const noQueue = `${LIVE} AND n.kind <> 'reports_waiting'
+    AND (n.action IS NULL OR n.action NOT IN ('clear_account_bio', 'clear_account_cover'))`;
   if (reach === "friends") return noQueue;
   const noFriends = `${noQueue} AND n.kind NOT IN ('friend_request', 'friend_accepted')`;
   if (reach === "suspension") return noFriends;

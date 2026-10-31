@@ -60,6 +60,8 @@ const MODERATED: Partial<
     | "notice_review_upheld"
     | "notice_review_overturned"
     | "notice_account_photo_cleared"
+    | "notice_account_bio_cleared"
+    | "notice_account_cover_cleared"
     | "notice_account_suspended"
     | "notice_account_unsuspended"
   >
@@ -68,6 +70,8 @@ const MODERATED: Partial<
   review_upheld: "notice_review_upheld",
   review_overturned: "notice_review_overturned",
   clear_account_photo: "notice_account_photo_cleared",
+  clear_account_bio: "notice_account_bio_cleared",
+  clear_account_cover: "notice_account_cover_cleared",
   suspend_account: "notice_account_suspended",
   unsuspend_account: "notice_account_unsuspended",
 };
