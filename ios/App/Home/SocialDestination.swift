@@ -25,6 +25,9 @@ struct SocialDestination: View {
         case .person(let id):
             PersonView(model: models.model(for: route) { PersonModel(social: social, accountId: id) }, social: social)
                 .id(route)
+        // Only the conversations' stack holds these, and it draws them itself.
+        case .people, .conversation:
+            EmptyView()
         }
     }
 }

@@ -95,6 +95,9 @@ class MainActivity : ComponentActivity() {
     /** A route a social notification asked to open (decision 0107), held the same way. */
     private val socialOpens = Channel<String>(Channel.CONFLATED)
 
+    /** A route a link from outside asked to open (decision 0121), held the same way. */
+    private val ownOpens = Channel<String>(Channel.CONFLATED)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         // The bars' icons follow the system's mode, as the theme does (decision 0052).
@@ -119,7 +122,7 @@ class MainActivity : ComponentActivity() {
         signIn.signedOut()
     }
 
-    /** A tapped notification, an invite link, or a provider's redirect back to the app's scheme. */
+    /** A tapped notification, an invite link, a link to a screen, or a provider's redirect to the app's scheme. */
     private fun handle(intent: Intent) {
         when (intent.action) {
             ACTION_OPEN_CONVERSATION -> intent.getStringExtra(EXTRA_CONVERSATION)?.let { opens.trySend(it) }
@@ -133,9 +136,13 @@ class MainActivity : ComponentActivity() {
         // A debug build is called back at its own scheme; the core knows the store's.
         val link = uri.toString().replaceFirst("${BuildConfig.CALLBACK_SCHEME}:", "${BuildConfig.URL_SCHEME}:")
         val token = inviteToken(link)
+        val own = ownRoute(link)
         when {
             token != null -> signIn.openInvite(token)
+            own != null -> ownOpens.trySend(own)
             uri.scheme == BuildConfig.CALLBACK_SCHEME -> signIn.complete(link)
+            // A page under a claimed prefix that no screen stands for.
+            uri.scheme == "https" -> openInBrowserApp(this, uri)
         }
     }
 
@@ -201,9 +208,13 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    /** A tapped notification opens its conversation, or its post, over the tab it belongs to. */
+    /**
+     * A tapped notification opens its conversation, or its post, over the tab it belongs to. A link from outside
+     * opens over whatever is open.
+     */
     @Composable
-    private fun OpenedFromNotifications(nav: NavController) {
+    private fun OpenedFromOutside(nav: NavController) {
+        LaunchedEffect(Unit) { ownOpens.receiveAsFlow().collect { nav.navigate(it) } }
         LaunchedEffect(Unit) {
             opens.receiveAsFlow().collect {
                 nav.openTab(AppRoutes.LIST)
@@ -231,7 +242,7 @@ class MainActivity : ComponentActivity() {
         LaunchedEffect(list) { list.opened.collect { nav.navigate(conversationRoute(it)) } }
         // Kenni is offered once after a sign-in, and "Seinna" goes on to the list (decision 0035).
         LaunchedEffect(Unit) { signIn.offers.collect { nav.navigate(AppRoutes.VERIFY) } }
-        OpenedFromNotifications(nav)
+        OpenedFromOutside(nav)
         val route =
             nav
                 .currentBackStackEntryAsState()
@@ -245,44 +256,46 @@ class MainActivity : ComponentActivity() {
         LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { unread.refresh() }
         val (activeTab, go) = activeTab(nav, route)
         // Each screen pads for the status bar itself, so its cream band can reach the top edge.
-        AdaptiveNavigation(
-            tabs = tabs(activeTab, go),
-            bell = bell(route, count) { nav.openNotifications() },
-            shown = route in TABS,
-            wide = route in SocialRoutes.WIDE,
-        ) {
-            NavHost(
-                navController = nav,
-                startDestination = SocialRoutes.FEED,
+        ProvideOwnLinks(nav) {
+            AdaptiveNavigation(
+                tabs = tabs(activeTab, go),
+                bell = bell(route, count) { nav.openNotifications() },
+                shown = route in TABS,
+                wide = route in SocialRoutes.WIDE,
             ) {
-                composable(AppRoutes.LIST) { ConversationsRoute(list, nav) }
-                composable(AppRoutes.ME) { OwnWallRoute(signIns, nav, graph, this@MainActivity) }
-                composable(AppRoutes.SETTINGS) {
-                    MeRoute(signIns, nav, graph, this@MainActivity, ::signedOut, onBack = { nav.popBackStack() })
+                NavHost(
+                    navController = nav,
+                    startDestination = SocialRoutes.FEED,
+                ) {
+                    composable(AppRoutes.LIST) { ConversationsRoute(list, nav) }
+                    composable(AppRoutes.ME) { OwnWallRoute(signIns, nav, graph, this@MainActivity) }
+                    composable(AppRoutes.SETTINGS) {
+                        MeRoute(signIns, nav, graph, this@MainActivity, ::signedOut, onBack = { nav.popBackStack() })
+                    }
+                    socialScreens(
+                        graph.social,
+                        graph.account,
+                        graph.files,
+                        nav,
+                        unread::refresh,
+                        sharePost = { post -> nav.navigate("${AppRoutes.SHARE}/$post") },
+                        dismissNotice = graph.push::dismissNotice,
+                    )
+                    composable(AppRoutes.VERIFY) { VerifyRoute(nav, signIn) }
+                    composable(AppRoutes.LINK) { LinkRoute(nav, graph) }
+                    composable(AppRoutes.PEOPLE) { PeopleRoute(nav, graph) }
+                    // Adding to a group that exists (0078): the picker, for that conversation's members.
+                    composable("${AppRoutes.PEOPLE}/{id}") { entry ->
+                        entry.arguments?.getString("id")?.let { PeopleRoute(nav, graph, targetConversation = it) }
+                    }
+                    composable("${AppRoutes.CONVERSATION}/{id}") { entry ->
+                        entry.arguments?.getString("id")?.let { ConversationWithPostsRoute(it, nav, graph) }
+                    }
+                    composable("${AppRoutes.INFO}/{id}") { entry ->
+                        entry.arguments?.getString("id")?.let { ConversationInfoRoute(it, nav, graph) }
+                    }
+                    sendingRoutes(nav)
                 }
-                socialScreens(
-                    graph.social,
-                    graph.account,
-                    graph.files,
-                    nav,
-                    unread::refresh,
-                    sharePost = { post -> nav.navigate("${AppRoutes.SHARE}/$post") },
-                    dismissNotice = graph.push::dismissNotice,
-                )
-                composable(AppRoutes.VERIFY) { VerifyRoute(nav, signIn) }
-                composable(AppRoutes.LINK) { LinkRoute(nav, graph) }
-                composable(AppRoutes.PEOPLE) { PeopleRoute(nav, graph) }
-                // Adding to a group that exists (0078): the picker, for that conversation's members.
-                composable("${AppRoutes.PEOPLE}/{id}") { entry ->
-                    entry.arguments?.getString("id")?.let { PeopleRoute(nav, graph, targetConversation = it) }
-                }
-                composable("${AppRoutes.CONVERSATION}/{id}") { entry ->
-                    entry.arguments?.getString("id")?.let { ConversationWithPostsRoute(it, nav, graph) }
-                }
-                composable("${AppRoutes.INFO}/{id}") { entry ->
-                    entry.arguments?.getString("id")?.let { ConversationInfoRoute(it, nav, graph) }
-                }
-                sendingRoutes(nav)
             }
         }
     }
