@@ -28,12 +28,14 @@ pub mod frames;
 pub mod group_photo;
 mod history;
 mod hosted;
+mod ids;
 mod incoming;
 mod link;
 mod media;
 mod members;
 mod mute;
 mod notice;
+mod own_link;
 mod photo;
 pub mod place;
 mod read;
@@ -53,12 +55,14 @@ pub use directory::{Directory, ListSearch, MAX_QUERY, blank, fold_name};
 pub use history::{HistoryError, HistoryKey, Imported, MAX_HISTORY, history_key};
 pub use hosted::Hosted;
 use hosted::{SharedToken, authed, read_token};
+use ids::is_id;
 use incoming::Incoming;
 pub use link::{DeviceLink, Enrolled, LinkCode, LinkError, LinkRequest, LinkState};
 pub use media::{MAX_SIZE, MediaError};
 pub use members::Person;
 pub use mute::{Mute, MuteFor};
 pub use notice::{Notice, NoticeKind, Notices, SocialNotice};
+pub use own_link::{OwnLink, own_link};
 pub use photo::MAX_PHOTO;
 pub use read::Settings;
 pub use social::{MAX_CARDS, MAX_COMMENT_MEDIA, MAX_POST_IMAGE, MAX_POST_MEDIA, PostTarget};
@@ -392,13 +396,6 @@ fn random_id() -> String {
     let mut bytes = [0u8; 16];
     getrandom::fill(&mut bytes).expect("the OS has randomness");
     bytes.iter().map(|b| format!("{b:02x}")).collect()
-}
-
-fn is_id(text: &str) -> bool {
-    (1..=128).contains(&text.len())
-        && text
-            .bytes()
-            .all(|b| b.is_ascii_alphanumeric() || b == b'_' || b == b'-')
 }
 
 /// Account ids one per line, as the outbox keeps them; `None` for none.
