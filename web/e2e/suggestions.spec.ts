@@ -38,8 +38,14 @@ const suggested = (page: Page) =>
 const suggestedTo = (page: Page) =>
   page.evaluate(async (headers) => {
     const answer = await fetch("/v1/friend-suggestions", { headers });
-    const body = (await answer.json()) as { people: { name: string }[] };
-    return body.people.map((shown) => shown.name);
+    const body: unknown = await answer.json();
+    if (typeof body !== "object" || body === null || !("people" in body))
+      throw new Error("no list");
+    if (!Array.isArray(body.people)) throw new Error("no list");
+    const people: unknown[] = body.people;
+    return people.map((shown) =>
+      typeof shown === "object" && shown !== null && "name" in shown ? String(shown.name) : "",
+    );
   }, CLIENT);
 
 test("two accounts in an open community see each other, until one opts out", async ({
