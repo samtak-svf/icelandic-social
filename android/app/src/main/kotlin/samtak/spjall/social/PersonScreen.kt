@@ -1,6 +1,5 @@
 package samtak.spjall.social
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -13,10 +12,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.safeDrawing
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Button
@@ -49,11 +46,8 @@ import samtak.spjall.core.ReportTarget
 import samtak.spjall.core.ReportTargetKind
 import samtak.spjall.me.Confirm
 import samtak.spjall.ui.AppIcons
-import samtak.spjall.ui.Avatar
-import samtak.spjall.ui.AvatarKind
 import samtak.spjall.ui.NameWithMark
 import samtak.spjall.ui.Palette
-import samtak.spjall.ui.PhotoOf
 import samtak.spjall.ui.ProblemCard
 import samtak.spjall.ui.ScreenHeader
 import samtak.spjall.ui.SectionLabel
@@ -162,36 +156,6 @@ private fun CoverWithCamera(
                 modifier = Modifier.align(Alignment.TopEnd).testTag("cover-camera"),
             ) {
                 Icon(AppIcons.Camera, stringResource(R.string.community_cover_choose), tint = Palette.fg)
-            }
-        }
-    }
-}
-
-@Composable
-private fun AvatarWithCamera(
-    profile: PersonProfile,
-    own: Boolean,
-    actions: PersonActions,
-) {
-    Box {
-        Avatar(
-            name = profile.name,
-            kind = if (profile.verified) AvatarKind.Verified else AvatarKind.Unverified,
-            size = 64.dp,
-            photo = profile.photo?.let { PhotoOf(profile.accountId, it) },
-        )
-        // The picture is changed in the settings (the web's camera on the avatar opens its photo controls).
-        if (own && !suspended()) {
-            IconButton(
-                onClick = actions::settings,
-                modifier = Modifier.align(Alignment.BottomEnd).size(CAMERA.dp).testTag("avatar-camera"),
-            ) {
-                Icon(
-                    AppIcons.Camera,
-                    stringResource(R.string.photo_change),
-                    tint = Palette.fg,
-                    modifier = Modifier.size(CAMERA_MARK.dp).background(Palette.surface, CircleShape),
-                )
             }
         }
     }
@@ -322,6 +286,3 @@ internal fun Shared(
         }
     }
 }
-
-private const val CAMERA = 28
-private const val CAMERA_MARK = 22

@@ -48,12 +48,6 @@ internal fun MeRoute(
         viewModel(viewModelStoreOwner = owner, key = "me-$signIns") { MeViewModel(graph.account) }
     val state by me.state.collectAsStateWithLifecycle()
     val notificationsOff = notificationsOff()
-    // Made small and square off the main thread, in the view model (decision 0039).
-    val frames = LocalFrameSession.current
-    val photo =
-        rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
-            uri?.let { frames.open(me.photoRequest { graph.files.master(it) }) }
-        }
     // A block from a conversation menu changes the list here, and the settings the row opens may change.
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { me.load() }
     LaunchedEffect(state.signedOut) {
@@ -77,13 +71,6 @@ internal fun MeRoute(
             override fun revoke(deviceId: String) = me.revoke(deviceId)
 
             override fun deleteAccount() = me.deleteAccount()
-
-            override fun choosePhoto() =
-                photo.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
-
-            override fun reframePhoto() = frames.open(me.reframePhotoRequest(graph.files::temp))
-
-            override fun removePhoto() = me.removePhoto()
 
             override fun retry() = me.retry()
 
@@ -129,6 +116,11 @@ internal fun OwnWallRoute(
     val wall: PersonViewModel =
         viewModel(key = "wall-$id") { PersonViewModel(id, graph.social) }
     val frames = LocalFrameSession.current
+    // Made small and square off the main thread, in the view model (decision 0039).
+    val photo =
+        rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
+            uri?.let { frames.open(me.photoRequest { graph.files.master(it) }) }
+        }
     val cover =
         rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
             uri?.let { frames.open(wall.coverRequest { graph.files.master(it) }) }
@@ -151,6 +143,9 @@ internal fun OwnWallRoute(
             nav,
             tab = true,
             settings = { nav.navigate(AppRoutes.SETTINGS) },
+            choosePhoto = { photo.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
+            reframePhoto = { frames.open(me.reframePhotoRequest(graph.files::temp)) },
+            removePhoto = me::removePhoto,
             chooseCover = { cover.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
             reframeCover = { frames.open(wall.reframeCoverRequest(graph.files::temp)) },
             addImage = {

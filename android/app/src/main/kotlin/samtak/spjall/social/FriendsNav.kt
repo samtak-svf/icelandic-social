@@ -91,6 +91,9 @@ internal fun PersonRoute(
     nav: NavController,
     tab: Boolean,
     settings: () -> Unit = {},
+    choosePhoto: () -> Unit = {},
+    reframePhoto: () -> Unit = {},
+    removePhoto: () -> Unit = {},
     chooseCover: () -> Unit = {},
     reframeCover: () -> Unit = {},
     addImage: () -> Unit = {},
@@ -151,6 +154,12 @@ internal fun PersonRoute(
             ) = model.react(postId, emoji)
 
             override fun saveBio(text: String) = model.saveBio(text)
+
+            override fun choosePhoto() = choosePhoto()
+
+            override fun reframePhoto() = reframePhoto()
+
+            override fun removePhoto() = removePhoto()
 
             override fun chooseCover() = chooseCover()
 

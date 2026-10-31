@@ -9,6 +9,7 @@ import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithTag
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onLast
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -79,6 +80,18 @@ class WallActionsTest {
             calls += "chooseCover"
         }
 
+        override fun choosePhoto() {
+            calls += "choosePhoto"
+        }
+
+        override fun reframePhoto() {
+            calls += "reframePhoto"
+        }
+
+        override fun removePhoto() {
+            calls += "removePhoto"
+        }
+
         override fun addImage() {
             calls += "addImage"
         }
@@ -147,13 +160,39 @@ class WallActionsTest {
     }
 
     @Test
-    fun theCameraOnTheCoverChoosesACoverAndOneOnThePictureOpensTheSettings() {
+    fun theCameraOnTheCoverChoosesACoverAndTheOneOnThePictureChoosesAPhoto() {
         val rec = Recorder()
         show(state(self, Relation.ONESELF), rec)
         compose.onNodeWithTag("cover-camera").performClick()
         compose.onNodeWithTag("avatar-camera").performClick()
-        assertEquals(listOf("chooseCover", "settings"), rec.calls)
+        compose.onNodeWithTag("photo-choose").performClick()
+        assertEquals(listOf("chooseCover", "choosePhoto"), rec.calls)
+        compose.onAllNodesWithTag("photo-reframe").assertCountEquals(0)
+        compose.onAllNodesWithTag("photo-remove").assertCountEquals(0)
     }
+
+    @Test
+    fun aPhotoCanBeFramedAgainOnTheOwnWall() {
+        val rec = Recorder()
+        show(withPhoto(), rec)
+        compose.onNodeWithTag("avatar-camera").performClick()
+        compose.onNodeWithTag("photo-reframe").performClick()
+        assertEquals(listOf("reframePhoto"), rec.calls)
+    }
+
+    @Test
+    fun removingThePhotoAsksFirst() {
+        val rec = Recorder()
+        show(withPhoto(), rec)
+        compose.onNodeWithTag("avatar-camera").performClick()
+        compose.onNodeWithTag("photo-remove").performClick()
+        compose.onNodeWithText(str(R.string.photo_remove_confirm)).assertExists()
+        assertEquals("nothing is removed on one tap", emptyList<String>(), rec.calls)
+        compose.onAllNodesWithText(str(R.string.photo_remove)).onLast().performClick()
+        assertEquals(listOf("removePhoto"), rec.calls)
+    }
+
+    private fun withPhoto() = state(self, Relation.ONESELF).let { it.copy(profile = it.profile?.copy(photo = "v1")) }
 
     @Test
     fun theComposerAddsAnImageAndStartsAPoll() {

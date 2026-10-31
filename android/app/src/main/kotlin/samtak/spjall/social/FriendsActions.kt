@@ -84,6 +84,15 @@ interface PersonActions :
 
     fun saveBio(text: String) {}
 
+    /** Opens the photo picker; the photo it gives becomes this account's (decision 0039). */
+    fun choosePhoto() {}
+
+    /** Opens the crop sheet on the photo already set, to frame it again from its stored master (decision 0086). */
+    fun reframePhoto() {}
+
+    /** Removes the photo, for everyone; the wall has asked first. */
+    fun removePhoto() {}
+
     fun chooseCover() {}
 
     fun reframeCover() {}

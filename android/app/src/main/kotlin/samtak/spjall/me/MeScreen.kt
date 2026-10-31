@@ -2,7 +2,6 @@ package samtak.spjall.me
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -20,7 +19,6 @@ import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
@@ -33,15 +31,10 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
@@ -105,14 +98,7 @@ private fun MeContent(
         if (state.busy) LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
         state.problem?.let { ProblemCard(it, actions::retry) }
         state.me?.let { me ->
-            Who(
-                me.name,
-                me.verified,
-                me.photo?.let { PhotoOf(me.accountId, it) },
-                onPhoto = actions::choosePhoto,
-                enabled = !state.busy,
-            )
-            PhotoControls(me.photo != null, state.busy, actions)
+            Who(me.name, me.verified, me.photo?.let { PhotoOf(me.accountId, it) })
             if (!me.verified) VerifyLink(actions::verify)
             Label(R.string.invite_link_title)
             InviteCard(state.link, state.busy, actions)
@@ -125,33 +111,20 @@ private fun MeContent(
 /**
  * The photo, or the dark circle with the initials; the name as it is written (0047), and whether Kenni
  * vouched for it.
- * A tap on the photo opens the picker, as its buttons below do (decision 0043).
+ * The photo is changed on the own wall not here.
  */
 @Composable
 private fun Who(
     name: String?,
     verified: Boolean,
     photo: PhotoOf?,
-    onPhoto: () -> Unit,
-    enabled: Boolean,
 ) {
     Row(
         modifier = Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(14.dp),
     ) {
-        val label = stringResource(if (photo != null) R.string.photo_change else R.string.photo_choose)
-        Avatar(
-            name,
-            kind = AvatarKind.Me,
-            size = AVATAR.dp,
-            photo = photo,
-            modifier =
-                Modifier
-                    .clip(CircleShape)
-                    .clickable(enabled = enabled, role = Role.Button, onClick = onPhoto)
-                    .semantics { contentDescription = label },
-        )
+        Avatar(name, kind = AvatarKind.Me, size = AVATAR.dp, photo = photo)
         Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
             name?.let {
                 NameWithMark(
@@ -165,62 +138,6 @@ private fun Who(
             }
             if (verified) SectionLabel(stringResource(R.string.verified_with_kennitala))
         }
-    }
-}
-
-/**
- * Set, replace or remove the photo (decision 0039), and the one line that says who sees it: everyone signed in,
- * since it is not end-to-end encrypted. Removing asks first.
- */
-@Composable
-private fun PhotoControls(
-    hasPhoto: Boolean,
-    busy: Boolean,
-    actions: MeActions,
-) {
-    var removing by rememberSaveable { mutableStateOf(false) }
-    Column {
-        // Outlined pills, as the invite card's buttons are, so they read as buttons (0047). Side by
-        // side, and one under the other when a large font leaves no room.
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Pill(
-                text = stringResource(if (hasPhoto) R.string.photo_change else R.string.photo_choose),
-                filled = false,
-                onClick = actions::choosePhoto,
-                enabled = !busy,
-            )
-            if (hasPhoto) {
-                Pill(
-                    text = stringResource(R.string.image_frames_title),
-                    filled = false,
-                    onClick = actions::reframePhoto,
-                    enabled = !busy,
-                )
-                Pill(
-                    text = stringResource(R.string.photo_remove),
-                    filled = false,
-                    onClick = { removing = true },
-                    enabled = !busy,
-                )
-            }
-        }
-        Text(
-            text = stringResource(R.string.photo_seen_by_all),
-            style = HINT,
-            color = Palette.fg,
-            modifier = Modifier.padding(top = 8.dp),
-        )
-    }
-    if (removing) {
-        Confirm(
-            text = stringResource(R.string.photo_remove_confirm),
-            confirm = stringResource(R.string.photo_remove),
-            onConfirm = {
-                removing = false
-                actions.removePhoto()
-            },
-            onDismiss = { removing = false },
-        )
     }
 }
 
