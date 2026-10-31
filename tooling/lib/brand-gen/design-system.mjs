@@ -43,7 +43,7 @@ export function designSystem({ brand, pairs, scan, sha, tokensSha256, at, by, ic
   const art = cover(brand, pairs);
   problems.push(...art.problems);
 
-  const logo = `assets/Logos/${iconName(brand)}`;
+  const logo = iconName(brand);
   const ink = /fill="(#[0-9a-fA-F]{3,8})"/.exec(brand.iconSvg)?.[1];
   const index = {
     v: 3,
@@ -53,7 +53,7 @@ export function designSystem({ brand, pairs, scan, sha, tokensSha256, at, by, ic
     namespace: `${displayName.replace(/[^A-Za-z0-9]/g, "")}DS`,
     libraries: [],
     sections: {},
-    groups: [],
+    groups: ["Logos"],
     assetGroups: {
       Logos: {
         name: "Logos",
@@ -62,7 +62,7 @@ export function designSystem({ brand, pairs, scan, sha, tokensSha256, at, by, ic
         files: iconBlob
           ? {
               [logo]: {
-                name: iconName(brand),
+                name: logo,
                 blob: iconBlob,
                 size: Buffer.byteLength(brand.iconSvg),
                 type: "image/svg+xml",

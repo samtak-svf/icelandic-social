@@ -119,6 +119,7 @@ describe("design system tokens", () => {
     expect(index.lastChange.via.startsWith("CI")).toBe(false);
     expect(index.lastChange.at).toBe(AT);
     expect(index.assetGroups.Logos.order).toEqual([]);
+    expect(index.groups).toEqual(["Logos"]);
   });
 
   it("files the icon under Logos when given a blob id", () => {
@@ -126,7 +127,10 @@ describe("design system tokens", () => {
     const file = withIcon.files.find((f) => f.path === "project/design-system.json");
     const index = JSON.parse(String(file?.content));
     const [key] = index.assetGroups.Logos.order;
+    // A record is named by its path below the group's folder, and so is its key.
+    expect(key).not.toContain("/");
     expect(index.assetGroups.Logos.files[key]).toMatchObject({
+      name: key,
       blob: "abc123",
       type: "image/svg+xml",
     });
