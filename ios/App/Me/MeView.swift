@@ -9,6 +9,7 @@ struct MeView: View {
     let model: MeModel
     let push: PushModel
     let levels: NotificationLevelsModel
+    let suggestions: SuggestionSettingsModel
     /// Community names by id, for the notification levels set per community.
     let communityNames: [String: String]
     let onVerify: () -> Void
@@ -46,6 +47,7 @@ struct MeView: View {
                     InviteCard(model: model)
                     SettingsSection(
                         model: model, me: me, notificationsOff: push.off, levels: levels,
+                        suggestions: suggestions,
                         communityNames: communityNames, onLink: onLink, onStatements: onStatements,
                         onFriends: onFriends)
                 }

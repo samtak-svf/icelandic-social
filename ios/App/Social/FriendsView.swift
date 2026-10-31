@@ -18,6 +18,7 @@ struct FriendsView: View {
                     FriendsSection(model: model, text: $text)
                     SentSection(model: model)
                     SnoozedSection(model: model)
+                    SuggestedSection(model: model)
                 }
             }
             .padding(16)
@@ -32,7 +33,10 @@ struct FriendsView: View {
                 ProblemCard(problem: problem) { Task { await model.retry() } }.padding(16)
             }
         }
-        .task { await model.load() }
+        .task {
+            await model.load()
+            await model.suggestions.load()
+        }
     }
 }
 
@@ -156,6 +160,40 @@ private struct SnoozedSection: View {
                         .buttonStyle(.plain)
                         .disabled(model.busy)
                         .padding(.trailing, 12)
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// Below the lists: no heading at all when nobody is to be shown. A long name gives way to the button.
+private struct SuggestedSection: View {
+    let model: FriendsModel
+
+    var body: some View {
+        let people = model.suggestions.people
+        if !people.isEmpty {
+            CardLabel(key: "friends_suggested")
+            Panel {
+                ForEach(Array(people.enumerated()), id: \.element.accountId) { index, person in
+                    if index > 0 { Hairline() }
+                    HStack(spacing: 0) {
+                        AuthorLinkRow(author: person)
+                        Button {
+                            Task { await model.ask(person.accountId) }
+                        } label: {
+                            PillLabel(text: "person_add_friend", filled: true, wide: false)
+                                .frame(minHeight: 44)
+                        }
+                        .buttonStyle(.plain)
+                        .fixedSize()
+                        .layoutPriority(1)
+                        .disabled(model.busy)
+                        .padding(.trailing, 12)
+                    }
+                    .onAppear {
+                        if person.accountId == people.last?.accountId { Task { await model.suggestions.more() } }
                     }
                 }
             }

@@ -46,6 +46,7 @@ struct HomeView: View {
     @State private var notices: NotificationsModel
     @State private var suspension: SuspensionModel
     @State private var levels: NotificationLevelsModel
+    @State private var suggestions: SuggestionSettingsModel
     @State private var communitiesPath: [SocialRoute] = []
     @State private var noticesPath: [SocialRoute] = []
     @State private var noticesOver = NoticesOver()
@@ -83,6 +84,7 @@ struct HomeView: View {
         _feed = State(initialValue: HomeModel(social: social))
         _suspension = State(initialValue: SuspensionModel(social: social))
         _levels = State(initialValue: NotificationLevelsModel(social: social))
+        _suggestions = State(initialValue: SuggestionSettingsModel(social: social))
         _notices = State(initialValue: NotificationsModel(social: social, cancel: push.notifier.cancel))
         _onboarding = State(initialValue: OnboardingModel(notifier: push.notifier))
         _photos = State(initialValue: PhotoCache(account: signIn.account, social: social, decode: displayPhoto))
@@ -304,7 +306,7 @@ struct HomeView: View {
                     switch route {
                     case .settings:
                         MeView(
-                            model: me, push: push, levels: levels,
+                            model: me, push: push, levels: levels, suggestions: suggestions,
                             communityNames: communities.namesById,
                             onVerify: { mePath.append(.verify) }, onLink: { mePath.append(.link) },
                             onStatements: { mePath.append(.statements) }, onFriends: { mePath.append(.friends) },

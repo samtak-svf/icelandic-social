@@ -15,6 +15,8 @@ final class FriendsModel {
     private(set) var sort = FriendSort.newest
     private(set) var query = ""
 
+    /// The people suggested below the lists; it reads and fails on its own.
+    let suggestions: SuggestionsModel
     private let social: Social
     private var failed: (() async -> Void)?
     /// The newest list asked for; an older answer that arrives later is dropped.
@@ -22,6 +24,7 @@ final class FriendsModel {
 
     init(social: Social) {
         self.social = social
+        suggestions = SuggestionsModel(social: social)
     }
 
     /// The search has words in it, so an empty list reads "nobody found" rather than "no friends yet".
@@ -51,6 +54,12 @@ final class FriendsModel {
     func decline(_ account: String) async { await act { try $0.declineFriendRequest(account) } }
 
     func cancel(_ account: String) async { await act { try $0.cancelFriendRequest(account) } }
+
+    /// Asks a suggested person. They leave the section when it went through, and stay with the problem when not.
+    func ask(_ account: String) async {
+        await act { _ = try $0.sendFriendRequest(account) }
+        if problem == nil { suggestions.drop(account) }
+    }
 
     func unsnooze(_ account: String) async { await act { try $0.unsnoozePerson(account) } }
 

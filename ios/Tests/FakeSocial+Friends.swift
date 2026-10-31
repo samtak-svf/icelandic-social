@@ -12,6 +12,9 @@ struct FriendServer {
     var known: [String: Author] = [:]
     /// The accounts the reader blocked: the server answers 404 for their person.
     var blocked: Set<String> = []
+    /// The people the server suggests, in order, and whether the reader takes part (decision 0114).
+    var suggested: [Author] = []
+    var includedInSuggestions = true
 }
 
 /// The friend calls of `FakeSocial` (decision 0114).
@@ -132,5 +135,27 @@ extension FakeSocial {
         state.blocked.insert(account)
         state.friends.removeAll { $0.person.accountId == account }
         server = state
+    }
+}
+
+/// The suggestion calls of `FakeSocial` (decision 0114): pages follow `pageSize`, and a person asked leaves the list.
+extension FakeSocial {
+    func friendSuggestions(after: String?) throws -> FriendSuggestions {
+        try call("friendSuggestions \(after ?? "-")")
+        let state = server
+        guard state.includedInSuggestions else { return FriendSuggestions(people: [], next: nil) }
+        let asked = Set(state.sent.map(\.person.accountId) + state.friends.map(\.person.accountId))
+        let (found, next) = page(state.suggested.filter { !asked.contains($0.accountId) }, after: after)
+        return FriendSuggestions(people: found, next: next)
+    }
+
+    func friendSuggestionsIncluded() throws -> Bool {
+        try call("friendSuggestionsIncluded")
+        return server.includedInSuggestions
+    }
+
+    func setFriendSuggestionsIncluded(_ included: Bool) throws {
+        try call("setFriendSuggestionsIncluded \(included)")
+        server.includedInSuggestions = included
     }
 }

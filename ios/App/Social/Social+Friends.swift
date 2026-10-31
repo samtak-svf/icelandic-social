@@ -25,6 +25,12 @@ protocol Friending: Sendable {
     /// Blocks the account (decision 0024). The person screen then answers 404, a friendship between them ends and
     /// neither reaches the other.
     func blockPerson(_ account: String) throws
+    /// People this account may know, from the open communities they share (decision 0114); `after` is the previous
+    /// page's `next`, and `next` is nil only on the last page.
+    func friendSuggestions(after: String?) throws -> FriendSuggestions
+    /// Whether this account takes part in suggestions, both as one suggested and as one shown them.
+    func friendSuggestionsIncluded() throws -> Bool
+    func setFriendSuggestionsIncluded(_ included: Bool) throws
 }
 
 extension CoreAccount {
@@ -55,6 +61,16 @@ extension CoreAccount {
     func unsnoozePerson(_ account: String) throws { try core().unsnoozePerson(accountId: account) }
 
     func blockPerson(_ account: String) throws { _ = try core().block(account: account) }
+
+    func friendSuggestions(after: String?) throws -> FriendSuggestions {
+        try core().friendSuggestions(after: after, limit: 20)
+    }
+
+    func friendSuggestionsIncluded() throws -> Bool { try core().friendSuggestionsIncluded() }
+
+    func setFriendSuggestionsIncluded(_ included: Bool) throws {
+        try core().setFriendSuggestionsIncluded(included: included)
+    }
 }
 
 extension PersonProfile {
