@@ -1037,7 +1037,8 @@ export interface ImportConnection {
   profileUrl: string;
   /** What the person publishes on the profile; null once it has been found */
   code: string | null;
-  state: "unproven" | "checking" | "importing" | "connected";
+  /** preview: the first collection waits to be chosen from, under the import's routes */
+  state: "unproven" | "checking" | "importing" | "preview" | "connected";
   /** How the last run ended; not_found means the code was not on the profile */
   outcome: "not_found" | "capped" | "failed" | "ok" | null;
   /** Posts brought in so far */

@@ -1,5 +1,5 @@
 import { MAX_POST_BODY, MAX_POST_MEDIA } from "../../api/post-fields.ts";
-import { db } from "../../env/index.ts";
+import { db, mediaBucket } from "../../env/index.ts";
 import { log } from "../../shared/log.ts";
 import { ensureWall, wallOf } from "../communities/index.ts";
 import { job, type Handler } from "../jobs/index.ts";
@@ -22,6 +22,23 @@ const LEASE_MS = 5 * 60 * 1000;
 const REMOVED_PER_RUN = 50;
 
 const REMOVE = "imports.remove";
+
+export const keyOf = (importId: string) => `imports/${importId}`;
+
+/** Deletes an import's bytes: the upload, and what a connection's preview stored under it. */
+export async function deleteBytes(env: Env, importId: string): Promise<void> {
+  const bucket = mediaBucket(env);
+  await bucket.delete(keyOf(importId));
+  let cursor: string | undefined;
+  do {
+    const page = await bucket.list({
+      prefix: `${keyOf(importId)}/`,
+      ...(cursor ? { cursor } : {}),
+    });
+    if (page.objects.length > 0) await bucket.delete(page.objects.map((o) => o.key));
+    cursor = page.truncated ? page.cursor : undefined;
+  } while (cursor);
+}
 
 export type ImportSource = {
   importId: string;
@@ -298,6 +315,8 @@ const removePart: Handler = async (env, _key, payload) => {
   const ids = results.map((r) => r.postId);
   const wall = await wallOf(env, source.accountId);
   const kept = new Set(wall ? await deleteUnlessModerated(env, wall.communityId, ids) : []);
+  // Also what a collection still running stored after the removal was asked for.
+  if (ids.length < share) await deleteBytes(env, importId);
   await db(env).batch([
     db(env)
       .prepare(

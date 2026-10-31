@@ -121,6 +121,16 @@ const REFUSED: Record<string, { allowed: number; call: (s: Setting) => Promise<R
     allowed: 201,
     call: (s) => s.one.call("POST", "/v1/imports/file", { size: 10 }),
   },
+  // The feed is off in this environment, and the refusal comes before it is asked.
+  createImportConnection: {
+    allowed: 503,
+    call: (s) =>
+      s.one.call("POST", "/v1/imports/connections", { profileUrl: "https://source.example/me" }),
+  },
+  checkImportConnection: {
+    allowed: 503,
+    call: (s) => s.one.call("POST", `/v1/imports/connections/im_${"0".repeat(32)}/check`),
+  },
   publishImport: {
     allowed: 404,
     call: (s) => s.one.call("POST", `/v1/imports/im_${"0".repeat(32)}/publish`, {}),
@@ -196,6 +206,7 @@ const NOT_REFUSED: Record<string, readonly string[]> = {
     "putImportPart",
     "completeImport",
     "deleteImport",
+    "deleteImportConnection",
     "setPhoto",
     "removePhoto",
     "setPhotoFrames",

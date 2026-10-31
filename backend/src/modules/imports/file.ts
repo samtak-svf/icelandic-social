@@ -1,7 +1,7 @@
 import { db, mediaBucket } from "../../env/index.ts";
 import { abortUpload, PART_SIZE, partLength, partsOf, uploadPart } from "../../shared/multipart.ts";
 import { job } from "../jobs/index.ts";
-import { openImport, requestRemoval } from "./core.ts";
+import { deleteBytes, keyOf, openImport, requestRemoval } from "./core.ts";
 import { SOURCE_KEY } from "./export-file.ts";
 
 // An uploaded export file (decision 0119). The ZIP is in the EU media bucket under
@@ -19,10 +19,18 @@ const PUBLISH_MS = 24 * 60 * 60 * 1000;
 /** A page of preview rows. */
 export const ITEM_PAGE = 50;
 
+/** From a connection's first collection to its first daily run. */
+export const SYNC_AFTER_MS = 24 * 60 * 60 * 1000;
 export const PARSE = "imports.parse";
 export const PUBLISH = "imports.publish";
 
-export const keyOf = (importId: string) => `imports/${importId}`;
+/** A connection whose first collection is dealt with goes on to its daily runs. */
+export const beginSync = (env: Env, importId: string, now: number) =>
+  db(env)
+    .prepare(
+      "UPDATE import_connections SET phase = 'sync', next_run_at = ? WHERE import_id = ? AND phase = 'backlog'",
+    )
+    .bind(now + SYNC_AFTER_MS, importId);
 
 type FileState = "uploading" | "parsing" | "ready" | "publishing" | "done" | "failed";
 
@@ -44,7 +52,8 @@ export type FileRow = {
 };
 
 /**
- * The file import `importId` of `accountId`, or null when it is not theirs. A
+ * The file import `importId` of `accountId`, or the preview of a connection's first
+ * collection, which is read and published the same way; null when it is not theirs. A
  * removal in progress has no file row, so `state` is then only a placeholder.
  */
 export async function fileOf(
@@ -62,7 +71,7 @@ export async function fileOf(
               COALESCE(f.videos, 0) AS videos, COALESCE(f.skipped, 0) AS skipped,
               f.earliest, f.latest
          FROM import_sources s LEFT JOIN import_files f ON f.import_id = s.import_id
-        WHERE s.import_id = ? AND s.account_id = ? AND s.kind = 'file'`,
+        WHERE s.import_id = ? AND s.account_id = ? AND s.kind IN ('file', 'profile')`,
     )
     .bind(importId, accountId)
     .first<Omit<FileRow, "removing"> & { removing: number }>();
@@ -218,7 +227,7 @@ export async function publishFile(
 }
 
 /** Deletes the upload and the preview rows: the bytes first, so none outlives its row. */
-async function dropFile(env: Env, importId: string): Promise<void> {
+export async function dropFile(env: Env, importId: string): Promise<void> {
   const file = await db(env)
     .prepare("SELECT state, upload_id AS uploadId FROM import_files WHERE import_id = ?")
     .bind(importId)
@@ -227,18 +236,31 @@ async function dropFile(env: Env, importId: string): Promise<void> {
   if (file.state === "uploading") {
     if (file.uploadId) await abortUpload(mediaBucket(env), keyOf(importId), file.uploadId);
   } else {
-    await mediaBucket(env).delete(keyOf(importId));
+    await deleteBytes(env, importId);
   }
   await db(env).prepare("DELETE FROM import_files WHERE import_id = ?").bind(importId).run();
 }
 
-/** Removes an import: what it brought in goes by the core's removal, the upload at once. */
+/**
+ * Removes an import: what it brought in goes by the core's removal, the upload at once,
+ * and a connection runs no more. Both routes reach a connection, since its preview is
+ * read and published as a file is.
+ */
 export async function removeFile(
   env: Env,
   accountId: string,
   importId: string,
 ): Promise<"ok" | "not_found"> {
   if (!(await fileOf(env, accountId, importId))) return "not_found";
+  await db(env)
+    .prepare(
+      `UPDATE import_connections
+          SET next_run_at = NULL, run_id = NULL, run_started_at = NULL, run_month = NULL,
+              run_ceiling = NULL
+        WHERE import_id = ?`,
+    )
+    .bind(importId)
+    .run();
   if (!(await requestRemoval(env, accountId, importId))) return "not_found";
   await dropFile(env, importId);
   return "ok";
@@ -258,6 +280,8 @@ export async function expireFiles(env: Env, now = Date.now()): Promise<number> {
     // them; one that never got that far is only a row.
     if (state !== "publishing") {
       await db(env).prepare("DELETE FROM import_sources WHERE import_id = ?").bind(importId).run();
+    } else {
+      await beginSync(env, importId, now).run();
     }
   }
   return results.length;

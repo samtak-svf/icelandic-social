@@ -2,7 +2,10 @@ import { db } from "../../env/index.ts";
 import { log } from "../../shared/log.ts";
 import { job, type Handler } from "../jobs/index.ts";
 import { rowOf, type Row } from "./connections.ts";
+import { openPreview, stageItem, stagedPosts } from "./connection-preview.ts";
 import { importPost, type ImportSource } from "./core.ts";
+import { previewReady } from "./file-jobs.ts";
+import { dropFile, SYNC_AFTER_MS } from "./file.ts";
 import {
   loadImage,
   readItems,
@@ -26,7 +29,6 @@ const ITEMS_PER_RUN = 10;
 /** How many minutes a run may take before it counts as failed. */
 const POLLS = 30;
 const HOUR_MS = 60 * 60 * 1000;
-const DAY_MS = 24 * HOUR_MS;
 /** A claim whose run never got stored, because the Worker died, is taken back after this. */
 const LOST_RUN_MS = 30 * 60 * 1000;
 /** A run whose jobs have given up, its figure never read, is written off after this. */
@@ -187,7 +189,8 @@ async function endRun(
   row: Row,
   next: { micros: number; phase?: Row["phase"]; authorId?: string; nextRunAt: number | null } & {
     outcome: Row["outcome"];
-    synced?: number;
+    synced?: number | null;
+    also?: D1PreparedStatement[];
   },
 ): Promise<void> {
   const back = next.micros > 0 ? Math.max(0, (row.runCeiling ?? 0) - next.micros) : 0;
@@ -214,6 +217,7 @@ async function endRun(
         "UPDATE import_scrape_spend SET micros = MAX(0, micros - ?) WHERE month = ? AND changes() > 0",
       )
       .bind(back, row.runMonth),
+    ...(next.also ?? []),
   ]);
 }
 
@@ -253,6 +257,21 @@ const collect: Handler = async (env, _key, payload) => {
   log("imports.connection_proven", { accountId: row.accountId });
 };
 
+/** The run's last part is read: the first collection now waits for the person, if it holds anything. */
+async function endFirstCollection(env: Env, row: Row, micros: number): Promise<void> {
+  const { posts, latest } = await stagedPosts(env, row.importId);
+  if (posts === 0) await dropFile(env, row.importId);
+  await endRun(env, row, {
+    micros,
+    outcome: "ok",
+    // Past a post written while the run ran, which the person has seen and may leave out.
+    synced: Math.max(row.runStartedAt ?? 0, latest + 1),
+    ...(posts > 0
+      ? { nextRunAt: null, also: [previewReady(env, row.importId, 0)] }
+      : { phase: "sync" as const, nextRunAt: Date.now() + SYNC_AFTER_MS }),
+  });
+}
+
 function sourcePost(item: ScrapedItem) {
   return {
     id: item.id,
@@ -261,6 +280,30 @@ function sourcePost(item: ScrapedItem) {
     images: item.images.map((url) => () => loadImage(url)),
     link: item.videoLink ?? undefined,
   };
+}
+
+/** Stages or imports one part's posts by the connection's phase; how many came in. */
+async function takeItems(env: Env, row: Row, items: ScrapedItem[]): Promise<number> {
+  const source: ImportSource = {
+    importId: row.importId,
+    accountId: row.accountId,
+    source: row.source,
+    audience: row.audience,
+  };
+  let imported = 0;
+  for (const item of items) {
+    // Another person's post on the profile, or the post that showed the code.
+    if (item.authorId !== row.authorId || item.body.includes(row.code)) continue;
+    if (row.phase === "backlog") {
+      await stageItem(env, row.importId, item);
+      continue;
+    }
+    // Older than the first collection, so the person has seen it and may have left it out.
+    if (item.createdAt < (row.lastOkAt ?? 0)) continue;
+    const { outcome } = await importPost(env, source, sourcePost(item), "sync");
+    if (outcome === "imported") imported += 1;
+  }
+  return imported;
 }
 
 const importItems: Handler = async (env, _key, payload) => {
@@ -274,20 +317,9 @@ const importItems: Handler = async (env, _key, payload) => {
   const settings = scrapeSettings(env);
   if (!row || row.runId !== runId || !settings) return;
   const { items, read } = await readItems(settings, datasetId, offset, ITEMS_PER_RUN);
-  const source: ImportSource = {
-    importId,
-    accountId: row.accountId,
-    source: row.source,
-    audience: row.audience,
-  };
-  const mark = row.phase === "backlog" ? "backlog" : "sync";
-  let imported = 0;
-  for (const item of items) {
-    // Another person's post on the profile, or the post that showed the code.
-    if (item.authorId !== row.authorId || item.body.includes(row.code)) continue;
-    const { outcome } = await importPost(env, source, sourcePost(item), mark);
-    if (outcome === "imported") imported += 1;
-  }
+  const first = row.phase === "backlog";
+  if (first && offset === 0) await openPreview(env, importId);
+  const imported = await takeItems(env, row, items);
   if (imported > 0) log("imports.scraped", { accountId: row.accountId, count: imported });
   if (read === ITEMS_PER_RUN) {
     await itemsJob(env, importId, runId, datasetId, offset + read).run();
@@ -295,13 +327,13 @@ const importItems: Handler = async (env, _key, payload) => {
   }
   // Read after the last part, since the figure lags the end of the run.
   const run = await readRun(settings, runId);
-  const now = Date.now();
+  if (first) return endFirstCollection(env, row, run.micros);
   await endRun(env, row, {
     micros: run.micros,
     outcome: "ok",
-    phase: "sync",
-    nextRunAt: now + DAY_MS,
-    synced: now,
+    nextRunAt: Date.now() + SYNC_AFTER_MS,
+    // From when the run began, so that a post written while it ran is asked for next time.
+    synced: row.runStartedAt,
   });
 };
 
