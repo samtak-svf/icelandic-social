@@ -1,14 +1,20 @@
-import { useEffect, useId, useState, type ChangeEvent, type FormEvent } from "react";
+import { useId, useState, type ChangeEvent, type FormEvent } from "react";
 import { useAccount } from "../account.tsx";
 import type { Problem } from "../problem.ts";
-import { createPost, uploadSocialMedia } from "../generated/api.ts";
+import {
+  createPost,
+  createWallPost,
+  uploadSocialMedia,
+  uploadWallMedia,
+  type WallAudience,
+} from "../generated/api.ts";
+import { WallAudienceFields } from "./audience.tsx";
 import { strings } from "../generated/brand/strings.ts";
 import { Dialog } from "../ui/dialog.tsx";
 import { Button, ProblemText, Status } from "../ui/kit.tsx";
 import { Avatar } from "./avatar.tsx";
-import { canSendComment, commentMedia } from "./comment-draft.ts";
-import { IMAGE_TYPES, MAX_COMMENT_IMAGES, refusal } from "./images.ts";
-import { outcome, type Outcome } from "./outcome.ts";
+import { IMAGE_TYPES, refusal } from "./images.ts";
+import { outcome } from "./outcome.ts";
 import { canPublishPoll, emptyPoll, pollOptions } from "./poll-draft.ts";
 import { PollFields } from "./poll-fields.tsx";
 import { useSuspended } from "./suspended.tsx";
@@ -16,181 +22,11 @@ import { useSuspended } from "./suspended.tsx";
 // The one text box a post and a comment are both written in; a post also
 // takes up to four images (decision 0065).
 
-const REFUSED = {
+export const REFUSED = {
   too_many: strings.post_images_too_many,
   too_large: strings.post_image_too_large,
   invalid_image: strings.post_image_failed,
 } as const;
-
-/** A picked image as a small preview, its object URL revoked when it goes. */
-function Preview({ file }: Readonly<{ file: File }>) {
-  const [url, setUrl] = useState<string | null>(null);
-  useEffect(() => {
-    const made = URL.createObjectURL(file);
-    setUrl(made);
-    return () => URL.revokeObjectURL(made);
-  }, [file]);
-  if (url === null) return null;
-  return <img src={url} alt="" className="size-16 rounded-md object-cover" />;
-}
-
-/**
- * The comment box as one row (decision 0080): the writer's own picture, a
- * pill that grows to five lines as they write, a photo button and a send
- * button. A comment takes one image (decision 0082), shown as a preview
- * above the row with a remove action and uploaded when the comment is sent.
- * Enter starts a new line; the button sends.
- */
-export function CommentComposer({
-  communityId,
-  label,
-  placeholder,
-  action,
-  max,
-  send,
-}: Readonly<{
-  communityId: string;
-  label: string;
-  placeholder: string;
-  action: string;
-  max: number;
-  send: (text: string, media: string[]) => Promise<Outcome<unknown>>;
-}>) {
-  const id = useId();
-  const { state } = useAccount();
-  const suspended = useSuspended();
-  const [text, setText] = useState("");
-  const [file, setFile] = useState<File | null>(null);
-  const [busy, setBusy] = useState(false);
-  const [problem, setProblem] = useState<Problem | keyof typeof REFUSED | null>(null);
-
-  function choose(event: ChangeEvent<HTMLInputElement>) {
-    const picked = Array.from(event.target.files ?? []);
-    event.target.value = "";
-    if (picked.length === 0) return;
-    const refused = refusal(file === null ? 0 : 1, picked, MAX_COMMENT_IMAGES);
-    setProblem(refused);
-    if (refused === null) setFile(picked[0] ?? null);
-  }
-
-  async function publish(): Promise<Problem | keyof typeof REFUSED | null> {
-    let mediaId: string | null = null;
-    if (file !== null) {
-      const stored = await outcome(uploadSocialMedia({ path: { communityId }, body: file }), 200);
-      if (stored.ok) mediaId = stored.data.mediaId;
-      else if (stored.status === 400) return "invalid_image";
-      else if (stored.status === 413) return "too_large";
-      else return stored.problem;
-    }
-    const sent = await send(text.trim(), commentMedia(mediaId));
-    return sent.ok ? null : sent.problem;
-  }
-
-  async function submit(event: FormEvent) {
-    event.preventDefault();
-    setBusy(true);
-    setProblem(null);
-    const failed = await publish();
-    setBusy(false);
-    setProblem(failed);
-    if (failed === null) {
-      setText("");
-      setFile(null);
-    }
-  }
-
-  return (
-    <form onSubmit={(event) => void submit(event)} className="flex flex-col">
-      <fieldset disabled={suspended} className="contents">
-        {file !== null && (
-          <div className="flex items-center gap-2">
-            <Preview file={file} />
-            <Button className="text-sm" disabled={busy} onClick={() => setFile(null)}>
-              {strings.post_image_remove}
-            </Button>
-          </div>
-        )}
-        <div className="flex items-end gap-2">
-          {state.status === "signed-in" && (
-            <Avatar
-              kind="person"
-              id={state.me.accountId}
-              name={state.me.name}
-              photo={state.me.photo}
-              className="size-10 shrink-0 rounded-full"
-            />
-          )}
-          <label htmlFor={id} className="sr-only">
-            {label}
-          </label>
-          <textarea
-            id={id}
-            value={text}
-            maxLength={max}
-            rows={1}
-            placeholder={placeholder}
-            onChange={(event) => setText(event.target.value)}
-            className="field-sizing-content max-h-[7.5rem] min-h-11 min-w-0 flex-1 resize-none rounded-3xl bg-muted px-4 py-2.5 leading-6"
-          />
-          <label
-            htmlFor={`${id}-image`}
-            aria-label={strings.comment_add_image}
-            className="inline-flex size-11 shrink-0 cursor-pointer items-center justify-center rounded-full hover:bg-muted has-[:focus-visible]:outline-3 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-primary has-[:disabled]:opacity-40"
-          >
-            <svg
-              aria-hidden="true"
-              viewBox="0 0 24 24"
-              className="size-6"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <rect x="3" y="4" width="18" height="16" rx="2" />
-              <circle cx="9" cy="10" r="2" />
-              <path d="m21 16-5-5-9 9" />
-            </svg>
-            <input
-              id={`${id}-image`}
-              type="file"
-              accept={IMAGE_TYPES}
-              className="sr-only"
-              disabled={busy || file !== null}
-              onChange={choose}
-            />
-          </label>
-          <button
-            type="submit"
-            aria-label={action}
-            disabled={!canSendComment({ text, hasImage: file !== null, busy })}
-            className="inline-flex size-11 shrink-0 items-center justify-center rounded-full text-primary hover:bg-muted disabled:opacity-40"
-          >
-            <svg
-              aria-hidden="true"
-              viewBox="0 0 24 24"
-              className="size-6"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M22 2 11 13" />
-              <path d="M22 2 15 22l-4-9-9-4z" />
-            </svg>
-          </button>
-        </div>
-        {/* Inline: the one-row box takes no height for a problem it does not have. */}
-        <Status inline>
-          {typeof problem === "string"
-            ? REFUSED[problem]
-            : problem !== null && <ProblemText problem={problem} />}
-        </Status>
-      </fieldset>
-    </form>
-  );
-}
 
 /**
  * A new post: its text, its images, or both. The images are checked when
@@ -200,12 +36,20 @@ function PostForm({
   communityId,
   posted,
   anonymousAllowed,
-}: Readonly<{ communityId: string; posted: () => void; anonymousAllowed: boolean }>) {
+  wall,
+}: Readonly<{
+  communityId: string;
+  posted: () => void;
+  anonymousAllowed: boolean;
+  /** Writing on one's own wall (decision 0115): an audience, and no community. */
+  wall: boolean;
+}>) {
   const id = useId();
   const [text, setText] = useState("");
   const [files, setFiles] = useState<File[]>([]);
   const [poll, setPoll] = useState<string[] | null>(null);
   const [anonymous, setAnonymous] = useState(false);
+  const [audience, setAudience] = useState<WallAudience>("friends");
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<Problem | keyof typeof REFUSED | null>(null);
   const path = { communityId };
@@ -222,22 +66,27 @@ function PostForm({
   async function publish(): Promise<Problem | keyof typeof REFUSED | null> {
     const media: string[] = [];
     for (const file of files) {
-      const stored = await outcome(uploadSocialMedia({ path, body: file }), 200);
+      const stored = await outcome(
+        wall ? uploadWallMedia({ body: file }) : uploadSocialMedia({ path, body: file }),
+        200,
+      );
       if (stored.ok) media.push(stored.data.mediaId);
       else if (stored.status === 400) return "invalid_image";
       else if (stored.status === 413) return "too_large";
       else return stored.problem;
     }
+    const content = {
+      body: text.trim(),
+      media,
+      ...(poll === null ? {} : { poll: { options: pollOptions(poll) } }),
+    };
     const sent = await outcome(
-      createPost({
-        path,
-        body: {
-          body: text.trim(),
-          media,
-          ...(poll === null ? {} : { poll: { options: pollOptions(poll) } }),
-          ...(anonymousAllowed && anonymous ? { anonymous: true } : {}),
-        },
-      }),
+      wall
+        ? createWallPost({ body: { ...content, audience } })
+        : createPost({
+            path,
+            body: { ...content, ...(anonymousAllowed && anonymous ? { anonymous: true } : {}) },
+          }),
       200,
     );
     return sent.ok ? null : sent.problem;
@@ -295,6 +144,7 @@ function PostForm({
           ))}
         </ul>
       )}
+      {wall && <WallAudienceFields value={audience} onChange={setAudience} disabled={busy} />}
       {anonymousAllowed && (
         <label className="flex min-h-11 items-center gap-2">
           <input
@@ -361,10 +211,16 @@ function PostForm({
  * holds the whole form, so the card list keeps its place.
  */
 export function PostComposer({
-  communityId,
+  communityId = "",
   posted,
   anonymousAllowed = false,
-}: Readonly<{ communityId: string; posted: () => void; anonymousAllowed?: boolean }>) {
+  wall = false,
+}: Readonly<{
+  communityId?: string;
+  posted: () => void;
+  anonymousAllowed?: boolean;
+  wall?: boolean;
+}>) {
   const { state } = useAccount();
   const suspended = useSuspended();
   const [open, setOpen] = useState(false);
@@ -416,6 +272,7 @@ export function PostComposer({
           <PostForm
             communityId={communityId}
             anonymousAllowed={anonymousAllowed}
+            wall={wall}
             posted={() => {
               setOpen(false);
               posted();

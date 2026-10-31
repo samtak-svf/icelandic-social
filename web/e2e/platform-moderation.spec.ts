@@ -67,7 +67,8 @@ test("a platform moderator clears an account's photo from the queue; others are 
   // The author sets a photo.
   const file = { name: "mynd.png", mimeType: "image/png", buffer: await png(author) };
   await author.getByRole("link", { name: strings.tab_me }).click();
-  await author.getByLabel(strings.photo_choose).setInputFiles(file);
+  await author.getByRole("button", { name: strings.photo_choose }).click();
+  await author.getByRole("dialog").getByLabel(strings.photo_choose).setInputFiles(file);
   await author
     .getByRole("dialog", { name: strings.image_frames_title })
     .getByRole("button", { name: strings.save })

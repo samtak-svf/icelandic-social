@@ -66,20 +66,24 @@ test("sets, changes and removes the photo on Ég", async ({ page }) => {
 
   const file = { name: "mynd.png", mimeType: "image/png", buffer: await png(page) };
   const sheet = page.getByRole("dialog", { name: strings.image_frames_title });
-  await page.getByLabel(strings.photo_choose).setInputFiles(file);
+  // The camera on the avatar opens the photo controls; a change closes them.
+  await page.getByRole("button", { name: strings.photo_choose }).click();
+  await page.getByRole("dialog").getByLabel(strings.photo_choose).setInputFiles(file);
   await sheet.getByRole("button", { name: strings.save }).click();
   await expect(photo).toBeVisible();
   expect(await photo.evaluate((img: HTMLImageElement) => img.naturalWidth)).toBeGreaterThan(0);
 
-  await page.getByLabel(strings.photo_change).setInputFiles(file);
+  await page.getByRole("button", { name: strings.photo_change }).click();
+  await page.getByRole("dialog").getByLabel(strings.photo_change).setInputFiles(file);
   await sheet.getByRole("button", { name: strings.save }).click();
   await expect(sheet).toHaveCount(0);
   await expect(photo).toBeVisible();
 
+  await page.getByRole("button", { name: strings.photo_change }).click();
   page.once("dialog", (dialog) => void dialog.accept());
   await page.getByRole("button", { name: strings.photo_remove }).click();
   await expect(photo).toHaveCount(0);
-  await expect(page.getByLabel(strings.photo_choose)).toBeAttached();
+  await expect(page.getByRole("button", { name: strings.photo_choose })).toBeVisible();
 
   await page.reload();
   await expect(page.getByText(NAME)).toBeVisible();
