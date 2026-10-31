@@ -1,6 +1,6 @@
 # 0116. The feed: a first tab, newest first, read per source
 
-- Status: accepted; implemented on the server (`GET /v1/home`, with snooze and block in the statement). Still to come: the measurement below, the tab, the composer and the card on the web and in the apps
+- Status: accepted; implemented on the server (`GET /v1/home`, with snooze and block in the statement). Measured on staging, and it holds (see Measured, then decided). Still to come: the tab, the composer and the card on the web and in the apps
 - Date: 2026-10-30
 - Decided by: Guðröður Atli Jónsson
 - Amended by: [0117](0117-names-in-the-ui-are-one-table.md) (the `Samfélög` tab is `Hópar`)
@@ -68,8 +68,8 @@ measured.** The first step of the plan extends the spike.
   (`docs/d1-social-workload.md:79`), which is what 0060's 0.9 GiB for the graph already counted as follows.
 - **Rendering is the open risk.** A page reads one Space call per community on it, in parallel
   (`render`, `posts.ts`). A page of 30 friends' posts means up to 30 object calls; a community's page has never paid this.
-  **It is not measured.** The feed does not ship until a staging measurement of the 95th percentile says it holds; if it
-  does not, the page gets shorter, which costs nothing else.
+  The feed was not to ship until a staging measurement of the 95th percentile said it holds, and it does (see Measured, then
+  decided); had it not, the page would have become shorter, which costs nothing else.
 
 ### The composer and the card
 
@@ -90,6 +90,14 @@ measured.** The first step of the plan extends the spike.
   fails, the page goes to 20, then 15, and is re-measured (`HOME_PAGE`, `backend/src/api/home.ts`;
   `tooling/home-measure.mjs`, whose `--page` measures a shorter page with no deploy). Decided 2026-10-31 by the overseeing
   session, which Guðröður may overrule.
+- **It holds, at the page of 30.** Measured 2026-10-31 on the deployed staging Worker from one client in Iceland, for a viewer
+  with 500 friends and 50 communities and a page drawing on 30 spaces (15 walls, 15 communities): warm p50 289 ms, p95 361 ms,
+  max 407 ms (30 samples); cold, after 120 s idle, p50 408 ms, p95 568 ms, max 568 ms (10 samples). `HOME_PAGE` stays 30.
+  A cold sample is after an idle gap, not proof that every Durable Object had been evicted.
+- **Rows read stay under the 3,000 at the size this record assumes.** D1's own `rows_read` on staging for the window statement
+  of that viewer: 2,412 with 380 posts in the window, the assumed day, in line with the local 2,400. With the 880 posts the
+  first seeding day holds, it is 3,411, so a viewer with more than about 670 posts a day in its sources passes the 3,000; that is
+  a heavier viewer than this record assumes, and the milliseconds above were measured at that heavier day.
 - **Multi-image layout stays as it is**: one image alone, several in two columns (`post.tsx:403`), each opening the
   viewer. A mosaic would need a per-image crop that no editor produces.
 - **A ⋯ on others' posts exists**: Tilkynna for others, Eyða for the author (`post.tsx:347–365`). No change.
