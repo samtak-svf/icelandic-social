@@ -1,0 +1,97 @@
+name: staging
+
+# Deploys the Worker spjall-api-staging (decision 0118, docs/operations.md): D1
+# migrations, then the Worker, from main, with no approval, because nothing it
+# holds is real. Its token is its own and reaches no zone. It stays skipped until
+# the repository variable STAGING_ON is true. The address is the secret
+# STAGING_ORIGIN, since this repository's logs are public and a secret is what
+# they mask. The gate, not the address, is what protects staging.
+#
+# The checks before it refuse a config that would make `cf deploy` provision
+# storage by itself (decision 0001): `--staging` wants the D1 id, `--live` asks
+# Cloudflare whether staging's own D1 and R2 really are in the EU.
+#
+# Secrets are uploaded with each version, so a first deploy cannot go out with
+# the gate unset; and if it did, the gate would answer 404 to everything.
+
+permissions:
+  contents: read
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - backend/**
+      - web/**
+      - brand/**
+      - identifiers/**
+      - core/artifact.lock.json
+      - package.json
+      - pnpm-lock.yaml
+      - pnpm-workspace.yaml
+      - tooling/jurisdiction-check.mjs
+      - tooling/lib/**
+      - .github/workflows/staging.yml
+      - .github/actions/node-workspace/**
+      - .github/actions/core-artifact/**
+      - .github/actions/rust-toolchain/**
+  workflow_dispatch:
+
+concurrency:
+  group: staging
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: github.ref == 'refs/heads/main' && vars.STAGING_ON == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_STAGING_API_TOKEN }}
+      CF_SEND_TELEMETRY: "false"
+      CLOUDFLARE_JURISDICTION_TOKEN: ${{ secrets.CLOUDFLARE_JURISDICTION_TOKEN }}
+    steps:
+      # A deploy prints the address without its scheme as well.
+      - name: Keep the address out of the log
+        env:
+          STAGING_ORIGIN: ${{ secrets.STAGING_ORIGIN }}
+        run: echo "::add-mask::${STAGING_ORIGIN#https://}"
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/node-workspace
+
+      # The chat worker's core (decision 0081): the pinned build, checksum-verified.
+      - uses: ./.github/actions/core-artifact
+        with:
+          target: web
+          token: ${{ github.token }}
+
+      - name: Deployable, and staging's D1 and R2 report jurisdiction eu
+        run: node tooling/jurisdiction-check.mjs --staging --live
+
+      - name: Remote D1 migrations
+        run: pnpm --filter spjall-backend run migrate:staging
+
+      - name: Deploy
+        env:
+          STAGING_GATE: ${{ secrets.STAGING_GATE }}
+          STAGING_KENNITALA_HMAC_KEY: ${{ secrets.STAGING_KENNITALA_HMAC_KEY }}
+        run: |
+          secrets="$RUNNER_TEMP/staging-secrets.json"
+          umask 077
+          jq -n '{STAGING_GATE: env.STAGING_GATE, KENNITALA_HMAC_KEY: env.STAGING_KENNITALA_HMAC_KEY}' > "$secrets"
+          pnpm --filter spjall-backend run deploy:staging --secrets-file "$secrets"
+
+      - name: Staging answers only through its gate
+        env:
+          STAGING_ORIGIN: ${{ secrets.STAGING_ORIGIN }}
+          STAGING_GATE: ${{ secrets.STAGING_GATE }}
+        run: |
+          status() { curl --silent --output /dev/null --write-out '%{http_code}' "$@"; }
+          for attempt in 1 2 3 4 5 6; do
+            [ "$(status --header "x-staging-gate: $STAGING_GATE" "$STAGING_ORIGIN/health")" = 200 ] && break
+            [ "$attempt" = 6 ] && { echo "::error::no answer through the gate"; exit 1; }
+            sleep 10
+          done
+          [ "$(status "$STAGING_ORIGIN/health")" = 404 ] || { echo "::error::answered without the gate"; exit 1; }
+          [ "$(status --header "x-staging-gate: wrong" "$STAGING_ORIGIN/health")" = 404 ] || { echo "::error::answered a wrong gate"; exit 1; }

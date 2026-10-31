@@ -64,7 +64,7 @@
     "cloudflare": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["worker", "d1", "r2", "durableObjects", "jurisdiction"],
+      "required": ["worker", "d1", "r2", "durableObjects", "jurisdiction", "staging"],
       "properties": {
         "worker": { "$ref": "#/$defs/slug" },
         "d1": { "$ref": "#/$defs/slug" },
@@ -87,7 +87,25 @@
             "space": { "$ref": "#/$defs/className" }
           }
         },
-        "jurisdiction": { "const": "eu" }
+        "jurisdiction": { "const": "eu" },
+        "staging": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["worker", "d1", "r2"],
+          "properties": {
+            "worker": { "$ref": "#/$defs/slug" },
+            "d1": { "$ref": "#/$defs/slug" },
+            "r2": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["media", "profiles"],
+              "properties": {
+                "media": { "$ref": "#/$defs/slug" },
+                "profiles": { "$ref": "#/$defs/slug" }
+              }
+            }
+          }
+        }
       }
     },
     "hosts": {

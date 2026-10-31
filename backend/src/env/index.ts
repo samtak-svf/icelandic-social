@@ -179,9 +179,8 @@ export function opsToken(env: Env): string | undefined {
 }
 
 /**
- * Bound only by dev/worker.ts and test/worker.ts: the fake Kenni and Google,
- * reached in process. A deployed Worker has no such binding and fetches the
- * issuer.
+ * Bound only by the dev entries and test/worker.ts: the fake Kenni and Google,
+ * reached in process. Production has no such binding and fetches the issuer.
  */
 type Fake = { KENNI_FAKE?: Fetcher; GOOGLE_FAKE?: Fetcher };
 

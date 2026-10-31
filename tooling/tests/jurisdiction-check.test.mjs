@@ -1,6 +1,16 @@
 // @ts-check
 import { describe, expect, it } from "vitest";
-import { checkApns, checkConfig, checkDeployable, checkLive } from "../jurisdiction-check.mjs";
+import {
+  checkApns,
+  checkConfig,
+  checkDeployable,
+  checkLive,
+  checkModes,
+  checkProduction,
+  checkProductionSource,
+  checkStaging,
+  checkStagingDeployable,
+} from "../jurisdiction-check.mjs";
 import { readJson } from "../lib/repo.mjs";
 import { readWorkerConfig } from "../lib/worker-config.mjs";
 
@@ -8,6 +18,7 @@ const ids = readJson("identifiers/ids.json");
 const { cloudflare } = ids;
 const real = await readWorkerConfig();
 const config = () => structuredClone(real);
+const realStaging = await readWorkerConfig(undefined, "staging");
 
 const DB_ID = "0b6c1f3e-5d2a-4c8e-9f10-2a3b4c5d6e7f";
 
@@ -220,5 +231,209 @@ describe("jurisdiction-check, deploy", () => {
     const d = deployed();
     d.workersDev = undefined;
     expect(checkDeployable(d, ids)).toEqual(["workersDev must be false"]);
+  });
+});
+
+describe("jurisdiction-check, staging", () => {
+  const staging = () => structuredClone(realStaging);
+  const problems = (/** @type {import("../lib/worker-config.mjs").WorkerConfig} */ c) =>
+    checkStaging(c, real, ids).join("\n");
+
+  it("passes on the staging config as it is", () => {
+    expect(checkStaging(staging(), real, ids)).toEqual([]);
+    expect(realStaging.main).toBe("dev/staging.ts");
+    expect(realStaging.workersDev).toBe(true);
+    expect(realStaging.routes).toEqual([]);
+  });
+
+  it("fails when an R2 bucket loses its jurisdiction or is removed", () => {
+    const c = staging();
+    /** @type {any} */ (c.r2[0]).jurisdiction = undefined;
+    expect(problems(c)).toMatch(/staging R2 MEDIA jurisdiction is undefined/);
+    const d = staging();
+    d.r2 = d.r2.filter((b) => b.binding !== "PROFILES");
+    expect(problems(d)).toMatch(/staging R2 buckets are/);
+  });
+
+  it("fails when D1 is removed or a Durable Object class is dropped", () => {
+    const c = staging();
+    c.d1 = [];
+    expect(problems(c)).toMatch(/staging D1 database name/);
+    const d = staging();
+    d.classes = d.classes.filter((k) => k.className !== "Space");
+    expect(problems(d)).toMatch(/staging DO classes declared in exports/);
+    const e = staging();
+    e.durableObjects = e.durableObjects.filter((b) => b.binding !== "INBOX");
+    expect(problems(e)).toMatch(/staging DO classes/);
+  });
+
+  it("fails on a queue, a placement outside the EU, or another placement than production's", () => {
+    const c = staging();
+    c.queues = true;
+    expect(problems(c)).toMatch(/Queues have no jurisdiction/);
+    for (const region of ["aws:eu-west-2", "aws:eu-central-1"]) {
+      const d = staging();
+      d.placement = { region };
+      expect(problems(d)).toMatch(/staging placement/);
+    }
+  });
+
+  it("fails on another account, a custom domain, workers.dev off, or the production entry", () => {
+    const c = staging();
+    c.accountId = "0".repeat(32);
+    expect(problems(c)).toMatch(/staging account id/);
+    const d = staging();
+    d.routes = [{ pattern: ids.hosts.api, customDomain: true }];
+    expect(problems(d)).toMatch(/staging has routes/);
+    const e = staging();
+    e.workersDev = false;
+    expect(problems(e)).toMatch(/staging workersDev/);
+    const f = staging();
+    f.main = "src/index.ts";
+    expect(problems(f)).toMatch(/staging entrypoint/);
+    const g = staging();
+    g.main = "dev/worker.ts";
+    expect(problems(g)).toMatch(/staging entrypoint/);
+  });
+
+  it("fails when it binds a production resource by name or by id", () => {
+    const worker = staging();
+    worker.name = cloudflare.worker;
+    expect(problems(worker)).toMatch(/production name spjall-api/);
+    const db = staging();
+    /** @type {any} */ (db.d1[0]).name = cloudflare.d1;
+    expect(problems(db)).toMatch(/production name spjall-db/);
+    const byId = staging();
+    /** @type {any} */ (byId.d1[0]).id = real.d1[0]?.id;
+    expect(problems(byId)).toMatch(/production D1 id/);
+    const bucket = staging();
+    /** @type {any} */ (bucket.r2[0]).bucket = cloudflare.r2.media;
+    expect(problems(bucket)).toMatch(/production name spjall-media/);
+    const object = staging();
+    /** @type {any} */ (object.durableObjects[0]).worker = cloudflare.worker;
+    expect(problems(object)).toMatch(/production name spjall-api/);
+    const limit = staging();
+    /** @type {any} */ (limit.rateLimits[0]).namespaceId = real.rateLimits[0]?.namespaceId;
+    expect(problems(limit)).toMatch(/production rate limit namespace/);
+  });
+
+  it("fails on a secret or a var that opens a way to production", () => {
+    const secret = staging();
+    secret.secrets.push("FCM_SERVICE_ACCOUNT");
+    expect(problems(secret)).toMatch(/staging declares the secrets/);
+    const team = staging();
+    team.vars.APNS_TEAM_ID = "B4724Z74TM";
+    expect(problems(team)).toMatch(/staging APNS_TEAM_ID/);
+    const topic = staging();
+    topic.vars.APNS_TOPIC = ids.appleInterim.iosBundleId;
+    expect(problems(topic)).toMatch(/staging APNS_TOPIC/);
+    for (const [name, value] of [
+      ["KENNI_ISSUER", "https://idp.kenni.is/innskraning.is"],
+      ["GOOGLE_ISSUER", "https://accounts.google.com"],
+      ["GOOGLE_CLIENT_ID", "654764079866-example.apps.googleusercontent.com"],
+    ]) {
+      const c = staging();
+      c.vars[String(name)] = value;
+      expect(problems(c)).toMatch(new RegExp(`staging ${name}`));
+    }
+  });
+
+  it("fails when the gate is not declared or static files skip the Worker", () => {
+    const secret = staging();
+    secret.secrets = secret.secrets.filter((s) => s !== "STAGING_GATE");
+    expect(problems(secret)).toMatch(/staging declares the secrets/);
+    const assets = staging();
+    assets.runWorkerFirst = undefined;
+    expect(problems(assets)).toMatch(/runWorkerFirst/);
+  });
+
+  it("holds a staging deploy to a D1 id, and checks staging's own storage live", async () => {
+    const c = staging();
+    /** @type {any} */ (c.d1[0]).id = undefined;
+    expect(checkStagingDeployable(c).join()).toMatch(/has no id/);
+    /** @type {any} */ (c.d1[0]).id = DB_ID;
+    expect(checkStagingDeployable(c)).toEqual([]);
+    const buckets = c.r2.map((b) => String(b.bucket));
+    const result = await checkLive({
+      accountId: "acct",
+      token: "t",
+      config: c,
+      cloudflare: { d1: cloudflare.staging.d1, jurisdiction: cloudflare.jurisdiction },
+      fetch: fakeApi({ d1: "eu", name: cloudflare.staging.d1, r2: buckets }).fetch,
+    });
+    expect(result.problems).toEqual([]);
+  });
+});
+
+describe("jurisdiction-check, what reaches production", () => {
+  const modes =
+    (/** @type {Record<string, any>} */ bent = {}) =>
+    /** @param {string | undefined} mode */
+    async (mode) =>
+      bent[String(mode)] ?? readWorkerConfig(undefined, mode);
+
+  it("passes on every mode as it is", async () => {
+    expect(await checkModes(modes(), ids)).toEqual([]);
+  });
+
+  it("fails when production's entry, workers.dev or name moves", () => {
+    const entry = config();
+    entry.main = "dev/staging.ts";
+    expect(checkProduction(entry, ids).join()).toMatch(/entrypoint is "dev\/staging.ts"/);
+    const open = config();
+    open.workersDev = true;
+    expect(checkProduction(open, ids).join()).toMatch(/workersDev must be false/);
+    const name = config();
+    name.name = cloudflare.staging.worker;
+    expect(checkProduction(name, ids).join()).toMatch(/staging name spjall-api-staging/);
+  });
+
+  it("fails when production binds a staging resource or declares the gate", () => {
+    const bucket = config();
+    /** @type {any} */ (bucket.r2[0]).bucket = cloudflare.staging.r2.media;
+    expect(checkProduction(bucket, ids).join()).toMatch(/staging name spjall-media-staging/);
+    const gate = config();
+    gate.secrets.push("STAGING_GATE");
+    expect(checkProduction(gate, ids).join()).toMatch(/declares STAGING_GATE/);
+  });
+
+  it("fails when a fake issuer reaches production", () => {
+    for (const name of ["KENNI_ISSUER", "GOOGLE_ISSUER"]) {
+      const c = config();
+      c.vars[name] = "https://staging.invalid/dev/fake";
+      expect(checkProduction(c, ids).join()).toMatch(new RegExp(`${name} is a fake issuer`));
+    }
+    const client = config();
+    client.vars.GOOGLE_CLIENT_ID = "fake-google-client";
+    expect(checkProduction(client, ids).join()).toMatch(/GOOGLE_CLIENT_ID is a fake client/);
+  });
+
+  it("fails when a dev entry reaches any mode but interop and staging", async () => {
+    const leaked = config();
+    leaked.main = "dev/worker.ts";
+    const problems = await checkModes(modes({ production: leaked }), ids);
+    expect(problems.join()).toMatch(/mode "production": entrypoint is "dev\/worker.ts"/);
+    const moved = config();
+    moved.main = "dev/staging.ts";
+    expect((await checkModes(modes({ interop: moved }), ids)).join()).toMatch(
+      /mode "interop": entrypoint is "dev\/staging.ts", expected "dev\/worker.ts"/,
+    );
+  });
+
+  it("fails when production's code imports a dev file or names the gate", () => {
+    expect(
+      checkProductionSource([{ path: "src/a.ts", text: "// dev/worker.ts is not here" }]),
+    ).toEqual([]);
+    for (const text of [
+      'import { gated } from "../dev/staging-app.ts";',
+      'const m = await import("../../dev/oidc.ts");',
+      "env.STAGING_GATE",
+    ]) {
+      expect(checkProductionSource([{ path: "src/a.ts", text }]).join()).toMatch(/src\/a.ts/);
+    }
+  });
+
+  it("passes on production's code as it is", () => {
+    expect(checkProductionSource()).toEqual([]);
   });
 });

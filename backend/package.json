@@ -14,7 +14,9 @@
     "invite:operator": "node scripts/invite-operator.ts",
     "migrate:remote": "node ../tooling/jurisdiction-check.mjs --deploy && node scripts/d1.ts migrate",
     "build": "cf build",
-    "deploy": "node ../tooling/jurisdiction-check.mjs --deploy && cf build && cf deploy --prebuilt --no-provision"
+    "deploy": "node ../tooling/jurisdiction-check.mjs --deploy && cf build && cf deploy --prebuilt --no-provision",
+    "migrate:staging": "node ../tooling/jurisdiction-check.mjs --staging && node scripts/d1.ts migrate --staging",
+    "deploy:staging": "node ../tooling/jurisdiction-check.mjs --staging && cf build --mode staging && cf deploy --mode staging --prebuilt --no-provision"
   },
   "dependencies": {
     "@hono/zod-openapi": "^1.6.3",

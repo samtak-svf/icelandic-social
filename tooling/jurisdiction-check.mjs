@@ -19,6 +19,15 @@
 //     has its id, the entry is src/index.ts, the Worker answers only on the
 //     frozen API host as a custom domain, and workers.dev is off. The deploy
 //     also runs with --no-provision (backend/package.json).
+// `node tooling/jurisdiction-check.mjs --staging`  before a staging deploy:
+//     staging's D1 has its id. With --live, the same questions about staging's
+//     own D1 and buckets.
+//
+// Offline, on every run, the staging Worker (decision 0118): its storage is its
+// own and in the EU, it binds nothing of production's, its gate is declared and
+// covers static files. And the other way: production's entry is src/index.ts,
+// with workers.dev off and no staging name, and a dev entry or a fake issuer
+// reaches no mode but interop and staging.
 //
 // Durable Objects are not checked here: a namespace has no jurisdiction the
 // API can report. Each object id is pinned in code instead
@@ -26,7 +35,9 @@
 //
 // The config is read through tooling/lib/worker-config.mjs, never parsed here.
 
-import { readJson } from "./lib/repo.mjs";
+import { readdirSync, readFileSync } from "node:fs";
+import { join } from "node:path";
+import { readJson, ROOT } from "./lib/repo.mjs";
 import { readWorkerConfig } from "./lib/worker-config.mjs";
 
 /** Samtak's own Cloudflare account (AGENTS.md § Infrastructure, decision 0031). */
@@ -165,7 +176,7 @@ export function checkApns(config, ids) {
 /**
  * What `cf deploy` needs so it creates nothing by itself: a missing D1 id
  * would provision a database without a jurisdiction (decision 0001), and
- * dev/worker.ts, with its fake Kenni, must never be the deployed entry.
+ * no dev entry, with its fake Kenni, may be production's.
  *
  * @param {WorkerConfig} config
  * @param {any} ids identifiers/ids.json
@@ -186,6 +197,260 @@ export function checkDeployable(config, ids) {
   if (routes !== wanted) problems.push(`routes is ${routes}, expected ${wanted}`);
   if (config.workersDev !== false) problems.push("workersDev must be false");
   return problems;
+}
+
+/** The modes with a dev entry; a mode not named here must be production's config. */
+const DEV_ENTRIES = new Map([
+  ["interop", "dev/worker.ts"],
+  ["staging", "dev/staging.ts"],
+]);
+/** The modes a person or a tool would plausibly pass, besides none at all. */
+const OTHER_MODES = [undefined, "production", "preview", "development", "test"];
+/** The only secrets staging declares: its own HMAC key, and its gate. */
+const STAGING_SECRETS = ["KENNITALA_HMAC_KEY", "STAGING_GATE"];
+
+/** Every name a staging resource has in ids.json. */
+const stagingNames = (/** @type {any} */ cloudflare) => [
+  cloudflare.staging.worker,
+  cloudflare.staging.d1,
+  ...Object.values(cloudflare.staging.r2),
+];
+
+/** Every name of a resource a config binds, and its own. */
+const boundNames = (/** @type {WorkerConfig} */ config) => [
+  config.name,
+  ...config.d1.map((d) => d.name),
+  ...config.r2.map((b) => b.bucket),
+  ...config.durableObjects.map((b) => b.worker),
+];
+
+/**
+ * What must hold of production's config in any mode that is not a dev one: not
+ * only at a deploy, since a wrong mode is wrong before anyone deploys it.
+ *
+ * @param {WorkerConfig} config
+ * @param {any} ids identifiers/ids.json
+ * @returns {string[]} problems, empty when nothing of staging or the fakes is in it
+ */
+export function checkProduction(config, ids) {
+  /** @type {string[]} */
+  const problems = [];
+  if (config.main !== "src/index.ts") {
+    problems.push(`entrypoint is ${JSON.stringify(config.main)}, expected "src/index.ts"`);
+  }
+  if (config.workersDev !== false) problems.push("workersDev must be false");
+  const staging = new Set(stagingNames(ids.cloudflare));
+  for (const name of new Set(boundNames(config))) {
+    if (staging.has(name)) problems.push(`production binds the staging name ${name}`);
+  }
+  if (config.secrets.includes("STAGING_GATE")) problems.push("production declares STAGING_GATE");
+  for (const name of ["KENNI_ISSUER", "GOOGLE_ISSUER"]) {
+    if (String(config.vars[name]).includes("/dev/")) {
+      problems.push(`${name} is a fake issuer: ${JSON.stringify(config.vars[name])}`);
+    }
+  }
+  if (String(config.vars.GOOGLE_CLIENT_ID).startsWith("fake-")) {
+    problems.push("GOOGLE_CLIENT_ID is a fake client");
+  }
+  return problems;
+}
+
+/**
+ * A dev entry reaches interop and staging and no other mode.
+ *
+ * @param {(mode: string | undefined) => Promise<WorkerConfig>} read
+ * @param {any} ids identifiers/ids.json
+ * @returns {Promise<string[]>} problems, empty when each mode has its own entry
+ */
+export async function checkModes(read, ids) {
+  /** @type {string[]} */
+  const problems = [];
+  for (const mode of OTHER_MODES) {
+    for (const problem of checkProduction(await read(mode), ids)) {
+      problems.push(`mode ${JSON.stringify(mode ?? "none")}: ${problem}`);
+    }
+  }
+  for (const [mode, entry] of DEV_ENTRIES) {
+    const config = await read(mode);
+    if (config.main !== entry) {
+      const actual = JSON.stringify(config.main);
+      problems.push(`mode ${JSON.stringify(mode)}: entrypoint is ${actual}, expected "${entry}"`);
+    }
+  }
+  return problems;
+}
+
+/**
+ * The staging Worker (decision 0118) has its own storage in the EU, on
+ * Samtak's account, in production's region, and no way to production.
+ *
+ * @param {WorkerConfig} config the config in staging mode
+ * @param {WorkerConfig} production the config as production deploys it
+ * @param {any} ids identifiers/ids.json
+ * @returns {string[]} problems, empty when the staging config is right
+ */
+export function checkStaging(config, production, ids) {
+  return [
+    ...stagingStorage(config, production, ids.cloudflare),
+    ...stagingApartFromProduction(config, production, ids.cloudflare),
+    ...stagingSecretsAndFakes(config),
+  ];
+}
+
+/** A check that names the staging thing it holds. */
+function stagingExpect(/** @type {string[]} */ problems) {
+  return (
+    /** @type {unknown} */ actual,
+    /** @type {unknown} */ wanted,
+    /** @type {string} */ what,
+  ) => {
+    if (actual !== wanted) {
+      problems.push(
+        `staging ${what} is ${JSON.stringify(actual)}, expected ${JSON.stringify(wanted)}`,
+      );
+    }
+  };
+}
+
+const sortedNames = (/** @type {unknown[]} */ list) => list.map(String).sort().join(",");
+
+/**
+ * Every stateful resource, each in the EU. A Durable Object has no jurisdiction
+ * of its own: dev/staging.ts runs the real classes, whose stubs src/env/ pins,
+ * and never dev/worker.ts's unpinned ones.
+ *
+ * @param {WorkerConfig} config
+ * @param {WorkerConfig} production
+ * @param {any} cloudflare
+ */
+function stagingStorage(config, production, cloudflare) {
+  const { staging } = cloudflare;
+  /** @type {string[]} */
+  const problems = [];
+  const expect = stagingExpect(problems);
+  expect(config.d1.length === 1 ? config.d1[0]?.name : undefined, staging.d1, "D1 database name");
+  expect(
+    sortedNames(config.r2.map((b) => b.bucket)),
+    sortedNames(Object.values(staging.r2)),
+    "R2 buckets are",
+  );
+  for (const bucket of config.r2) {
+    expect(bucket.jurisdiction, cloudflare.jurisdiction, `R2 ${bucket.binding} jurisdiction`);
+  }
+  const classes = sortedNames(Object.values(cloudflare.durableObjects));
+  expect(sortedNames(config.durableObjects.map((b) => b.className)), classes, "DO classes");
+  const live = config.classes.filter((c) => c.state === "created");
+  expect(sortedNames(live.map((c) => c.className)), classes, "DO classes declared in exports");
+  for (const c of live) expect(c.storage, "sqlite", `DO ${c.className} storage`);
+  if (config.queues) problems.push("Queues have no jurisdiction and are ruled out (decision 0001)");
+
+  const region = /** @type {any} */ (config.placement)?.region;
+  const wanted = /** @type {any} */ (production.placement)?.region;
+  if (!EU_REGIONS.has(region) || region !== wanted) {
+    problems.push(
+      `staging placement is ${JSON.stringify(region)}, expected production's ${JSON.stringify(wanted)}`,
+    );
+  }
+  return problems;
+}
+
+/**
+ * Where it runs, and nothing of production's: its names, its database by id,
+ * its counters.
+ *
+ * @param {WorkerConfig} config
+ * @param {WorkerConfig} production
+ * @param {any} cloudflare
+ */
+function stagingApartFromProduction(config, production, cloudflare) {
+  /** @type {string[]} */
+  const problems = [];
+  const expect = stagingExpect(problems);
+  expect(config.accountId, SAMTAK_ACCOUNT, "account id");
+  expect(config.main, DEV_ENTRIES.get("staging"), "entrypoint");
+  expect(config.workersDev, true, "workersDev");
+  if (config.routes.length > 0) {
+    problems.push(`staging has routes: ${JSON.stringify(config.routes)}`);
+  }
+  const theirs = new Set([cloudflare.worker, cloudflare.d1, ...Object.values(cloudflare.r2)]);
+  for (const name of new Set(boundNames(config))) {
+    if (theirs.has(name)) problems.push(`staging binds the production name ${name}`);
+  }
+  const productionDb = production.d1[0]?.id;
+  if (config.d1.some((d) => d.id === productionDb)) {
+    problems.push("staging binds the production D1 id");
+  }
+  const counters = new Set(production.rateLimits.map((l) => l.namespaceId));
+  for (const limit of config.rateLimits) {
+    if (counters.has(limit.namespaceId)) {
+      problems.push(`staging ${limit.binding} shares a production rate limit namespace`);
+    }
+  }
+  return problems;
+}
+
+/**
+ * Its secrets are its own and few, since anything more could reach a real
+ * provider; its sign-in is the fake; and static files are served ahead of a
+ * Worker unless told otherwise, which would answer ahead of the gate.
+ *
+ * @param {WorkerConfig} config
+ */
+function stagingSecretsAndFakes(config) {
+  /** @type {string[]} */
+  const problems = [];
+  const expect = stagingExpect(problems);
+  expect(sortedNames(config.secrets), sortedNames(STAGING_SECRETS), "declares the secrets");
+  expect(config.vars.APNS_TEAM_ID, "", "APNS_TEAM_ID");
+  expect(config.vars.APNS_TOPIC, "", "APNS_TOPIC");
+  for (const [name, path] of [
+    ["KENNI_ISSUER", "/dev/kenni"],
+    ["GOOGLE_ISSUER", "/dev/google"],
+  ]) {
+    const value = String(config.vars[String(name)]);
+    if (!value.endsWith(String(path))) {
+      problems.push(`staging ${name} is ${JSON.stringify(value)}, not a fake issuer`);
+    }
+  }
+  expect(config.vars.GOOGLE_CLIENT_ID, "fake-google-client", "GOOGLE_CLIENT_ID");
+  expect(config.runWorkerFirst, true, "assets.runWorkerFirst");
+  return problems;
+}
+
+/**
+ * What a staging deploy needs so it creates nothing by itself.
+ *
+ * @param {WorkerConfig} config the config in staging mode
+ * @returns {string[]} problems, empty when it can be deployed
+ */
+export function checkStagingDeployable(config) {
+  const id = config.d1[0]?.id;
+  return typeof id === "string" && /^[0-9a-f-]{36}$/.test(id)
+    ? []
+    : [`D1 ${config.d1[0]?.name} has no id; create it with --jurisdiction eu first`];
+}
+
+/** The Worker's production code, every file under backend/src. */
+function productionSource() {
+  const root = join(ROOT, "backend/src");
+  return readdirSync(root, { recursive: true, encoding: "utf8" })
+    .filter((path) => /\.tsx?$/.test(path))
+    .map((path) => ({ path: `backend/src/${path}`, text: readFileSync(join(root, path), "utf8") }));
+}
+
+/**
+ * Production's entry gains no path to the gate or the fakes: no file under
+ * backend/src imports from dev/ or names the gate's secret. A comment may say
+ * where a dev file is.
+ *
+ * @param {{ path: string, text: string }[]} [files]
+ * @returns {string[]} problems, empty when none does
+ */
+export function checkProductionSource(files = productionSource()) {
+  const importsDev = /(?:\bfrom\s*|\bimport\s*\(?\s*)["'`][^"'`]*\bdev\//;
+  return files
+    .filter(({ text }) => importsDev.test(text) || text.includes("STAGING_GATE"))
+    .map(({ path }) => `${path} reaches a dev file or the staging gate`);
 }
 
 /**
@@ -245,8 +510,17 @@ async function main() {
   const config = await readWorkerConfig();
   const ids = readJson("identifiers/ids.json");
   const { cloudflare } = ids;
-  const problems = [...checkConfig(config, cloudflare), ...checkApns(config, ids)];
+  const stagingConfig = await readWorkerConfig(undefined, "staging");
+  const staged = process.argv.includes("--staging");
+  const problems = [
+    ...checkConfig(config, cloudflare),
+    ...checkApns(config, ids),
+    ...checkStaging(stagingConfig, config, ids),
+    ...(await checkModes((mode) => readWorkerConfig(undefined, mode), ids)),
+    ...checkProductionSource(),
+  ];
   if (process.argv.includes("--deploy")) problems.push(...checkDeployable(config, ids));
+  if (staged) problems.push(...checkStagingDeployable(stagingConfig));
 
   if (process.argv.includes("--live") && problems.length === 0) {
     const token = process.env.CLOUDFLARE_JURISDICTION_TOKEN;
@@ -257,8 +531,10 @@ async function main() {
     const live = await checkLive({
       accountId: String(config.accountId),
       token,
-      config,
-      cloudflare,
+      config: staged ? stagingConfig : config,
+      cloudflare: staged
+        ? { d1: cloudflare.staging.d1, jurisdiction: cloudflare.jurisdiction }
+        : cloudflare,
       fetch: globalThis.fetch,
     });
     for (const line of live.ok) console.log(`✓ ${line}`);
