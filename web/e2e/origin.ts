@@ -11,6 +11,20 @@ export const DEV = process.env.SPJALL_DEV_URL ?? "http://127.0.0.1:8787";
 /** The web's real origin, which the session cookie and its Origin check name. */
 export const WEB = `https://${ids.hosts.web}`;
 
+/** A module of the web's dev build: the same bytes for every browser, whoever is signed in. */
+const MODULE = /^\/(@fs|@id|@vite|@react-refresh|@tanstack-start|node_modules)\//;
+
+type Fulfilled = { status: number; headers: Record<string, string>; body: Buffer };
+
+/**
+ * The modules this worker has already fetched. Each person in a test is a new
+ * browser context with an empty HTTP cache, so without this every sign-in
+ * fetches every module through this proxy again, and that, not the API, is
+ * where a test's time goes (a poll test with three people: 27,000 module
+ * requests beside 1,800 to the API).
+ */
+const modules = new Map<string, Fulfilled>();
+
 /**
  * Every request to the web's origin goes to `cf dev` instead, and its answer
  * comes back as the origin's. The browser then holds a `__Host-` cookie in a
@@ -30,6 +44,10 @@ export async function serveOrigin(page: Page) {
     const target =
       url.origin === WEB ? DEV : url.origin === new URL(DEV).origin ? url.origin : null;
     if (!target) return route.abort("blockedbyclient");
+    const moduleKey =
+      request.method() === "GET" && MODULE.test(url.pathname) ? url.pathname + url.search : null;
+    const held = moduleKey === null ? undefined : modules.get(moduleKey);
+    if (held) return route.fulfill(held);
     // Node's fetch rather than route.fetch, which would send the cookies
     // the browser holds for `cf dev`'s host instead of the web's.
     const headers = Object.entries(await request.allHeaders()).filter(
@@ -61,11 +79,13 @@ export async function serveOrigin(page: Page) {
         body: `<!doctype html><meta http-equiv="refresh" content="0;url=${escape(next)}">`,
       });
     }
-    return route.fulfill({
+    const whole = {
       status: answer.status,
       headers: fulfilled,
       body: Buffer.from(await answer.arrayBuffer()),
-    });
+    };
+    if (moduleKey !== null && answer.status === 200) modules.set(moduleKey, whole);
+    return route.fulfill(whole);
   });
 }
 
