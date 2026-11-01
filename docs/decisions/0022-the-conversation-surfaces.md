@@ -12,7 +12,8 @@
 - Amended by: [0034](0034-fljotid-and-the-wall.md) (every signed-in account sees a name; `open_direct`),
   [0045](0045-times-between-messages-and-one-reaction-pill.md) (times between messages, one
   reaction pill), [0078](0078-a-group-name-leaving-and-who-changes-members.md) (a group's name is its title when it has one),
-  [0099](0099-what-this-device-did-shows-at-once.md) (what this device queued shows at once)
+  [0099](0099-what-this-device-did-shows-at-once.md) (what this device queued shows at once),
+  [0125](0125-who-has-read-a-group-message.md) (a group's thread shows who has read, as faces)
 - Media is [0023](0023-media-as-encrypted-blobs.md); block is [0024](0024-block.md); push is
   [0025](0025-push-without-ids.md).
 
@@ -68,8 +69,9 @@ adds the inviter.
   addresses an envelope id, which is unique per sender only, so the core maps the seq to its
   envelope id and sends one `Receipt` when the toggle is on and the mark moved forward.
   Unread counts come from `read_state`.
-- **1:1 shows `read_marker` under the last own message the other person read; a group shows
-  how many have read it** (`read_by_count`), counting accounts, not devices.
+- **1:1 shows `read_marker` under the last own message the other person read; a group's thread
+  shows who has read, as faces ([0125](0125-who-has-read-a-group-message.md)), and its row in the
+  list how many** (`read_by_count`), counting accounts, not devices.
 - **Typing in a 1:1 names the other person; typing in a group names no one.** A typing frame
   is sealed under an epoch key, so its sender is a claim (0018). In a 1:1 the only other
   member is known; in a group the row says that someone is typing. The core sends at most one

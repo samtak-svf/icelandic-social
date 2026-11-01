@@ -26,6 +26,7 @@ const item = (sender: Person, at: number, over: Partial<Item> = {}): Item => ({
   edited: false,
   reactions: [],
   readBy: 0,
+  readHere: [],
   expiresAt: null,
   forwarded: false,
   ...over,

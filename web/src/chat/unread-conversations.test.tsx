@@ -24,6 +24,7 @@ const secret: Item = {
   edited: false,
   reactions: [],
   readBy: 0,
+  readHere: [],
   expiresAt: null,
   forwarded: false,
 };

@@ -15,7 +15,7 @@ use spjall_mls::group::Device;
 use spjall_store::rusqlite::{self, OptionalExtension, Transaction, params};
 
 use crate::members::{Person, person};
-use crate::read::{advance, read_by, settings};
+use crate::read::{advance, landing, read_by, read_here, settings};
 use crate::{ClientError, now};
 
 /// Where an item stands: on the server, or still in the outbox.
@@ -129,6 +129,9 @@ pub struct Item {
     /// How many accounts besides the sender have read it; counted for this
     /// account's own messages, and only with read markers on.
     pub read_by: u32,
+    /// The members besides this account who have read up to here and no
+    /// further (0125); empty with read markers off and while being sent.
+    pub read_here: Vec<Person>,
     /// When it disappears, in milliseconds.
     pub expires_at: Option<u64>,
     /// A copy of a message from another conversation (0041). Its author
@@ -593,7 +596,8 @@ pub(crate) fn fold(
             if sender.account == me {
                 return Ok(Some(Vec::new()));
             }
-            // This account's messages the reader has now read.
+            // This account's messages the reader has now read, and the two
+            // where the reader's face was and now is (0125).
             let mut statement = tx.prepare(
                 "SELECT seq FROM timeline
                  WHERE group_id = ?1 AND sender_account = ?2 AND seq > ?3 AND seq <= ?4
@@ -603,7 +607,12 @@ pub(crate) fn fold(
             let rows = statement.query_map(params![group, me, old as i64, t as i64], |r| {
                 r.get::<_, i64>(0).map(|s| s as u64)
             })?;
-            rows.collect::<rusqlite::Result<_>>()?
+            let mut changed = rows.collect::<rusqlite::Result<Vec<u64>>>()?;
+            changed.extend(landing(tx, group, old)?);
+            changed.extend(landing(tx, group, t)?);
+            changed.sort_unstable();
+            changed.dedup();
+            changed
         }
         Body::Name { name } => {
             let Some(name) = name.as_deref().map_or(Some(None), group_name) else {
@@ -998,6 +1007,11 @@ fn stored(
     media: bool,
 ) -> Result<Vec<Item>, ClientError> {
     let markers = settings(tx)?.read_markers;
+    let mut here = if markers && !media {
+        read_here(tx, group, me)?
+    } else {
+        HashMap::new()
+    };
     let mut people = People {
         tx,
         known: HashMap::new(),
@@ -1159,6 +1173,12 @@ fn stored(
             } else {
                 0
             },
+            read_here: here
+                .remove(&seq)
+                .unwrap_or_default()
+                .iter()
+                .map(|account| people.get(account))
+                .collect::<rusqlite::Result<_>>()?,
             envelope_id,
             sender: people.get(&sender)?,
             own,
@@ -1282,6 +1302,7 @@ fn pending(
                     edited: false,
                     reactions: Vec::new(),
                     read_by: 0,
+                    read_here: Vec::new(),
                     expires_at: None,
                     forwarded: false,
                 });
@@ -1355,6 +1376,7 @@ fn pending(
             edited: false,
             reactions: Vec::new(),
             read_by: 0,
+            read_here: Vec::new(),
             expires_at: None,
             forwarded,
         });
@@ -1436,482 +1458,4 @@ pub(crate) fn receipt_target(
 }
 
 #[cfg(test)]
-mod tests {
-    use spjall_store::Store;
-
-    use super::*;
-
-    const GROUP: &[u8] = b"group";
-
-    #[test]
-    fn a_sent_file_name_is_a_name_and_never_a_path() {
-        assert_eq!(file_name("skýrsla.pdf").as_deref(), Some("skýrsla.pdf"));
-        assert_eq!(file_name("../../etc/passwd").as_deref(), Some("passwd"));
-        assert_eq!(file_name("C:\\x\\y.txt").as_deref(), Some("y.txt"));
-        assert_eq!(file_name(" a\u{0}b\n.png ").as_deref(), Some("ab.png"));
-        assert_eq!(file_name(&"x".repeat(300)).map(|n| n.len()), Some(120));
-        for nothing in ["", "/", "..", "a/.", " "] {
-            assert_eq!(file_name(nothing), None, "{nothing:?}");
-        }
-    }
-
-    struct Fold {
-        store: Store,
-        seq: u64,
-        _dir: tempfile::TempDir,
-    }
-
-    impl Fold {
-        fn new() -> Self {
-            let dir = tempfile::tempdir().unwrap();
-            let mut store = Store::open(dir.path(), &[3; 32]).unwrap();
-            store
-                .write(|tx| {
-                    tx.execute(
-                        "INSERT INTO conversations (group_id, cursor, created_at) VALUES (?1, 0, 0)",
-                        [GROUP],
-                    )
-                })
-                .unwrap();
-            Self {
-                store,
-                seq: 0,
-                _dir: dir,
-            }
-        }
-
-        /// Folds `body` from `account`'s device `device` as "a" sees it;
-        /// the envelope id is `id`.
-        fn apply(&mut self, from: (&str, &str), id: &str, body: Body) -> Option<Vec<u64>> {
-            self.seq += 1;
-            let seq = self.seq;
-            let sender = Device::new(from.0, from.1).unwrap();
-            let envelope = Envelope {
-                id: id.into(),
-                ts: seq,
-                body,
-            };
-            self.store
-                .try_write(|tx| fold(tx, GROUP, seq, &sender, &envelope, "a"))
-                .unwrap()
-        }
-
-        fn items(&mut self) -> Vec<Item> {
-            self.store
-                .try_write(|tx| items(tx, GROUP, "a", None, 100))
-                .unwrap()
-        }
-
-        /// Queues `body` in the outbox as `send` does, under the envelope id `id`.
-        fn queue(&mut self, id: &str, body: Body) {
-            let bytes = Envelope {
-                id: id.into(),
-                ts: 99,
-                body,
-            }
-            .encode()
-            .unwrap();
-            self.store
-                .write(|tx| {
-                    tx.execute(
-                        "INSERT INTO outbox (group_id, kind, intent, created_at)
-                         VALUES (?1, 'message', ?2, 0)",
-                        params![GROUP, bytes],
-                    )
-                })
-                .unwrap();
-        }
-    }
-
-    /// One row this core cannot decode keeps its place as an unreadable
-    /// item; the rows around it read as before (0051).
-    #[test]
-    fn an_undecodable_row_is_an_unreadable_item_in_its_place() {
-        for (kind, detail, code) in [
-            ("text", "{", "protocol/a stored text row"),
-            ("media", "{", "protocol/a stored media row"),
-            ("post", "{", "protocol/a stored post row"),
-            ("location", "{", "protocol/a stored location row"),
-            ("members", "{", "protocol/a stored card"),
-            ("timer", "{", "protocol/a stored card"),
-        ] {
-            let mut fold = Fold::new();
-            fold.apply(("b", "b1"), "m1", text("fyrst"));
-            fold.apply(("b", "b1"), "m2", text("brotin"));
-            fold.apply(("b", "b1"), "m3", text("síðast"));
-            fold.apply(("a", "a1"), "r1", react("m2", false));
-            fold.store
-                .write(|tx| {
-                    tx.execute(
-                        "UPDATE timeline SET kind = ?1, detail = ?2, text = NULL,
-                             envelope_id = IIF(?1 IN ('members', 'timer'), NULL, envelope_id)
-                         WHERE seq = 2",
-                        [kind, detail],
-                    )
-                })
-                .unwrap();
-            let items = fold.items();
-            assert_eq!(items.len(), 3, "{kind}");
-            assert_eq!(
-                items[1].content,
-                Content::Unreadable { code: code.into() },
-                "{kind}"
-            );
-            assert_eq!(items[1].seq, Some(2));
-            assert_eq!(items[1].ts, 2);
-            // Cards carry no reactions; a message keeps its own.
-            let card = matches!(kind, "members" | "timer");
-            assert_eq!(items[1].reactions.len(), usize::from(!card), "{kind}");
-            assert!(matches!(&items[2].content, Content::Text { text, .. } if text == "síðast"));
-            // What the conversation list reads.
-            let last = fold
-                .store
-                .try_write(|tx| super::items(tx, GROUP, "a", Some(3), 1))
-                .unwrap();
-            assert_eq!(last[0].content, Content::Unreadable { code: code.into() });
-        }
-    }
-
-    /// A queued message this device cannot read back is an unreadable
-    /// item too, after what is already sent.
-    #[test]
-    fn an_undecodable_queued_message_is_an_unreadable_item() {
-        let mut fold = Fold::new();
-        fold.apply(("b", "b1"), "m1", text("hæ"));
-        fold.store
-            .write(|tx| {
-                tx.execute(
-                    "INSERT INTO outbox (group_id, kind, intent, created_at)
-                     VALUES (?1, 'message', x'7b', 0)",
-                    [GROUP],
-                )
-            })
-            .unwrap();
-        let items = fold.items();
-        assert_eq!(items.len(), 2);
-        assert_eq!(
-            items[1].content,
-            Content::Unreadable {
-                code: "envelope/malformed".into()
-            }
-        );
-        assert_eq!(items[1].status, Status::Pending);
-    }
-
-    /// A failing store still fails: only decoding is softened (0051).
-    #[test]
-    fn a_store_failure_still_fails() {
-        let mut fold = Fold::new();
-        fold.apply(("b", "b1"), "m1", text("hæ"));
-        fold.store
-            .write(|tx| tx.execute_batch("ALTER TABLE timeline DROP COLUMN received_at"))
-            .unwrap();
-        let result = fold.store.try_write(|tx| items(tx, GROUP, "a", None, 100));
-        assert!(matches!(result, Err(ClientError::Store(_))));
-    }
-
-    fn text(text: &str) -> Body {
-        Body::Text {
-            text: text.into(),
-            forwarded: false,
-        }
-    }
-
-    fn react(target: &str, remove: bool) -> Body {
-        Body::Reaction {
-            target: target.into(),
-            emoji: "❤️".into(),
-            remove,
-        }
-    }
-
-    #[test]
-    fn an_edit_of_an_edit_shows_the_last_text() {
-        let mut fold = Fold::new();
-        fold.apply(("b", "b1"), "m", text("eitt"));
-        let edit = |text: &str| Body::Edit {
-            target: "m".into(),
-            text: text.into(),
-        };
-        assert_eq!(fold.apply(("b", "b1"), "e1", edit("tvö")), Some(vec![1]));
-        // From the sender's other device, too.
-        assert_eq!(fold.apply(("b", "b2"), "e2", edit("þrjú")), Some(vec![1]));
-        // Never from another account.
-        assert_eq!(fold.apply(("c", "c1"), "e3", edit("fjögur")), None);
-        let items = fold.items();
-        assert_eq!(items.len(), 1);
-        assert_eq!(
-            items[0].content,
-            Content::Text {
-                text: "þrjú".into(),
-                reply_to: None
-            }
-        );
-        assert!(items[0].edited);
-    }
-
-    #[test]
-    fn a_deleted_message_takes_no_reaction_and_no_edit() {
-        let mut fold = Fold::new();
-        fold.apply(("b", "b1"), "m", text("eitt"));
-        fold.apply(("a", "a1"), "r", react("m", false));
-        let delete = Body::Delete { target: "m".into() };
-        assert_eq!(fold.apply(("c", "c1"), "d0", delete.clone()), None);
-        assert_eq!(fold.apply(("b", "b1"), "d1", delete.clone()), Some(vec![1]));
-        assert_eq!(fold.apply(("b", "b1"), "d2", delete), None);
-        assert_eq!(fold.apply(("c", "c1"), "r2", react("m", false)), None);
-        let edit = Body::Edit {
-            target: "m".into(),
-            text: "aftur".into(),
-        };
-        assert_eq!(fold.apply(("b", "b1"), "e", edit), None);
-        let items = fold.items();
-        assert_eq!(items[0].content, Content::Deleted);
-        assert!(items[0].reactions.is_empty());
-    }
-
-    #[test]
-    fn a_reaction_is_one_per_account_and_can_be_taken_back() {
-        let mut fold = Fold::new();
-        fold.apply(("b", "b1"), "m", text("eitt"));
-        assert_eq!(
-            fold.apply(("a", "a1"), "r1", react("m", false)),
-            Some(vec![1])
-        );
-        // The same from another device of the account changes nothing.
-        assert_eq!(fold.apply(("a", "a2"), "r2", react("m", false)), None);
-        assert_eq!(
-            fold.apply(("c", "c1"), "r3", react("m", false)),
-            Some(vec![1])
-        );
-        let reactions = &fold.items()[0].reactions;
-        assert_eq!(reactions.len(), 1);
-        assert!(reactions[0].own);
-        assert_eq!(reactions[0].people.len(), 2);
-
-        assert_eq!(
-            fold.apply(("a", "a2"), "r4", react("m", true)),
-            Some(vec![1])
-        );
-        assert_eq!(fold.apply(("a", "a1"), "r5", react("m", true)), None);
-        let reactions = &fold.items()[0].reactions;
-        assert!(!reactions[0].own);
-        assert_eq!(reactions[0].people[0].account, "c");
-        // A reaction to nothing here is dropped.
-        assert_eq!(fold.apply(("c", "c1"), "r6", react("x", false)), None);
-    }
-
-    /// What this device queued shows on the items it returns with no
-    /// request (0099): a reaction, its removal, an edit, a delete.
-    #[test]
-    fn a_queued_reaction_shows_before_any_sync() {
-        let mut fold = Fold::new();
-        fold.apply(("b", "b1"), "m", text("eitt"));
-        fold.apply(("c", "c1"), "r0", react("m", false));
-        fold.queue("r1", react("m", false));
-        let items = fold.items();
-        // The reaction itself is no item of its own.
-        assert_eq!(items.len(), 1);
-        let reactions = &items[0].reactions;
-        assert_eq!(reactions.len(), 1);
-        assert!(reactions[0].own);
-        let people: Vec<_> = reactions[0].people.iter().map(|p| &*p.account).collect();
-        assert_eq!(people, ["a", "c"]);
-    }
-
-    #[test]
-    fn a_queued_removal_hides_an_own_reaction() {
-        let mut fold = Fold::new();
-        fold.apply(("b", "b1"), "m", text("eitt"));
-        fold.apply(("a", "a1"), "r0", react("m", false));
-        fold.apply(("c", "c1"), "r1", react("m", false));
-        fold.queue("r2", react("m", true));
-        let reactions = &fold.items()[0].reactions;
-        assert_eq!(reactions.len(), 1);
-        assert!(!reactions[0].own);
-        assert_eq!(reactions[0].people.len(), 1);
-        // The last own reaction taken back leaves no chip.
-        fold.apply(("c", "c1"), "r3", react("m", true));
-        assert!(fold.items()[0].reactions.is_empty());
-    }
-
-    #[test]
-    fn a_queued_reaction_and_its_echo_count_once() {
-        let mut fold = Fold::new();
-        fold.apply(("b", "b1"), "m", text("eitt"));
-        fold.queue("r1", react("m", false));
-        // The echo folds while the row is still in the outbox.
-        fold.apply(("a", "a1"), "r1", react("m", false));
-        let reactions = &fold.items()[0].reactions;
-        assert_eq!(reactions.len(), 1);
-        assert_eq!(reactions[0].people.len(), 1);
-        // And once the row is gone the result is the same.
-        let before = fold.items();
-        fold.store
-            .write(|tx| tx.execute("DELETE FROM outbox", []))
-            .unwrap();
-        assert_eq!(fold.items(), before);
-    }
-
-    #[test]
-    fn queued_reactions_apply_in_order() {
-        let mut fold = Fold::new();
-        fold.apply(("b", "b1"), "m", text("eitt"));
-        fold.queue("r1", react("m", false));
-        fold.queue("r2", react("m", true));
-        assert!(fold.items()[0].reactions.is_empty());
-        fold.queue("r3", react("m", false));
-        assert_eq!(fold.items()[0].reactions.len(), 1);
-    }
-
-    #[test]
-    fn a_queued_reaction_to_a_deleted_or_unknown_message_shows_nothing() {
-        let mut fold = Fold::new();
-        fold.apply(("b", "b1"), "m", text("eitt"));
-        fold.apply(("b", "b1"), "d", Body::Delete { target: "m".into() });
-        fold.queue("r1", react("m", false));
-        fold.queue("r2", react("x", false));
-        let items = fold.items();
-        assert_eq!(items.len(), 1);
-        assert!(items[0].reactions.is_empty());
-    }
-
-    #[test]
-    fn a_queued_edit_shows_its_text() {
-        let mut fold = Fold::new();
-        fold.apply(("a", "a1"), "m", text("eitt"));
-        fold.apply(("b", "b1"), "n", text("annað"));
-        let edit = |target: &str| Body::Edit {
-            target: target.into(),
-            text: "tvö".into(),
-        };
-        fold.queue("e1", edit("m"));
-        // Never another account's message.
-        fold.queue("e2", edit("n"));
-        let items = fold.items();
-        assert_eq!(
-            items[0].content,
-            Content::Text {
-                text: "tvö".into(),
-                reply_to: None
-            }
-        );
-        assert!(items[0].edited);
-        assert!(!items[1].edited);
-        assert_eq!(
-            items[1].content,
-            Content::Text {
-                text: "annað".into(),
-                reply_to: None
-            }
-        );
-    }
-
-    #[test]
-    fn a_queued_delete_shows_the_tombstone() {
-        let mut fold = Fold::new();
-        fold.apply(("a", "a1"), "m", text("eitt"));
-        fold.apply(("b", "b1"), "n", text("annað"));
-        fold.apply(("b", "b1"), "r", react("m", false));
-        fold.queue("d1", Body::Delete { target: "m".into() });
-        fold.queue("d2", Body::Delete { target: "n".into() });
-        let items = fold.items();
-        assert_eq!(items[0].content, Content::Deleted);
-        assert!(items[0].reactions.is_empty());
-        assert_ne!(items[1].content, Content::Deleted);
-        // The echo gives the same item.
-        let before = fold.items();
-        fold.apply(("a", "a1"), "d1", Body::Delete { target: "m".into() });
-        fold.store
-            .write(|tx| tx.execute("DELETE FROM outbox", []))
-            .unwrap();
-        let after = fold.items();
-        assert_eq!(after[0], before[0]);
-    }
-
-    #[test]
-    fn a_receipt_counts_once_for_all_devices_of_an_account() {
-        let mut fold = Fold::new();
-        fold.apply(("a", "a1"), "m1", text("eitt"));
-        fold.apply(("a", "a2"), "m2", text("tvö"));
-        let receipt = |up_to: &str| Body::Receipt {
-            up_to: up_to.into(),
-        };
-        assert_eq!(fold.apply(("b", "b1"), "x1", receipt("m1")), Some(vec![1]));
-        assert_eq!(fold.apply(("b", "b2"), "x2", receipt("m1")), None);
-        assert_eq!(fold.apply(("b", "b2"), "x3", receipt("m2")), Some(vec![2]));
-        // A mark never moves back.
-        assert_eq!(fold.apply(("b", "b1"), "x4", receipt("m1")), None);
-        let read: Vec<u32> = fold.items().iter().map(|i| i.read_by).collect();
-        assert_eq!(read, vec![1, 1]);
-        // This account's own receipt moves its own mark, and changes no item.
-        fold.apply(("b", "b1"), "m3", text("þrjú"));
-        assert_eq!(
-            fold.apply(("a", "a2"), "x5", receipt("m3")),
-            Some(Vec::new())
-        );
-        let unread = fold
-            .store
-            .try_write(|tx| crate::read::unread(tx, GROUP, "a"))
-            .unwrap();
-        assert_eq!(unread, 0);
-    }
-
-    /// A place off the globe from another client is skipped as an unknown
-    /// kind is: no row, and the conversation goes on (0059).
-    #[test]
-    fn a_location_off_the_globe_is_skipped() {
-        let mut fold = Fold::new();
-        let off = Body::Location {
-            lat_e6: 90_000_001,
-            lon_e6: 0,
-            accuracy: None,
-            forwarded: false,
-        };
-        assert_eq!(fold.apply(("b", "b1"), "l", off), None);
-        assert_eq!(fold.apply(("b", "b1"), "m", text("eftir")), Some(vec![2]));
-        assert_eq!(fold.items().len(), 1);
-    }
-
-    /// A share is a row of its own with only the post's id; an edit has no
-    /// text to change on it, and a delete for everyone takes it away (0040).
-    #[test]
-    fn a_shared_post_is_its_id_and_cannot_be_edited() {
-        let mut fold = Fold::new();
-        let share = Body::Post {
-            post_id: "p_1".into(),
-            forwarded: false,
-        };
-        assert_eq!(fold.apply(("b", "b1"), "s", share), Some(vec![1]));
-        let shown = |fold: &mut Fold| fold.items()[0].content.clone();
-        assert_eq!(
-            shown(&mut fold),
-            Content::Post {
-                post_id: "p_1".into()
-            }
-        );
-        let edit = Body::Edit {
-            target: "s".into(),
-            text: "annað".into(),
-        };
-        assert_eq!(fold.apply(("b", "b1"), "e", edit), None);
-        assert!(!fold.items()[0].edited);
-        let delete = Body::Delete { target: "s".into() };
-        assert_eq!(fold.apply(("b", "b1"), "d", delete), Some(vec![1]));
-        assert_eq!(shown(&mut fold), Content::Deleted);
-    }
-
-    #[test]
-    fn typing_and_unknown_kinds_leave_no_item() {
-        let mut fold = Fold::new();
-        let unknown = Body::Unknown {
-            kind: "poll".into(),
-        };
-        assert_eq!(fold.apply(("b", "b1"), "u", unknown), None);
-        assert_eq!(
-            fold.apply(("b", "b1"), "t", Body::Typing { active: true }),
-            None
-        );
-        assert!(fold.items().is_empty());
-    }
-}
+mod tests;

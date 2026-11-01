@@ -38,6 +38,7 @@ const item = (content: Content): Item => ({
   edited: false,
   reactions: [],
   readBy: 0,
+  readHere: [],
   expiresAt: null,
   forwarded: false,
 });
