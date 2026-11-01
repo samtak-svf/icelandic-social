@@ -1,3 +1,4 @@
+import { ITEM_CLASSES, type ItemClass } from "../../api/imports.ts";
 import { db } from "../../env/index.ts";
 import {
   FILE_COLUMNS,
@@ -7,6 +8,7 @@ import {
   type FileRow,
   ITEM_PAGE,
 } from "./file.ts";
+import type { Lost } from "./file-jobs.ts";
 
 // What the person sees of a file import: where it stands, and the posts the parse
 // found, a page at a time, to choose from.
@@ -22,14 +24,23 @@ export type FileStatus = {
     earliest: number | null;
     latest: number | null;
   };
+  classes: (ClassCount & { class: ItemClass })[];
+  lost: Lost;
 };
+
+type ClassCount = { posts: number; images: number; imagesLost: number; videos: number };
+const NONE: ClassCount = { posts: 0, images: 0, imagesLost: 0, videos: 0 };
 
 export function statusOf(file: FileRow): FileStatus {
   const { posts, images, videos, skipped, earliest, latest } = file;
+  const tally = JSON.parse(file.classes) as Partial<Record<ItemClass, ClassCount>>;
+  const lost = JSON.parse(file.lost) as Partial<Lost>;
   return {
     state: file.removing ? "removing" : file.state,
     failure: file.failure,
     counts: { posts, images, videos, skipped, earliest, latest },
+    classes: ITEM_CLASSES.map((name) => ({ class: name, ...(tally[name] ?? NONE) })),
+    lost: { videoOnly: 0, foreignOnly: 0, foreignImages: 0, empty: 0, ...lost },
   };
 }
 
@@ -66,6 +77,7 @@ export type PreviewItem = {
   text: string;
   images: number;
   hasVideo: boolean;
+  class: ItemClass;
 };
 
 /** A page of the posts in date order; `next` is the cursor of the page after, or null. */
@@ -79,7 +91,7 @@ export async function itemsOf(
   const { results } = await db(env)
     .prepare(
       `SELECT item_id AS id, at, body AS text, json_array_length(images) AS images,
-              has_video AS hasVideo
+              has_video AS hasVideo, class
          FROM import_file_items
         WHERE import_id = ?1 AND (at > ?2 OR (at = ?2 AND item_id > ?3))
         ORDER BY at, item_id LIMIT ?4`,

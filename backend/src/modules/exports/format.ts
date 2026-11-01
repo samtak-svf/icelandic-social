@@ -110,6 +110,8 @@ export const fromImport = {
   images: "images",
   // We hold no video: a post's video is not stored, so the export has nothing to carry.
   hasVideo: null,
+  class: null,
+  foreignImages: null,
 } satisfies Record<keyof ParsedItem, keyof ExportPostFields | null>;
 
 export const json = (value: unknown) => new TextEncoder().encode(JSON.stringify(value, null, 2));

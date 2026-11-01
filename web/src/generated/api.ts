@@ -1115,9 +1115,11 @@ export type ImportSummary = ImportStatus & {
   createdAt: number;
 };
 
+export type ImportItemClass = "own" | "link" | "other_timeline" | "hidden";
+
 export interface ImportStatus {
   state: "uploading" | "parsing" | "ready" | "publishing" | "done" | "failed" | "removing";
-  /** With failed, why: truncated, zip64, encrypted, unsupported, too_big, corrupt or no_posts */
+  /** With failed, why: truncated, zip64, encrypted, unsupported, too_big, corrupt, no_posts or outdated */
   failure: string | null;
   counts: {
     posts: number;
@@ -1129,6 +1131,28 @@ export interface ImportStatus {
     earliest: number | null;
     /** Milliseconds since the epoch */
     latest: number | null;
+  };
+  /** What the file held, per kind of post */
+  classes: Array<{
+    class: ImportItemClass;
+    posts: number;
+    /** The images that come with these posts */
+    images: number;
+    /** Images missing from the file, too large, or past what a post holds */
+    imagesLost: number;
+    /** Posts whose video stays behind */
+    videos: number;
+  }>;
+  /** What the file held and no post will carry */
+  lost: {
+    /** Entries that were only a video */
+    videoOnly: number;
+    /** Someone else's image with no own words */
+    foreignOnly: number;
+    /** Someone else's images on own posts */
+    foreignImages: number;
+    /** Entries with nothing that could come */
+    empty: number;
   };
 }
 
@@ -1146,6 +1170,7 @@ export interface ImportItem {
   images: number;
   /** A video is not carried over (decision 0120) */
   hasVideo: boolean;
+  class: ImportItemClass;
 }
 
 export interface PublishImport {
@@ -1157,6 +1182,8 @@ export interface PublishImport {
   to?: number;
   /** Ids of posts to leave out */
   excluded?: Array<string>;
+  /** The kinds of post to bring in; only the person's own when left out */
+  classes?: Array<ImportItemClass>;
 }
 
 export interface ExportSummary {

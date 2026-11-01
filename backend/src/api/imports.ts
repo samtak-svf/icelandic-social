@@ -35,12 +35,19 @@ const ImportFileUpload = z
   })
   .openapi("ImportFileUpload");
 
+/** What kind of post a preview row is (decision 0127); only `own` comes unless chosen. */
+const ImportItemClass = z
+  .enum(["own", "link", "other_timeline", "hidden"])
+  .openapi("ImportItemClass");
+export type ItemClass = z.infer<typeof ImportItemClass>;
+export const ITEM_CLASSES = ImportItemClass.options;
+
 const ImportStatus = z
   .object({
     state: z.enum(["uploading", "parsing", "ready", "publishing", "done", "failed", "removing"]),
     failure: z.string().nullable().openapi({
       description:
-        "With failed, why: truncated, zip64, encrypted, unsupported, too_big, corrupt or no_posts",
+        "With failed, why: truncated, zip64, encrypted, unsupported, too_big, corrupt, no_posts or outdated",
     }),
     counts: z.object({
       posts: z.int(),
@@ -50,6 +57,27 @@ const ImportStatus = z
       earliest: z.int().nullable().openapi({ description: "Milliseconds since the epoch" }),
       latest: z.int().nullable().openapi({ description: "Milliseconds since the epoch" }),
     }),
+    classes: z
+      .array(
+        z.object({
+          class: ImportItemClass,
+          posts: z.int(),
+          images: z.int().openapi({ description: "The images that come with these posts" }),
+          imagesLost: z.int().openapi({
+            description: "Images missing from the file, too large, or past what a post holds",
+          }),
+          videos: z.int().openapi({ description: "Posts whose video stays behind" }),
+        }),
+      )
+      .openapi({ description: "What the file held, per kind of post" }),
+    lost: z
+      .object({
+        videoOnly: z.int().openapi({ description: "Entries that were only a video" }),
+        foreignOnly: z.int().openapi({ description: "Someone else's image with no own words" }),
+        foreignImages: z.int().openapi({ description: "Someone else's images on own posts" }),
+        empty: z.int().openapi({ description: "Entries with nothing that could come" }),
+      })
+      .openapi({ description: "What the file held and no post will carry" }),
   })
   .openapi("ImportStatus");
 
@@ -65,6 +93,7 @@ const ImportItem = z
     text: z.string(),
     images: z.int(),
     hasVideo: z.boolean().openapi({ description: "A video is not carried over (decision 0120)" }),
+    class: ImportItemClass,
   })
   .openapi("ImportItem");
 
@@ -82,6 +111,9 @@ const PublishImport = z
     to: z.int().min(0).optional().openapi({ description: "Only posts up to this date" }),
     excluded: z.array(z.string().max(64)).max(LIMITS.excludedPostsCount).optional().openapi({
       description: "Ids of posts to leave out",
+    }),
+    classes: z.array(ImportItemClass).min(1).max(4).optional().openapi({
+      description: "The kinds of post to bring in; only the person's own when left out",
     }),
   })
   .openapi("PublishImport");

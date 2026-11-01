@@ -9,7 +9,7 @@ import { POLL_OPTIONS } from "./poll-schema.ts";
 export const MAX_POST_MEDIA = LIMITS.postMediaCount;
 
 /** How long a post's text is, in characters. */
-export const MAX_POST_BODY = LIMITS.postBodyChars;
+const MAX_POST_BODY = LIMITS.postBodyChars;
 
 /** The longest bio, in characters (decision 0115). */
 export const MAX_BIO = LIMITS.bioChars;

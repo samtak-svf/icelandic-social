@@ -16,6 +16,7 @@ import { WallAudienceFields } from "../social/audience.tsx";
 import { outcome, useLoad } from "../social/outcome.ts";
 import { usePaged, type Paged } from "../social/paged.ts";
 import { Button, ProblemText, Status } from "../ui/kit.tsx";
+import { CLASS_LABEL, ClassFields, DEFAULT_CLASSES, LostList, type ItemClass } from "./classes.tsx";
 import { failureSentence, usePoll } from "./shared.tsx";
 import { LIMITS } from "../generated/limits.ts";
 
@@ -61,16 +62,17 @@ export type Choice = {
   to: string;
   excluded: ReadonlySet<string>;
   audience: WallAudience;
+  classes: ReadonlySet<ItemClass>;
 };
 
-/** Which of the items read so far fall inside the chosen range. */
-export function inRange(items: readonly ImportItem[], choice: Choice): ImportItem[] {
+/** Which of the items read so far are of a chosen kind and inside the chosen range. */
+export function inChoice(items: readonly ImportItem[], choice: Choice): ImportItem[] {
   const from = dayStart(choice.from) ?? -Infinity;
   const to = dayEnd(choice.to) ?? Infinity;
-  return items.filter((item) => item.at >= from && item.at <= to);
+  return items.filter((item) => choice.classes.has(item.class) && item.at >= from && item.at <= to);
 }
 
-/** What the person chooses from: counts, range, posts, audience. Draws what it is given. */
+/** What the person chooses from: kinds of post, range, posts, audience. Draws what it is given. */
 export function ChoiceView({
   status,
   list,
@@ -89,7 +91,8 @@ export function ChoiceView({
   const { counts } = status;
   const fromId = useId();
   const toId = useId();
-  const shown = inRange(list.items ?? [], choice);
+  const shown = inChoice(list.items ?? [], choice);
+  const noClass = choice.classes.size === 0;
   const full = choice.excluded.size >= MOST_EXCLUDED;
   const bounds = { min: toDay(counts.earliest), max: toDay(counts.latest) };
   const dateClass = "min-h-11 rounded-md border border-border-strong bg-surface px-3";
@@ -103,13 +106,13 @@ export function ChoiceView({
 
   return (
     <>
-      <p className="mt-2">
-        {strings.imports_counts({
-          posts: String(counts.posts),
-          images: String(counts.images),
-          videos: String(counts.videos),
-        })}
-      </p>
+      <ClassFields
+        status={status}
+        chosen={choice.classes}
+        change={(classes) => change({ ...choice, classes })}
+        disabled={busy}
+      />
+      <LostList status={status} chosen={choice.classes} />
       {counts.skipped > 0 && (
         <p className="mt-1 text-sm text-muted-fg">
           {strings.imports_skipped({ count: counts.skipped })}
@@ -151,7 +154,8 @@ export function ChoiceView({
         </Status>
       ) : (
         <>
-          {shown.length === 0 && !list.hasMore && (
+          {noClass && <p className="mt-4 text-muted-fg">{strings.imports_no_class}</p>}
+          {!noClass && shown.length === 0 && !list.hasMore && (
             <p className="mt-4 text-muted-fg">{strings.imports_empty_range}</p>
           )}
           <ul className="mt-4 divide-y divide-border rounded-md border border-border empty:hidden">
@@ -162,6 +166,7 @@ export function ChoiceView({
                   <p className="text-sm text-muted-fg">
                     {formatIsDate(item.at)}
                     {item.images > 0 && ` · ${strings.imports_item_images({ count: item.images })}`}
+                    {item.class !== "own" && ` · ${CLASS_LABEL[item.class]}`}
                   </p>
                   <p className="line-clamp-6 whitespace-pre-wrap wrap-anywhere">{item.text}</p>
                   {item.hasVideo && <p className="text-sm">{strings.imports_item_video}</p>}
@@ -178,7 +183,7 @@ export function ChoiceView({
               );
             })}
           </ul>
-          {list.hasMore && <div ref={list.sentinel} />}
+          {list.hasMore && !noClass && <div ref={list.sentinel} />}
           {list.problem !== null && (
             <Status>
               <ProblemText problem={list.problem} />
@@ -194,7 +199,7 @@ export function ChoiceView({
           disabled={busy}
         />
         <div>
-          <Button tone="primary" onClick={publish} disabled={busy}>
+          <Button tone="primary" onClick={publish} disabled={busy || noClass}>
             {strings.imports_publish}
           </Button>
         </div>
@@ -225,6 +230,7 @@ function Chooser({
     to: "",
     excluded: new Set(),
     audience: "friends",
+    classes: DEFAULT_CLASSES,
   });
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<Problem | null>(null);
@@ -242,6 +248,7 @@ function Chooser({
           ...(from === undefined ? {} : { from }),
           ...(to === undefined ? {} : { to }),
           excluded: [...choice.excluded],
+          classes: [...choice.classes],
         },
       }),
       204,

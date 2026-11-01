@@ -4211,6 +4211,15 @@
           }
         ]
       },
+      "ImportItemClass": {
+        "type": "string",
+        "enum": [
+          "own",
+          "link",
+          "other_timeline",
+          "hidden"
+        ]
+      },
       "ImportStatus": {
         "type": "object",
         "properties": {
@@ -4231,7 +4240,7 @@
               "string",
               "null"
             ],
-            "description": "With failed, why: truncated, zip64, encrypted, unsupported, too_big, corrupt or no_posts"
+            "description": "With failed, why: truncated, zip64, encrypted, unsupported, too_big, corrupt, no_posts or outdated"
           },
           "counts": {
             "type": "object",
@@ -4272,12 +4281,76 @@
               "earliest",
               "latest"
             ]
+          },
+          "classes": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "class": {
+                  "$ref": "#/components/schemas/ImportItemClass"
+                },
+                "posts": {
+                  "type": "integer"
+                },
+                "images": {
+                  "type": "integer",
+                  "description": "The images that come with these posts"
+                },
+                "imagesLost": {
+                  "type": "integer",
+                  "description": "Images missing from the file, too large, or past what a post holds"
+                },
+                "videos": {
+                  "type": "integer",
+                  "description": "Posts whose video stays behind"
+                }
+              },
+              "required": [
+                "class",
+                "posts",
+                "images",
+                "imagesLost",
+                "videos"
+              ]
+            },
+            "description": "What the file held, per kind of post"
+          },
+          "lost": {
+            "type": "object",
+            "properties": {
+              "videoOnly": {
+                "type": "integer",
+                "description": "Entries that were only a video"
+              },
+              "foreignOnly": {
+                "type": "integer",
+                "description": "Someone else's image with no own words"
+              },
+              "foreignImages": {
+                "type": "integer",
+                "description": "Someone else's images on own posts"
+              },
+              "empty": {
+                "type": "integer",
+                "description": "Entries with nothing that could come"
+              }
+            },
+            "required": [
+              "videoOnly",
+              "foreignOnly",
+              "foreignImages",
+              "empty"
+            ],
+            "description": "What the file held and no post will carry"
           }
         },
         "required": [
           "state",
           "failure",
-          "counts"
+          "counts",
+          "classes",
+          "lost"
         ]
       },
       "ImportItemPage": {
@@ -4322,6 +4395,9 @@
           "hasVideo": {
             "type": "boolean",
             "description": "A video is not carried over (decision 0120)"
+          },
+          "class": {
+            "$ref": "#/components/schemas/ImportItemClass"
           }
         },
         "required": [
@@ -4329,7 +4405,8 @@
           "at",
           "text",
           "images",
-          "hasVideo"
+          "hasVideo",
+          "class"
         ]
       },
       "PublishImport": {
@@ -4363,6 +4440,15 @@
             },
             "maxItems": 1000,
             "description": "Ids of posts to leave out"
+          },
+          "classes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ImportItemClass"
+            },
+            "minItems": 1,
+            "maxItems": 4,
+            "description": "The kinds of post to bring in; only the person's own when left out"
           }
         }
       },

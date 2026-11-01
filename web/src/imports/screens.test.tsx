@@ -14,11 +14,12 @@ import {
   ChoiceView,
   dayEnd,
   dayStart,
-  inRange,
+  inChoice,
   MOST_EXCLUDED,
   stateSentence,
   type Choice,
 } from "./preview.tsx";
+import { lostLines } from "./classes.tsx";
 import { ConnectionRow, connectionSentence } from "./profile-section.tsx";
 import { EarlierList } from "./screen.tsx";
 import { failureSentence, ImportProblem } from "./shared.tsx";
@@ -34,6 +35,13 @@ const status = (over: Partial<ImportStatus> = {}): ImportStatus => ({
   state: "ready",
   failure: null,
   counts: { posts: 2, images: 1, videos: 1, skipped: 0, earliest: DAY, latest: DAY },
+  classes: [
+    { class: "own", posts: 2, images: 1, imagesLost: 0, videos: 0 },
+    { class: "link", posts: 0, images: 0, imagesLost: 0, videos: 0 },
+    { class: "other_timeline", posts: 0, images: 0, imagesLost: 0, videos: 0 },
+    { class: "hidden", posts: 0, images: 0, imagesLost: 0, videos: 0 },
+  ],
+  lost: { videoOnly: 0, foreignOnly: 0, foreignImages: 0, empty: 0 },
   ...over,
 });
 
@@ -43,6 +51,7 @@ const item = (over: Partial<ImportItem> = {}): ImportItem => ({
   text: "Gamall póstur",
   images: 0,
   hasVideo: false,
+  class: "own",
   ...over,
 });
 
@@ -60,6 +69,7 @@ const choice = (over: Partial<Choice> = {}): Choice => ({
   to: "",
   excluded: new Set(),
   audience: "friends",
+  classes: new Set(["own"]),
   ...over,
 });
 
@@ -108,7 +118,7 @@ describe("the range of days", () => {
       item({ id: "last", at: Date.parse("2020-03-05T23:59:59.000Z") }),
       item({ id: "after", at: Date.parse("2020-03-06T00:00:00.000Z") }),
     ];
-    const kept = inRange(items, choice({ from: "2020-03-04", to: "2020-03-05" }));
+    const kept = inChoice(items, choice({ from: "2020-03-04", to: "2020-03-05" }));
     expect(kept.map((row) => row.id)).toEqual(["first", "last"]);
   });
 });
@@ -116,7 +126,7 @@ describe("the range of days", () => {
 describe("the choice of what to publish", () => {
   it("shows the counts, the posts and that nothing lasts unpublished", () => {
     const html = drawChoice(paged());
-    expect(html).toContain(strings.imports_counts({ posts: "2", images: "1", videos: "1" }));
+    expect(html).toContain(strings.imports_class_counts({ posts: "2", images: "1" }));
     expect(html).toContain("Gamall póstur");
     expect(html).toContain(strings.imports_preview_kept);
     expect(html).toContain(strings.imports_publish);
@@ -135,6 +145,64 @@ describe("the choice of what to publish", () => {
       strings.imports_item_video,
     );
     expect(drawChoice(paged())).not.toContain(strings.imports_item_video);
+  });
+
+  it("offers only the kinds of post the file holds, with their counts", () => {
+    const html = drawChoice(paged());
+    expect(html).toContain(strings.imports_class_own);
+    expect(html).not.toContain(strings.imports_class_link);
+  });
+
+  it("shows a post only while its kind is chosen, and names a kind other than own", () => {
+    const items = [
+      item({ id: "mine", text: "Mín orð" }),
+      item({ id: "bare", text: "Bara tengill", class: "link" }),
+    ];
+    const own = drawChoice(paged({ items }));
+    expect(own).toContain("Mín orð");
+    expect(own).not.toContain("Bara tengill");
+    const both = drawChoice(paged({ items }), choice({ classes: new Set(["own", "link"]) }));
+    expect(both).toContain("Bara tengill");
+    expect(both).toContain(`· ${strings.imports_class_link}`);
+  });
+
+  it("cannot publish with no kind chosen, and says so", () => {
+    const html = drawChoice(paged(), choice({ classes: new Set() }));
+    expect(html).toContain(strings.imports_no_class);
+    expect(html).not.toContain(strings.imports_empty_range);
+    const off = new RegExp(`<button[^>]* disabled=""[^>]*>${strings.imports_publish}<`);
+    expect(html).toMatch(off);
+    expect(drawChoice(paged())).not.toMatch(off);
+  });
+
+  it("says nothing stays behind when nothing does", () => {
+    expect(drawChoice(paged())).not.toContain(strings.imports_lost_heading);
+  });
+
+  it("says what stays behind, counting only the kinds chosen", () => {
+    const s = status({
+      classes: [
+        { class: "own", posts: 3, images: 2, imagesLost: 1, videos: 4 },
+        { class: "link", posts: 5, images: 0, imagesLost: 50, videos: 60 },
+        { class: "other_timeline", posts: 0, images: 0, imagesLost: 0, videos: 0 },
+        { class: "hidden", posts: 0, images: 0, imagesLost: 0, videos: 0 },
+      ],
+      lost: { videoOnly: 115, foreignOnly: 177, foreignImages: 2, empty: 7 },
+    });
+    expect(lostLines(s, new Set(["own"]))).toEqual([
+      strings.imports_lost_videos({ count: 4 }),
+      strings.imports_lost_images({ count: 1 }),
+      strings.imports_lost_video_only({ count: 115 }),
+      strings.imports_lost_foreign_only({ count: 177 }),
+      strings.imports_lost_foreign_images({ count: 2 }),
+      strings.imports_lost_empty({ count: 7 }),
+    ]);
+    expect(lostLines(s, new Set(["own", "link"]))[0]).toBe(
+      strings.imports_lost_videos({ count: 64 }),
+    );
+    const html = drawChoice(paged(), choice(), s);
+    expect(html).toContain(strings.imports_lost_heading);
+    expect(html).toContain(strings.imports_lost_foreign_only({ count: 177 }));
   });
 
   it("starts on friends, never on everyone", () => {
@@ -175,6 +243,7 @@ describe("an import that is not waiting for a choice", () => {
       ["too_big", strings.imports_failed_too_big],
       ["corrupt", strings.imports_failed_corrupt],
       ["no_posts", strings.imports_failed_no_posts],
+      ["outdated", strings.imports_failed_outdated],
     ] as const;
     for (const [code, sentence] of reasons) expect(failureSentence(code)).toBe(sentence);
     expect(failureSentence(null)).toBe(strings.imports_failed_expired);

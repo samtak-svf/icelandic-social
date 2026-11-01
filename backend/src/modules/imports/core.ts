@@ -1,4 +1,4 @@
-import { MAX_POST_BODY, MAX_POST_MEDIA } from "../../api/post-fields.ts";
+import { MAX_POST_MEDIA } from "../../api/post-fields.ts";
 import { db, mediaBucket } from "../../env/index.ts";
 import { toHex } from "../../shared/bytes.ts";
 import { log } from "../../shared/log.ts";
@@ -11,6 +11,7 @@ import {
   newPostId,
   upload,
 } from "../social/index.ts";
+import { MAX_BODY } from "./export-file.ts";
 
 // The one core of decisions 0119 and 0120. A post has one row here whichever route
 // brought it, written before the post is, so that a repeat or a retry finds it: a
@@ -105,7 +106,7 @@ async function fingerprintOf(createdAt: number, body: string): Promise<string | 
 }
 
 /** The text within what a post holds, in the code points the post's schema counts. */
-function withinLength(body: string, room: number = MAX_POST_BODY): string {
+function withinLength(body: string, room: number = MAX_BODY): string {
   const chars = Array.from(body);
   return chars.length <= room ? body : chars.slice(0, room).join("");
 }
@@ -232,7 +233,7 @@ export async function importPost(
     return nothing("empty");
   }
   const link = post.link ? `\n\n${post.link}` : "";
-  const text = withinLength(body, MAX_POST_BODY - Array.from(link).length);
+  const text = withinLength(body, MAX_BODY - Array.from(link).length);
   const written = await createPost(env, communityId, source.accountId, {
     body: `${text}${link}`.trim(),
     media,

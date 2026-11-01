@@ -1,5 +1,6 @@
 import { db, mediaBucket } from "../../env/index.ts";
 import { abortUpload, PART_SIZE, partLength, partsOf, uploadPart } from "../../shared/multipart.ts";
+import type { ItemClass } from "../../api/imports.ts";
 import { job } from "../jobs/index.ts";
 import { deleteBytes, keyOf, openImport, requestRemoval } from "./core.ts";
 import { SOURCE_KEY } from "./export-file.ts";
@@ -51,6 +52,10 @@ export type FileRow = {
   skipped: number;
   earliest: number | null;
   latest: number | null;
+  /** JSON: how much each class holds, written when the file was read. */
+  classes: string;
+  /** JSON: what the file holds that does not come (decision 0127). */
+  lost: string;
 };
 
 /** What a file import is read as, shared by the one and the list. */
@@ -60,7 +65,8 @@ export const FILE_COLUMNS = `s.import_id AS importId, s.account_id AS accountId,
               COALESCE(f.size, 0) AS size, COALESCE(f.expires_at, 0) AS expiresAt,
               COALESCE(f.posts, 0) AS posts, COALESCE(f.images, 0) AS images,
               COALESCE(f.videos, 0) AS videos, COALESCE(f.skipped, 0) AS skipped,
-              f.earliest, f.latest`;
+              f.earliest, f.latest, COALESCE(f.classes, '{}') AS classes,
+              COALESCE(f.lost, '{}') AS lost`;
 export const FILE_FROM = `FROM import_sources s LEFT JOIN import_files f ON f.import_id = s.import_id`;
 
 export type FileRead = Omit<FileRow, "removing"> & { removing: number };
@@ -192,6 +198,7 @@ export type Choice = {
   from?: number | undefined;
   to?: number | undefined;
   excluded?: string[] | undefined;
+  classes?: ItemClass[] | undefined;
 };
 
 /** Starts publishing what the person chose; nothing is public unless they said so. */
@@ -216,7 +223,8 @@ export async function publishFile(
     db(env)
       .prepare(
         `UPDATE import_files
-            SET state = 'publishing', from_at = ?2, to_at = ?3, excluded = ?4, expires_at = ?5
+            SET state = 'publishing', from_at = ?2, to_at = ?3, excluded = ?4, expires_at = ?5,
+                chosen_classes = ?6
           WHERE import_id = ?1 AND state = 'ready'`,
       )
       .bind(
@@ -225,6 +233,7 @@ export async function publishFile(
         choice.to ?? null,
         JSON.stringify(choice.excluded ?? []),
         now + PUBLISH_MS,
+        JSON.stringify(choice.classes ?? ["own"]),
       ),
     job(
       env,

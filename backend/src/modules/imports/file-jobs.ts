@@ -1,8 +1,10 @@
 import { db, mediaBucket } from "../../env/index.ts";
+import { MAX_POST_MEDIA } from "../../api/post-fields.ts";
 import { MAX_SOCIAL_UPLOAD } from "../../api/social.ts";
 import { log } from "../../shared/log.ts";
 import { type Handler, job } from "../jobs/index.ts";
 import { deleteBytes, importPost, keyOf, type ImportSource } from "./core.ts";
+import { readContext } from "./export-context.ts";
 import { type ParsedItem, parseExportFile, POSTS_FILE } from "./export-file.ts";
 import { beginSync, PARSE, PUBLISH } from "./file.ts";
 import { r2Source, readDirectory, readEntry, type ZipEntry, ZipError } from "./zip.ts";
@@ -23,11 +25,15 @@ const PUBLISHED_PER_RUN = 20;
 
 const basename = (name: string) => name.slice(name.lastIndexOf("/") + 1);
 
-const insertItem = (env: Env, importId: string, item: ParsedItem) =>
+/** A post as it will arrive: the images that exist, fit and a post holds, and how many do not. */
+type Arriving = ParsedItem & { imagesLost: number };
+
+const insertItem = (env: Env, importId: string, item: Arriving) =>
   db(env)
     .prepare(
-      `INSERT OR IGNORE INTO import_file_items (import_id, item_id, at, body, images, has_video)
-       VALUES (?, ?, ?, ?, ?, ?)`,
+      `INSERT OR IGNORE INTO import_file_items
+         (import_id, item_id, at, body, images, has_video, class, images_lost)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
     )
     .bind(
       importId,
@@ -36,20 +42,34 @@ const insertItem = (env: Env, importId: string, item: ParsedItem) =>
       item.body,
       JSON.stringify(item.images),
       item.hasVideo ? 1 : 0,
+      item.class,
+      item.imagesLost,
     );
 
+/** What no post will carry, as a file's tally holds it. */
+export type Lost = { videoOnly: number; foreignOnly: number; foreignImages: number; empty: number };
+const NOTHING_LOST: Lost = { videoOnly: 0, foreignOnly: 0, foreignImages: 0, empty: 0 };
+
 /** The preview rows are all written: the import shows what it holds, to choose from. */
-export const previewReady = (env: Env, importId: string, skipped: number) =>
+export const previewReady = (env: Env, importId: string, skipped: number, lost = NOTHING_LOST) =>
   db(env)
     .prepare(
-      `UPDATE import_files SET state = 'ready', skipped = ?2,
+      `UPDATE import_files SET state = 'ready', skipped = ?2, lost = ?3,
               (posts, images, videos, earliest, latest) =
                 (SELECT COUNT(*), COALESCE(SUM(json_array_length(images)), 0),
                         COALESCE(SUM(has_video), 0), MIN(at), MAX(at)
-                   FROM import_file_items WHERE import_id = ?1)
+                   FROM import_file_items WHERE import_id = ?1),
+              classes =
+                (SELECT COALESCE(json_group_object(class, json_object(
+                          'posts', n, 'images', pictures, 'imagesLost', gone, 'videos', clips)), '{}')
+                   FROM (SELECT class, COUNT(*) AS n,
+                                COALESCE(SUM(json_array_length(images)), 0) AS pictures,
+                                COALESCE(SUM(images_lost), 0) AS gone,
+                                COALESCE(SUM(has_video), 0) AS clips
+                           FROM import_file_items WHERE import_id = ?1 GROUP BY class))
         WHERE import_id = ?1 AND state = 'parsing'`,
     )
-    .bind(importId, skipped);
+    .bind(importId, skipped, JSON.stringify(lost));
 
 /** Marks the parse failed with a code, and drops the bytes: nothing will read them. */
 async function failParse(env: Env, importId: string, failure: string): Promise<void> {
@@ -63,32 +83,69 @@ async function failParse(env: Env, importId: string, failure: string): Promise<v
   log("imports.parse_failed", { code: failure });
 }
 
+/** The post as it will arrive, or null when nothing of it would. */
+function arriving(item: ParsedItem, entries: Map<string, ZipEntry>): Arriving | null {
+  const present = item.images.filter((path) => {
+    const entry = entries.get(path);
+    return entry !== undefined && entry.size <= MAX_SOCIAL_UPLOAD;
+  });
+  const images = present.slice(0, MAX_POST_MEDIA);
+  if (item.body === "" && images.length === 0) return null;
+  return { ...item, images, imagesLost: item.images.length - images.length };
+}
+
+/** A parsed entry from the ZIP, undefined when it is not JSON; an archive failure ends the parse. */
+async function readJson(source: ReturnType<typeof r2Source>, entry: ZipEntry): Promise<unknown> {
+  try {
+    return JSON.parse(new TextDecoder().decode(await readEntry(source, entry, MAX_JSON)));
+  } catch (error) {
+    if (error instanceof ZipError) throw error;
+    return undefined;
+  }
+}
+
 async function parseFile(env: Env, importId: string): Promise<void> {
   const head = await mediaBucket(env).head(keyOf(importId));
   if (!head) return failParse(env, importId, "truncated");
   const source = r2Source(mediaBucket(env), keyOf(importId), head.size);
-  const posts = (await readDirectory(source)).filter((e) => POSTS_FILE.test(basename(e.name)));
+  const directory = await readDirectory(source);
+  const entries = new Map(directory.map((e) => [e.name, e]));
+  const posts = directory.filter((e) => POSTS_FILE.test(basename(e.name)));
   if (posts.length === 0) return failParse(env, importId, "no_posts");
+  const context = await readContext(
+    directory.map((e) => e.name),
+    posts.map((e) => e.name),
+    (name) => readJson(source, entries.get(name) as ZipEntry),
+  );
   let skipped = 0;
+  const lost = { ...NOTHING_LOST };
+  // The export repeats a post: one that was seen counts once, as its row exists once.
+  const seen = new Set<string>();
+  const firstTime = (id: string) => !seen.has(id) && Boolean(seen.add(id));
   for (const entry of posts) {
-    let json: unknown;
-    try {
-      json = JSON.parse(new TextDecoder().decode(await readEntry(source, entry, MAX_JSON)));
-    } catch (error) {
-      // A size or archive failure ends the parse; a file that is not JSON is one skipped.
-      if (error instanceof ZipError) throw error;
+    const json = await readJson(source, entry);
+    if (json === undefined) {
       skipped++;
       continue;
     }
-    const parsed = await parseExportFile(json);
+    const parsed = await parseExportFile(json, context);
     skipped += parsed.skipped;
-    for (let at = 0; at < parsed.items.length; at += INSERT_BATCH) {
+    for (const { id, why } of parsed.dropped) if (firstTime(id)) lost[why] += 1;
+    const rows = parsed.items
+      .filter((item) => firstTime(item.id))
+      .flatMap((item) => {
+        lost.foreignImages += item.foreignImages;
+        const row = arriving(item, entries);
+        if (row === null) lost.empty += 1;
+        return row === null ? [] : [row];
+      });
+    for (let at = 0; at < rows.length; at += INSERT_BATCH) {
       await db(env).batch(
-        parsed.items.slice(at, at + INSERT_BATCH).map((item) => insertItem(env, importId, item)),
+        rows.slice(at, at + INSERT_BATCH).map((item) => insertItem(env, importId, item)),
       );
     }
   }
-  await previewReady(env, importId, skipped).run();
+  await previewReady(env, importId, skipped, lost).run();
 }
 
 const parse: Handler = async (env, _key, payload) => {
@@ -166,7 +223,7 @@ const publish: Handler = async (env, _key, payload) => {
   const row = await db(env)
     .prepare(
       `SELECT s.account_id AS accountId, s.kind, s.source, s.audience, f.from_at AS fromAt,
-              f.to_at AS toAt, f.excluded
+              f.to_at AS toAt, f.excluded, f.chosen_classes AS classes
          FROM import_files f JOIN import_sources s ON s.import_id = f.import_id
         WHERE f.import_id = ? AND f.state = 'publishing' AND s.removing_at IS NULL`,
     )
@@ -179,6 +236,7 @@ const publish: Handler = async (env, _key, payload) => {
       fromAt: number | null;
       toAt: number | null;
       excluded: string;
+      classes: string;
     }>();
   if (!row) return;
   const { results } = await db(env)
@@ -188,9 +246,10 @@ const publish: Handler = async (env, _key, payload) => {
         WHERE import_id = ?1 AND published = 0
           AND (?2 IS NULL OR at >= ?2) AND (?3 IS NULL OR at <= ?3)
           AND item_id NOT IN (SELECT value FROM json_each(?4))
-        ORDER BY at, item_id LIMIT ?5`,
+          AND class IN (SELECT value FROM json_each(?5))
+        ORDER BY at, item_id LIMIT ?6`,
     )
-    .bind(importId, row.fromAt, row.toAt, row.excluded, PUBLISHED_PER_RUN)
+    .bind(importId, row.fromAt, row.toAt, row.excluded, row.classes, PUBLISHED_PER_RUN)
     .all<Chosen>();
   if (results.length === 0) return finish(env, importId);
 
