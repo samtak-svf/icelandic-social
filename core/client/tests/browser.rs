@@ -132,21 +132,24 @@ fn a_browser_manages_a_group() {
 
     // Added: the new person is welcomed, and a member who stays is told.
     fourth.deliver_until(has(joined));
+    // A frame can carry several of these, and what one wait reads past its own
+    // condition has to count for the next, so `seen` runs through all of them.
+    let mut seen = Vec::new();
     let fourth_account = fourth.account.clone();
-    second.deliver_until(|events| {
+    second.deliver_keeping(&mut seen, |events| {
         events.iter().any(
             |e| matches!(e, Event::Membership { added, .. } if added.contains(&fourth_account)),
         )
     });
     // Removed: a member who stays sees the third go.
     let third_account = third.account.clone();
-    second.deliver_until(|events| {
+    second.deliver_keeping(&mut seen, |events| {
         events.iter().any(
             |e| matches!(e, Event::Membership { removed, .. } if removed.contains(&third_account)),
         )
     });
     // Named: the name arrives as an envelope.
-    second.deliver_until(|events| {
+    second.deliver_keeping(&mut seen, |events| {
         events.iter().any(|e| {
             matches!(e, Event::Message(m)
                 if matches!(&m.envelope.body, Body::Name { name: Some(n) } if n == "Hópur vafra"))
@@ -154,7 +157,7 @@ fn a_browser_manages_a_group() {
     });
     // Left: the browser's account goes, and the phone's device with it.
     let phone_account = phone.account.clone();
-    second.deliver_until(|events| {
+    second.deliver_keeping(&mut seen, |events| {
         events.iter().any(
             |e| matches!(e, Event::Membership { removed, .. } if removed.contains(&phone_account)),
         )
