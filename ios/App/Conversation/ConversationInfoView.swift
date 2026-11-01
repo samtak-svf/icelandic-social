@@ -45,11 +45,7 @@ struct ConversationInfoView: View {
         .navigationTitle(Text("conversation_info"))
         .navigationBarTitleDisplayMode(.inline)
         .toolbar(.visible, for: .navigationBar)
-        .safeAreaInset(edge: .top) {
-            if let problem = model.problem {
-                ProblemCard(problem: problem) { Task { await model.retry() } }.padding(16)
-            }
-        }
+        .problemCard(model.problem) { Task { await model.retry() } }
         .task { await model.loadShared() }
         .onChange(of: model.writable) { _, writable in if !writable { dismiss() } }
         .quickLookPreview($preview)

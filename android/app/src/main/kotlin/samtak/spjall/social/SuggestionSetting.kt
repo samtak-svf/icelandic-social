@@ -9,6 +9,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -19,7 +20,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import samtak.spjall.account.Problem
 import samtak.spjall.account.problem
-import samtak.spjall.core.CoreException
 
 /**
  * Whether this account takes part in friend suggestions (decision 0114): off, nobody is suggested to it and it is
@@ -42,17 +42,18 @@ class SuggestionSettingViewModel(
     /** Reads the setting; read again after a problem (the retry), never repeated once it is known, never while held. */
     fun load() {
         val now = _state.value
-        if (now.busy || (now.included != null && now.problem == null)) return
-        run { }
+        if (now.included != null && now.problem == null) return
+        readAfter()
     }
 
     fun set(included: Boolean) {
-        if (_state.value.busy) return
-        run { social.setFriendSuggestionsIncluded(included) }
+        readAfter { social.setFriendSuggestionsIncluded(included) }
     }
 
-    /** Runs [write], if any, then reads the setting back. */
-    private fun run(write: () -> Unit) {
+    /** Runs [write], if any, then reads the setting back; never while one is already on its way. */
+    @Suppress("TooGenericExceptionCaught") // Any failure is the person's to see; a cancellation is not.
+    private fun readAfter(write: () -> Unit = {}) {
+        if (_state.value.busy) return
         _state.update { it.copy(busy = true, problem = null) }
         viewModelScope.launch {
             try {
@@ -62,7 +63,9 @@ class SuggestionSettingViewModel(
                         social.friendSuggestionsIncluded()
                     }
                 _state.update { it.copy(included = now, busy = false) }
-            } catch (e: CoreException) {
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Throwable) {
                 _state.update { it.copy(busy = false, problem = e.problem()) }
             }
         }

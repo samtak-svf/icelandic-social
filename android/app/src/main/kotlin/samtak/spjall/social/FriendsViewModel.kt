@@ -1,19 +1,15 @@
 package samtak.spjall.social
 
-import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import samtak.spjall.account.Problem
-import samtak.spjall.account.problem
+import samtak.spjall.base.BaseViewModel
+import samtak.spjall.base.ScreenState
 import samtak.spjall.core.Author
 import samtak.spjall.core.CoreException
 import samtak.spjall.core.Friend
@@ -30,7 +26,7 @@ import samtak.spjall.core.Snooze
 class FriendsViewModel(
     private val social: Social,
     private val io: CoroutineDispatcher = Dispatchers.IO,
-) : ViewModel() {
+) : BaseViewModel<FriendsViewModel.State>(State(), io) {
     data class State(
         val sort: FriendSort = FriendSort.NEWEST,
         /** What the search field holds; [query] is what the list was asked with, a moment later. */
@@ -46,14 +42,16 @@ class FriendsViewModel(
         /** Where the next page of suggestions starts, none on the last page. */
         val suggestionsNext: String? = null,
         val loaded: Boolean = false,
-        val busy: Boolean = false,
-        val problem: Problem? = null,
-    )
+        override val busy: Boolean = false,
+        override val problem: Problem? = null,
+    ) : ScreenState<State> {
+        override fun busy(on: Boolean): State = copy(busy = on)
 
-    private val _state = MutableStateFlow(State())
-    val state: StateFlow<State> = _state.asStateFlow()
+        override fun trouble(problem: Problem?): State = copy(problem = problem)
 
-    private var failed: (() -> Unit)? = null
+        override fun answered(): State = copy(loaded = true)
+    }
+
     private var typing: Job? = null
     private var loadingSuggestions = false
 
@@ -66,38 +64,44 @@ class FriendsViewModel(
     }
 
     fun load() {
-        perform(::load) {}
+        perform(::load) { lists() }
     }
 
     /** The search field changed: the list follows when typing pauses, so each key does not ask the core. */
     fun onQuery(text: String) {
-        _state.update { it.copy(typed = text) }
+        edit { it.copy(typed = text) }
         typing?.cancel()
         typing =
             viewModelScope.launch {
                 delay(DEBOUNCE_MS)
-                _state.update { it.copy(query = text.trim()) }
+                edit { it.copy(query = text.trim()) }
                 load()
             }
     }
 
     fun sortBy(sort: FriendSort) {
-        if (sort == _state.value.sort) return
-        _state.update { it.copy(sort = sort) }
+        if (sort == current.sort) return
+        edit { it.copy(sort = sort) }
         load()
     }
 
-    fun accept(accountId: String): Unit = perform({ accept(accountId) }) { social.acceptFriendRequest(accountId) }
+    fun accept(accountId: String): Unit =
+        perform({ accept(accountId) }) { lists { social.acceptFriendRequest(accountId) } }
 
-    fun decline(accountId: String): Unit = perform({ decline(accountId) }) { social.declineFriendRequest(accountId) }
+    fun decline(accountId: String): Unit =
+        perform({ decline(accountId) }) { lists { social.declineFriendRequest(accountId) } }
 
-    fun cancel(accountId: String): Unit = perform({ cancel(accountId) }) { social.cancelFriendRequest(accountId) }
+    fun cancel(accountId: String): Unit =
+        perform({ cancel(accountId) }) { lists { social.cancelFriendRequest(accountId) } }
 
-    fun unsnooze(accountId: String): Unit = perform({ unsnooze(accountId) }) { social.unsnoozePerson(accountId) }
+    fun unsnooze(accountId: String): Unit =
+        perform({ unsnooze(accountId) }) { lists { social.unsnoozePerson(accountId) } }
 
     /** Asks a suggested person; on success they leave the section at once, on failure they stay. */
     fun ask(accountId: String): Unit =
-        perform({ ask(accountId) }, onDone = { asked += accountId }) { social.sendFriendRequest(accountId) }
+        perform({ ask(accountId) }) {
+            lists(then = { asked += accountId }) { social.sendFriendRequest(accountId) }
+        }
 
     /** Whether this account is in suggestions, then the first page; any failure leaves the section empty. */
     private fun loadSuggestions() {
@@ -111,7 +115,7 @@ class FriendsViewModel(
                         }
                     }
                 if (page != null) {
-                    _state.update { it.copy(suggestions = shown(page.people), suggestionsNext = page.next) }
+                    edit { it.copy(suggestions = shown(page.people), suggestionsNext = page.next) }
                 }
             } catch (_: CoreException) {
                 // The section reads on its own: nothing shows and the lists stay as they are.
@@ -122,13 +126,13 @@ class FriendsViewModel(
 
     /** The end of the suggestions came into view: the page [State.suggestionsNext] points at. */
     fun moreSuggestions() {
-        val next = _state.value.suggestionsNext ?: return
+        val next = current.suggestionsNext ?: return
         if (loadingSuggestions) return
         loadingSuggestions = true
         viewModelScope.launch {
             try {
                 val page = withContext(io) { social.friendSuggestions(next, SUGGESTION_PAGE) }
-                _state.update {
+                edit {
                     it.copy(suggestions = it.suggestions + shown(page.people), suggestionsNext = page.next)
                 }
             } catch (_: CoreException) {
@@ -140,48 +144,35 @@ class FriendsViewModel(
 
     private fun shown(people: List<Author>) = people.filter { it.accountId !in asked }
 
-    fun retry() {
-        failed?.invoke()
-    }
-
-    /** Runs [action], if any, then asks for the three lists again. */
-    private fun perform(
-        again: () -> Unit,
-        onDone: () -> Unit = {},
-        action: () -> Unit,
+    /**
+     * Runs [action], if any, then asks for the three lists again. [then] runs after the read and before the state
+     * is written, so a row the action settled leaves the screen in the same write.
+     */
+    private suspend fun lists(
+        then: () -> Unit = {},
+        action: suspend () -> Unit = {},
     ) {
-        _state.update { it.copy(busy = true, problem = null) }
-        val asked = _state.value
-        viewModelScope.launch {
-            try {
-                val lists =
-                    withContext(io) {
-                        action()
-                        Triple(
-                            social.friends(asked.sort, asked.query.ifEmpty { null }),
-                            social.friendRequests(),
-                            social.snoozes(),
-                        )
-                    }
-                val (page, requests, snoozes) = lists
-                failed = null
-                onDone()
-                _state.update {
-                    it.copy(
-                        suggestions = shown(it.suggestions),
-                        count = page.count,
-                        friends = page.friends,
-                        incoming = requests.incoming,
-                        sent = requests.sent,
-                        snoozes = snoozes,
-                        loaded = true,
-                        busy = false,
-                    )
-                }
-            } catch (e: CoreException) {
-                failed = again
-                _state.update { it.copy(busy = false, loaded = true, problem = e.problem()) }
+        val now = current
+        val (page, requests, snoozes) =
+            withContext(io) {
+                action()
+                Triple(
+                    social.friends(now.sort, now.query.ifEmpty { null }),
+                    social.friendRequests(),
+                    social.snoozes(),
+                )
             }
+        then()
+        edit {
+            it.copy(
+                suggestions = shown(it.suggestions),
+                count = page.count,
+                friends = page.friends,
+                incoming = requests.incoming,
+                sent = requests.sent,
+                snoozes = snoozes,
+                loaded = true,
+            )
         }
     }
 

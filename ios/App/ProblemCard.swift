@@ -73,3 +73,24 @@ struct ProblemCard: View {
         }
     }
 }
+
+/// The problem a screen is showing, above the content, with the way to try again when that can help.
+private struct ProblemBanner: ViewModifier {
+    let problem: Problem?
+    let onRetry: () -> Void
+
+    func body(content: Content) -> some View {
+        content.safeAreaInset(edge: .top) {
+            if let problem {
+                ProblemCard(problem: problem, onRetry: onRetry).padding(16)
+            }
+        }
+    }
+}
+
+extension View {
+    /// Shows `problem` above this view, when there is one.
+    func problemCard(_ problem: Problem?, retry: @escaping () -> Void) -> some View {
+        modifier(ProblemBanner(problem: problem, onRetry: retry))
+    }
+}

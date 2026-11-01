@@ -5,7 +5,7 @@ import SpjallCore
 /// One post (decision 0063) and its comments, oldest first, with a reaction to toggle and a comment to write
 /// for a member of its community who is not muted. This account's own post and comments can be deleted.
 @MainActor @Observable
-final class PostModel {
+final class PostModel: ScreenModel {
     let postId: String
     private(set) var post: Post?
     /// The post's community, which says whether this account may write here.
@@ -16,7 +16,7 @@ final class PostModel {
     private(set) var next: String?
     /// A further page is on its way.
     private(set) var paging = false
-    private(set) var loaded = false
+    var loaded = false
     /// The comment being written.
     var draft = ""
     /// The image picked for it, as a local copy; a comment takes at most one (decision 0082).
@@ -35,12 +35,12 @@ final class PostModel {
     private(set) var myPhoto: PhotoOf?
     /// The post was deleted from here, so the screen goes back to its community.
     private(set) var deleted = false
-    private(set) var busy = false
-    private(set) var problem: Problem?
+    var busy = false
+    var problem: Problem?
 
     private let social: Social
     private let now: @Sendable () -> UInt64
-    private var failed: (() async -> Void)?
+    var failed: (() async -> Void)?
     /// The comments whose like is on its way, so a second tap waits for the first.
     private var liking: Set<String> = []
 
@@ -348,24 +348,4 @@ final class PostModel {
 
     /// A page of comments: a screenful and some.
     private nonisolated static let page: UInt32 = 30
-
-    /// Tries the action that failed again.
-    func retry() async {
-        await failed?()
-    }
-
-    private func perform(again: @escaping () async -> Void, _ action: () async throws -> Void) async {
-        guard !busy else { return }
-        busy = true
-        problem = nil
-        do {
-            try await action()
-            failed = nil
-        } catch {
-            failed = again
-            loaded = true
-            problem = Problem(error)
-        }
-        busy = false
-    }
 }

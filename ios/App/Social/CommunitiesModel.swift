@@ -27,7 +27,7 @@ enum CommunitiesPart: CaseIterable, Identifiable, Sendable {
 /// The communities tab (decision 0063): the feed across the communities this account is in, those communities, a
 /// search over every one it may see, and a new community, which only a verified account makes (decision 0079).
 @MainActor @Observable
-final class CommunitiesModel {
+final class CommunitiesModel: ScreenModel {
     /// The communities this account is a member of.
     private(set) var mine: [Community] = []
     /// The names of the communities this account is in, by id.
@@ -46,11 +46,11 @@ final class CommunitiesModel {
     private(set) var next: String?
     /// A search or a further page is on its way.
     private(set) var searching = false
-    private(set) var loaded = false
+    var loaded = false
     /// Kenni vouches for this account, so it may make a community.
     private(set) var verified = false
-    private(set) var busy = false
-    private(set) var problem: Problem?
+    var busy = false
+    var problem: Problem?
     /// The community just made, to go into.
     private(set) var created: String?
     /// Which part of the hub is shown.
@@ -65,7 +65,7 @@ final class CommunitiesModel {
     private(set) var loadingFeed = false
 
     private let social: Social
-    private var failed: (() async -> Void)?
+    var failed: (() async -> Void)?
     private let sleep: @Sendable (Duration) async throws -> Void
 
     init(
@@ -306,24 +306,4 @@ final class CommunitiesModel {
 
     /// A feed page: a screenful and some (decision 0079).
     private nonisolated static let feedSize: UInt32 = 20
-
-    /// Tries the action that failed again.
-    func retry() async {
-        await failed?()
-    }
-
-    private func perform(again: @escaping () async -> Void, _ action: () async throws -> Void) async {
-        guard !busy else { return }
-        busy = true
-        problem = nil
-        do {
-            try await action()
-            failed = nil
-        } catch {
-            failed = again
-            loaded = true
-            problem = Problem(error)
-        }
-        busy = false
-    }
 }

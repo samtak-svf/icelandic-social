@@ -8,7 +8,7 @@ import SpjallCore
 /// Its posts can be searched, its member list and moderation log read, and its owner renames it, changes its
 /// description or makes it private (decision 0079).
 @MainActor @Observable
-final class CommunityModel {
+final class CommunityModel: ScreenModel {
     let communityId: String
     private(set) var community: Community?
     /// Its posts so far, newest first.
@@ -32,7 +32,7 @@ final class CommunityModel {
     /// The log has been asked for, so an empty one says so rather than waiting.
     private(set) var logLoaded = false
     private(set) var loadingLog = false
-    private(set) var loaded = false
+    var loaded = false
     /// The tab chosen on the community's tab row (decision 0089); `shownTab` is the one actually on screen.
     private(set) var tab: Tab = .discussion
     /// The community's images, newest first, for `Myndir` (decision 0089).
@@ -51,15 +51,15 @@ final class CommunityModel {
     /// This account's name and photo, for the composer row's own picture (decision 0080).
     private(set) var myName: String?
     private(set) var myPhoto: PhotoOf?
-    private(set) var busy = false
+    var busy = false
     /// The owner deleted the community from here, so the screen leaves it.
     private(set) var deleted = false
-    private(set) var problem: Problem?
+    var problem: Problem?
 
     private let social: Social
     private let now: @Sendable () -> UInt64
     private let sleep: @Sendable (Duration) async throws -> Void
-    private var failed: (() async -> Void)?
+    var failed: (() async -> Void)?
     private var loadingMembers = false
 
     /// The community page's tabs (decision 0089), in the order the row shows them.
@@ -753,24 +753,4 @@ final class CommunityModel {
 
     /// A page of the moderation log: a screenful and some (decision 0079).
     private nonisolated static let logSize: UInt32 = 30
-
-    /// Tries the action that failed again.
-    func retry() async {
-        await failed?()
-    }
-
-    private func perform(again: @escaping () async -> Void, _ action: () async throws -> Void) async {
-        guard !busy else { return }
-        busy = true
-        problem = nil
-        do {
-            try await action()
-            failed = nil
-        } catch {
-            failed = again
-            loaded = true
-            problem = Problem(error)
-        }
-        busy = false
-    }
 }
