@@ -54,7 +54,7 @@ impl LinkCode {
                 .ok()
                 .filter(|key| key.len() == KEY)
         };
-        is_link_id(link_id).then_some(())?;
+        is_id(link_id).then_some(())?;
         Some(Self {
             link_id: link_id.into(),
             device_key: key(device)?,
@@ -210,7 +210,7 @@ impl<T: Transport> Client<T> {
         let created = Api::new(&self.transport, None)
             .client(self.client.as_deref())
             .create_device_link_request(&device_key, &history.public)?;
-        if !is_link_id(&created.link_id) {
+        if !is_id(&created.link_id) {
             return Err(ClientError::Protocol(
                 "createDeviceLinkRequest answered a bad id",
             ));
@@ -373,14 +373,6 @@ fn refusal(error: ApiError) -> ClientError {
         Some("already_approved") => LinkError::AlreadyApproved.into(),
         _ => error.into(),
     }
-}
-
-/// An id the server made: what `OpaqueId` allows (`backend/src/api/common.ts`).
-fn is_link_id(text: &str) -> bool {
-    (1..=128).contains(&text.len())
-        && text
-            .bytes()
-            .all(|b| b.is_ascii_alphanumeric() || b == b'_' || b == b'-')
 }
 
 #[cfg(test)]
