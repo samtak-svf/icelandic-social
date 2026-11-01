@@ -79,6 +79,7 @@ fun item(
     expiresAt: ULong? = null,
     forwarded: Boolean = false,
     receivedAt: ULong? = null,
+    readHere: List<Person> = emptyList(),
 ) = Item(
     seq,
     seq?.let { "e$it" },
@@ -93,4 +94,5 @@ fun item(
     expiresAt,
     forwarded,
     receivedAt,
+    readHere,
 )

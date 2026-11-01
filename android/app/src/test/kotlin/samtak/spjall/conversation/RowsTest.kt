@@ -228,4 +228,13 @@ class RowsTest {
         assertEquals(emptyList<MetaPart>(), Row.Bubble(sent, first = true, readBy = null).meta())
         assertEquals(listOf(MetaPart.TIME), Row.Bubble(sent, first = true, readBy = null).meta(open = true))
     }
+
+    /** A group's read state is faces (0125), so the meta line never carries the word or the count. */
+    @Test
+    fun aGroupsMetaLineHasNoReadPart() {
+        val sent = item(1u, sender = me, own = true, ts = day)
+        val row = Row.Bubble(sent, first = true, readBy = 2u)
+        assertEquals(emptyList<MetaPart>(), row.meta(group = true))
+        assertEquals(listOf(MetaPart.READ), row.meta(group = false))
+    }
 }

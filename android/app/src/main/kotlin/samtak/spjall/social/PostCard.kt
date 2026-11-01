@@ -107,6 +107,7 @@ fun PostCard(
             AuthorRow(post.author, post.anonymousBylineRes(), post.createdAt, actions)
         }
         if (post.pinned) PinnedMarker()
+        if (post.imported) ImportedMarker()
         if (post.body.isNotBlank()) PostBody(post.postId, post.body, clamp = inFeed)
         post.poll?.let { PollCard(it, callbacks.answering, callbacks.poll) }
         PostImageGrid(post)
@@ -273,3 +274,13 @@ internal fun Post.summaryEmojis(limit: Int): String =
 
 /** How many lines of a post the feed shows before "Sjá meira". */
 internal const val BODY_LINES = 5
+
+/** "Innflutt": the mark on a post that came from another platform under its original date (0119). */
+@Composable
+internal fun ImportedMarker() {
+    Text(
+        text = stringResource(R.string.post_imported),
+        style = MaterialTheme.typography.labelMedium,
+        color = Palette.mutedFg,
+    )
+}

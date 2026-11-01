@@ -71,6 +71,7 @@ fun post(
     own: Boolean = author?.accountId == self.accountId,
     poll: Poll? = null,
     pinned: Boolean = false,
+    imported: Boolean = false,
     state: ModerationState = ModerationState.VISIBLE,
 ) = Post(
     postId = id,
@@ -87,6 +88,7 @@ fun post(
     state = state,
     poll = poll,
     pinned = pinned,
+    imported = imported,
 )
 
 fun comment(
