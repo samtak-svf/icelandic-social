@@ -20,4 +20,12 @@ export {
 } from "./moderation.ts";
 export { authors, type Author } from "./bylines.ts";
 export { reconcileSpace, restoreSpace, type Moderated } from "./restore.ts";
+export {
+  exportPage,
+  exportSpaceIds,
+  type ExportComment,
+  type ExportImage,
+  type ExportPost,
+} from "./export.ts";
+export type { OwnStage } from "./do/export.ts";
 export { socialRoutes } from "./routes.ts";

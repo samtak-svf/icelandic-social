@@ -17,6 +17,7 @@ export { expirePageOffers } from "./pages.ts";
 export { scrapeHealth, startDueScrapes } from "./scrape-jobs.ts";
 export { importPost, openImport, requestRemoval, type SourcePost } from "./core.ts";
 export { deleteAccountFiles, expireFiles } from "./file.ts";
+export type { ParsedItem } from "./export-file.ts";
 export { importRoutes } from "./routes.ts";
 
 /** The handlers of the jobs this module runs. */

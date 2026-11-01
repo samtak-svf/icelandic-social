@@ -27,6 +27,7 @@ import {
   pageRoutes,
   pageSignInRoutes,
 } from "./modules/imports/index.ts";
+import { exportRoutes } from "./modules/exports/index.ts";
 import { messagingRoutes } from "./modules/messaging/index.ts";
 import { moderationRoutes } from "./modules/moderation/index.ts";
 import { notificationRoutes, withdrawingRequestNotice } from "./modules/notifications/index.ts";
@@ -112,6 +113,9 @@ export function createApp() {
   connectionRoutes(app);
   pageRoutes(app);
   importRoutes(app);
+
+  // A person's own content as one file (decision 0126).
+  exportRoutes(app);
 
   // The maintainer's jobs and restore, behind OPS_TOKEN (decision 0068).
   opsRoutes(app);

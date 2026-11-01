@@ -11,6 +11,7 @@ export {
   dropDeadPushToken,
   inSuggestions,
   orphans,
+  ownProfile,
   type PushTarget,
   pushTarget,
   revokeAllDevices,

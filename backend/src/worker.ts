@@ -6,6 +6,7 @@ import { jobHandlers } from "./compose/job-handlers.ts";
 import { log } from "./shared/log.ts";
 import { expireKeyPackages, expireLinkedDevices, expireSessions } from "./identity/index.ts";
 import { expireCommunities } from "./modules/communities/index.ts";
+import { expireExports } from "./modules/exports/index.ts";
 import { expireHistory } from "./modules/history/index.ts";
 import {
   expireFiles,
@@ -38,7 +39,7 @@ export default {
   // within a day (0065), posts removed by a moderator 90 days ago and reports
   // closed a year ago (0066), and finished jobs and notifications past their
   // time (0067), and friend requests past their 30 days and snoozes past theirs
-  // (0114). It also counts, by kind, the jobs that failed for good that
+  // (0114), and a person's own exports past their 7 days (0126). It also counts, by kind, the jobs that failed for good that
   // day and the ones the minute cron has stopped taking (0068).
   async scheduled(controller, env) {
     if (controller.cron === JOBS_SCHEDULE) {
@@ -63,6 +64,7 @@ export default {
     log("person_snoozes.expired", { count: await expireSnoozes(env) });
     log("moderation_log.expired", { count: await expireLog(env) });
     log("import_files.expired", { count: await expireFiles(env) });
+    log("exports.expired", { count: await expireExports(env) });
     log("import_connections.expired", { count: await expireUnproven(env) });
     log("import_page_offers.expired", { count: await expirePageOffers(env) });
     const scrape = await scrapeHealth(env);

@@ -4365,6 +4365,68 @@
             "description": "Ids of posts to leave out"
           }
         }
+      },
+      "ExportSummary": {
+        "type": "object",
+        "properties": {
+          "exportId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,128}$",
+            "example": "c_9f3a1b"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "building",
+              "ready",
+              "failed"
+            ]
+          },
+          "failure": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "With failed, why: too_big, lost or stalled"
+          },
+          "size": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "description": "The file's bytes, once ready"
+          },
+          "createdAt": {
+            "type": "integer",
+            "description": "Milliseconds since the epoch"
+          },
+          "expiresAt": {
+            "type": "integer",
+            "description": "Milliseconds since the epoch; the file is gone after this"
+          }
+        },
+        "required": [
+          "exportId",
+          "state",
+          "failure",
+          "size",
+          "createdAt",
+          "expiresAt"
+        ]
+      },
+      "ExportList": {
+        "type": "object",
+        "properties": {
+          "exports": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ExportSummary"
+            }
+          }
+        },
+        "required": [
+          "exports"
+        ]
       }
     },
     "parameters": {}
@@ -19497,6 +19559,220 @@
           },
           "429": {
             "description": "rate_limited: too many requests in the last minute; try again later",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/exports": {
+      "post": {
+        "operationId": "createExport",
+        "tags": [
+          "exports"
+        ],
+        "summary": "Ask for a file of the caller's own content; a job builds it",
+        "description": "Allowed for a suspended account, since the content is its own. One export per account in 24 hours, unless the last one failed.",
+        "security": [
+          {
+            "deviceToken": []
+          },
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "The export, building",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExportSummary"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No device token or session the route takes, or one that is not valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "conflict: one is building, or one was made in the last 24 hours",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "426": {
+            "description": "client_too_old: Spjall-Client names a version below the floor; minVersion says which",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "operationId": "listExports",
+        "tags": [
+          "exports"
+        ],
+        "summary": "The caller's exports that have not expired, newest first",
+        "security": [
+          {
+            "deviceToken": []
+          },
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The exports",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExportList"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No device token or session the route takes, or one that is not valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "426": {
+            "description": "client_too_old: Spjall-Client names a version below the floor; minVersion says which",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/exports/{exportId}/file": {
+      "get": {
+        "operationId": "getExportFile",
+        "tags": [
+          "exports"
+        ],
+        "summary": "Download the caller's own export, a ZIP",
+        "description": "A single `Range: bytes=a-b` or `bytes=a-` answers 206 with that slice. Another person's export answers not_found.",
+        "security": [
+          {
+            "deviceToken": []
+          },
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,128}$",
+              "example": "c_9f3a1b"
+            },
+            "required": true,
+            "name": "exportId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The ZIP",
+            "content": {
+              "application/zip": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "206": {
+            "description": "The slice a Range asked for, with its content-range",
+            "content": {
+              "application/zip": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No device token or session the route takes, or one that is not valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "not_found: no such export of the caller's",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "conflict: the export is not ready",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "expired: the file is past its 7 days",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "416": {
+            "description": "The range starts past the end, is reversed, a suffix or several ranges; content-range is `bytes */<size>`"
+          },
+          "426": {
+            "description": "client_too_old: Spjall-Client names a version below the floor; minVersion says which",
             "content": {
               "application/json": {
                 "schema": {

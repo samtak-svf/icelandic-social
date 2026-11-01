@@ -1,3 +1,4 @@
+import { exportJobs } from "../modules/exports/index.ts";
 import { jobHandlers as importJobs } from "../modules/imports/index.ts";
 import type { Handler } from "../modules/jobs/index.ts";
 import { pushSender } from "../modules/messaging/index.ts";
@@ -9,4 +10,5 @@ import { jobHandlers as notificationJobs } from "../modules/notifications/index.
 export const jobHandlers = (env: Env): Record<string, Handler> => ({
   ...notificationJobs(pushSender(env)),
   ...importJobs(),
+  ...exportJobs(),
 });

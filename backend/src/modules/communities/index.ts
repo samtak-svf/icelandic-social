@@ -7,7 +7,7 @@ export { canRead, moderates } from "./access.ts";
 export { handOverCommunities, standing, type Standing } from "./communities.ts";
 export { markRead, notePost } from "./hub.ts";
 export { expireCommunities, type LifecycleHooks, purgeWall } from "./lifecycle.ts";
-export { ensureWall, spaceExists, wallAt, wallOf, wallsAmong } from "./walls.ts";
+export { ensureWall, spaceExists, spaceLabels, wallAt, wallOf, wallsAmong } from "./walls.ts";
 export { clearWallCover } from "./wall-images.ts";
 export { sanction, type Sanction } from "./sanctions.ts";
 export { communityRoutes } from "./routes.ts";
