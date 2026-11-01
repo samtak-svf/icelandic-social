@@ -20,13 +20,16 @@ export type Content = {
   anonymous: number;
 };
 
-/** A post's place and author, whatever its state; null when there is none. */
+/**
+ * A post's place and author, whatever its state; null when there is none. A post an
+ * import holds is none to anyone who acts on content: it is its author's alone (0127).
+ */
 export async function postContent(env: Env, postId: string): Promise<Content | null> {
   return db(env)
     .prepare(
       `SELECT community_id AS communityId, post_id AS postId, author_id AS authorId, state,
               anonymous
-         FROM post_index WHERE post_id = ?`,
+         FROM post_index WHERE post_id = ? AND state != 'held'`,
     )
     .bind(postId)
     .first<Content>();

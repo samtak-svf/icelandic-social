@@ -6,23 +6,23 @@ import {
   listImportItems,
   publishImport,
   type ImportItem,
+  type ImportDetail,
   type ImportStatus,
-  type WallAudience,
 } from "../generated/api.ts";
 import { strings } from "../generated/brand/strings.ts";
 import { formatIsDate } from "../lib/is-format.ts";
 import type { Problem } from "../problem.ts";
-import { WallAudienceFields } from "../social/audience.tsx";
 import { outcome, useLoad } from "../social/outcome.ts";
 import { usePaged, type Paged } from "../social/paged.ts";
 import { Button, ProblemText, Status } from "../ui/kit.tsx";
 import { CLASS_LABEL, ClassFields, DEFAULT_CLASSES, LostList, type ItemClass } from "./classes.tsx";
+import { HeldSection, mayOpen } from "./held.tsx";
 import { failureSentence, usePoll } from "./shared.tsx";
 import { LIMITS } from "../generated/limits.ts";
 
-// One import (decisions 0119, 0120): what was read and, while it waits, the choice of
-// what to publish. Nothing is published until the person says so, and a whole
-// import can always be taken back.
+// One import (decisions 0119, 0120, 0127): what was read and, while it waits, the choice of
+// what comes in. What comes in is held until the person opens it, and a whole import can
+// always be taken back.
 
 /** Most posts one publication can leave out; the API refuses more. */
 export const MOST_EXCLUDED = LIMITS.excludedPostsCount;
@@ -61,7 +61,6 @@ export type Choice = {
   from: string;
   to: string;
   excluded: ReadonlySet<string>;
-  audience: WallAudience;
   classes: ReadonlySet<ItemClass>;
 };
 
@@ -72,7 +71,7 @@ export function inChoice(items: readonly ImportItem[], choice: Choice): ImportIt
   return items.filter((item) => choice.classes.has(item.class) && item.at >= from && item.at <= to);
 }
 
-/** What the person chooses from: kinds of post, range, posts, audience. Draws what it is given. */
+/** What the person chooses from: kinds of post, range, posts. Draws what it is given. */
 export function ChoiceView({
   status,
   list,
@@ -192,17 +191,10 @@ export function ChoiceView({
         </>
       )}
       {full && <p className="mt-2 text-sm">{strings.imports_excluded_full}</p>}
-      <div className="mt-4 flex flex-col gap-3">
-        <WallAudienceFields
-          value={choice.audience}
-          onChange={(audience) => change({ ...choice, audience })}
-          disabled={busy}
-        />
-        <div>
-          <Button tone="primary" onClick={publish} disabled={busy || noClass}>
-            {strings.imports_publish}
-          </Button>
-        </div>
+      <div className="mt-4">
+        <Button tone="primary" onClick={publish} disabled={busy || noClass}>
+          {strings.imports_publish}
+        </Button>
       </div>
     </>
   );
@@ -229,7 +221,6 @@ function Chooser({
     from: "",
     to: "",
     excluded: new Set(),
-    audience: "friends",
     classes: DEFAULT_CLASSES,
   });
   const [busy, setBusy] = useState(false);
@@ -244,7 +235,6 @@ function Chooser({
       publishImport({
         path: { importId },
         body: {
-          audience: choice.audience,
           ...(from === undefined ? {} : { from }),
           ...(to === undefined ? {} : { to }),
           excluded: [...choice.excluded],
@@ -269,6 +259,29 @@ function Chooser({
         busy={busy}
       />
       <Status inline>{problem !== null && <ProblemText problem={problem} />}</Status>
+    </>
+  );
+}
+
+/** What the import holds, and how many were opened last. */
+function Holding({
+  importId,
+  held,
+  reload,
+}: Readonly<{ importId: string; held: ImportDetail["held"]; reload: () => void }>) {
+  const [opened, setOpened] = useState<number | null>(null);
+  return (
+    <>
+      {opened !== null && <p className="mt-4">{strings.imports_held_opened({ count: opened })}</p>}
+      <HeldSection
+        importId={importId}
+        held={held}
+        changed={reload}
+        opened={(count) => {
+          setOpened(count);
+          reload();
+        }}
+      />
     </>
   );
 }
@@ -312,6 +325,9 @@ export function ImportPreview({ importId }: Readonly<{ importId: string }>) {
       {sentence !== null && <p className="mt-4">{sentence}</p>}
       {current?.state === "ready" && (
         <Chooser importId={importId} status={current} published={reload} />
+      )}
+      {current !== null && mayOpen(current) && (
+        <Holding importId={importId} held={current.held} reload={reload} />
       )}
       {current !== null && current.state !== "removing" && (
         <div className="mt-6">

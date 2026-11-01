@@ -1247,7 +1247,7 @@ export const strings = {
   /** Title of the screen that brings a person's own posts in from another platform, and the link to it. */
   imports_title: "Flytja inn pósta",
   /** What the screen does, and that nothing is published until chosen. */
-  imports_intro: "Hér geturðu flutt inn eldri pósta þína af öðrum miðli. Ekkert birtist fyrr en þú hefur skoðað póstana og valið að birta þá.",
+  imports_intro: "Hér geturðu flutt inn eldri pósta af öðrum miðli. Þeir fara fyrst í bið og enginn sér þá nema þú fyrr en þú hefur skoðað þá og birt.",
   /** Heading: bring posts in from an export file. */
   imports_file_title: "Úr skrá",
   /** How to get the export file. */
@@ -1273,10 +1273,10 @@ export const strings = {
   imports_state_parsing: "Verið er að lesa skrána",
   /** An earlier file import: waits for a choice. */
   imports_state_ready: "Bíður þess að þú veljir pósta",
-  /** An earlier file import: being published. */
-  imports_state_publishing: "Verið er að birta póstana",
-  /** An earlier file import: published. */
-  imports_state_done: "Birt",
+  /** An earlier import is bringing its posts in. */
+  imports_state_publishing: "Verið er að flytja póstana inn",
+  /** An earlier import has brought its posts in. */
+  imports_state_done: "Komið inn",
   /** An earlier file import: failed. */
   imports_state_failed: "Tókst ekki",
   /** Heading: connect a public profile on another platform. */
@@ -1304,7 +1304,7 @@ export const strings = {
   /** A connection's posts are being fetched. */
   imports_sync_importing: "Verið er að sækja póstana.",
   /** A connection's first collection waits for a choice. */
-  imports_sync_preview: "Póstarnir eru tilbúnir. Skoðaðu þá og veldu hverjir birtast.",
+  imports_sync_preview: "Póstarnir eru tilbúnir. Skoðaðu þá og veldu hverja á að flytja inn.",
   /** When a connection last fetched. */
   imports_sync_last: (args: { date: string }): string =>
     "Síðast sótt " + args.date + ".",
@@ -1362,7 +1362,7 @@ export const strings = {
   /** Label of the range's end. */
   imports_to: "Til",
   /** Checkbox: this post is published. */
-  imports_include: "Birta þennan póst",
+  imports_include: "Taka þennan póst með",
   /** On a post with a video. */
   imports_item_video: "Myndbandið fylgir ekki.",
   /** The limit on posts left out was reached. */
@@ -1370,21 +1370,21 @@ export const strings = {
   /** No post in the chosen range. */
   imports_empty_range: "Engir póstar á þessu tímabili.",
   /** Button publishing the chosen posts. */
-  imports_publish: "Birta valda pósta",
+  imports_publish: "Flytja inn valda pósta",
   /** How long an unpublished preview stays. */
-  imports_preview_kept: "Það sem ekki hefur verið birt eyðist eftir 7 daga.",
+  imports_preview_kept: "Það sem ekki hefur verið flutt inn eyðist eftir 7 daga.",
   /** The import cannot be published in this state. */
-  imports_not_ready: "Þessi innflutningur er ekki tilbúinn til birtingar.",
+  imports_not_ready: "Þessi innflutningur er ekki tilbúinn.",
   /** The file is being read. */
   imports_wait_parsing: "Verið er að lesa skrána. Þú mátt loka síðunni og koma aftur síðar.",
   /** The posts are being published. */
-  imports_wait_publishing: "Verið er að birta póstana. Þú mátt loka síðunni.",
+  imports_wait_publishing: "Verið er að flytja póstana inn. Þú mátt loka síðunni.",
   /** The import is being removed. */
   imports_wait_removing: "Verið er að eyða póstunum.",
   /** An upload left unfinished in an earlier visit. */
   imports_unfinished: "Sending þessarar skrár kláraðist ekki. Eyddu henni og byrjaðu upp á nýtt.",
-  /** The posts are published. */
-  imports_done: "Póstarnir eru komnir á vegginn með upprunalegum dagsetningum.",
+  /** The posts have come in, each with its original date; nobody else sees them yet. */
+  imports_done: "Póstarnir eru komnir inn með upprunalegum dagsetningum.",
   /** Button removing an import and its posts. */
   imports_remove: "Eyða þessum innflutningi",
   /** Confirmation of the same. */
@@ -1481,4 +1481,38 @@ export const strings = {
   export_failed_too_big: "Efnið er of mikið til að rúmast í einni skrá. Sendu tölvupóst á samtak@samtak.is.",
   /** Refusal text when a person asks for an export file twice within a day. */
   export_conflict: "Þú getur beðið um nýja skrá einu sinni á sólarhring.",
+  /** Heading over the posts an import holds until the person opens them. */
+  imports_held_title: "Póstar í bið",
+  /** Says nobody else sees held posts, and what opening does: to the wall, original dates, no notification, not in the feed. */
+  imports_held_intro: "Enginn sér þessa pósta nema þú. Þegar þú birtir þá fara þeir á vegginn þinn með upprunalegum dagsetningum, án tilkynninga og án þess að birtast í Fljótinu.",
+  /** Label of the filter by kind of post. */
+  imports_held_class: "Flokkur",
+  /** Label of the filter by year. */
+  imports_held_year: "Ár",
+  /** The filter by kind, every kind. */
+  imports_held_all_classes: "Allir flokkar",
+  /** The filter by year, every year. */
+  imports_held_all_years: "Öll ár",
+  /** No held post matches the two filters together. */
+  imports_held_empty: "Engir póstar í bið passa við þetta val.",
+  /** Button that opens the held posts the filters name, with how many. */
+  imports_held_open: (args: { count: number }): string =>
+    plural.select(args.count) === "one"
+      ? "Birta " + String(args.count) + " póst"
+      : "Birta " + String(args.count) + " pósta",
+  /** Asks before opening that many held posts to the person's friends. */
+  imports_held_confirm_friends: (args: { count: number }): string =>
+    plural.select(args.count) === "one"
+      ? "Birta " + String(args.count) + " póst vinum þínum?"
+      : "Birta " + String(args.count) + " pósta vinum þínum?",
+  /** Asks before opening that many held posts to everyone signed in. */
+  imports_held_confirm_everyone: (args: { count: number }): string =>
+    plural.select(args.count) === "one"
+      ? "Birta " + String(args.count) + " póst öllum innskráðum?"
+      : "Birta " + String(args.count) + " pósta öllum innskráðum?",
+  /** How many held posts were just opened. */
+  imports_held_opened: (args: { count: number }): string =>
+    plural.select(args.count) === "one"
+      ? String(args.count) + " póstur birtur."
+      : String(args.count) + " póstar birtir.",
 } as const;

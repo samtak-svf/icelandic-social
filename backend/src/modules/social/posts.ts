@@ -31,7 +31,8 @@ export type Post = Omit<PostContent, "author" | "latestComment"> & {
   audience?: "friends" | "everyone";
   /** It came from another platform (decision 0119); absent on a post written here. */
   imported?: true;
-  state: IndexedPost["state"];
+  /** A post an import holds reads as visible: only its author reads it, and no client knows the word. */
+  state: Exclude<IndexedPost["state"], "held">;
   /** The community's moderators pinned it to the top of its feed (decision 0080). */
   pinned: boolean;
 };
@@ -102,9 +103,10 @@ export async function render(
           latest && latestAuthor
             ? { ...latest, author: latestAuthor, media: media.get(latest.commentId) ?? [] }
             : null,
-        state: row.state,
+        state: row.state === "held" ? ("visible" as const) : row.state,
         pinned: featured.has(row.postId),
-        ...wallFields(row),
+        // A held post has no reader yet, so it names none (decision 0127).
+        ...(row.state === "held" ? { wall: { accountId: row.authorId } } : wallFields(row)),
         ...(row.imported ? { imported: true as const } : {}),
       },
     ];
@@ -238,6 +240,8 @@ export async function createPost(
     postId?: string;
     createdAt?: number;
     imported?: "backlog" | "sync";
+    /** It stays its author's alone until they open it (decision 0127). */
+    held?: boolean;
   },
 ): Promise<(Omit<PostContent, "latestComment"> & { latestComment: null }) | "invalid_media"> {
   const media = await unattached(env, communityId, author, input.media);
@@ -247,6 +251,7 @@ export async function createPost(
   // An anonymous post waits for a moderator's approval (decision 0091) and
   // moves the community's unread count then, so a reader cannot tell it was written.
   const anonymous = input.anonymous === true;
+  const state = anonymous ? "pending" : input.held ? "held" : "visible";
   await db(env).batch([
     ...(anonymous || input.audience ? [] : notePost(env, communityId, author, createdAt)),
     db(env)
@@ -260,7 +265,7 @@ export async function createPost(
         communityId,
         author,
         createdAt,
-        anonymous ? "pending" : "visible",
+        state,
         anonymous ? 1 : 0,
         input.audience ?? null,
         input.imported ?? null,

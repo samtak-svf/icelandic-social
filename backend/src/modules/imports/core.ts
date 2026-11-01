@@ -1,3 +1,4 @@
+import type { ItemClass } from "../../api/imports.ts";
 import { MAX_POST_MEDIA } from "../../api/post-fields.ts";
 import { db, mediaBucket } from "../../env/index.ts";
 import { toHex } from "../../shared/bytes.ts";
@@ -57,6 +58,8 @@ export type SourcePost = {
   images: (() => Promise<Uint8Array>)[];
   /** The original's address, for what does not come over; outside the fingerprint. */
   link?: string | undefined;
+  /** The kind of post it is, which the person opens by; a connection's daily post has none. */
+  class?: ItemClass | undefined;
 };
 
 export type ImportResult = {
@@ -198,9 +201,10 @@ async function carryImages(
 }
 
 /**
- * Brings one post onto the person's wall, under its original date, to the
- * import's audience, with no notice to anyone. A `backlog` post stays out of the
- * home feed; a `sync` post is what the person is posting now and enters it.
+ * Brings one post onto the person's wall, under its original date, with no notice
+ * to anyone. A `backlog` post is held until the person opens it (decision 0127) and
+ * stays out of the home feed after that; a `sync` post is what the person is posting
+ * now, so it goes straight to the audience they chose and enters the feed.
  * Throws when another run holds the post, for the job's retry to settle.
  */
 export async function importPost(
@@ -242,15 +246,16 @@ export async function importPost(
     // A date ahead of now would hold the post at the top of every list.
     createdAt: Math.min(post.createdAt, Date.now()),
     imported: mark,
+    held: mark === "backlog",
   });
   if (written === "invalid_media")
     throw new Error(`import ${source.importId}: images went missing`);
   const finished = await db(env)
     .prepare(
-      `UPDATE imported_posts SET done_at = ?
+      `UPDATE imported_posts SET done_at = ?, class = ?
         WHERE account_id = ? AND post_id = ? AND done_at IS NULL`,
     )
-    .bind(Date.now(), source.accountId, postId)
+    .bind(Date.now(), post.class ?? null, source.accountId, postId)
     .run();
   // A removal or a later run took the row while this one wrote: what it wrote goes.
   if (finished.meta.changes === 0) {

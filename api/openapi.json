@@ -4353,6 +4353,57 @@
           "lost"
         ]
       },
+      "ImportDetail": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ImportStatus"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "held": {
+                "type": "object",
+                "properties": {
+                  "posts": {
+                    "type": "integer",
+                    "description": "Posts still held, seen by nobody but the caller"
+                  },
+                  "groups": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "class": {
+                          "$ref": "#/components/schemas/ImportItemClass"
+                        },
+                        "year": {
+                          "type": "integer"
+                        },
+                        "posts": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "class",
+                        "year",
+                        "posts"
+                      ]
+                    }
+                  }
+                },
+                "required": [
+                  "posts",
+                  "groups"
+                ],
+                "description": "What this import brought in and the caller has not opened"
+              }
+            },
+            "required": [
+              "held"
+            ]
+          }
+        ]
+      },
       "ImportItemPage": {
         "type": "object",
         "properties": {
@@ -4412,16 +4463,6 @@
       "PublishImport": {
         "type": "object",
         "properties": {
-          "audience": {
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/WallAudience"
-              },
-              {
-                "description": "Who reads the posts; friends when left out, since nothing is public unless chosen"
-              }
-            ]
-          },
           "from": {
             "type": "integer",
             "minimum": 0,
@@ -4451,6 +4492,44 @@
             "description": "The kinds of post to bring in; only the person's own when left out"
           }
         }
+      },
+      "OpenedHeld": {
+        "type": "object",
+        "properties": {
+          "opened": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "opened"
+        ]
+      },
+      "OpenHeld": {
+        "type": "object",
+        "properties": {
+          "audience": {
+            "$ref": "#/components/schemas/WallAudience"
+          },
+          "class": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ImportItemClass"
+              },
+              {
+                "description": "Only this kind of post"
+              }
+            ]
+          },
+          "year": {
+            "type": "integer",
+            "minimum": 1970,
+            "maximum": 9999,
+            "description": "Only this year"
+          }
+        },
+        "required": [
+          "audience"
+        ]
       },
       "ExportSummary": {
         "type": "object",
@@ -19330,7 +19409,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ImportStatus"
+                  "$ref": "#/components/schemas/ImportDetail"
                 }
               }
             }
@@ -19625,6 +19704,239 @@
           },
           "409": {
             "description": "conflict: the import is not ready",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "426": {
+            "description": "client_too_old: Spjall-Client names a version below the floor; minVersion says which",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "rate_limited: too many requests in the last minute; try again later",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/imports/{importId}/held": {
+      "get": {
+        "operationId": "listHeldPosts",
+        "tags": [
+          "imports"
+        ],
+        "summary": "The posts this import holds, newest first, as the caller's own to review",
+        "security": [
+          {
+            "deviceToken": []
+          },
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,128}$",
+              "example": "c_9f3a1b"
+            },
+            "required": true,
+            "name": "importId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "$ref": "#/components/schemas/ImportItemClass"
+            },
+            "required": false,
+            "name": "class",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1970,
+              "maximum": 9999,
+              "description": "Only posts of this year, by their original date in UTC"
+            },
+            "required": false,
+            "description": "Only posts of this year, by their original date in UTC",
+            "name": "year",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{1,16}(-[A-Za-z0-9_-]{1,160})?$",
+              "description": "The `next` of the page before"
+            },
+            "required": false,
+            "description": "The `next` of the page before",
+            "name": "before",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A page",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PostPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request does not match the schema",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No device token or session the route takes, or one that is not valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "not_found: no such import of the caller's",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "426": {
+            "description": "client_too_old: Spjall-Client names a version below the floor; minVersion says which",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/imports/{importId}/open": {
+      "post": {
+        "operationId": "openHeldPosts",
+        "tags": [
+          "imports"
+        ],
+        "summary": "Open the held posts, all of them or one kind or year, to an audience",
+        "security": [
+          {
+            "deviceToken": []
+          },
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,128}$",
+              "example": "c_9f3a1b"
+            },
+            "required": true,
+            "name": "importId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OpenHeld"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "How many posts were opened",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenedHeld"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request does not match the schema",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No device token or session the route takes, or one that is not valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "suspended: the account is suspended now, with `until` when it ends (decision 0115)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "not_found: no such import of the caller's",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "conflict: posts are still coming in",
             "content": {
               "application/json": {
                 "schema": {

@@ -28,4 +28,5 @@ export {
   type ExportPost,
 } from "./export.ts";
 export type { OwnStage } from "./do/export.ts";
+export { heldGroups, heldPosts, openHeldPosts, type HeldFilter } from "./held.ts";
 export { socialRoutes } from "./routes.ts";

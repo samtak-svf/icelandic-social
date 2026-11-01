@@ -32,6 +32,17 @@ const post = (over: Partial<SourcePost> = {}): SourcePost => ({
   ...over,
 });
 
+/** A backlog post as it reads once opened: what opening itself does is in held.test.ts. */
+async function comeIn(...args: Parameters<typeof importPost>) {
+  const result = await importPost(...args);
+  await env.DB.prepare(
+    "UPDATE post_index SET state = 'visible' WHERE post_id = ? AND state = 'held'",
+  )
+    .bind(result.postId ?? "")
+    .run();
+  return result;
+}
+
 const opened = (owner: Person, audience?: "friends" | "everyone") =>
   openImport(E, owner.accountId, { kind: "file", source: SOURCE, audience });
 
@@ -60,8 +71,8 @@ describe("importing a post", () => {
   it("creates a repeated post once", async () => {
     const owner = await person("eigandi");
     const source = await opened(owner);
-    const first = await importPost(E, source, post(), "backlog");
-    const again = await importPost(E, source, post(), "backlog");
+    const first = await comeIn(E, source, post(), "backlog");
+    const again = await comeIn(E, source, post(), "backlog");
     expect(first.outcome).toBe("imported");
     expect(again).toMatchObject({ outcome: "already", postId: first.postId });
     expect((await wall(owner, owner)).posts).toHaveLength(1);
@@ -70,8 +81,8 @@ describe("importing a post", () => {
   it("creates a post once when a second route brings it under another id", async () => {
     const owner = await person("eigandi");
     const source = await opened(owner);
-    const first = await importPost(E, source, post({ id: "from-a-file" }), "backlog");
-    const other = await importPost(
+    const first = await comeIn(E, source, post({ id: "from-a-file" }), "backlog");
+    const other = await comeIn(
       E,
       source,
       post({ id: "from-a-collector", createdAt: YEARS_AGO + 400, body: `  ${post().body}\n` }),
@@ -83,7 +94,7 @@ describe("importing a post", () => {
 
   it("keeps the date and the text, and marks the post as imported", async () => {
     const owner = await person("eigandi");
-    await importPost(E, await opened(owner), post(), "backlog");
+    await comeIn(E, await opened(owner), post(), "backlog");
     const [read] = (await wall(owner, owner)).posts;
     expect(read).toMatchObject({ createdAt: YEARS_AGO, body: post().body, imported: true });
   });
@@ -98,12 +109,7 @@ describe("importing a post", () => {
   it("reads no date ahead of now, which would hold the post at the top of every list", async () => {
     const owner = await person("eigandi");
     const before = Date.now();
-    await importPost(
-      E,
-      await opened(owner),
-      post({ createdAt: before + 365 * 86_400_000 }),
-      "backlog",
-    );
+    await comeIn(E, await opened(owner), post({ createdAt: before + 365 * 86_400_000 }), "backlog");
     const [read] = (await wall(owner, owner)).posts;
     expect(read?.createdAt).toBeLessThanOrEqual(Date.now());
   });
@@ -113,26 +119,26 @@ describe("importing a post", () => {
     const friend = await person("vinur");
     await befriend(owner, friend);
     const before = await notices(friend.accountId);
-    await importPost(E, await opened(owner), post(), "backlog");
-    await importPost(E, await opened(owner), post({ id: "s2", body: "önnur" }), "sync");
+    await comeIn(E, await opened(owner), post(), "backlog");
+    await comeIn(E, await opened(owner), post({ id: "s2", body: "önnur" }), "sync");
     await drain();
     expect(await notices(friend.accountId)).toBe(before);
   });
 
-  it("reads only to friends unless the person chose otherwise", async () => {
+  it("reads a daily post only to friends unless the person chose otherwise", async () => {
     const owner = await person("eigandi");
     const friend = await person("vinur");
     const stranger = await person("okunnugur");
     await befriend(owner, friend);
-    await importPost(E, await opened(owner), post(), "backlog");
+    await importPost(E, await opened(owner), post(), "sync");
     expect((await wall(friend, owner)).posts).toHaveLength(1);
     expect((await wall(stranger, owner)).posts).toHaveLength(0);
   });
 
-  it("reads to everyone when the person chose that on the import", async () => {
+  it("reads a daily post to everyone when the person chose that on the connection", async () => {
     const owner = await person("eigandi");
     const stranger = await person("okunnugur");
-    await importPost(E, await opened(owner, "everyone"), post(), "backlog");
+    await importPost(E, await opened(owner, "everyone"), post(), "sync");
     expect((await wall(stranger, owner)).posts).toHaveLength(1);
   });
 
@@ -142,15 +148,15 @@ describe("importing a post", () => {
     await befriend(owner, friend);
     const source = await opened(owner);
     const now = Date.now() - 1000;
-    await importPost(E, source, post({ id: "old", createdAt: now, body: "úr safni" }), "backlog");
-    await importPost(E, source, post({ id: "new", createdAt: now, body: "ný þar" }), "sync");
+    await comeIn(E, source, post({ id: "old", createdAt: now, body: "úr safni" }), "backlog");
+    await comeIn(E, source, post({ id: "new", createdAt: now, body: "ný þar" }), "sync");
     const bodies = (await homeOf(friend)).posts.map((p) => p.body);
     expect(bodies).toEqual(["ný þar"]);
   });
 
   it("imports nothing from a post with neither text nor an image", async () => {
     const owner = await person("eigandi");
-    const result = await importPost(E, await opened(owner), post({ body: "  " }), "backlog");
+    const result = await comeIn(E, await opened(owner), post({ body: "  " }), "backlog");
     expect(result.outcome).toBe("empty");
     expect((await wall(owner, owner)).posts).toHaveLength(0);
   });
@@ -158,7 +164,7 @@ describe("importing a post", () => {
   it("carries images through the upload and says which it left out", async () => {
     const owner = await person("eigandi");
     const image = await png(2, 2);
-    const result = await importPost(
+    const result = await comeIn(
       E,
       await opened(owner),
       post({
@@ -178,9 +184,9 @@ describe("importing a post", () => {
   it("does not load the images of a post it already has", async () => {
     const owner = await person("eigandi");
     const source = await opened(owner);
-    await importPost(E, source, post(), "backlog");
+    await comeIn(E, source, post(), "backlog");
     let loaded = false;
-    await importPost(
+    await comeIn(
       E,
       source,
       post({
@@ -198,7 +204,7 @@ describe("importing a post", () => {
 
   it("keeps a post within the length an imported post has, and says so", async () => {
     const owner = await person("eigandi");
-    const result = await importPost(
+    const result = await comeIn(
       E,
       await opened(owner),
       post({ body: "a".repeat(100_001) }),
@@ -212,7 +218,7 @@ describe("importing a post", () => {
   it("finishes a post a run left half done, and leaves one post", async () => {
     const owner = await person("eigandi");
     const source = await opened(owner);
-    const first = await importPost(E, source, post(), "backlog");
+    const first = await comeIn(E, source, post(), "backlog");
     // The run died after the post was written and before it was marked done,
     // long enough ago that no run still holds it.
     await env.DB.prepare(
@@ -220,7 +226,7 @@ describe("importing a post", () => {
     )
       .bind(first.postId)
       .run();
-    const retried = await importPost(E, source, post(), "backlog");
+    const retried = await comeIn(E, source, post(), "backlog");
     expect(retried.outcome).toBe("imported");
     expect(retried.postId).not.toBe(first.postId);
     expect((await wall(owner, owner)).posts.map((p) => p.postId)).toEqual([retried.postId]);
@@ -229,20 +235,20 @@ describe("importing a post", () => {
   it("refuses a post another run is working on, for that run's retry to settle", async () => {
     const owner = await person("eigandi");
     const source = await opened(owner);
-    const first = await importPost(E, source, post(), "backlog");
+    const first = await comeIn(E, source, post(), "backlog");
     await env.DB.prepare("UPDATE imported_posts SET done_at = NULL WHERE post_id = ?")
       .bind(first.postId)
       .run();
-    await expect(importPost(E, source, post(), "backlog")).rejects.toThrow(/in progress/);
+    await expect(comeIn(E, source, post(), "backlog")).rejects.toThrow(/in progress/);
     expect((await wall(owner, owner)).posts).toHaveLength(1);
   });
 
   it("does not bring back a post its author deleted", async () => {
     const owner = await person("eigandi");
     const source = await opened(owner);
-    const { postId } = await importPost(E, source, post(), "backlog");
+    const { postId } = await comeIn(E, source, post(), "backlog");
     expect((await owner.call("DELETE", `/v1/posts/${postId}`)).status).toBe(204);
-    const again = await importPost(E, source, post(), "backlog");
+    const again = await comeIn(E, source, post(), "backlog");
     expect(again.outcome).toBe("already");
     expect((await wall(owner, owner)).posts).toHaveLength(0);
   });
@@ -260,8 +266,8 @@ describe("removing an import", () => {
     const owner = await person("eigandi");
     const source = await opened(owner);
     const image = await png(2, 2);
-    await importPost(E, source, post({ images: [async () => image] }), "backlog");
-    await importPost(E, source, post({ id: "s2", body: "önnur" }), "backlog");
+    await comeIn(E, source, post({ images: [async () => image] }), "backlog");
+    await comeIn(E, source, post({ id: "s2", body: "önnur" }), "backlog");
     expect(await requestRemoval(E, owner.accountId, source.importId)).toBe(true);
     await drain();
     expect((await wall(owner, owner)).posts).toHaveLength(0);
@@ -281,7 +287,7 @@ describe("removing an import", () => {
     const owner = await person("eigandi");
     const source = await opened(owner);
     for (let i = 0; i < 7; i++) {
-      await importPost(E, source, post({ id: `s${i}`, body: `færsla ${i}` }), "backlog");
+      await comeIn(E, source, post({ id: `s${i}`, body: `færsla ${i}` }), "backlog");
     }
     await requestRemoval(E, owner.accountId, source.importId, 3);
     await drain();
@@ -292,8 +298,8 @@ describe("removing an import", () => {
     const owner = await person("eigandi");
     const one = await opened(owner);
     const other = await opened(owner);
-    await importPost(E, one, post(), "backlog");
-    await importPost(E, other, post({ id: "s2", body: "úr hinu" }), "backlog");
+    await comeIn(E, one, post(), "backlog");
+    await comeIn(E, other, post({ id: "s2", body: "úr hinu" }), "backlog");
     await wallPost(owner, "friends", "skrifuð hér");
     await requestRemoval(E, owner.accountId, one.importId);
     await drain();
@@ -304,10 +310,10 @@ describe("removing an import", () => {
   it("lets the person bring it in again by asking again", async () => {
     const owner = await person("eigandi");
     const source = await opened(owner);
-    await importPost(E, source, post(), "backlog");
+    await comeIn(E, source, post(), "backlog");
     await requestRemoval(E, owner.accountId, source.importId);
     await drain();
-    const again = await importPost(E, await opened(owner), post(), "backlog");
+    const again = await comeIn(E, await opened(owner), post(), "backlog");
     expect(again.outcome).toBe("imported");
   });
 
@@ -315,7 +321,7 @@ describe("removing an import", () => {
     const owner = await person("eigandi");
     const source = await opened(owner);
     await requestRemoval(E, owner.accountId, source.importId);
-    const late = await importPost(E, source, post(), "sync");
+    const late = await comeIn(E, source, post(), "sync");
     expect(late.outcome).toBe("stopped");
     expect((await wall(owner, owner)).posts).toHaveLength(0);
   });
@@ -324,7 +330,7 @@ describe("removing an import", () => {
     const owner = await person("eigandi");
     const source = await opened(owner);
     const image = await png(2, 2);
-    const late = await importPost(
+    const late = await comeIn(
       E,
       source,
       post({
@@ -349,7 +355,7 @@ describe("removing an import", () => {
     const owner = await person("eigandi");
     const other = await person("annar");
     const source = await opened(owner);
-    await importPost(E, source, post(), "backlog");
+    await comeIn(E, source, post(), "backlog");
     expect(await requestRemoval(E, other.accountId, source.importId)).toBe(false);
     await drain();
     expect((await wall(owner, owner)).posts).toHaveLength(1);
@@ -358,7 +364,7 @@ describe("removing an import", () => {
   it("keeps a post a moderator removed, and does not let it back in", async () => {
     const owner = await person("eigandi");
     const source = await opened(owner);
-    const { postId } = await importPost(E, source, post(), "backlog");
+    const { postId } = await comeIn(E, source, post(), "backlog");
     await env.DB.prepare(
       "UPDATE post_index SET state = 'removed', moderated_at = ? WHERE post_id = ?",
     )
@@ -370,7 +376,7 @@ describe("removing an import", () => {
       .bind(postId)
       .first<{ state: string }>();
     expect(kept?.state).toBe("removed");
-    const again = await importPost(E, await opened(owner), post(), "backlog");
+    const again = await comeIn(E, await opened(owner), post(), "backlog");
     expect(again.outcome).toBe("already");
   });
 });
@@ -378,7 +384,7 @@ describe("removing an import", () => {
 describe("the account going", () => {
   it("takes its imports with it", async () => {
     const owner = await person("eigandi");
-    await importPost(E, await opened(owner), post(), "backlog");
+    await comeIn(E, await opened(owner), post(), "backlog");
     await env.DB.prepare("DELETE FROM accounts WHERE account_id = ?").bind(owner.accountId).run();
     const left = await env.DB.prepare(
       `SELECT (SELECT COUNT(*) FROM imported_posts WHERE account_id = ?1)
