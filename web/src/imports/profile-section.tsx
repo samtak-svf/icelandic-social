@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { useCallback, useId, useState, type FormEvent } from "react";
+import { useId, useState, type FormEvent } from "react";
 import {
   checkImportConnection,
   createImportConnection,
@@ -9,11 +9,10 @@ import {
   type WallAudience,
 } from "../generated/api.ts";
 import { strings } from "../generated/brand/strings.ts";
-import type { Problem } from "../problem.ts";
 import { WallAudienceFields } from "../social/audience.tsx";
 import { outcome, useLoad, when } from "../social/outcome.ts";
 import { Button, Status } from "../ui/kit.tsx";
-import { ImportProblem, usePoll } from "./shared.tsx";
+import { ImportProblem, useAct, usePoll } from "./shared.tsx";
 
 // A public profile on another platform, proven the person's own by a posted code
 // (decision 0120). The section is drawn only when the route is open, or when the
@@ -97,25 +96,11 @@ export function ProfileSection() {
   const [list, reload] = useLoad(loadConnections);
   const [url, setUrl] = useState("");
   const [audience, setAudience] = useState<WallAudience>("friends");
-  const [busy, setBusy] = useState(false);
-  const [problem, setProblem] = useState<Problem | null>(null);
+  const { busy, problem, act } = useAct(reload);
   const working =
     list?.ok === true &&
     list.data.connections.some((row) => row.state === "checking" || row.state === "importing");
   usePoll(working, reload);
-
-  const act = useCallback(
-    async (pending: Promise<{ ok: true; data: unknown } | { ok: false; problem: Problem }>) => {
-      setBusy(true);
-      setProblem(null);
-      const result = await pending;
-      setBusy(false);
-      if (!result.ok) setProblem(result.problem);
-      reload();
-      return result.ok;
-    },
-    [reload],
-  );
 
   async function connect(event: FormEvent) {
     event.preventDefault();

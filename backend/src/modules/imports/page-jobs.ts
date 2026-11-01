@@ -1,10 +1,10 @@
 import { db } from "../../env/index.ts";
 import { log } from "../../shared/log.ts";
 import { job, type Handler } from "../jobs/index.ts";
-import { openPreview, stageItem, stagedPosts } from "./connection-preview.ts";
+import { openPreview, stageItem } from "./connection-preview.ts";
+import { BACKLOG_POSTS, firstCollectionEnd, HOUR_MS, POSTS_PER_PART } from "./connection-rules.ts";
 import { importPost } from "./core.ts";
-import { previewReady } from "./file-jobs.ts";
-import { dropFile, SYNC_AFTER_MS } from "./file.ts";
+import { SYNC_AFTER_MS } from "./file.ts";
 import { type PageSettings, pageSettings, readPosts, TokenGone } from "./page.ts";
 import { openToken, type PageRow, pageRowOf } from "./pages.ts";
 import { sourcePost, type ScrapedItem } from "./scrape.ts";
@@ -17,11 +17,6 @@ import { sourcePost, type ScrapedItem } from "./scrape.ts";
 
 const RUN = "imports.page.run";
 const PART = "imports.page.part";
-const HOUR_MS = 60 * 60 * 1000;
-/** Posts one job reads: each may fetch and store several images. */
-const POSTS_PER_PART = 10;
-/** The posts a first collection offers. */
-const BACKLOG_POSTS = 200;
 
 /** Run by the minute cron: writes the job of each connection that is due. */
 export async function startDuePages(env: Env, now = Date.now()): Promise<void> {
@@ -103,26 +98,8 @@ const endRun = (
 
 /** The first collection is read: it now waits for the person, if it holds anything. */
 async function endBacklog(env: Env, row: PageRow, runStart: number): Promise<void> {
-  const { posts, latest } = await stagedPosts(env, row.importId);
-  if (posts === 0) {
-    await dropFile(env, row.importId);
-    await endRun(env, row.importId, {
-      outcome: "ok",
-      phase: "sync",
-      nextRunAt: Date.now() + SYNC_AFTER_MS,
-      lastOkAt: runStart,
-    }).run();
-    return;
-  }
-  await db(env).batch([
-    previewReady(env, row.importId, 0),
-    endRun(env, row.importId, {
-      outcome: "ok",
-      nextRunAt: null,
-      // Past a post written during the run, which the person has seen and may leave out.
-      lastOkAt: Math.max(runStart, latest + 1),
-    }),
-  ]);
+  const { lastOkAt, next, also } = await firstCollectionEnd(env, row.importId, runStart);
+  await db(env).batch([...also, endRun(env, row.importId, { outcome: "ok", lastOkAt, ...next })]);
 }
 
 /** Brings in one part's new posts; whether the part reached what an earlier run saw. */

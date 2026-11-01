@@ -8,11 +8,10 @@ import {
   type WallAudience,
 } from "../generated/api.ts";
 import { strings } from "../generated/brand/strings.ts";
-import type { Problem } from "../problem.ts";
 import { WallAudienceFields } from "../social/audience.tsx";
 import { outcome, useLoad, when } from "../social/outcome.ts";
 import { Button, Status, buttonClass } from "../ui/kit.tsx";
-import { ImportProblem, usePoll } from "./shared.tsx";
+import { ImportProblem, useAct, usePoll } from "./shared.tsx";
 
 // A page the person manages on another platform, connected by signing in there
 // (decision 0120). Sign-in is a full-page navigation: the server sends the person
@@ -79,18 +78,8 @@ export function PageSection({ notice }: Readonly<{ notice?: PageNotice | undefin
   const title = useId();
   const [list, reload] = useLoad(loadPages);
   const [audience, setAudience] = useState<WallAudience>("friends");
-  const [busy, setBusy] = useState(false);
-  const [problem, setProblem] = useState<Problem | null>(null);
+  const { busy, problem, act } = useAct(reload);
   usePoll(list?.ok === true && list.data.connections.some((r) => r.state === "importing"), reload);
-
-  async function act(pending: Promise<{ ok: true } | { ok: false; problem: Problem }>) {
-    setBusy(true);
-    setProblem(null);
-    const result = await pending;
-    setBusy(false);
-    if (!result.ok) setProblem(result.problem);
-    reload();
-  }
 
   if (list === null) return null;
   if (!list.ok) {

@@ -1050,7 +1050,7 @@ export interface ImportConnection {
 export interface CreateImportConnection {
   profileUrl: string;
   /** Who reads the posts; friends when left out, since nothing is public unless chosen */
-  audience?: "friends" | "everyone";
+  audience?: WallAudience;
 }
 
 export interface ImportConnectionList {
@@ -1087,7 +1087,7 @@ export interface ImportPageConnection {
 export interface CreateImportPage {
   pageId: string;
   /** Who reads the posts; friends when left out, since nothing is public unless chosen */
-  audience?: "friends" | "everyone";
+  audience?: WallAudience;
 }
 
 export interface ImportFileUpload {
@@ -1148,7 +1148,7 @@ export interface ImportItem {
 
 export interface PublishImport {
   /** Who reads the posts; friends when left out, since nothing is public unless chosen */
-  audience?: "friends" | "everyone";
+  audience?: WallAudience;
   /** Only posts from this date on */
   from?: number;
   /** Only posts up to this date */

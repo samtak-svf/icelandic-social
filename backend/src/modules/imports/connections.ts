@@ -1,5 +1,6 @@
 import { db } from "../../env/index.ts";
 import { randomHex } from "../../shared/bytes.ts";
+import { CONNECTION_JOINS, postsBroughtIn } from "./connection-rules.ts";
 import { openImport } from "./core.ts";
 import { SOURCE_KEY } from "./export-file.ts";
 import { removeFile } from "./file.ts";
@@ -43,8 +44,7 @@ const COLUMNS = `c.import_id AS importId, s.account_id AS accountId, s.source, s
   c.run_month AS runMonth, c.run_ceiling AS runCeiling, c.outcome, c.last_ok_at AS lastOkAt,
   f.state AS fileState`;
 
-const TABLES = `import_connections c JOIN import_sources s USING (import_id)
-  LEFT JOIN import_files f USING (import_id)`;
+const TABLES = `import_connections c ${CONNECTION_JOINS}`;
 
 /** A connection nobody has asked to remove. */
 export const rowOf = (env: Env, importId: string) =>
@@ -66,12 +66,6 @@ export type Connection = {
 };
 
 async function connectionOf(env: Env, row: Row): Promise<Connection> {
-  const count = await db(env)
-    .prepare(
-      "SELECT COUNT(*) AS posts FROM imported_posts WHERE import_id = ? AND done_at IS NOT NULL",
-    )
-    .bind(row.importId)
-    .first<{ posts: number }>();
   const out = row.runId !== null || row.nextRunAt !== null;
   return {
     importId: row.importId,
@@ -88,7 +82,7 @@ async function connectionOf(env: Env, row: Row): Promise<Connection> {
             : "importing"
           : "connected",
     outcome: row.outcome,
-    posts: count?.posts ?? 0,
+    posts: await postsBroughtIn(env, row.importId),
     lastSyncAt: row.lastOkAt,
   };
 }

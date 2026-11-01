@@ -66,6 +66,11 @@ export const AUTHED = {
 
 export const INVALID = { 400: error("The request does not match the schema") };
 
+/** The answer of a route a suspended account may not use. */
+export const SUSPENDED = {
+  403: error("suspended: the account is suspended now, with `until` when it ends (decision 0115)"),
+};
+
 /** The answer of a route with a rate limit: per address, or per account once signed in. */
 export const RATE_LIMITED = {
   429: error("rate_limited: too many requests in the last minute; try again later"),
