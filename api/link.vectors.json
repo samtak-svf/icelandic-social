@@ -1,5 +1,19 @@
 {
-  "note": "The web links of a message (decisions 0046, 0121). Android and iOS find each one as written and open it with the scheme lower-cased, a www. link over https; the core reads what is opened and names the screen, null for the browser. A link whose address has no host is no link.",
+  "note": "The web links of a message (decisions 0046, 0121). Android and iOS find each one as written and open it with the scheme lower-cased, a www. link over https; the core reads what is opened and names the screen, null for the browser. A link whose address has no host is no link. minted is what each client writes when a person shares a post or a community: every client mints the address from the target, and the core reads it back to the same target.",
+  "minted": [
+    { "kind": "post", "id": "p1", "address": "https://spjall.samtak.is/posts/p1" },
+    {
+      "kind": "post",
+      "id": "01JB7Q_a-z",
+      "address": "https://spjall.samtak.is/posts/01JB7Q_a-z"
+    },
+    { "kind": "community", "id": "c1", "address": "https://spjall.samtak.is/communities/c1" },
+    {
+      "kind": "community",
+      "id": "01JB7Q_a-z",
+      "address": "https://spjall.samtak.is/communities/01JB7Q_a-z"
+    }
+  ],
   "cases": [
     {
       "note": "a link runs to the next space",

@@ -67,6 +67,24 @@ mod tests {
     }
 
     #[test]
+    fn what_a_client_mints_reads_back_to_its_target() {
+        let vectors: serde_json::Value =
+            serde_json::from_str(include_str!("../../../api/link.vectors.json")).unwrap();
+        let minted = vectors["minted"].as_array().unwrap();
+        assert!(!minted.is_empty());
+        for vector in minted {
+            let id = vector["id"].as_str().unwrap().to_owned();
+            let want = match vector["kind"].as_str().unwrap() {
+                "post" => OwnLink::Post(id),
+                "community" => OwnLink::Community(id),
+                other => panic!("{other} is no screen"),
+            };
+            let address = vector["address"].as_str().unwrap();
+            assert_eq!(own_link(address), Some(want), "{address}");
+        }
+    }
+
+    #[test]
     fn a_post_and_a_community_are_found() {
         assert_eq!(
             own_link(&format!("{WEB_ORIGIN}/posts/p_a-1")),

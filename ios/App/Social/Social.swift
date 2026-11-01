@@ -426,8 +426,8 @@ func audienceLineFull(_ community: Community) -> String {
 }
 
 /// The web address of a community, which is what an open community shares (decision 0080).
-func communityLink(_ communityId: String) -> URL? {
-    URL(string: "\(webOrigin)/communities/\(communityId)")
+func communityLink(_ communityId: String, origin: String = webOrigin) -> URL? {
+    URL(string: "\(origin)/communities/\(communityId)")
 }
 
 /// The words for a reaction, which a screen reader says in place of its emoji; an emoji of the full list has no

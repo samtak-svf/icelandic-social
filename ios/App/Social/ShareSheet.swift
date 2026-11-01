@@ -24,7 +24,7 @@ extension EnvironmentValues {
 let webOrigin = "https://" + (Bundle.main.object(forInfoDictionaryKey: "SpjallWebHost") as? String ?? "")
 
 /// The address of a post on the web (the route `posts/$postId`), which the app opens as well.
-func postLink(_ postId: String) -> String { "\(webOrigin)/posts/\(postId)" }
+func postLink(_ postId: String, origin: String = webOrigin) -> String { "\(origin)/posts/\(postId)" }
 
 /// Puts `link` on the pasteboard, for this device alone.
 @MainActor func copyLink(_ link: String) {
