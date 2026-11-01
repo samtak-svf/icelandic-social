@@ -574,6 +574,7 @@
   "post_reactions_all": "Öll viðbrögð",
   "post_unpin": "Losa",
   "post_pinned": "Fest",
+  "post_imported": "Innflutt",
   "post_pin_full": "Þrjár færslur eru festar. Losaðu eina fyrst.",
   "composer_poll": "Könnun",
   "composer_poll_option": "Valkostur {n}",

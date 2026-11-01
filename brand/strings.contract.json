@@ -2358,6 +2358,10 @@
       "surfaces": ["android", "web", "ios"],
       "description": "Marker on the card of a featured post, in its place in the feed and on the strip (decision 0088)"
     },
+    "post_imported": {
+      "surfaces": ["android", "web", "ios"],
+      "description": "Small mark on a post that came from a person's file from another platform, backlog included (decision 0119)"
+    },
     "post_pin_full": {
       "surfaces": ["android", "web", "ios"],
       "description": "Told when a fourth post is featured: three are featured already and one must be released first (decision 0088)"

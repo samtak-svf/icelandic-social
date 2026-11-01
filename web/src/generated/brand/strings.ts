@@ -908,6 +908,8 @@ export const strings = {
   post_unpin: "Losa",
   /** Marker on the card of a featured post, in its place in the feed and on the strip (decision 0088) */
   post_pinned: "Fest",
+  /** Small mark on a post that came from a person's file from another platform, backlog included (decision 0119) */
+  post_imported: "Innflutt",
   /** Told when a fourth post is featured: three are featured already and one must be released first (decision 0088) */
   post_pin_full: "Þrjár færslur eru festar. Losaðu eina fyrst.",
   /** Button in the post form that turns the post into a poll (decision 0090). */

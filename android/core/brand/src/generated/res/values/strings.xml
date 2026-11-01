@@ -973,6 +973,8 @@
     <string name="post_unpin">Losa</string>
     <!-- Marker on the card of a featured post, in its place in the feed and on the strip (decision 0088) -->
     <string name="post_pinned">Fest</string>
+    <!-- Small mark on a post that came from a person's file from another platform, backlog included (decision 0119) -->
+    <string name="post_imported">Innflutt</string>
     <!-- Told when a fourth post is featured: three are featured already and one must be released first (decision 0088) -->
     <string name="post_pin_full">Þrjár færslur eru festar. Losaðu eina fyrst.</string>
     <!-- Button in the post form that turns the post into a poll (decision 0090). -->
