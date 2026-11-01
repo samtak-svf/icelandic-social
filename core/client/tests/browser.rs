@@ -45,13 +45,10 @@ fn a_phone_links_a_real_browser() {
         return;
     };
     let dir = Path::new(&dir);
-    let run = SystemTime::now()
-        .duration_since(SystemTime::UNIX_EPOCH)
-        .unwrap()
-        .as_secs();
     let subject = awaited(&dir.join("subject"));
     let mut phone = Phone::signed_in(Person::Google(&subject), None);
-    let mut other = Phone::signed_in(Person::Google(&format!("interop-{run}-other")), None);
+    // Named after the spec's own subject: specs run side by side, and each needs its own.
+    let mut other = Phone::signed_in(Person::Google(&format!("{subject}-other")), None);
 
     let conversation = phone
         .client
@@ -77,6 +74,11 @@ fn a_phone_links_a_real_browser() {
     );
     let me = phone.client.hosted().me().unwrap();
     assert!(me.devices.iter().any(|d| d.kind == DeviceKind::Web));
+
+    // The browser left the conversations: the other account writes, and it counts (0124).
+    awaited(&dir.join("away"));
+    other.send(&conversation, "annað frá öðrum");
+    other.sync();
 }
 
 /// A new account named `name`, a member for the browser to find by it.

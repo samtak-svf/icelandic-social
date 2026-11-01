@@ -1,11 +1,13 @@
 import { Link, useLocation, useMatches } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import { useAccount } from "../account.tsx";
+import { ChatProvider, useChat } from "../chat/chat.tsx";
+import { unreadTotal } from "../chat/unread.ts";
 import { strings } from "../generated/brand/strings.ts";
 import { signInHref } from "../lib/sign-in-href.ts";
 import { SuspendedNotice } from "../social/suspended.tsx";
 import { Button, ProblemText } from "./kit.tsx";
-import { UnreadBadge } from "./unread.tsx";
+import { CountBadge, UnreadBadge } from "./unread.tsx";
 
 // Every page sits in this: the signed-in pages behind the navigation, and in
 // place of them the sign-in page, a reload request or a failure with a retry.
@@ -75,56 +77,86 @@ export function Shell({ children }: Readonly<{ children: ReactNode }>) {
   // says so (`staticData.width`).
   const column = `mx-auto max-w-2xl px-4 ${wide ? "expanded:max-w-6xl" : ""}`;
   return (
-    <div className="[--tabbar-height:3.5rem] medium:pl-24 medium:[--tabbar-height:0px]">
-      <header>
-        <div className={`${column} flex items-center gap-2 py-2`}>
-          <span data-app-name className="font-headline text-2xl medium:hidden">
+    <ChatFrame>
+      <div className="[--tabbar-height:3.5rem] medium:pl-24 medium:[--tabbar-height:0px]">
+        <header>
+          <div className={`${column} flex items-center gap-2 py-2`}>
+            <span data-app-name className="font-headline text-2xl medium:hidden">
+              {strings.app_name}
+            </span>
+            <Bell />
+          </div>
+        </header>
+        <nav
+          aria-label={strings.main_navigation}
+          className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-bg medium:inset-x-auto medium:top-0 medium:left-0 medium:flex medium:w-24 medium:flex-col medium:items-center medium:gap-4 medium:border-t-0 medium:border-r medium:py-4"
+        >
+          <span
+            data-app-name
+            className="hidden max-w-full px-2 text-center font-headline text-2xl [overflow-wrap:anywhere] medium:block"
+          >
             {strings.app_name}
           </span>
-          <Bell />
-        </div>
-      </header>
-      <nav
-        aria-label={strings.main_navigation}
-        className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-bg medium:inset-x-auto medium:top-0 medium:left-0 medium:flex medium:w-24 medium:flex-col medium:items-center medium:gap-4 medium:border-t-0 medium:border-r medium:py-4"
-      >
-        <span
-          data-app-name
-          className="hidden max-w-full px-2 text-center font-headline text-2xl [overflow-wrap:anywhere] medium:block"
-        >
-          {strings.app_name}
-        </span>
-        <ul className="mx-auto flex max-w-2xl justify-around gap-0 medium:gap-1 medium:mx-0 medium:w-full medium:flex-col medium:px-2">
-          <NavLink to="/" icon={<FeedIcon />}>
-            {strings.tab_feed}
-          </NavLink>
-          <NavLink to="/me" icon={<PersonIcon />}>
-            {strings.tab_me}
-          </NavLink>
-          <NavLink to="/communities" icon={<PeopleIcon />}>
-            {strings.tab_communities}
-          </NavLink>
-          <NavLink to="/conversations" icon={<ChatIcon />}>
-            {strings.tab_conversations}
-          </NavLink>
-          <NavLink to="/settings" icon={<GearIcon />}>
-            {strings.settings_title}
-          </NavLink>
-        </ul>
-      </nav>
-      <main className={`${column} py-6 pb-[calc(var(--tabbar-height)+1.5rem)] medium:pb-6`}>
-        {!noNotice && <SuspendedNotice />}
-        {children}
-      </main>
-    </div>
+          <ul className="mx-auto flex max-w-2xl justify-around gap-0 medium:gap-1 medium:mx-0 medium:w-full medium:flex-col medium:px-2">
+            <NavLink to="/" icon={<FeedIcon />}>
+              {strings.tab_feed}
+            </NavLink>
+            <NavLink to="/me" icon={<PersonIcon />}>
+              {strings.tab_me}
+            </NavLink>
+            <NavLink to="/communities" icon={<PeopleIcon />}>
+              {strings.tab_communities}
+            </NavLink>
+            <NavLink to="/conversations" icon={<ChatIcon />} badge={<ConversationsBadge />}>
+              {strings.tab_conversations}
+            </NavLink>
+            <NavLink to="/settings" icon={<GearIcon />}>
+              {strings.settings_title}
+            </NavLink>
+          </ul>
+        </nav>
+        <main className={`${column} py-6 pb-[calc(var(--tabbar-height)+1.5rem)] medium:pb-6`}>
+          {!noNotice && <SuspendedNotice />}
+          {children}
+        </main>
+      </div>
+    </ChatFrame>
+  );
+}
+
+/** The chat runs under every signed-in page and knows which tab shows it (0124). */
+function ChatFrame({ children }: Readonly<{ children: ReactNode }>) {
+  const { state, signedOut } = useAccount();
+  const foreground = useMatches({ select: (ms) => ms.some((m) => m.routeId === "/conversations") });
+  return (
+    <ChatProvider
+      active={state.status === "signed-in"}
+      foreground={foreground}
+      onSignedOut={signedOut}
+    >
+      {children}
+    </ChatProvider>
+  );
+}
+
+/** The unread count on the place of the conversations, read from this browser's store (0124). */
+function ConversationsBadge() {
+  const count = unreadTotal(useChat().unread);
+  if (count === 0) return null;
+  return (
+    <CountBadge
+      count={count}
+      label={strings.unread_count({ count })}
+      className="absolute -right-2 -top-1 min-w-4 px-1 text-center text-xs"
+    />
   );
 }
 
 type Tab = "/" | "/me" | "/communities" | "/conversations" | "/settings";
 
 /**
- * The bell at the right of the top bar (decision 0109): named, with the unseen
- * count drawn on it and read out with the name, and `aria-current` on the
+ * The bell at the right of the top bar (decisions 0109, 0124): named, with the
+ * unseen count and the unread conversations drawn on it and read out with the name, and `aria-current` on the
  * notifications page as on a place in the navigation.
  */
 function Bell() {
@@ -145,8 +177,9 @@ function Bell() {
 function NavLink({
   to,
   icon,
+  badge,
   children,
-}: Readonly<{ to: Tab; icon: ReactNode; children: ReactNode }>) {
+}: Readonly<{ to: Tab; icon: ReactNode; badge?: ReactNode; children: ReactNode }>) {
   return (
     <li className="flex-1 medium:flex-none">
       <Link
@@ -158,7 +191,10 @@ function NavLink({
         inactiveProps={{ className: "text-muted-fg" }}
         activeOptions={{ exact: to === "/" }}
       >
-        {icon}
+        <span className="relative">
+          {icon}
+          {badge}
+        </span>
         <span>{children}</span>
       </Link>
     </li>

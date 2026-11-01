@@ -5,6 +5,7 @@
   asset, the policy; #43)
 - Date: 2026-10-23
 - Decided by: Guðröður Atli Jónsson
+- Amended by: [0124](0124-unread-without-the-message.md) (the chat runs under every page of a linked browser)
 - Amends: [0064](0064-non-phone-devices-are-linked-devices.md) (browser chat waits for the
   async core; the code that runs), [0074](0074-history-transfer-format-and-upload.md) (the
   download)

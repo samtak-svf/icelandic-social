@@ -3,6 +3,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState, type SubmitE
 import { useChat } from "../chat/chat.tsx";
 import { ConversationAvatar } from "../chat/conversation-avatar.tsx";
 import { useDraft } from "../chat/drafts.ts";
+import { newestSeq, type Newest, useMarkRead } from "../chat/mark-read.ts";
 import { canSend, conversationBanner, conversationTitle, isGroup } from "../chat/people.ts";
 import { itemKey, ThreadItems } from "../chat/thread-items.tsx";
 import { strings } from "../generated/brand/strings.ts";
@@ -34,6 +35,10 @@ function Thread() {
   const [sending, setSending] = useState(false);
   // Whether the newest page has come: before it, an empty thread is not news.
   const [loaded, setLoaded] = useState(false);
+  // The newest item of the newest page, with whose it is: `items` is the old
+  // conversation's for one render after the reader moves to another.
+  const [newestPage, setNewestPage] = useState<Newest | null>(null);
+  useMarkRead(conversationId, newestPage);
   const scroller = useRef<HTMLDivElement>(null);
   // The height under the older items as they were asked for, to keep the
   // reader's place when they are put above.
@@ -46,6 +51,8 @@ function Thread() {
       (page) => {
         setFailed(false);
         setLoaded(true);
+        const seq = newestSeq(page);
+        if (seq !== null) setNewestPage({ conversation: conversationId, seq });
         setItems((have) => {
           const oldest = firstSeq(page) ?? Infinity;
           return [...have.filter((m) => m.seq !== null && m.seq < oldest), ...page];

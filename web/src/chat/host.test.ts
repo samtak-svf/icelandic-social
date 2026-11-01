@@ -41,6 +41,7 @@ function fakeCore(over: Partial<CoreLike> = {}): CoreLike {
     removeAccounts: () => undefined,
     rename: () => "env-4",
     leave: () => undefined,
+    markRead: () => undefined,
     me: () => ({
       accountId: "acc-1",
       name: null,

@@ -10,7 +10,7 @@
 
 import type { CoreEvent } from "../generated/core.d.ts";
 import { type ChatCall, ChatFailure, type Start } from "./protocol.ts";
-import type { Owned, OwnOptions } from "./owner.ts";
+import type { Owned, OwnOptions, Shown, ShowOptions } from "./owner.ts";
 import { type ChatSocket, chatSocket } from "./socket.ts";
 
 /** Where the chat stands in this tab. */
@@ -54,6 +54,7 @@ export function historyMayCome(error: unknown): boolean {
 
 export interface SessionDeps {
   own(options: OwnOptions): Promise<Owned>;
+  show(options: ShowOptions): Promise<Shown>;
   start(call: ChatCall): Promise<Start>;
   socket: typeof chatSocket;
   socketUrl(): string;
@@ -66,6 +67,12 @@ export interface ChatSession {
   call(): ChatCall | undefined;
   /** Takes the chat from the tab that holds it. */
   useHere(): void;
+  /**
+   * Whether this tab shows the chat's pages. One that does takes the store from
+   * a tab that only counts what is unread (0124); a tab that left them keeps
+   * the store until such a tab asks for it.
+   */
+  foreground(on: boolean): void;
   /** Asks the worker where it stands again, after a link completed. */
   restart(): void;
   /** Sends what the core has queued; nothing until the chat is ready. */
@@ -86,6 +93,13 @@ export function chatSession(
   /** Ends this round's wait for the lock. */
   let waiting: AbortController | undefined;
   let closed = false;
+  /** Whether this round waits for the lock with another tab holding it. */
+  let queued = false;
+  /** Whether this tab shows the chat's pages. */
+  let wanted = false;
+  let shown: Shown | undefined;
+  /** Ends the wait to show the chat. */
+  let showing: AbortController | undefined;
   /** Bumped by each take-over, so a late answer from an older one is dropped. */
   let round = 0;
 
@@ -102,9 +116,40 @@ export function chatSession(
     owned = undefined;
   }
 
+  function hide() {
+    showing?.abort();
+    showing = undefined;
+    shown?.release();
+    shown = undefined;
+  }
+
+  /** Waits to show the chat, then takes the store from a tab that only counts. */
+  async function show(steal: boolean) {
+    hide();
+    const wait = new AbortController();
+    showing = wait;
+    try {
+      const got = await deps.show({ steal, signal: wait.signal });
+      if (closed || showing !== wait) {
+        got.release();
+        return;
+      }
+      shown = got;
+      void got.taken.then(() => {
+        if (shown !== got) return;
+        shown = undefined;
+        if (wanted && !closed) void show(false);
+      });
+      if (steal || queued) void begin(true);
+    } catch {
+      // A wait given up: this tab left the chat's pages, or asked again.
+    }
+  }
+
   async function begin(steal: boolean) {
     const mine = ++round;
     drop();
+    queued = false;
     emit(mine, "starting");
     const wait = new AbortController();
     waiting = wait;
@@ -112,13 +157,19 @@ export function chatSession(
       const taken = await deps.own({
         steal,
         signal: wait.signal,
-        onWaiting: () => emit(mine, "elsewhere"),
+        onWaiting: () => {
+          if (closed || mine !== round) return;
+          queued = true;
+          if (shown !== undefined) void begin(true);
+          else emit(mine, "elsewhere");
+        },
       });
       if (closed || mine !== round) {
         taken.release();
         return;
       }
       owned = taken;
+      queued = false;
       // Another tab took the chat: wait for it to come back.
       void taken.taken.then(() => {
         if (owned === taken) void begin(false);
@@ -186,7 +237,17 @@ export function chatSession(
   void begin(false);
   return {
     call: () => owned?.call,
-    useHere: () => void begin(true),
+    // The showing tab loses its lock first, so it does not take the store back.
+    useHere() {
+      wanted = true;
+      void show(true);
+    },
+    foreground(on) {
+      if (on === wanted) return;
+      wanted = on;
+      if (on) void show(false);
+      else hide();
+    },
     restart() {
       const current = owned;
       if (current === undefined) return;
@@ -196,6 +257,7 @@ export function chatSession(
     sync: () => socket?.sync(),
     close() {
       closed = true;
+      hide();
       drop();
     },
   };

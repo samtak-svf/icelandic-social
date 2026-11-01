@@ -1,6 +1,6 @@
 # 0109. The notifications are a bell in the top bar, not a tab
 
-- Status: accepted; implemented (#325); amended by 0111
+- Status: accepted; implemented (#325); amended by 0111, 0124
 - Date: 2026-10-27
 - Decided by: Guðröður Atli Jónsson
 - Amends: [0080](0080-communities-follow-the-familiar-group-layout.md) ("Navigation on the web":

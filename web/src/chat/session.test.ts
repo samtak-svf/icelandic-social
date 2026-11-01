@@ -1,6 +1,6 @@
 import { describe, expect, test, vi } from "vitest";
 import type { CoreEvent } from "../generated/core.d.ts";
-import type { Owned, OwnOptions } from "./owner.ts";
+import type { Owned, OwnOptions, Shown, ShowOptions } from "./owner.ts";
 import { ChatFailure, type ChatCall, type Start } from "./protocol.ts";
 import {
   type CatchUp,
@@ -16,6 +16,7 @@ const tick = () => new Promise((r) => setTimeout(r, 0));
 function setup(
   opts: {
     owns?: (options: OwnOptions) => Promise<Owned>;
+    shows?: (options: ShowOptions) => Promise<Shown>;
     start?: Start;
     call?: ChatCall;
   } = {},
@@ -37,8 +38,12 @@ function setup(
   const own = vi.fn((options: OwnOptions) =>
     opts.owns ? opts.owns(options) : Promise.resolve(owned),
   );
+  const show = vi.fn((options: ShowOptions) =>
+    opts.shows ? opts.shows(options) : Promise.resolve(shownStub()),
+  );
   const deps: SessionDeps = {
     own,
+    show,
     start: () => Promise.resolve(opts.start ?? { state: "ready", deviceId: "d1" }),
     socket: (url, socketDeps) => {
       const close = vi.fn();
@@ -68,10 +73,103 @@ function setup(
     waits,
     sockets,
     own,
+    show,
     release,
     take: () => take(),
   };
 }
+
+function shownStub(): Shown {
+  return { taken: new Promise(() => undefined), release: vi.fn() };
+}
+
+/** A tab that only waits for the store: another one holds it until asked to give it up. */
+function queuedThenStolen(): (options: OwnOptions) => Promise<Owned> {
+  return ({ steal, onWaiting }) => {
+    if (steal) return Promise.resolve(ownedStub());
+    onWaiting?.();
+    return new Promise(() => undefined);
+  };
+}
+
+describe("which tab shows the chat (0124)", () => {
+  test("a tab that only counts shows no 'elsewhere' take-over and steals nothing", async () => {
+    const t = setup({ owns: queuedThenStolen() });
+    await tick();
+    expect(t.own.mock.calls.map(([o]) => o.steal ?? false)).toEqual([false]);
+    expect(t.show).not.toHaveBeenCalled();
+  });
+
+  test("the chat's pages take the store from a tab that only counts", async () => {
+    const t = setup({ owns: queuedThenStolen() });
+    await tick();
+    t.session.foreground(true);
+    await tick();
+    expect(t.own.mock.calls.at(-1)?.[0].steal).toBe(true);
+    expect(t.states.at(-1)).toBe("ready");
+  });
+
+  test("the chat's pages wait while another tab shows them, and say so", async () => {
+    let grant!: (shown: Shown) => void;
+    const t = setup({
+      owns: queuedThenStolen(),
+      shows: () => new Promise((r) => (grant = r)),
+    });
+    await tick();
+    t.session.foreground(true);
+    await tick();
+    expect(t.states.at(-1)).toBe("elsewhere");
+    expect(t.own).toHaveBeenCalledTimes(1);
+    grant(shownStub());
+    await tick();
+    expect(t.states.at(-1)).toBe("ready");
+  });
+
+  test("a tab that holds the store keeps it when it leaves the chat's pages", async () => {
+    const released = vi.fn();
+    const t = setup({ shows: async () => ({ ...shownStub(), release: released }) });
+    await tick();
+    t.session.foreground(true);
+    await tick();
+    t.session.foreground(false);
+    await tick();
+    expect(released).toHaveBeenCalledOnce();
+    expect(t.release).not.toHaveBeenCalled();
+    expect(t.states.at(-1)).toBe("ready");
+  });
+
+  test("use here takes the showing first, then the store", async () => {
+    const order: string[] = [];
+    const t = setup({
+      owns: (options) => {
+        if (options.steal) order.push("store");
+        return queuedThenStolen()(options);
+      },
+      shows: async ({ steal }) => {
+        if (steal) order.push("show");
+        return shownStub();
+      },
+    });
+    await tick();
+    t.session.useHere();
+    await tick();
+    expect(order).toEqual(["show", "store"]);
+    expect(t.states.at(-1)).toBe("ready");
+  });
+
+  test("a closed session gives the showing up, also one granted after it closed", async () => {
+    const released = vi.fn();
+    let grant!: (shown: Shown) => void;
+    const t = setup({ shows: () => new Promise((r) => (grant = r)) });
+    await tick();
+    t.session.foreground(true);
+    await tick();
+    t.session.close();
+    grant({ ...shownStub(), release: released });
+    await tick();
+    expect(released).toHaveBeenCalledOnce();
+  });
+});
 
 describe("chatSession", () => {
   test("a linked browser starts, then opens the socket", async () => {

@@ -42,6 +42,7 @@ function worker(fail?: { code: string; message: string }) {
     conversations: unused,
     timeline: unused,
     send: unused,
+    markRead: unused,
     groupPhoto: unused,
     setGroupPhoto: unused,
     clearGroupPhoto: unused,

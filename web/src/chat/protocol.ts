@@ -46,6 +46,7 @@ export interface Ops {
     result: Item[];
   };
   send: { args: [conversation: string, text: string]; result: string };
+  markRead: { args: [conversation: string, seq: number]; result: void };
   /** The JPEG of this device's copy of a group's photo, or null (0094). */
   groupPhoto: { args: [conversation: string]; result: Uint8Array | null };
   /** Gives a group a photo from the bytes of a JPEG, PNG or WebP file (0094); the envelope id. */

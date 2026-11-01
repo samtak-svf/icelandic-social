@@ -1,7 +1,5 @@
 import { createFileRoute, Outlet, useMatches } from "@tanstack/react-router";
-import { useEffect } from "react";
-import { useAccount } from "../account.tsx";
-import { ChatProvider, useChat } from "../chat/chat.tsx";
+import { useChat } from "../chat/chat.tsx";
 import { ConversationList } from "../chat/conversation-list.tsx";
 import { LinkPage } from "../chat/link-page.tsx";
 import { strings } from "../generated/brand/strings.ts";
@@ -9,21 +7,14 @@ import { Button, Status } from "../ui/kit.tsx";
 import { LAYOUTS } from "../ui/layout.ts";
 import { useSizeClass } from "../ui/size-class.ts";
 
-// The conversations (decisions 0064, 0081). The chat is mounted here and
-// nowhere else: only the tab showing these pages competes for the store. On
-// an expanded window the list stays beside the open conversation (0093).
+// The conversations (decisions 0064, 0081). The chat itself is around every
+// signed-in page (0124); the tab showing these pages takes it from a tab that
+// only counts. On an expanded window the list stays beside the open
+// conversation (0093).
 export const Route = createFileRoute("/conversations")({
-  component: Conversations,
+  component: Gate,
   staticData: { width: "wide", noSuspendedNotice: true },
 });
-
-function Conversations() {
-  return (
-    <ChatProvider>
-      <Gate />
-    </ChatProvider>
-  );
-}
 
 /** The list and the open conversation side by side, or the one page shown. */
 function Panes() {
@@ -49,10 +40,6 @@ function Panes() {
 
 function Gate() {
   const { state, useHere, restart } = useChat();
-  const { signedOut } = useAccount();
-  useEffect(() => {
-    if (state === "signed-out") signedOut();
-  }, [state, signedOut]);
   switch (state) {
     case "ready":
       return <Panes />;

@@ -164,6 +164,7 @@ test.describe("beside a phone", () => {
     await composer.fill("svar úr vafra");
     await page.getByRole("button", { name: strings.send }).click();
     await expect(page.getByText("svar úr vafra", { exact: true })).toBeVisible();
+    await writeFile(joinPath(dir, "away"), "go");
     expect(await phoneDone).toBe(0);
   });
 });
