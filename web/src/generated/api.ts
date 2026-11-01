@@ -1159,6 +1159,23 @@ export interface PublishImport {
   excluded?: Array<string>;
 }
 
+export interface ExportSummary {
+  exportId: string;
+  state: "building" | "ready" | "failed";
+  /** With failed, why: too_big, lost, build or stalled */
+  failure: string | null;
+  /** The file's bytes, once ready */
+  size: number | null;
+  /** Milliseconds since the epoch */
+  createdAt: number;
+  /** Milliseconds since the epoch; the file is gone after this */
+  expiresAt: number;
+}
+
+export interface ExportList {
+  exports: Array<ExportSummary>;
+}
+
 // The operations a browser can call: those that take the session cookie,
 // or no credential and are not an app's alone.
 
@@ -3726,4 +3743,49 @@ export function publishImport(args: {
   | { status: 429; data: ApiError }
 > {
   return call("POST", "/v1/imports/{importId}/publish", args, init);
+}
+
+/** The caller's exports that have not expired, newest first */
+export function listExports(init?: CallInit): Promise<
+  | { status: 200; data: ExportList }
+  | { status: 401; data: ApiError }
+  | { status: 426; data: ApiError }
+> {
+  return call("GET", "/v1/exports", undefined, init);
+}
+
+/**
+ * Ask for a file of the caller's own content; a job builds it
+ *
+ * Allowed for a suspended account, since the content is its own. One export per account in 24 hours, unless the last one failed.
+ */
+export function createExport(init?: CallInit): Promise<
+  | { status: 201; data: ExportSummary }
+  | { status: 401; data: ApiError }
+  | { status: 409; data: ApiError }
+  | { status: 426; data: ApiError }
+> {
+  return call("POST", "/v1/exports", undefined, init);
+}
+
+/**
+ * Download the caller's own export, a ZIP
+ *
+ * A single `Range: bytes=a-b` or `bytes=a-` answers 206 with that slice. Another person's export answers not_found.
+ */
+export function getExportFile(args: {
+  path: {
+    exportId: string;
+  };
+}, init?: CallInit): Promise<
+  | { status: 200; data: Blob }
+  | { status: 206; data: Blob }
+  | { status: 401; data: ApiError }
+  | { status: 404; data: ApiError }
+  | { status: 409; data: ApiError }
+  | { status: 410; data: ApiError }
+  | { status: 416; data: undefined }
+  | { status: 426; data: ApiError }
+> {
+  return call("GET", "/v1/exports/{exportId}/file", args, init);
 }

@@ -96,6 +96,7 @@ export const OWNERS = {
   friend_requests: "friends",
   friendships: "friends",
   person_snoozes: "friends",
+  exports: "exports",
   import_sources: "imports",
   imported_posts: "imports",
   import_files: "imports",

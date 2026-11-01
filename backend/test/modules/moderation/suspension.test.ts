@@ -209,6 +209,8 @@ const NOT_REFUSED: Record<string, readonly string[]> = {
     "completeHistoryTransfer",
     "putImportPart",
     "completeImport",
+    // A person's own content is theirs to take out while suspended (decision 0126).
+    "createExport",
     "deleteImport",
     "deleteImportConnection",
     "deleteImportPage",

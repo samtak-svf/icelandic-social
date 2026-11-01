@@ -114,6 +114,27 @@ export async function accountProfile(
     .first<{ bio: string | null; createdAt: number }>();
 }
 
+/** What a person's own export says of them (decision 0126): their name, bio and whether they have a photo. */
+export async function ownProfile(
+  env: Env,
+  accountId: string,
+): Promise<{
+  displayName: string;
+  bio: string | null;
+  createdAt: number;
+  hasPhoto: boolean;
+} | null> {
+  const row = await db(env)
+    .prepare(
+      `SELECT display_name AS displayName, bio, created_at AS createdAt,
+              photo_version IS NOT NULL AS hasPhoto
+         FROM accounts WHERE account_id = ?`,
+    )
+    .bind(accountId)
+    .first<{ displayName: string; bio: string | null; createdAt: number; hasPhoto: number }>();
+  return row && { ...row, hasPhoto: row.hasPhoto === 1 };
+}
+
 /** Sets or clears the account's bio, with `entries` in the same write (decision 0115). */
 export async function setBio(
   env: Env,

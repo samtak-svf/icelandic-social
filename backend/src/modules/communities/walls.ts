@@ -83,3 +83,30 @@ export async function spaceExists(env: Env, communityId: string): Promise<boolea
     .first<{ found: number }>();
   return row !== null;
 }
+
+/**
+ * What a person's own export names each of `ids` (decision 0126): a wall has no
+ * name of its own, a community has its name, and a space with no live row (it was
+ * deleted) is listed unnamed.
+ */
+export async function spaceLabels(
+  env: Env,
+  ids: string[],
+): Promise<Map<string, { kind: "wall" | "community"; name: string | null }>> {
+  const labels = new Map<string, { kind: "wall" | "community"; name: string | null }>();
+  if (ids.length === 0) return labels;
+  const { results } = await db(env)
+    .prepare(
+      `SELECT community_id AS id, kind, name FROM live_spaces
+        WHERE community_id IN (SELECT value FROM json_each(?))`,
+    )
+    .bind(JSON.stringify(ids))
+    .all<{ id: string; kind: string; name: string }>();
+  for (const r of results) {
+    labels.set(
+      r.id,
+      r.kind === "wall" ? { kind: "wall", name: null } : { kind: "community", name: r.name },
+    );
+  }
+  return labels;
+}

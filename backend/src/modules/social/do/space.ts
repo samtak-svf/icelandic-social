@@ -16,6 +16,7 @@ import * as polls from "./polls.ts";
 import { featured, pinPost } from "./pins.ts";
 import { type PostRow, REMOVED_KEPT_MS, SCHEMA } from "./space-schema.ts";
 import { sweepRemoved } from "./removed.ts";
+import { type OwnPage, type OwnStage, ownPage } from "./export.ts";
 
 export type { CommentContent, CommentRecord, ContentState, Viewer } from "./comment-reads.ts";
 /** An image a post holds, re-encoded (decision 0065). */
@@ -466,6 +467,11 @@ export class Space extends DurableObject<Env> {
       );
     });
     return posts.map((p) => p.post_id);
+  }
+
+  /** One page of what `account` wrote or chose here, for its own export (decision 0126). */
+  ownPage(account: string, stage: OwnStage, after: string, limit: number): OwnPage {
+    return ownPage(this.sql, account, stage, after, limit);
   }
 
   /**

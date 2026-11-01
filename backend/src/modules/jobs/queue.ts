@@ -10,7 +10,13 @@ import { log } from "../../shared/log.ts";
 export type Job = { kind: string; key: string; payload: Record<string, unknown> };
 
 /** Runs one job; throws to have it tried again. Run twice, it has one effect. */
-export type Handler = (env: Env, key: string, payload: Record<string, unknown>) => Promise<void>;
+/** `attempts` counts this run, so a handler can tell its last try (`MAX_ATTEMPTS`) from a retry. */
+export type Handler = (
+  env: Env,
+  key: string,
+  payload: Record<string, unknown>,
+  attempts: number,
+) => Promise<void>;
 
 /** The most jobs one run takes. */
 const BATCH = 25;
@@ -83,7 +89,12 @@ async function run(
   try {
     const handler = handlers[taken.kind];
     if (!handler) throw new Error(`no handler for ${taken.kind}`);
-    await handler(env, taken.key, JSON.parse(taken.payload) as Record<string, unknown>);
+    await handler(
+      env,
+      taken.key,
+      JSON.parse(taken.payload) as Record<string, unknown>,
+      taken.attempts,
+    );
     await finish("done", null);
     return "done";
   } catch (error) {

@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ConversationsRouteImport } from './routes/conversations'
+import { Route as ExportRouteImport } from './routes/export'
 import { Route as FriendsRouteImport } from './routes/friends'
 import { Route as MeRouteImport } from './routes/me'
 import { Route as ModerationRouteImport } from './routes/moderation'
@@ -52,6 +53,11 @@ const IndexRoute = IndexRouteImport.update({
 const ConversationsRoute = ConversationsRouteImport.update({
   id: '/conversations',
   path: '/conversations',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ExportRoute = ExportRouteImport.update({
+  id: '/export',
+  path: '/export',
   getParentRoute: () => rootRouteImport,
 } as any)
 const FriendsRoute = FriendsRouteImport.update({
@@ -232,6 +238,7 @@ const CommunitiesCommunityIdTabsPeopleRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/conversations': typeof ConversationsRouteWithChildren
+  '/export': typeof ExportRoute
   '/friends': typeof FriendsRoute
   '/me': typeof MeRoute
   '/moderation': typeof ModerationRoute
@@ -267,6 +274,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/export': typeof ExportRoute
   '/friends': typeof FriendsRoute
   '/me': typeof MeRoute
   '/moderation': typeof ModerationRoute
@@ -303,6 +311,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/conversations': typeof ConversationsRouteWithChildren
+  '/export': typeof ExportRoute
   '/friends': typeof FriendsRoute
   '/me': typeof MeRoute
   '/moderation': typeof ModerationRoute
@@ -341,6 +350,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/conversations'
+    | '/export'
     | '/friends'
     | '/me'
     | '/moderation'
@@ -376,6 +386,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/export'
     | '/friends'
     | '/me'
     | '/moderation'
@@ -411,6 +422,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/conversations'
+    | '/export'
     | '/friends'
     | '/me'
     | '/moderation'
@@ -448,6 +460,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ConversationsRoute: typeof ConversationsRouteWithChildren
+  ExportRoute: typeof ExportRoute
   FriendsRoute: typeof FriendsRoute
   MeRoute: typeof MeRoute
   ModerationRoute: typeof ModerationRoute
@@ -487,6 +500,13 @@ declare module '@tanstack/react-router' {
       path: '/conversations'
       fullPath: '/conversations'
       preLoaderRoute: typeof ConversationsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/export': {
+      id: '/export'
+      path: '/export'
+      fullPath: '/export'
+      preLoaderRoute: typeof ExportRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/friends': {
@@ -762,6 +782,7 @@ const CommunitiesCommunityIdTabsRouteWithChildren =
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ConversationsRoute: ConversationsRouteWithChildren,
+  ExportRoute: ExportRoute,
   FriendsRoute: FriendsRoute,
   MeRoute: MeRoute,
   ModerationRoute: ModerationRoute,

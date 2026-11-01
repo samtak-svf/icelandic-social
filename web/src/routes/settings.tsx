@@ -92,6 +92,11 @@ function Settings() {
           {strings.imports_title}
         </Link>
       </p>
+      <p className="mt-2">
+        <Link to="/export" className="underline">
+          {strings.export_title}
+        </Link>
+      </p>
       {state.status === "signed-in" && state.me.platformModerator && (
         <p className="mt-2">
           <Link to="/moderation" className="underline">
