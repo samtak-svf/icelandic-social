@@ -75,6 +75,9 @@ const STATES = { hide: "hidden", remove: "removed", restore: "visible" } as cons
 function applies(action: Sanction["action"], s: Standing): boolean {
   if (action === "ban") return !s.banned;
   if (action === "unban") return s.banned;
+  // A mute may be set again, and its end replaced; lifting one needs a mute that
+  // still stands, so an end date in the past is not one to lift (decision 0070).
+  if (action === "unmute") return s.mutedUntil !== null && s.mutedUntil > Date.now();
   return s.role !== null;
 }
 
