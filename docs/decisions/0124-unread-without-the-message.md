@@ -1,6 +1,6 @@
 # 0124. The web shows what is unread, without the message
 
-- Status: accepted; implemented (this record's PR)
+- Status: accepted; implemented (#523)
 - Date: 2026-11-01
 - Decided by: Guðröður Atli Jónsson
 - Amends: [0064](0064-non-phone-devices-are-linked-devices.md) and
