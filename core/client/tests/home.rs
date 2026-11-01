@@ -101,6 +101,30 @@ fn one_post_type_reads_a_wall_post_and_a_community_post() {
     phone.sent();
 }
 
+/// The mark is the server's word on the post. A post written here has no such
+/// field, and a false one reads the same.
+#[test]
+fn a_post_says_whether_it_was_imported() {
+    let phone = Phone::signed_in();
+    phone.answer(
+        200,
+        json!({
+            "posts": [
+                post(json!({ "imported": true })),
+                post(json!({})),
+                post(json!({ "imported": false })),
+            ],
+            "next": null,
+        }),
+    );
+    let HomePage::End { posts } = phone.client.hosted().home(None, 30).unwrap() else {
+        panic!("a cursor")
+    };
+    let marks: Vec<bool> = posts.iter().map(|post| post.imported).collect();
+    assert_eq!(marks, [true, false, false]);
+    phone.sent();
+}
+
 /// A suspension reaches the app as every other refusal does.
 #[test]
 fn a_refusal_stays_typed() {

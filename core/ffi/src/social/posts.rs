@@ -40,6 +40,9 @@ pub struct Post {
     /// A moderator pinned it to the top of the community (0080).
     #[uniffi(default = false)]
     pub pinned: bool,
+    /// It came from another platform under its original date (0119, 0120).
+    #[uniffi(default = false)]
+    pub imported: bool,
     /// Present when the post is a poll (0090).
     #[uniffi(default = None)]
     pub poll: Option<Poll>,
@@ -119,6 +122,7 @@ impl From<api::Post> for Post {
             latest_comment,
             state,
             pinned,
+            imported,
             poll,
             wall,
             audience,
@@ -143,6 +147,7 @@ impl From<api::Post> for Post {
             latest_comment: latest_comment.map(Into::into),
             state,
             pinned,
+            imported,
             poll: poll.map(Into::into),
             wall_owner: wall.map(|api::WallOwner { account_id }| account_id),
             audience,

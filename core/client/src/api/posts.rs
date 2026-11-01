@@ -40,6 +40,10 @@ pub struct Post {
     /// post of the community's first page.
     #[serde(default)]
     pub pinned: bool,
+    /// It came from another platform under its original date (0119, 0120).
+    /// The server leaves the field out on a post written here.
+    #[serde(default)]
+    pub imported: bool,
     /// Present when the post is a poll (0090).
     #[serde(default)]
     pub poll: Option<Poll>,
