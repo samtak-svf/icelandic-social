@@ -57,7 +57,7 @@ a person lets someone else in, and how both end.
   token is the capability: 256 bits that live only in the link. The answer is the inviter's name
   and verified mark, which is what the link page and the app show before sign-in, or `404`.
 - **The first account is let in by the operator.** `pnpm invite:operator` writes one single-use
-  invite with no inviter through `wrangler d1 execute` and prints its link once. Someone has to be
+  invite with no inviter through `cf d1 query` and prints its link once. Someone has to be
   first, and a secret built into the Worker would be a standing way in.
 - **The admin list of 0014 waits** until something exists that only an admin may do. Today
   every account may mint invites.
