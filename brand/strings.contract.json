@@ -3423,6 +3423,57 @@
     "imports_rate_limited": {
       "surfaces": ["web"],
       "description": "Too many tries in a short time, on the import screens."
+    },
+    "export_title": {
+      "surfaces": ["web"],
+      "description": "Title of the screen that builds a file of a person's own content, and the link to it."
+    },
+    "export_intro": {
+      "surfaces": ["web"],
+      "description": "What the export file holds, and how long it is kept."
+    },
+    "export_left_out": {
+      "surfaces": ["web"],
+      "description": "What the export file does not hold: messages, other people's content, kennitala and phone number."
+    },
+    "export_images_note": {
+      "surfaces": ["web"],
+      "description": "Which images are left out of the export file, and that the text stays."
+    },
+    "export_anonymous_warning": {
+      "surfaces": ["web"],
+      "description": "Warning that anonymous posts name their author in the export file."
+    },
+    "export_start": {
+      "surfaces": ["web"],
+      "description": "Button that asks for an export file."
+    },
+    "export_building": {
+      "surfaces": ["web"],
+      "description": "Status while the export file is being built."
+    },
+    "export_ready": {
+      "surfaces": ["web"],
+      "description": "Status when the export file is ready; the date it is deleted.",
+      "placeholders": {
+        "date": "string"
+      }
+    },
+    "export_download": {
+      "surfaces": ["web"],
+      "description": "Link that downloads the ready export file."
+    },
+    "export_failed": {
+      "surfaces": ["web"],
+      "description": "Status when building the export file failed."
+    },
+    "export_failed_too_big": {
+      "surfaces": ["web"],
+      "description": "Status when the export file would be too large to build."
+    },
+    "export_conflict": {
+      "surfaces": ["web"],
+      "description": "Refusal text when a person asks for an export file twice within a day."
     }
   }
 }

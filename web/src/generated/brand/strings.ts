@@ -724,7 +724,7 @@ export const strings = {
   /** Section heading on /privacy: account deletion and user rights. */
   privacy_rights_heading: "Eyðing aðgangs og réttindi þín",
   /** Body on /privacy describing immediate account deletion in the app and how to contact the controller. */
-  privacy_rights_body: "Þú getur hvenær sem er skráð út einstaka vafra og tæki í stillingum eða eytt aðganginum þínum í appinu. Þegar aðgangi er eytt lokast allar innskráningar og lyklar strax, mynd og upplýsingar aðgangsins eyðast af þjóninum og aðgangurinn er tekinn úr öllum samtölum og hópum. Listi yfir vini þína og vinabeiðnir eyðast með honum ásamt veggnum þínum og öllum póstum, athugasemdum og myndum á honum. Fyrirspurnir um persónuvernd má senda á samtak@samtak.is.",
+  privacy_rights_body: "Þú getur hvenær sem er skráð út einstaka vafra og tæki í stillingum eða eytt aðganginum þínum í appinu. Þegar aðgangi er eytt lokast allar innskráningar og lyklar strax, mynd og upplýsingar aðgangsins eyðast af þjóninum og aðgangurinn er tekinn úr öllum samtölum og hópum. Listi yfir vini þína og vinabeiðnir eyðast með honum ásamt veggnum þínum og öllum póstum, athugasemdum og myndum á honum. Í stillingum geturðu sótt skrá með póstunum þínum, athugasemdum og myndum; skilaboð eru ekki í henni. Fyrirspurnir um persónuvernd má senda á samtak@samtak.is.",
   /** Title and link label of the public support page (/support, decision 0009, #383). */
   support_title: "Aðstoð",
   /** Introductory paragraph on /support explaining how to get help. */
@@ -1400,4 +1400,29 @@ export const strings = {
       : String(args.count) + " myndir",
   /** Too many tries in a short time, on the import screens. */
   imports_rate_limited: "Of margar tilraunir í einu. Reyndu aftur eftir smástund.",
+  /** Title of the screen that builds a file of a person's own content, and the link to it. */
+  export_title: "Sækja efnið þitt",
+  /** What the export file holds, and how long it is kept. */
+  export_intro: "Hér færðu ZIP-skrá með því sem þú hefur sjálf birt hér: póstum, athugasemdum, viðbrögðum, atkvæðum í könnunum, myndum, lista yfir vini þína og prófílnum þínum. Skráin er til í viku.",
+  /** What the export file does not hold: messages, other people's content, kennitala and phone number. */
+  export_left_out: "Skilaboð eru ekki í skránni því aðeins tækin þín geta lesið þau. Efni annarra er það ekki heldur, þar á meðal athugasemdir sem aðrir skrifuðu við pósta þína. Kennitala og símanúmer fylgja ekki.",
+  /** Which images are left out of the export file, and that the text stays. */
+  export_images_note: "Myndir sem stjórnandi hefur tekið niður og myndir af fjarlægðum eða földum póstum fylgja ekki, en textinn gerir það.",
+  /** Warning that anonymous posts name their author in the export file. */
+  export_anonymous_warning: "Nafnlausir póstar eru merktir þér í skránni. Gættu þess hver fær hana.",
+  /** Button that asks for an export file. */
+  export_start: "Biðja um skrá",
+  /** Status while the export file is being built. */
+  export_building: "Skráin er í vinnslu. Þú getur lokað síðunni og komið aftur seinna.",
+  /** Status when the export file is ready; the date it is deleted. */
+  export_ready: (args: { date: string }): string =>
+    "Skráin er tilbúin. Hún eyðist " + args.date + ".",
+  /** Link that downloads the ready export file. */
+  export_download: "Sækja skrána",
+  /** Status when building the export file failed. */
+  export_failed: "Ekki tókst að búa skrána til. Þú getur beðið um nýja.",
+  /** Status when the export file would be too large to build. */
+  export_failed_too_big: "Of mikið efni er til í eina skrá. Sendu póst á samtak@samtak.is.",
+  /** Refusal text when a person asks for an export file twice within a day. */
+  export_conflict: "Þú getur beðið um nýja skrá einu sinni á sólarhring.",
 } as const;

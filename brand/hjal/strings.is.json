@@ -487,7 +487,7 @@
   "privacy_retention_heading": "Varðveisla og geymslutími",
   "privacy_retention_body": "Dulkóðuð viðhengi í samtölum geymast á þjóninum í allt að 30 daga á meðan tæki sækja þau. Ef [[group.dat]] er eytt má endurheimta [[group.it.acc]] í 30 daga áður en póstum, athugasemdum og myndum [[group.it.gen]] er eytt varanlega. Póstum og athugasemdum sem stjórnandi fjarlægir, og athugasemdum sem eigandi [[wall.gen]] fjarlægir af honum, er eytt eftir 90 daga og lokuðum tilkynningum og aðgerðaskrá stjórnenda, sem skráir líka bann á aðgöngum, er eytt eftir eitt ár. Vinabeiðni sem er lokið, hvort sem henni var hafnað, hún afturkölluð eða hún rann út, er geymd í 90 daga frá því að hún var send. Atburðaskrár þjónsins geyma hvorki nöfn, kennitölur, símanúmer né innihald skilaboða.",
   "privacy_rights_heading": "Eyðing aðgangs og réttindi þín",
-  "privacy_rights_body": "Þú getur hvenær sem er skráð út einstaka vafra og tæki í stillingum eða eytt aðganginum þínum í appinu. Þegar aðgangi er eytt lokast allar innskráningar og lyklar strax, mynd og upplýsingar aðgangsins eyðast af þjóninum og aðgangurinn er tekinn úr öllum samtölum og [[group.dat.pl]]. Listi yfir [[friend.acc.pl]] þína og vinabeiðnir eyðast með honum ásamt [[wall.dat.def]] þínum og öllum póstum, athugasemdum og myndum á honum. Fyrirspurnir um persónuvernd má senda á samtak@samtak.is.",
+  "privacy_rights_body": "Þú getur hvenær sem er skráð út einstaka vafra og tæki í stillingum eða eytt aðganginum þínum í appinu. Þegar aðgangi er eytt lokast allar innskráningar og lyklar strax, mynd og upplýsingar aðgangsins eyðast af þjóninum og aðgangurinn er tekinn úr öllum samtölum og [[group.dat.pl]]. Listi yfir [[friend.acc.pl]] þína og vinabeiðnir eyðast með honum ásamt [[wall.dat.def]] þínum og öllum póstum, athugasemdum og myndum á honum. Í stillingum geturðu sótt skrá með póstunum þínum, athugasemdum og myndum; skilaboð eru ekki í henni. Fyrirspurnir um persónuvernd má senda á samtak@samtak.is.",
   "support_title": "Aðstoð",
   "support_intro": "Hér finnur þú upplýsingar um hvernig þú færð aðstoð við Hjal og hvernig þú stýrir aðganginum þínum.",
   "support_contact_heading": "Hafa samband",
@@ -842,5 +842,17 @@
     "other": "Ekki var hægt að lesa {count} færslur."
   },
   "imports_item_images": { "one": "{count} mynd", "other": "{count} myndir" },
-  "imports_rate_limited": "Of margar tilraunir í einu. Reyndu aftur eftir smástund."
+  "imports_rate_limited": "Of margar tilraunir í einu. Reyndu aftur eftir smástund.",
+  "export_title": "Sækja efnið þitt",
+  "export_intro": "Hér færðu ZIP-skrá með því sem þú hefur sjálf birt hér: póstum, athugasemdum, viðbrögðum, atkvæðum í könnunum, myndum, lista yfir [[friend.acc.pl]] þína og prófílnum þínum. Skráin er til í viku.",
+  "export_left_out": "Skilaboð eru ekki í skránni því aðeins tækin þín geta lesið þau. Efni annarra er það ekki heldur, þar á meðal athugasemdir sem aðrir skrifuðu við pósta þína. Kennitala og símanúmer fylgja ekki.",
+  "export_images_note": "Myndir sem stjórnandi hefur tekið niður og myndir af fjarlægðum eða földum póstum fylgja ekki, en textinn gerir það.",
+  "export_anonymous_warning": "Nafnlausir póstar eru merktir þér í skránni. Gættu þess hver fær hana.",
+  "export_start": "Biðja um skrá",
+  "export_building": "Skráin er í vinnslu. Þú getur lokað síðunni og komið aftur seinna.",
+  "export_ready": "Skráin er tilbúin. Hún eyðist {date}.",
+  "export_download": "Sækja skrána",
+  "export_failed": "Ekki tókst að búa skrána til. Þú getur beðið um nýja.",
+  "export_failed_too_big": "Of mikið efni er til í eina skrá. Sendu póst á samtak@samtak.is.",
+  "export_conflict": "Þú getur beðið um nýja skrá einu sinni á sólarhring."
 }
