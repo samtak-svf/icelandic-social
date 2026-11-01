@@ -7,6 +7,7 @@ import samtak.spjall.core.CommunityAudience
 import samtak.spjall.core.CommunityRole
 import samtak.spjall.core.EmojiCount
 import samtak.spjall.core.Post
+import samtak.spjall.limits.Limits
 
 /**
  * [Post] with this account's reaction set to [next], none taking it back: the counts as the server gave them,
@@ -74,22 +75,28 @@ fun Community.noPostNotice(now: Long): Int? =
 fun Post.withOneCommentFewer(): Post = if (commentCount > 0uL) copy(commentCount = commentCount - 1uL) else this
 
 /** The longest post the server takes. */
-const val POST_LIMIT = 5000
+const val POST_LIMIT = Limits.POST_BODY_CHARS
 
 /** The longest comment the server takes. */
-const val COMMENT_LIMIT = 2000
+const val COMMENT_LIMIT = Limits.COMMENT_CHARS
 
 /** The longest report note the server takes. */
-const val NOTE_LIMIT = 500
+const val NOTE_LIMIT = Limits.MODERATION_NOTE_CHARS
 
 /** The longest moderator's reason the server takes. */
-const val REASON_LIMIT = 500
+const val REASON_LIMIT = Limits.MODERATION_NOTE_CHARS
 
 /** The longest community name the server takes. */
-const val NAME_LIMIT = 80
+const val NAME_LIMIT = Limits.COMMUNITY_NAME_CHARS
 
 /** The longest community description the server takes. */
-const val DESCRIPTION_LIMIT = 500
+const val DESCRIPTION_LIMIT = Limits.COMMUNITY_DESCRIPTION_CHARS
+
+/** The most images one post holds. */
+const val IMAGES = Limits.POST_MEDIA_COUNT
+
+/** The largest image the server takes for a post. */
+const val IMAGE_LIMIT = Limits.IMAGE_BYTES
 
 /**
  * Presses [emoji] on [post]: it becomes this account's reaction, or, pressed again, is taken back. Blocks on the

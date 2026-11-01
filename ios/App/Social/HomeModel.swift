@@ -211,7 +211,7 @@ final class HomeModel {
     /// place that is offered, and no suspension standing.
     var publishable: Bool {
         let body = draft.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard mayWrite(suspension), body.count <= CommunityModel.postLimit else { return false }
+        guard mayWrite(suspension), textLength(body) <= CommunityModel.postLimit else { return false }
         if case .community(let id) = place, !targets.contains(where: { $0.communityId == id }) { return false }
         if let fields = attachments.pollFields {
             return attachments.images.isEmpty && pollDraftValid(question: body, options: fields)

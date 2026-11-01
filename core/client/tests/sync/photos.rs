@@ -30,7 +30,7 @@ fn a_photo_is_fetched_once_per_version_and_goes_when_removed() {
     ));
     std::fs::File::create(&image)
         .unwrap()
-        .set_len(spjall_client::MAX_PHOTO + 1)
+        .set_len(spjall_client::text::limits::IMAGE_BYTES + 1)
         .unwrap();
     assert!(matches!(
         a1.client.set_photo(&image),

@@ -33,7 +33,13 @@ final class CommunitiesModel {
     /// The names of the communities this account is in, by id.
     var namesById: [String: String] { Dictionary(mine.map { ($0.communityId, $0.name) }) { first, _ in first } }
     /// The search as typed; `search()` asks the server for it.
-    var query = ""
+    var query = "" {
+        didSet {
+            if textLength(query) > Limits.communitySearchChars {
+                query = clippedText(query, to: Limits.communitySearchChars)
+            }
+        }
+    }
     /// The search's pages so far, for `query`.
     private(set) var found: [Community] = []
     /// The cursor of the search's next page, nil on the last.
@@ -216,8 +222,8 @@ final class CommunitiesModel {
     ) async -> Bool {
         let name = name.trimmingCharacters(in: .whitespacesAndNewlines)
         let description = description.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard verified, !name.isEmpty, name.count <= communityNameLimit,
-            description.count <= communityDescriptionLimit
+        guard verified, !name.isEmpty, textLength(name) <= communityNameLimit,
+            textLength(description) <= communityDescriptionLimit
         else { return false }
         let social = social
         var made = false

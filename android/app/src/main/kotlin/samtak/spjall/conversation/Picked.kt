@@ -1,5 +1,6 @@
 package samtak.spjall.conversation
 
+import samtak.spjall.limits.Limits
 import java.io.File
 
 /**
@@ -14,4 +15,4 @@ class Picked(
 )
 
 /** The largest photo or file the core sends (0023), 25 MB. */
-const val MEDIA_LIMIT = 25L * 1024 * 1024
+const val MEDIA_LIMIT = Limits.MEDIA_BYTES

@@ -21,6 +21,8 @@ import samtak.spjall.core.Post
 import samtak.spjall.core.ReportReason
 import samtak.spjall.core.ReportTarget
 import samtak.spjall.core.ReportTargetKind
+import samtak.spjall.limits.Limits
+import samtak.spjall.ui.clippedTo
 
 enum class CommunitiesTab {
     FEED,
@@ -262,7 +264,7 @@ class CommunitiesViewModel(
         }
     }
 
-    private fun query(text: String) = text.trim().take(QUERY_LIMIT).ifEmpty { null }
+    private fun query(text: String) = text.trim().clippedTo(QUERY_LIMIT).ifEmpty { null }
 }
 
 /** How long the search waits for the typing to pause. */
@@ -275,7 +277,7 @@ private const val PAGE = 30u
 private const val FEED_PAGE = 20u
 
 /** The longest search the server takes. */
-private const val QUERY_LIMIT = 80
+private const val QUERY_LIMIT = Limits.COMMUNITY_SEARCH_CHARS
 
 /** The pinned communities first, each group in the order the core gave. */
 private fun List<Community>.pinnedFirst() = sortedByDescending { it.pinned }

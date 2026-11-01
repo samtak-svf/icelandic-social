@@ -1,0 +1,23 @@
+{
+  "$comment": "How long a text is, as the server counts it and every client must: code points (decision 0123). Grapheme clusters and UTF-16 units both give other answers for some of these.",
+  "lengths": [
+    { "note": "nothing", "text": "", "codePoints": 0 },
+    { "note": "ascii", "text": "abc", "codePoints": 3 },
+    { "note": "a line break is one", "text": "a\nb", "codePoints": 3 },
+    { "note": "precomposed Icelandic letters", "text": "þæö", "codePoints": 3 },
+    { "note": "a combining mark counts by itself", "text": "é", "codePoints": 2 },
+    { "note": "an emoji is one, and two in UTF-16", "text": "😀", "codePoints": 1 },
+    { "note": "a skin tone is its own code point", "text": "👍🏽", "codePoints": 2 },
+    { "note": "a flag is two regional indicators", "text": "🇮🇸", "codePoints": 2 },
+    { "note": "a family: three people and two joiners", "text": "👨‍👩‍👧", "codePoints": 5 },
+    { "note": "CJK", "text": "漢字", "codePoints": 2 }
+  ],
+  "clips": [
+    { "note": "shorter than the limit stays", "text": "abc", "limit": 5, "clipped": "abc" },
+    { "note": "exactly the limit stays", "text": "abc", "limit": 3, "clipped": "abc" },
+    { "note": "ascii stops at the limit", "text": "abc", "limit": 2, "clipped": "ab" },
+    { "note": "a limit of nothing", "text": "abc", "limit": 0, "clipped": "" },
+    { "note": "an emoji is never split", "text": "😀😀", "limit": 1, "clipped": "😀" },
+    { "note": "a combining mark over the limit goes", "text": "é", "limit": 1, "clipped": "e" }
+  ]
+}

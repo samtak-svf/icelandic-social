@@ -138,7 +138,9 @@ private struct SearchField: View {
             .submitLabel(.search)
             .onChange(of: query) { _, text in
                 // The longest search the server and the core take (decision 0036).
-                if text.count > 100 { query = String(text.prefix(100)) }
+                if textLength(text) > Limits.peopleSearchChars {
+                    query = clippedText(text, to: Limits.peopleSearchChars)
+                }
             }
         }
         .padding(.horizontal, 12)

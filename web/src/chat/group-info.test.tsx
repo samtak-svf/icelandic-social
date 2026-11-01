@@ -129,12 +129,11 @@ describe("a group's changes on the info page (0078)", () => {
     expect(html).not.toContain(strings.remove_member);
   });
 
-  it("asks for the name with the current one, a limit and a way to clear it", () => {
+  it("asks for the name with the current one and a way to clear it", () => {
     const html = render(group, {
       controls: controls({ dialog: { kind: "rename", draft: "Bókaklúbbur" } }),
     });
     expect(html).toContain(strings.group_name_title);
-    expect(html).toContain('maxLength="64"');
     expect(html).toContain('value="Bókaklúbbur"');
     expect(html).toContain(`>${strings.group_name_remove}<`);
     expect(html).toContain(strings.save);

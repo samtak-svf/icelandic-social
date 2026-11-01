@@ -25,7 +25,7 @@ use crate::blobs::BlobStore;
 use crate::{Client, ClientError, authed, conversation_state, open_conversation};
 
 /// The largest file sent, in plaintext bytes (0023).
-pub const MAX_SIZE: u64 = 25 * 1024 * 1024;
+pub const MAX_SIZE: u64 = crate::text::limits::MEDIA_BYTES;
 const SEGMENT: usize = 64 * 1024;
 const TAG: usize = 16;
 

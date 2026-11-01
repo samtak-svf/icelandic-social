@@ -35,7 +35,7 @@ final class LinkModel {
     /// The text in the paste field.
     var draft = ""
 
-    static let recentMillis: UInt64 = 90 * 86_400 * 1000
+    static let recentMillis = UInt64(Limits.linkRecentDays) * 86_400 * 1000
 
     private let account: Account
     private let now: @Sendable () -> UInt64

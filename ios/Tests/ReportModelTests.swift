@@ -28,10 +28,12 @@ final class ReportModelTests: XCTestCase {
         XCTAssertTrue(model.sendable)
         model.note += "a"
         XCTAssertFalse(model.sendable)
-        // An emoji is one character here and two units on the server.
-        model.note = String(repeating: "\u{1F600}", count: limit / 2 + 1)
+        // An emoji is one code point, so a note of them runs to the same limit.
+        model.note = String(repeating: "\u{1F600}", count: limit)
+        XCTAssertTrue(model.sendable)
+        model.note += "\u{1F600}"
         XCTAssertFalse(model.sendable)
-        XCTAssertEqual(ReportModel.capped(model.note).utf16.count, limit)
+        XCTAssertEqual(textLength(ReportModel.capped(model.note)), limit)
     }
 
     func testAFailedReportCanBeSentAgain() async {

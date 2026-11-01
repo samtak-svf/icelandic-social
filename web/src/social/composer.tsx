@@ -18,6 +18,8 @@ import { outcome } from "./outcome.ts";
 import { canPublishPoll, emptyPoll, pollOptions } from "./poll-draft.ts";
 import { PollFields } from "./poll-fields.tsx";
 import { useSuspended } from "./suspended.tsx";
+import { LIMITS } from "../generated/limits.ts";
+import { clipText } from "../lib/char-count.ts";
 
 // The one text box a post and a comment are both written in; a post also
 // takes up to four images (decision 0065).
@@ -174,12 +176,11 @@ function PostForm({
       <textarea
         id={id}
         value={text}
-        maxLength={5000}
         rows={4}
         placeholder={strings.post_compose_prompt}
         // eslint-disable-next-line jsx-a11y/no-autofocus -- the dialog was opened to write in it
         autoFocus
-        onChange={(event) => setText(event.target.value)}
+        onChange={(event) => setText(clipText(event.target.value, LIMITS.postBodyChars))}
         className="rounded-md border border-border-strong bg-surface p-2"
       />
       <TargetSelect targets={targets} value={target} busy={busy} change={setTarget} />

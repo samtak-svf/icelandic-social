@@ -21,6 +21,7 @@ import samtak.spjall.core.CoreException
 import samtak.spjall.core.Post
 import samtak.spjall.core.ReportReason
 import samtak.spjall.core.ReportTarget
+import samtak.spjall.ui.fitsIn
 import java.io.File
 
 /**
@@ -121,7 +122,7 @@ class PostViewModel(
     }
 
     fun draft(text: String) {
-        if (text.length <= COMMENT_LIMIT) _state.update { it.copy(draft = text) }
+        if (text.fitsIn(COMMENT_LIMIT)) _state.update { it.copy(draft = text) }
     }
 
     /** Takes the image picked for the comment, replacing one already there; over the server's limit it is refused. */

@@ -1,4 +1,5 @@
 import { createRoute, z } from "@hono/zod-openapi";
+import { LIMITS } from "../limits.gen.ts";
 import { ACCOUNT, AUTHED, INVALID, OpaqueId, PhotoVersion } from "./common.ts";
 import { Author, Media } from "./social.ts";
 
@@ -9,7 +10,7 @@ import { Author, Media } from "./social.ts";
 // resolves to a card that says only that it is not available.
 
 /** How many references one call resolves. */
-const MAX_REFS = 50;
+const MAX_REFS = LIMITS.cardRefsCount;
 
 /** The longest excerpt a card shows of a text, in characters. */
 export const EXCERPT_LENGTH = 280;

@@ -30,6 +30,7 @@ import samtak.spjall.core.ReportTarget
 import samtak.spjall.frames.FrameRequest
 import samtak.spjall.frames.newImageRequest
 import samtak.spjall.frames.storedImageRequest
+import samtak.spjall.ui.fitsIn
 import java.io.File
 import java.util.concurrent.ConcurrentHashMap
 
@@ -292,7 +293,7 @@ class CommunityViewModel(
     }
 
     fun draft(text: String) {
-        if (text.length <= POST_LIMIT) _state.update { it.copy(draft = text) }
+        if (text.fitsIn(POST_LIMIT)) _state.update { it.copy(draft = text) }
     }
 
     /** Whether another image fits in the post; when none does, says so instead of opening the picker. */
@@ -660,9 +661,3 @@ private const val PAGE = 20u
 
 /** The first page shown in the community's action log. */
 private const val MODERATION_LOG_PAGE = 30u
-
-/** The most images one post holds. */
-const val IMAGES = 4
-
-/** The largest image the server takes for a post, 10 MB. */
-const val IMAGE_LIMIT = 10L * 1024 * 1024

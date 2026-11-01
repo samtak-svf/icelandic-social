@@ -7,7 +7,7 @@ use crate::api::{
 use crate::{ClientError, Hosted};
 
 /// The largest page of suggestions the server takes.
-const MAX_SUGGESTION_PAGE: u32 = 50;
+const MAX_SUGGESTION_PAGE: u32 = crate::text::limits::PAGE_SIZE;
 
 /// Friends.
 impl<T: Transport> Hosted<T> {

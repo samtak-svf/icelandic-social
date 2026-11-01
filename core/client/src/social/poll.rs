@@ -1,11 +1,12 @@
 //! The poll rule (0090): what the server refuses, refused before it is sent.
 
 use crate::ClientError;
+use crate::text::{limits, text_length};
 
 /// The bounds of a poll's options (0090), as the server holds them. Its schema
 /// counts code points, which is what `chars()` counts.
-const POLL_OPTIONS: std::ops::RangeInclusive<usize> = 2..=6;
-const POLL_OPTION_CHARS: usize = 80;
+const POLL_OPTIONS: std::ops::RangeInclusive<usize> =
+    limits::POLL_OPTIONS_MIN..=limits::POLL_OPTIONS_MAX;
 
 /// `text` as the server trims it. JavaScript counts U+FEFF as white space and
 /// U+0085 as not, the reverse of Rust.
@@ -38,7 +39,7 @@ pub(super) fn check_poll(
     let mut seen = Vec::with_capacity(options.len());
     for option in options {
         let option = server_trim(option);
-        if option.is_empty() || option.chars().count() > POLL_OPTION_CHARS {
+        if option.is_empty() || text_length(option) > limits::POLL_OPTION_CHARS {
             return Err(ClientError::Invalid("an option of 1 to 80 characters"));
         }
         let folded = option.to_lowercase();

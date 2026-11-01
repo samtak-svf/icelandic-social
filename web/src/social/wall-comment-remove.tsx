@@ -5,6 +5,8 @@ import { strings } from "../generated/brand/strings.ts";
 import { Dialog } from "../ui/dialog.tsx";
 import { Button, ProblemText, Status } from "../ui/kit.tsx";
 import { outcome } from "./outcome.ts";
+import { LIMITS } from "../generated/limits.ts";
+import { clipText } from "../lib/char-count.ts";
 
 // The owner of a wall takes a comment off it (decision 0115): with a reason,
 // and the one who wrote it is told. Reporting stays with every reader.
@@ -48,8 +50,9 @@ export function RemoveWallComment({
               id={id}
               value={reason}
               rows={3}
-              maxLength={500}
-              onChange={(event) => setReason(event.target.value)}
+              onChange={(event) =>
+                setReason(clipText(event.target.value, LIMITS.moderationNoteChars))
+              }
               className="rounded-md border border-border-strong bg-surface p-2"
             />
             <div className="flex justify-end gap-2">

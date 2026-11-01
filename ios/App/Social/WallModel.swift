@@ -10,7 +10,7 @@ final class WallModel {
     enum Tab: CaseIterable { case posts, about, images }
 
     /// The longest bio, in code points.
-    static let bioLimit = 120
+    static let bioLimit = Limits.bioChars
     private nonisolated static let page: UInt32 = 20
 
     let accountId: String
@@ -122,7 +122,7 @@ final class WallModel {
     /// limits, and no suspension standing.
     var publishable: Bool {
         let body = draft.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard writes, body.count <= CommunityModel.postLimit else { return false }
+        guard writes, textLength(body) <= CommunityModel.postLimit else { return false }
         if let fields = attachments.pollFields {
             return attachments.images.isEmpty && pollDraftValid(question: body, options: fields)
         }
@@ -227,7 +227,7 @@ final class WallModel {
     }
 
     /// The bio being edited fits: at most `bioLimit` code points once cleaned. A blank one fits, and clears.
-    var bioFits: Bool { Self.cleanBio(bioDraft ?? "").unicodeScalars.count <= Self.bioLimit }
+    var bioFits: Bool { textLength(Self.cleanBio(bioDraft ?? "")) <= Self.bioLimit }
 
     func editBio() { bioDraft = wall?.bio ?? "" }
 

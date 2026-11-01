@@ -104,11 +104,10 @@ async function fingerprintOf(createdAt: number, body: string): Promise<string | 
   return toHex(new Uint8Array(digest));
 }
 
-/** The text within what a post holds, not cutting a character in two. */
-function withinLength(body: string, room = MAX_POST_BODY): string {
-  if (body.length <= room) return body;
-  const cut = body.slice(0, room);
-  return /[\uD800-\uDBFF]$/.test(cut) ? cut.slice(0, -1) : cut;
+/** The text within what a post holds, in the code points the post's schema counts. */
+function withinLength(body: string, room: number = MAX_POST_BODY): string {
+  const chars = Array.from(body);
+  return chars.length <= room ? body : chars.slice(0, room).join("");
 }
 
 /** The post id this run writes under, or the post already there; throws while another run holds it. */
@@ -233,7 +232,7 @@ export async function importPost(
     return nothing("empty");
   }
   const link = post.link ? `\n\n${post.link}` : "";
-  const text = withinLength(body, MAX_POST_BODY - link.length);
+  const text = withinLength(body, MAX_POST_BODY - Array.from(link).length);
   const written = await createPost(env, communityId, source.accountId, {
     body: `${text}${link}`.trim(),
     media,

@@ -57,6 +57,7 @@ import samtak.spjall.brand.R
 import samtak.spjall.core.Conversation
 import samtak.spjall.core.Mute
 import samtak.spjall.core.Person
+import samtak.spjall.limits.Limits
 import samtak.spjall.ui.AppIcons
 import samtak.spjall.ui.Avatar
 import samtak.spjall.ui.CancelButton
@@ -68,6 +69,7 @@ import samtak.spjall.ui.SectionLabel
 import samtak.spjall.ui.avatarKind
 import samtak.spjall.ui.clockTime
 import samtak.spjall.ui.duration
+import samtak.spjall.ui.fitsIn
 import samtak.spjall.ui.photoOf
 import samtak.spjall.ui.shownName
 import samtak.spjall.ui.title
@@ -408,7 +410,7 @@ private fun RenameDialog(
         text = {
             OutlinedTextField(
                 value = text,
-                onValueChange = { if (it.length <= NAME_LIMIT) text = it },
+                onValueChange = { if (it.fitsIn(Limits.GROUP_NAME_CHARS)) text = it },
                 placeholder = { Text(stringResource(R.string.group_name_hint)) },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
@@ -516,6 +518,3 @@ private const val ACTION = 40
 private const val ACTION_ICON = 16
 private const val LARGE_AVATAR = 96
 private const val MEMBER_AVATAR = 36
-
-/** The longest a group's name may be (0078): a title, not a sentence. */
-private const val NAME_LIMIT = 64

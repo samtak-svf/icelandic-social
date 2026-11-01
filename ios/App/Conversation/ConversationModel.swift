@@ -34,7 +34,7 @@ final class ConversationModel {
 
     nonisolated static let page: UInt32 = 50
     /// The largest photo or file the core sends (decision 0023), 25 MB.
-    nonisolated static let mediaLimit: Int64 = 25 * 1_024 * 1_024
+    nonisolated static let mediaLimit = Int64(Limits.mediaBytes)
     // The core sends at most one active frame each 3 s while one types.
     nonisolated static let typingIdle: Duration = .seconds(5)
     nonisolated static let typingShown: Duration = .seconds(6)

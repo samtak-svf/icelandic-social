@@ -1,4 +1,5 @@
 import { createRoute, z } from "@hono/zod-openapi";
+import { LIMITS } from "../limits.gen.ts";
 import { ACCOUNT, AUTHED, INVALID } from "./common.ts";
 import { json, PostPage } from "./social.ts";
 
@@ -14,7 +15,7 @@ export const HOME_WINDOW_DAYS = [1, 4, 16, 30] as const;
  * cost a call to its space, so this is what decision 0116 shortens if the
  * measurement fails, and no client may ask past it.
  */
-const HOME_PAGE = 30;
+const HOME_PAGE = LIMITS.homePage;
 
 /** Two parts, so a client can name only a width the server would read. */
 const HomeCursor = z

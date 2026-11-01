@@ -6,14 +6,14 @@
 
 use crate::api::{Profile, Transport};
 use crate::members::{Person, store_profile};
+use crate::text::{limits, text_length};
 use crate::{Client, ClientError, Conversation, authed};
 
-/// The most characters a search holds, counted as the server counts them:
-/// UTF-16 code units.
-pub const MAX_QUERY: usize = 100;
+/// The most characters a search holds, counted as the server counts them.
+pub const MAX_QUERY: usize = limits::PEOPLE_SEARCH_CHARS;
 
 /// The most a page holds; the server refuses more.
-const MAX_PAGE: u32 = 50;
+const MAX_PAGE: u32 = limits::PAGE_SIZE;
 
 /// A page of the directory, verified first, then by name.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -75,7 +75,7 @@ pub(crate) fn query(text: Option<&str>) -> Result<Option<&str>, ClientError> {
     let Some(text) = text.map(str::trim).filter(|t| !t.is_empty()) else {
         return Ok(None);
     };
-    if text.encode_utf16().count() > MAX_QUERY {
+    if text_length(text) > MAX_QUERY {
         return Err(ClientError::Invalid("a search over 100 characters"));
     }
     Ok(Some(text))
@@ -185,6 +185,8 @@ mod tests {
         assert_eq!(query(Some("  ")).unwrap(), None);
         assert_eq!(query(Some(" Guðrún ")).unwrap(), Some("Guðrún"));
         assert!(query(Some(&"þ".repeat(MAX_QUERY))).is_ok());
+        // Code points, as the server counts: UTF-16 would make this twice the limit.
+        assert!(query(Some(&"\u{1F600}".repeat(MAX_QUERY))).is_ok());
         assert!(matches!(
             query(Some(&"þ".repeat(MAX_QUERY + 1))),
             Err(ClientError::Invalid(_))

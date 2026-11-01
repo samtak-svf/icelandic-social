@@ -81,7 +81,7 @@ pre-push:
     # Every brand passes its contract, and the committed platform outputs
     # match the active brand byte for byte.
     brand:
-      run: node tooling/brand-check.mjs && node tooling/brand-gen.mjs --check
+      run: node tooling/brand-check.mjs && node tooling/brand-gen.mjs --check && node tooling/limits-gen.mjs --check
 
     brand-leak:
       run: node tooling/brand-leak-guard.mjs

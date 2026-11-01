@@ -36,15 +36,17 @@ import samtak.spjall.core.PostImage
 import samtak.spjall.core.ReportTarget
 import samtak.spjall.core.ReportTargetKind
 import samtak.spjall.core.WallAudience
+import samtak.spjall.limits.Limits
 import samtak.spjall.me.Confirm
 import samtak.spjall.ui.Dates
 import samtak.spjall.ui.Palette
+import samtak.spjall.ui.fitsIn
 import java.time.YearMonth
 import java.time.format.TextStyle
 
 // The tabs of a wall (decision 0115) and the menu a person's screen has.
 
-private const val BIO_MAX = 120
+private const val BIO_MAX = Limits.BIO_CHARS
 private const val GRID_COLUMNS = 3
 private const val GRID_GAP = 4
 
@@ -214,7 +216,7 @@ private fun BioEditor(
     actions: PersonActions,
 ) {
     var text by rememberSaveable(saved) { mutableStateOf(saved) }
-    val tooLong = text.length > BIO_MAX
+    val tooLong = !text.fitsIn(BIO_MAX)
     // A suspended account may clear the bio, not write it (0115).
     val clearOnly = suspended()
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {

@@ -19,6 +19,8 @@ import { outcome, useLoad } from "./outcome.ts";
 import { Button, ProblemText, Status, VerifiedMark } from "../ui/kit.tsx";
 import { LAYOUTS } from "../ui/layout.ts";
 import { useSizeClass } from "../ui/size-class.ts";
+import { LIMITS } from "../generated/limits.ts";
+import { clipText } from "../lib/char-count.ts";
 
 // Stjórna (decision 0079): what a community's owner and moderators reach
 // for, on a page of its own (decision 0080) that the community's `⋯` menu opens. The reports and the join requests each with
@@ -149,17 +151,17 @@ function Edit({
           <input
             id={`${id}-name`}
             required
-            maxLength={80}
             value={name}
-            onChange={(event) => setName(event.target.value)}
+            onChange={(event) => setName(clipText(event.target.value, LIMITS.communityNameChars))}
             className={field}
           />
           <label htmlFor={`${id}-description`}>{strings.community_description}</label>
           <textarea
             id={`${id}-description`}
-            maxLength={500}
             value={description}
-            onChange={(event) => setDescription(event.target.value)}
+            onChange={(event) =>
+              setDescription(clipText(event.target.value, LIMITS.communityDescriptionChars))
+            }
             className={`${field} py-2`}
           />
           <fieldset className="flex flex-col">

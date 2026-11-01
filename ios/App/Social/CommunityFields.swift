@@ -11,13 +11,13 @@ struct CommunityTextFields: View {
     var body: some View {
         TextField("community_name", text: $name)
             .onChange(of: name) { _, typed in
-                if typed.count > communityNameLimit { name = String(typed.prefix(communityNameLimit)) }
+                if textLength(typed) > communityNameLimit { name = clippedText(typed, to: communityNameLimit) }
             }
         TextField("community_description", text: $description, axis: .vertical)
             .lineLimit(2...6)
             .onChange(of: description) { _, typed in
-                if typed.count > communityDescriptionLimit {
-                    description = String(typed.prefix(communityDescriptionLimit))
+                if textLength(typed) > communityDescriptionLimit {
+                    description = clippedText(typed, to: communityDescriptionLimit)
                 }
             }
     }

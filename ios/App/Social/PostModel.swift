@@ -70,7 +70,7 @@ final class PostModel {
     /// The draft may be sent: something written, an image picked, or both, and the text not over the limit.
     var sendable: Bool {
         let body = draft.trimmingCharacters(in: .whitespacesAndNewlines)
-        return writes && (!body.isEmpty || image != nil) && body.count <= Self.commentLimit
+        return writes && (!body.isEmpty || image != nil) && textLength(body) <= Self.commentLimit
     }
 
     /// Takes the image picked for the comment as a local copy. A comment holds one: another is refused with a
@@ -161,7 +161,7 @@ final class PostModel {
     /// characters, not blank). Nothing is sent without one.
     func removeWallComment(_ commentId: String, reason: String) async {
         let reason = reason.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard ownsWall, !reason.isEmpty, reason.count <= Self.reasonLimit else { return }
+        guard ownsWall, !reason.isEmpty, textLength(reason) <= Self.reasonLimit else { return }
         let social = social
         await perform(again: { await self.removeWallComment(commentId, reason: reason) }) {
             try await offMain { try social.removeWallComment(commentId, reason: reason) }
@@ -184,7 +184,7 @@ final class PostModel {
     }
 
     /// The longest reason for removing a comment.
-    static let reasonLimit = 500
+    static let reasonLimit = Limits.moderationNoteChars
 
     /// Answers `comment`: the composer says whose comment it is, and what is sent goes under it (decision 0071).
     /// A thread takes one level, so a reply has no reply action of its own.
@@ -344,7 +344,7 @@ final class PostModel {
     }
 
     /// The longest comment the server takes.
-    nonisolated static let commentLimit = 2_000
+    nonisolated static let commentLimit = Limits.commentChars
 
     /// A page of comments: a screenful and some.
     private nonisolated static let page: UInt32 = 30

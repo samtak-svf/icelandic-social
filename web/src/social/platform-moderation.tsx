@@ -27,6 +27,8 @@ import {
 import { AuthorName } from "./author-name.tsx";
 import { Quoted, REASONS, useCards } from "./report-card.tsx";
 import { ReviewList } from "./platform-reviews.tsx";
+import { LIMITS } from "../generated/limits.ts";
+import { clipText } from "../lib/char-count.ts";
 
 // Samtak's moderation page (decision 0115, step 2e): the open reports made to
 // the platform, with the actions a platform moderator has on an account, the
@@ -220,8 +222,7 @@ function Item({
         id={`${id}-reason`}
         aria-describedby={`${id}-reason-help`}
         value={reason}
-        maxLength={500}
-        onChange={(event) => setReason(event.target.value)}
+        onChange={(event) => setReason(clipText(event.target.value, LIMITS.moderationNoteChars))}
         className="min-h-11 rounded-md border border-border-strong bg-surface px-3"
       />
       <p id={`${id}-reason-help`} className="text-sm text-muted-fg">

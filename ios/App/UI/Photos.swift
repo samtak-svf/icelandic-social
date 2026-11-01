@@ -220,8 +220,8 @@ private func downsampled(_ path: String, maxPixel: Int) -> UIImage? {
 /// The longest edge of a master, in pixels (decision 0086).
 let masterLongEdge = 2400
 
-/// What a master may weigh: the server refuses more than 10 MB.
-let masterByteLimit = 10_000_000
+/// What a master may weigh: the most the server takes.
+let masterByteLimit = Limits.imageBytes
 
 /// The photo at `url` as the master the server keeps and frames (decision 0086): upright, its long edge no longer
 /// than `longEdge` pixels (never scaled up), written to a new temporary JPEG at quality 0.9, stepping down to 0.6

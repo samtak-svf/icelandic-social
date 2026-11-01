@@ -44,6 +44,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import samtak.spjall.brand.R
 import samtak.spjall.core.Conversation
+import samtak.spjall.limits.Limits
 import samtak.spjall.ui.AppIcons
 import samtak.spjall.ui.Avatar
 import samtak.spjall.ui.EmptyState
@@ -54,6 +55,7 @@ import samtak.spjall.ui.TrailingBell
 import samtak.spjall.ui.Type
 import samtak.spjall.ui.VerifiedMark
 import samtak.spjall.ui.avatarKind
+import samtak.spjall.ui.fitsIn
 import samtak.spjall.ui.lastLine
 import samtak.spjall.ui.photoOf
 import samtak.spjall.ui.rowMotion
@@ -133,7 +135,7 @@ private fun PickSearch(
 ) {
     OutlinedTextField(
         value = query,
-        onValueChange = { if (it.length <= QUERY_LIMIT) onSearch(it) },
+        onValueChange = { if (it.fitsIn(QUERY_LIMIT)) onSearch(it) },
         placeholder = { Text(stringResource(R.string.pick_search)) },
         leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
         singleLine = true,
@@ -216,4 +218,4 @@ private const val ROW_HEIGHT = 64
 private const val PREVIEW_LINES = 3
 
 /** The longest search, as the list's. */
-private const val QUERY_LIMIT = 100
+private const val QUERY_LIMIT = Limits.PEOPLE_SEARCH_CHARS

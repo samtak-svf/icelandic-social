@@ -121,11 +121,11 @@ final class ReportsModel {
     /// A moderator's reason: something written, and not over the limit.
     nonisolated static func valid(_ reason: String) -> Bool {
         let reason = reason.trimmingCharacters(in: .whitespacesAndNewlines)
-        return !reason.isEmpty && reason.count <= reasonLimit
+        return !reason.isEmpty && textLength(reason) <= reasonLimit
     }
 
     /// The longest reason the server takes.
-    nonisolated static let reasonLimit = 500
+    nonisolated static let reasonLimit = Limits.moderationNoteChars
 
     private func first() async throws {
         let social = social

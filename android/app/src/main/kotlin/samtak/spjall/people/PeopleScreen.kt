@@ -47,6 +47,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import samtak.spjall.brand.R
 import samtak.spjall.core.Person
+import samtak.spjall.limits.Limits
 import samtak.spjall.ui.AVATAR_SIZE
 import samtak.spjall.ui.AppIcons
 import samtak.spjall.ui.Avatar
@@ -56,6 +57,7 @@ import samtak.spjall.ui.Palette
 import samtak.spjall.ui.ProblemCard
 import samtak.spjall.ui.TrailingBell
 import samtak.spjall.ui.VerifiedMark
+import samtak.spjall.ui.fitsIn
 import samtak.spjall.ui.rowMotion
 import samtak.spjall.ui.shownName
 
@@ -126,7 +128,7 @@ private fun SearchField(
     LaunchedEffect(Unit) { focus.requestFocus() }
     OutlinedTextField(
         value = query,
-        onValueChange = { if (it.length <= QUERY_LIMIT) onSearch(it) },
+        onValueChange = { if (it.fitsIn(QUERY_LIMIT)) onSearch(it) },
         placeholder = { Text(stringResource(R.string.people_search)) },
         leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
         singleLine = true,
@@ -287,4 +289,4 @@ private fun PersonRow(
 private const val ROW_HEIGHT = 64
 
 /** The longest search the server takes (decision 0036). */
-private const val QUERY_LIMIT = 100
+private const val QUERY_LIMIT = Limits.PEOPLE_SEARCH_CHARS

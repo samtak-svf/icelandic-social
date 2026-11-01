@@ -1,4 +1,5 @@
 import { createRoute, z } from "@hono/zod-openapi";
+import { LIMITS } from "../limits.gen.ts";
 import {
   ACCOUNT,
   AUTHED,
@@ -79,7 +80,7 @@ const PublishImport = z
     }),
     from: z.int().min(0).optional().openapi({ description: "Only posts from this date on" }),
     to: z.int().min(0).optional().openapi({ description: "Only posts up to this date" }),
-    excluded: z.array(z.string().max(64)).max(1000).optional().openapi({
+    excluded: z.array(z.string().max(64)).max(LIMITS.excludedPostsCount).optional().openapi({
       description: "Ids of posts to leave out",
     }),
   })

@@ -32,7 +32,7 @@ use crate::media::{MediaError, Opener, Sealer, file_name, is_object, remove, unc
 use crate::{Client, ClientError, authed};
 
 /// The largest history, in plaintext bytes (0064).
-pub const MAX_HISTORY: u64 = 1024 * 1024 * 1024;
+pub const MAX_HISTORY: u64 = crate::text::limits::HISTORY_BYTES;
 
 /// How much of a history one request fetches (0081): the size of a part
 /// the server names, so a browser's synchronous request holds one at most.

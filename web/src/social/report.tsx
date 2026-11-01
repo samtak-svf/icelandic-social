@@ -4,6 +4,8 @@ import { report, type ReportTarget } from "../generated/api.ts";
 import { strings } from "../generated/brand/strings.ts";
 import { Button, type ButtonTone, ProblemText, Status } from "../ui/kit.tsx";
 import { outcome } from "./outcome.ts";
+import { LIMITS } from "../generated/limits.ts";
+import { clipText } from "../lib/char-count.ts";
 
 // Reporting a post or comment to the moderators (decision 0066). Unlawful
 // content goes to the platform's moderators; the rest to the community's.
@@ -83,8 +85,7 @@ export function ReportForm({
       <textarea
         id={note}
         value={text}
-        maxLength={500}
-        onChange={(event) => setText(event.target.value)}
+        onChange={(event) => setText(clipText(event.target.value, LIMITS.moderationNoteChars))}
         className="rounded-md border border-border-strong bg-surface p-2"
       />
       <Button tone="primary" type="submit" disabled={busy || reason === null}>

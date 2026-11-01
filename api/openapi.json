@@ -1918,6 +1918,13 @@
             ],
             "description": "When it was deleted (Unix milliseconds); only a platform moderator sees a deleted community, and restores it within 30 days"
           },
+          "restorableUntil": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "description": "Until when a platform moderator can restore it (Unix milliseconds), or null when it is not deleted"
+          },
           "joinDeclinedUntil": {
             "type": [
               "integer",
@@ -2021,6 +2028,7 @@
           "mutedUntil",
           "readOnly",
           "deletedAt",
+          "restorableUntil",
           "joinDeclinedUntil",
           "pendingJoinRequests",
           "openReports",

@@ -20,6 +20,7 @@ import samtak.spjall.core.ModerationAction
 import samtak.spjall.core.Report
 import samtak.spjall.core.ReportState
 import samtak.spjall.core.ReportTargetKind
+import samtak.spjall.ui.fitsIn
 
 /**
  * A community's report queue (decision 0066), for its owner and moderators, oldest first, open or closed: what
@@ -95,9 +96,7 @@ class ReportsViewModel(
         reportId: String,
         text: String,
     ) {
-        if (text.length <=
-            REASON_LIMIT
-        ) {
+        if (text.fitsIn(REASON_LIMIT)) {
             _state.update { it.copy(reasons = it.reasons + (reportId to text), done = false) }
         }
     }

@@ -63,6 +63,13 @@ val uploadStoreFile: String? = env("SPJALL_UPLOAD_STORE_FILE")
 // repo was recreated (decision 0075).
 val playVersionCodeOffset = 200
 
+androidComponents {
+    onVariants { variant ->
+        // The limits, written by `pnpm check:limits`'s generator (tooling/limits-gen.mjs).
+        variant.sources.kotlin?.addStaticSourceDirectory("src/generated/kotlin")
+    }
+}
+
 android {
     // Not the application id: `is` is a Kotlin keyword (decision 0004).
     namespace = "samtak.spjall"

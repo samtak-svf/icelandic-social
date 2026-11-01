@@ -1,5 +1,6 @@
 import { db, mediaBucket } from "../../env/index.ts";
 import { type ApprovedLink, approvedLink, type Device } from "../../identity/index.ts";
+import { LIMITS } from "../../limits.gen.ts";
 import { abortUpload, PART_SIZE, partLength, partsOf, uploadPart } from "../../shared/multipart.ts";
 
 // History from a sibling device (decision 0064, #300). The core seals the
@@ -10,7 +11,7 @@ import { abortUpload, PART_SIZE, partLength, partsOf, uploadPart } from "../../s
 // request body is far smaller than a history.
 
 /** The most history the core sends: 1 GiB of plaintext (core/client/src/history.rs). */
-const MAX_HISTORY = 1024 * 1024 * 1024;
+const MAX_HISTORY = LIMITS.historyBytes;
 
 /** The core seals in segments of this many bytes, each with a 16-byte tag. */
 const SEGMENT = 64 * 1024;

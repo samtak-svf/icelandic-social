@@ -5,6 +5,7 @@ import { Button, Status } from "../ui/kit.tsx";
 import { ConversationAvatar } from "./conversation-avatar.tsx";
 import { type GroupProblem, NAME_LIMIT } from "./group-change.ts";
 import { conversationTitle, isGroup, shownName } from "./people.ts";
+import { clipText } from "../lib/char-count.ts";
 
 /** What went wrong with the last change of the photo; "unsupported" has no retry. */
 export type PhotoProblem = "unsupported" | "failed";
@@ -171,9 +172,10 @@ function GroupActions({
             <span className="text-sm text-muted-fg">{strings.group_name_title}</span>
             <input
               value={dialog.draft}
-              maxLength={NAME_LIMIT}
               placeholder={strings.group_name_hint}
-              onChange={(e) => controls.ask({ kind: "rename", draft: e.target.value })}
+              onChange={(e) =>
+                controls.ask({ kind: "rename", draft: clipText(e.target.value, NAME_LIMIT) })
+              }
               className="min-h-11 rounded-md border border-border-strong bg-surface px-3"
             />
           </label>

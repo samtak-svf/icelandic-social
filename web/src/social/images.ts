@@ -1,15 +1,17 @@
-// The images of a post (decision 0065): at most four (a comment: one, 0082), each at most 10 MB, as
+import { LIMITS } from "../generated/limits.ts";
+
+// The images of a post (decision 0065) and of a comment (0082), as many and as large as
 // the server takes them. A choice past either is refused here, before any
 // upload, with a sentence that says why.
 
 /** The most images one post holds. */
-const MAX_IMAGES = 4;
+const MAX_IMAGES = LIMITS.postMediaCount;
 
 /** The most images one comment holds (decision 0082). */
-export const MAX_COMMENT_IMAGES = 1;
+export const MAX_COMMENT_IMAGES = LIMITS.commentMediaCount;
 
 /** The largest upload the server takes, in bytes. */
-export const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
+export const MAX_IMAGE_BYTES = LIMITS.imageBytes;
 
 /** The formats the server reads; anything else it refuses. */
 export const IMAGE_TYPES = "image/jpeg,image/png,image/webp,image/gif,image/avif";

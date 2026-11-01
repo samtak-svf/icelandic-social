@@ -29,11 +29,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import samtak.spjall.brand.R
 import samtak.spjall.core.Person
+import samtak.spjall.limits.Limits
 import samtak.spjall.ui.Avatar
 import samtak.spjall.ui.EmptyState
 import samtak.spjall.ui.Palette
 import samtak.spjall.ui.SansFamily
 import samtak.spjall.ui.VerifiedMark
+import samtak.spjall.ui.fitsIn
 import samtak.spjall.ui.shownName
 
 // The search on the conversation list (decisions 0036 and 0038): the field under the header and what it found.
@@ -69,7 +71,7 @@ internal fun SearchField(
 ) {
     OutlinedTextField(
         value = query,
-        onValueChange = { if (it.length <= QUERY_LIMIT) onSearch(it) },
+        onValueChange = { if (it.fitsIn(QUERY_LIMIT)) onSearch(it) },
         placeholder = { Text(stringResource(R.string.conversations_search)) },
         leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
         singleLine = true,
@@ -112,6 +114,6 @@ internal fun NoneFound() {
 }
 
 /** The longest search the server and the core take (decision 0036). */
-private const val QUERY_LIMIT = 100
+private const val QUERY_LIMIT = Limits.PEOPLE_SEARCH_CHARS
 
 private val PERSON_NAME = TextStyle(fontFamily = SansFamily, fontWeight = FontWeight.Black, fontSize = 14.5.sp)

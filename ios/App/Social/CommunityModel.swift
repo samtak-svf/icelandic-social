@@ -182,7 +182,7 @@ final class CommunityModel {
     /// The draft may be sent: something written, an image picked, or both, and the text not over the limit.
     var sendable: Bool {
         let body = draft.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard body.count <= Self.postLimit else { return false }
+        guard textLength(body) <= Self.postLimit else { return false }
         if let pollFields {
             return writes && images.isEmpty && pollDraftValid(question: body, options: pollFields)
         }
@@ -194,12 +194,12 @@ final class CommunityModel {
 
     /// What a poll's field keeps of [text]: the API counts code points, not what the screen draws as one character.
     nonisolated static func cappedPollOption(_ text: String) -> String {
-        String(String.UnicodeScalarView(text.unicodeScalars.prefix(pollOptionLimit)))
+        clippedText(text, to: pollOptionLimit)
     }
 
-    nonisolated static let pollMinOptions = 2
-    nonisolated static let pollMaxOptions = 6
-    nonisolated static let pollOptionLimit = 80
+    nonisolated static let pollMinOptions = Limits.pollOptionsMin
+    nonisolated static let pollMaxOptions = Limits.pollOptionsMax
+    nonisolated static let pollOptionLimit = Limits.pollOptionChars
 
     func load() async {
         let social = social
@@ -343,8 +343,8 @@ final class CommunityModel {
     func update(name: String, description: String, audience: CommunityAudience) async -> Bool {
         let name = name.trimmingCharacters(in: .whitespacesAndNewlines)
         let description = description.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard owns, let community, !name.isEmpty, name.count <= communityNameLimit,
-            description.count <= communityDescriptionLimit
+        guard owns, let community, !name.isEmpty, textLength(name) <= communityNameLimit,
+            textLength(description) <= communityDescriptionLimit
         else { return false }
         let social = social
         let id = communityId
@@ -724,13 +724,13 @@ final class CommunityModel {
     }
 
     /// The longest post the server takes.
-    nonisolated static let postLimit = 5_000
+    nonisolated static let postLimit = Limits.postBodyChars
 
     /// The most images one post holds (decision 0065).
-    nonisolated static let imageCount = 4
+    nonisolated static let imageCount = Limits.postMediaCount
 
     /// The largest image the server takes for a post, 10 MB.
-    nonisolated static let imageLimit: Int64 = 10 * 1_024 * 1_024
+    nonisolated static let imageLimit = Int64(Limits.imageBytes)
 
     /// The newest page of posts, when this account may read them; none otherwise. The search starts over, so
     /// joining or leaving shows the plain list.

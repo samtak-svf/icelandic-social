@@ -15,14 +15,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import samtak.spjall.brand.R
+import samtak.spjall.limits.Limits
 import samtak.spjall.ui.CancelButton
 import samtak.spjall.ui.Palette
+import samtak.spjall.ui.fitsIn
 
 /** The longest reason the core takes (0115). */
-internal const val REMOVE_REASON_MAX = 500
+internal const val REMOVE_REASON_MAX = Limits.MODERATION_NOTE_CHARS
 
 /** Whether a reason can be sent: not blank, and within what the core takes. */
-internal fun removeReasonOk(reason: String) = reason.isNotBlank() && reason.length <= REMOVE_REASON_MAX
+internal fun removeReasonOk(reason: String) = reason.isNotBlank() && reason.fitsIn(REMOVE_REASON_MAX)
 
 /** Asks the wall's owner why a comment is removed; the one who wrote it reads the reason (0115). */
 @Composable

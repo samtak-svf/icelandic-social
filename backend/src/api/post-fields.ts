@@ -1,17 +1,18 @@
 import { z } from "@hono/zod-openapi";
+import { LIMITS } from "../limits.gen.ts";
 import { OpaqueId } from "./common.ts";
 import { POLL_OPTIONS } from "./poll-schema.ts";
 
 // What a post is made of, shared by the routes of a community and of a wall.
 
 /** How many images a post holds. */
-export const MAX_POST_MEDIA = 4;
+export const MAX_POST_MEDIA = LIMITS.postMediaCount;
 
 /** How long a post's text is, in characters. */
-export const MAX_POST_BODY = 5000;
+export const MAX_POST_BODY = LIMITS.postBodyChars;
 
 /** The longest bio, in characters (decision 0115). */
-export const MAX_BIO = 120;
+export const MAX_BIO = LIMITS.bioChars;
 
 export const MediaId = OpaqueId.openapi({ example: "sm_3f9a1b2c3d4e5f60718293a4b5c6d7e8" });
 
