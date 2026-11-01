@@ -1,3 +1,4 @@
+import { readFile } from "node:fs/promises";
 import { strings } from "../src/generated/brand/strings.ts";
 import { pageOverflow, person, runJobs } from "./social-helpers.ts";
 import { expect, test, WEB } from "./origin.ts";
@@ -33,9 +34,9 @@ test("an export: asked for in settings, built by a job, downloaded as a ZIP", as
   await a.getByRole("button", { name: strings.export_download }).click();
   const file = await saved;
   expect(file.suggestedFilename()).toBe("export.zip");
-  expect((await file.createReadStream().then((s) => s.read(4)))?.toString("latin1")).toBe(
-    "PK\u0003\u0004",
-  );
+  const bytes = await readFile(await file.path());
+  expect(bytes.subarray(0, 4).toString("latin1")).toBe("PK\u0003\u0004");
+  expect(bytes.includes("export.json")).toBe(true);
   // Asking again within a day is not offered: the ready file is shown instead.
   await expect(a.getByRole("button", { name: strings.export_start })).toHaveCount(0);
 });
