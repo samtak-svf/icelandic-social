@@ -21,8 +21,8 @@ class LinksTest {
 
     @Test
     fun theSchemeIsFoundInAnyCase() {
-        assertEquals(listOf("HTTPS://Samtak.is" to "HTTPS://Samtak.is"), found("HTTPS://Samtak.is"))
-        assertEquals(listOf("WWW.ruv.is" to "https://WWW.ruv.is"), found("WWW.ruv.is"))
+        assertEquals(listOf("HTTPS://Samtak.is" to "https://Samtak.is"), found("HTTPS://Samtak.is"))
+        assertEquals(listOf("WWW.ruv.is" to "https://www.ruv.is"), found("WWW.ruv.is"))
     }
 
     @Test

@@ -20,6 +20,7 @@ import samtak.spjall.core.SocialNotificationKind
 import samtak.spjall.social.NoticeBadge
 import samtak.spjall.social.ago
 import samtak.spjall.social.label
+import samtak.spjall.social.monthName
 import samtak.spjall.social.noticeLine
 import java.time.Instant
 
@@ -68,6 +69,13 @@ class PresentationVectorsTest {
         for (case in cases("initials").map { it.jsonObject }) {
             val name = case.getValue("name").let { if (it is JsonNull) null else it.jsonPrimitive.content }
             assertEquals("$name", case.text("initials"), initials(name))
+        }
+    }
+
+    @Test
+    fun aJoinedMonthFollowsEveryVector() {
+        for (case in cases("month").map { it.jsonObject }) {
+            assertEquals(case.text("month"), case.text("expected"), monthName(case.text("month")))
         }
     }
 

@@ -46,6 +46,15 @@ final class PresentationVectorsTests: XCTestCase {
         }
     }
 
+    func testAJoinedMonthFollowsEveryVector() throws {
+        let all = try cases("month")
+        XCTAssertFalse(all.isEmpty)
+        for vector in all {
+            let month = vector["month"] as! String
+            XCTAssertEqual(Dates.month(month, calendar: calendar), vector["expected"] as? String, month)
+        }
+    }
+
     func testInitialsFollowEveryVector() throws {
         let all = try cases("initials")
         XCTAssertFalse(all.isEmpty)

@@ -15,6 +15,7 @@ import { readJson } from "./lib/repo.mjs";
 const SECTIONS = /** @type {const} */ ([
   "relativeTime",
   "initials",
+  "month",
   "stamp",
   "listStamp",
   "problem",
@@ -186,6 +187,7 @@ function caseProblems(section, c, keys, where) {
       ...f.key(keys),
     ];
   }
+  if (section === "month") return [...f.text("month"), ...f.text("expected")];
   return [...f.instant("at"), ...f.instant("now"), ...f.text("expected")];
 }
 

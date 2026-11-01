@@ -1,0 +1,173 @@
+{
+  "note": "The web links of a message (decisions 0046, 0121). Android and iOS find each one as written and open it with the scheme lower-cased, a www. link over https; the core reads what is opened and names the screen, null for the browser. A link whose address has no host is no link.",
+  "cases": [
+    {
+      "note": "a link runs to the next space",
+      "text": "Sjá https://samtak.is/a?b=1 og http://example.is eða www.vedur.is/spa takk",
+      "links": [
+        {
+          "written": "https://samtak.is/a?b=1",
+          "opens": "https://samtak.is/a?b=1",
+          "screen": null
+        },
+        { "written": "http://example.is", "opens": "http://example.is", "screen": null },
+        { "written": "www.vedur.is/spa", "opens": "https://www.vedur.is/spa", "screen": null }
+      ]
+    },
+    {
+      "note": "an own post",
+      "text": "https://spjall.samtak.is/posts/p1",
+      "links": [
+        {
+          "written": "https://spjall.samtak.is/posts/p1",
+          "opens": "https://spjall.samtak.is/posts/p1",
+          "screen": { "kind": "post", "id": "p1" }
+        }
+      ]
+    },
+    {
+      "note": "an own community",
+      "text": "https://spjall.samtak.is/communities/c1",
+      "links": [
+        {
+          "written": "https://spjall.samtak.is/communities/c1",
+          "opens": "https://spjall.samtak.is/communities/c1",
+          "screen": { "kind": "community", "id": "c1" }
+        }
+      ]
+    },
+    {
+      "note": "an upper-case scheme on an own link opens the screen",
+      "text": "HTTPS://spjall.samtak.is/posts/p1",
+      "links": [
+        {
+          "written": "HTTPS://spjall.samtak.is/posts/p1",
+          "opens": "https://spjall.samtak.is/posts/p1",
+          "screen": { "kind": "post", "id": "p1" }
+        }
+      ]
+    },
+    {
+      "note": "a mixed-case scheme on an own link opens the screen",
+      "text": "Https://spjall.samtak.is/communities/c1",
+      "links": [
+        {
+          "written": "Https://spjall.samtak.is/communities/c1",
+          "opens": "https://spjall.samtak.is/communities/c1",
+          "screen": { "kind": "community", "id": "c1" }
+        }
+      ]
+    },
+    {
+      "note": "the host keeps its case, so an upper-case host goes to the browser",
+      "text": "https://SPJALL.samtak.is/posts/p1",
+      "links": [
+        {
+          "written": "https://SPJALL.samtak.is/posts/p1",
+          "opens": "https://SPJALL.samtak.is/posts/p1",
+          "screen": null
+        }
+      ]
+    },
+    {
+      "note": "an upper-case scheme keeps the rest as written",
+      "text": "HTTPS://Samtak.is/A",
+      "links": [
+        { "written": "HTTPS://Samtak.is/A", "opens": "https://Samtak.is/A", "screen": null }
+      ]
+    },
+    {
+      "note": "an upper-case www opens lower-cased, over https",
+      "text": "WWW.ruv.is",
+      "links": [{ "written": "WWW.ruv.is", "opens": "https://www.ruv.is", "screen": null }]
+    },
+    {
+      "note": "another scheme of the own host is the browser's",
+      "text": "http://spjall.samtak.is/posts/p1",
+      "links": [
+        {
+          "written": "http://spjall.samtak.is/posts/p1",
+          "opens": "http://spjall.samtak.is/posts/p1",
+          "screen": null
+        }
+      ]
+    },
+    {
+      "note": "the sentence's punctuation is not part of it",
+      "text": "Lestu https://ruv.is/a?!",
+      "links": [{ "written": "https://ruv.is/a", "opens": "https://ruv.is/a", "screen": null }]
+    },
+    {
+      "note": "punctuation goes from an own link too",
+      "text": "Sjá https://spjall.samtak.is/posts/p1.",
+      "links": [
+        {
+          "written": "https://spjall.samtak.is/posts/p1",
+          "opens": "https://spjall.samtak.is/posts/p1",
+          "screen": { "kind": "post", "id": "p1" }
+        }
+      ]
+    },
+    {
+      "note": "a bracket around the link goes",
+      "text": "(sjá www.ruv.is)",
+      "links": [{ "written": "www.ruv.is", "opens": "https://www.ruv.is", "screen": null }]
+    },
+    {
+      "note": "a bracket opened inside the link stays",
+      "text": "https://is.wikipedia.org/wiki/Hekla_(eldfjall).",
+      "links": [
+        {
+          "written": "https://is.wikipedia.org/wiki/Hekla_(eldfjall)",
+          "opens": "https://is.wikipedia.org/wiki/Hekla_(eldfjall)",
+          "screen": null
+        }
+      ]
+    },
+    {
+      "note": "Icelandic quotes around the link go",
+      "text": "„https://ruv.is“ og ‚https://ruv.is‘",
+      "links": [
+        { "written": "https://ruv.is", "opens": "https://ruv.is", "screen": null },
+        { "written": "https://ruv.is", "opens": "https://ruv.is", "screen": null }
+      ]
+    },
+    {
+      "note": "straight quotes around the link go",
+      "text": "\"https://ruv.is\"",
+      "links": [{ "written": "https://ruv.is", "opens": "https://ruv.is", "screen": null }]
+    },
+    {
+      "note": "a no-break space ends a link",
+      "text": "https://ruv.is takk",
+      "links": [{ "written": "https://ruv.is", "opens": "https://ruv.is", "screen": null }]
+    },
+    {
+      "note": "an ideographic space ends a link",
+      "text": "https://ruv.is　takk",
+      "links": [{ "written": "https://ruv.is", "opens": "https://ruv.is", "screen": null }]
+    },
+    {
+      "note": "a link starts a word, not the end of one",
+      "text": "abcwww.ruv.is og foohttps://ruv.is",
+      "links": []
+    },
+    {
+      "note": "a letter written with a combining mark is a letter",
+      "text": "éhttps://ruv.is",
+      "links": []
+    },
+    { "note": "plain text", "text": "Sæl, ertu við?", "links": [] },
+    { "note": "a bare scheme and a bare www", "text": "https:// og www.", "links": [] },
+    { "note": "no host before the path", "text": "https:///a", "links": [] },
+    { "note": "no host before the query", "text": "http://?a", "links": [] },
+    { "note": "no host before the port", "text": "https://:80/a", "links": [] },
+    { "note": "a bracket that never closes", "text": "https://[x/a", "links": [] },
+    { "note": "a port that is no number", "text": "https://ruv.is:abc/a", "links": [] },
+    {
+      "note": "a link that does not parse does not stop the next",
+      "text": "https:///a og https://ruv.is",
+      "links": [{ "written": "https://ruv.is", "opens": "https://ruv.is", "screen": null }]
+    }
+  ]
+}

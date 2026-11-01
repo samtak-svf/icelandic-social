@@ -3,7 +3,7 @@ import vectors from "../../../api/presentation.vectors.json" with { type: "json"
 import { strings } from "../generated/brand/strings.ts";
 import { describe as describeProblem, refused } from "../problem.ts";
 import { initials } from "../social/avatar.tsx";
-import { listStamp } from "./is-format.ts";
+import { formatIsMonth, listStamp } from "./is-format.ts";
 import { noticeText } from "./notice-text.ts";
 import { relativeTime } from "./relative-time.ts";
 
@@ -38,6 +38,14 @@ describe("the shared initials", () => {
   for (const v of vectors.initials) {
     it(JSON.stringify(v.name), () => {
       expect(initials(v.name)).toBe(v.initials);
+    });
+  }
+});
+
+describe("the shared joined months", () => {
+  for (const v of vectors.month) {
+    it(v.month, () => {
+      expect(formatIsMonth(v.month)).toBe(v.expected);
     });
   }
 });
