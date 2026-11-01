@@ -154,6 +154,9 @@
     "one": "{count} hefur lesið",
     "other": "{count} hafa lesið"
   },
+  "read_by_title": "Lesið af",
+  "read_by_faces": "Lesið af {names}",
+  "read_by_more": "+{count}",
   "read_receipts_setting": "Láta vita þegar ég les",
   "read_receipts_hint": "Ef þú slekkur á þessu sérð þú heldur ekki hvenær aðrir lesa.",
   "typing_setting": "Sýna þegar ég skrifa",

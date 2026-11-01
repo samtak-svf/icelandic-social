@@ -1,7 +1,9 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import type { Content, Item, Person } from "../generated/core.d.ts";
-import { runStarts } from "./people.ts";
+import { readFacesLine, runStarts } from "./people.ts";
+import { strings } from "../generated/brand/strings.ts";
+import { ReadByList } from "./read-faces.tsx";
 import { ThreadItems } from "./thread-items.tsx";
 
 const MINUTE = 60_000;
@@ -74,5 +76,53 @@ describe("runStarts groups a thread as the apps do (0022)", () => {
     ],
   ])("%s", (_case, items, starts) => {
     expect(runStarts(items)).toEqual(starts);
+  });
+});
+
+describe("faces under a message show who has read it (0125)", () => {
+  const crowd = ["Ása", "Bo", "Cy", "Di", "Eva", "Fía"].map((n, i) => person(`r${i}`, n));
+  const faces = (n: number, group = true) =>
+    renderToStaticMarkup(
+      <ThreadItems group={group} items={[item(asa, 0, { readHere: crowd.slice(0, n) })]} />,
+    );
+  const buttons = (html: string) => count(html, "<button");
+
+  it("shows nothing when nobody has read up to it", () => {
+    const html = faces(0);
+    expect(buttons(html)).toBe(0);
+    expect(html).not.toContain("aria-label");
+  });
+
+  it("draws one face to four, with no count", () => {
+    for (const n of [1, 4]) {
+      const html = faces(n);
+      expect(buttons(html)).toBe(1);
+      expect(count(html, "select-none")).toBe(n);
+      expect(html).not.toContain("+");
+    }
+  });
+
+  it("draws four faces and +N from five", () => {
+    const html = faces(6);
+    expect(count(html, "select-none")).toBe(4);
+    expect(html).toContain(strings.read_by_more({ count: 2 }));
+  });
+
+  it("is a real button named by everyone who read, the folded ones too", () => {
+    const html = faces(6);
+    expect(html).toContain(`aria-label="${readFacesLine(crowd)}"`);
+    expect(html).toContain("Fía");
+  });
+
+  it("lists everyone by name in the sheet", () => {
+    const html = renderToStaticMarkup(<ReadByList people={crowd} />);
+    for (const who of crowd) expect(html).toContain(who.name);
+  });
+
+  it("keeps the word in a 1:1, with no face", () => {
+    const html = faces(1, false);
+    expect(html).toContain(strings.read_marker);
+    expect(buttons(html)).toBe(0);
+    expect(count(html, "select-none")).toBe(0);
   });
 });

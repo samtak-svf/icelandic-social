@@ -275,6 +275,12 @@
         <item quantity="one">%1$d hefur lesið</item>
         <item quantity="other">%1$d hafa lesið</item>
     </plurals>
+    <!-- Title of the sheet naming everyone who has read a message in a group (docs/decisions/0125). -->
+    <string name="read_by_title">Lesið af</string>
+    <!-- Accessible name of the row of faces under a message: the names of those who have read it, joined as a list (docs/decisions/0125). -->
+    <string name="read_by_faces">Lesið af %1$s</string>
+    <!-- After the last face under a message: how many more have read it (docs/decisions/0125). -->
+    <string name="read_by_more">+%1$d</string>
     <!-- Toggle in Me: send read markers. -->
     <string name="read_receipts_setting">Láta vita þegar ég les</string>
     <!-- Explains that the read-marker toggle is reciprocal. -->

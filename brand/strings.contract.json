@@ -615,6 +615,24 @@
         "count": "int"
       }
     },
+    "read_by_title": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "Title of the sheet naming everyone who has read a message in a group (docs/decisions/0125)."
+    },
+    "read_by_faces": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "Accessible name of the row of faces under a message: the names of those who have read it, joined as a list (docs/decisions/0125).",
+      "placeholders": {
+        "names": "string"
+      }
+    },
+    "read_by_more": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "After the last face under a message: how many more have read it (docs/decisions/0125).",
+      "placeholders": {
+        "count": "int"
+      }
+    },
     "read_receipts_setting": {
       "surfaces": ["android", "ios"],
       "description": "Toggle in Me: send read markers."

@@ -1,4 +1,6 @@
+import { Fragment } from "react";
 import type { Item } from "../generated/core.d.ts";
+import { ReadFaces } from "./read-faces.tsx";
 import { isCard, itemLine, runStarts, shownName } from "./people.ts";
 
 /** A stable key: the seq once stored, else the envelope id, else the place. */
@@ -25,18 +27,25 @@ export function ThreadItems({ items, group }: Readonly<{ items: Item[]; group: b
           );
         }
         return (
-          <li key={itemKey(m, i)} className={`max-w-[85%] ${m.own ? "self-end" : "self-start"}`}>
-            {group && starts[i] && !m.own && (
-              <p className="px-1 pb-0.5 text-xs text-muted-fg">{shownName(m.sender)}</p>
+          <Fragment key={itemKey(m, i)}>
+            <li className={`max-w-[85%] ${m.own ? "self-end" : "self-start"}`}>
+              {group && starts[i] && !m.own && (
+                <p className="px-1 pb-0.5 text-xs text-muted-fg">{shownName(m.sender)}</p>
+              )}
+              <div
+                className={`whitespace-pre-wrap break-words rounded-md px-3 py-2 ${
+                  m.own ? "bg-primary text-primary-fg" : "bg-muted"
+                }`}
+              >
+                {line}
+              </div>
+            </li>
+            {m.readHere.length > 0 && (
+              <li className="self-end">
+                <ReadFaces people={m.readHere} group={group} />
+              </li>
             )}
-            <div
-              className={`whitespace-pre-wrap break-words rounded-md px-3 py-2 ${
-                m.own ? "bg-primary text-primary-fg" : "bg-muted"
-              }`}
-            >
-              {line}
-            </div>
-          </li>
+          </Fragment>
         );
       })}
     </ol>
