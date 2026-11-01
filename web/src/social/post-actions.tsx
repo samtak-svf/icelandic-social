@@ -7,6 +7,7 @@ import { Status } from "../ui/kit.tsx";
 import { EmojiPicker, QUICK } from "./emoji-picker.tsx";
 import { tally } from "./reaction-tally.ts";
 import { outcome } from "./outcome.ts";
+import { postAddress } from "./own-address.ts";
 import { useSuspended } from "./suspended.tsx";
 
 // What sits under a post's text (decision 0080): the Líkar, Athugasemd and Deila row.
@@ -90,7 +91,7 @@ export function ActionRow({
             onSelect={() => {
               close();
               void navigator.clipboard
-                .writeText(`${location.origin}/posts/${post.postId}`)
+                .writeText(postAddress(post.postId))
                 .then(() => setTold(true))
                 .catch(() => undefined);
             }}

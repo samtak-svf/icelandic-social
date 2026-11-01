@@ -4,6 +4,7 @@ import { inviteToCommunity, listPeople, type Community, type Profile } from "../
 import { strings } from "../generated/brand/strings.ts";
 import { Avatar } from "./avatar.tsx";
 import { outcome, useLoad } from "./outcome.ts";
+import { communityAddress } from "./own-address.ts";
 import { useSuspended } from "./suspended.tsx";
 import { Button, ProblemText, Status } from "../ui/kit.tsx";
 import { Dialog } from "../ui/dialog.tsx";
@@ -12,11 +13,6 @@ import { Dialog } from "../ui/dialog.tsx";
 // the invitation the API already has; an open one has nothing to ask of the
 // invited, so it hands out the community's own link, shared where the device
 // can share and copied where it cannot.
-
-/** The address a person who opens it lands on this community's page. */
-function communityLink(communityId: string): string {
-  return `${location.origin}/communities/${communityId}`;
-}
 
 /** Shares or copies the link; what to tell the person, or the problem. */
 async function shareLink(url: string, title: string): Promise<"shared" | "copied" | "failed"> {
@@ -37,7 +33,7 @@ export function Invite({ community }: Readonly<{ community: Community }>) {
   const [open, setOpen] = useState(false);
   const [told, setTold] = useState<string | null>(null);
   async function link() {
-    const done = await shareLink(communityLink(community.communityId), community.name);
+    const done = await shareLink(communityAddress(community.communityId), community.name);
     setTold(done === "copied" ? strings.community_link_copied : null);
   }
   // One box, so a row that spreads its children puts the button at its end;
