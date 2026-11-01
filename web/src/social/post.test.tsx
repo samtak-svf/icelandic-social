@@ -75,6 +75,7 @@ describe("a removed post's place", () => {
         deleted={() => undefined}
         changed={() => undefined}
         moderates={moderates}
+        mayReply={true}
       />,
     );
 

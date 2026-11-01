@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { strings } from "../generated/brand/strings.ts";
 import { useCommunityTab } from "../social/community-frame.tsx";
-import { moderatesAs } from "../social/roles.tsx";
+import { mayReplyTo, moderatesAs } from "../social/roles.tsx";
 import { PostView } from "../social/post.tsx";
 
 // Fest (decisions 0088, 0089): the featured posts as full cards, newest pin
@@ -24,6 +24,7 @@ function FeaturedTab() {
             deleted={changed}
             changed={changed}
             moderates={moderatesAs(community.role)}
+            mayReply={mayReplyTo(post, community)}
           />
         </li>
       ))}

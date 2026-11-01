@@ -70,6 +70,7 @@ const draw = (post: Post) =>
       deleted={() => undefined}
       changed={() => undefined}
       moderates={false}
+      mayReply={true}
       community={{ communityId: "w1", name: "Veggur", photo: null }}
     />,
   );

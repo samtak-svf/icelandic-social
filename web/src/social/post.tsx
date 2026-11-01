@@ -60,6 +60,8 @@ type PostViewProps = Readonly<{
   changed: () => void;
   /** Whether the caller is the owner or a moderator of the post's community. */
   moderates: boolean;
+  /** Whether the caller may comment, react and vote here (`mayReplyTo`); what they gave they may still take back. */
+  mayReply: boolean;
   community?: PostCommunity;
 }>;
 
@@ -71,7 +73,15 @@ export function PostView(props: PostViewProps) {
   );
 }
 
-function LivePost({ post, linked, deleted, changed, moderates, community }: PostViewProps) {
+function LivePost({
+  post,
+  linked,
+  deleted,
+  changed,
+  moderates,
+  mayReply,
+  community,
+}: PostViewProps) {
   const reactions = useReactions(post);
   return (
     <article
@@ -87,13 +97,13 @@ function LivePost({ post, linked, deleted, changed, moderates, community }: Post
         <PostMenu post={post} deleted={deleted} changed={changed} moderates={moderates} />
       </header>
       {post.body !== "" && <Body post={post} linked={linked} />}
-      {post.poll !== undefined && <PollCard post={post} />}
+      {post.poll !== undefined && <PollCard post={post} mayReply={mayReply} />}
       {post.media.length > 0 && <Images postId={post.postId} media={post.media} />}
-      <ActionRow post={post} reactions={reactions} linked={linked} />
+      <ActionRow post={post} reactions={reactions} linked={linked} mayReply={mayReply} />
       {linked && post.latestComment !== null && post.latestComment.state === "visible" && (
         <LatestComment comment={post.latestComment} />
       )}
-      {linked && (
+      {linked && mayReply && (
         <Link
           to="/posts/$postId"
           params={{ postId: post.postId }}

@@ -22,7 +22,7 @@ export function share(part: number, total: number): number {
   return total === 0 ? 0 : Math.round((part / total) * 100);
 }
 
-export function PollCard({ post }: Readonly<{ post: Post }>) {
+export function PollCard({ post, mayReply }: Readonly<{ post: Post; mayReply: boolean }>) {
   const suspended = useSuspended();
   const [poll, setPoll] = useState<Poll | undefined>(post.poll);
   const [busy, setBusy] = useState(false);
@@ -54,7 +54,7 @@ export function PollCard({ post }: Readonly<{ post: Post }>) {
               type="button"
               role="radio"
               aria-checked={mine}
-              disabled={busy || !open || mine || suspended}
+              disabled={busy || !open || mine || suspended || !mayReply}
               onClick={() =>
                 void send(
                   votePoll({ path: { postId: post.postId }, body: { optionId: option.optionId } }),
