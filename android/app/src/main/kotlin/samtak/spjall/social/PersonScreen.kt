@@ -76,7 +76,7 @@ fun PersonScreen(
     if (reportingPost in state.reportedPosts) reportingPost = null
     Surface(modifier = Modifier.fillMaxSize(), color = Palette.bg, contentColor = Palette.fg) {
         Column(modifier = Modifier.windowInsetsPadding(WindowInsets.safeDrawing.only(SUB_SCREEN_SIDES))) {
-            val title = profile?.let { it.name ?: stringResource(R.string.person_unnamed) }.orEmpty()
+            val title = wallTitle(profile)
             if (tab) ScreenHeader(title) else SubHeader(title, actions::back)
             SuspendedNotice()
             if (state.busy) LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
@@ -106,6 +106,15 @@ fun PersonScreen(
         )
     }
 }
+
+/** The card below carries the name, so one's own wall is titled by what it is rather than repeating it. */
+@Composable
+private fun wallTitle(profile: PersonProfile?): String =
+    when {
+        profile == null -> ""
+        profile.relation == Relation.ONESELF -> stringResource(R.string.wall_own_title)
+        else -> profile.name ?: stringResource(R.string.person_unnamed)
+    }
 
 @Composable
 private fun ProfileCard(

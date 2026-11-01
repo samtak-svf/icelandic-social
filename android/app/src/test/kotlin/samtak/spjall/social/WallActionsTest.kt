@@ -6,10 +6,13 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.isHeading
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onLast
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -153,6 +156,22 @@ class WallActionsTest {
     private fun str(id: Int) = ApplicationProvider.getApplicationContext<Context>().getString(id)
 
     private fun reach(tag: String) = compose.onNodeWithTag("person").performScrollToNode(hasTestTag(tag))
+
+    @Test
+    fun theOwnWallIsTitledAsOnesOwnAndItsCardAloneCarriesTheName() {
+        val own = self.copy(name = "Una")
+        show(state(own, Relation.ONESELF), Recorder())
+        compose.onNode(isHeading() and hasText(str(R.string.wall_own_title), ignoreCase = true)).assertExists()
+        compose.onAllNodes(isHeading() and hasText("Una", ignoreCase = true)).assertCountEquals(0)
+        compose.onAllNodesWithText("Una", substring = true).onFirst().assertExists()
+    }
+
+    @Test
+    fun anotherPersonsWallIsTitledWithTheirName() {
+        show(state(anna, Relation.FRIENDS), Recorder())
+        compose.onNode(isHeading() and hasText(anna.name!!, ignoreCase = true)).assertExists()
+        compose.onAllNodesWithText(str(R.string.wall_own_title), ignoreCase = true).assertCountEquals(0)
+    }
 
     @Test
     fun theGearOpensTheSettings() {

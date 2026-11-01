@@ -1354,6 +1354,10 @@
       "surfaces": ["android", "ios", "web"],
       "description": "The alt text of an account's cover (decision 0115)."
     },
+    "wall_own_title": {
+      "surfaces": ["android", "ios"],
+      "description": "The title above one's own wall, whose card already carries the name."
+    },
     "wall_audience_label": {
       "surfaces": ["android", "ios", "web"],
       "description": "The label of the audience picker on a wall post (decision 0115)."

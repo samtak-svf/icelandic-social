@@ -3289,6 +3289,18 @@
         }
       }
     },
+    "wall_own_title": {
+      "comment": "The title above one's own wall, whose card already carries the name.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Minn veggur"
+          }
+        }
+      }
+    },
     "wall_audience_label": {
       "comment": "The label of the audience picker on a wall post (decision 0115).",
       "extractionState": "manual",

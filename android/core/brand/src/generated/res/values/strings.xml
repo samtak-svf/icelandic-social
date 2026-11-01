@@ -576,6 +576,8 @@
     <string name="wall_joined">Skráð í %1$s</string>
     <!-- The alt text of an account's cover (decision 0115). -->
     <string name="wall_cover_alt">Forsíðumynd</string>
+    <!-- The title above one's own wall, whose card already carries the name. -->
+    <string name="wall_own_title">Minn veggur</string>
     <!-- The label of the audience picker on a wall post (decision 0115). -->
     <string name="wall_audience_label">Hverjir lesa þetta</string>
     <!-- The audience of a wall post that only the owner's friends read (decision 0115). -->
