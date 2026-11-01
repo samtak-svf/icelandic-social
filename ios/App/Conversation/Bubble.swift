@@ -146,6 +146,8 @@ struct Bubble: View {
                 .padding(.horizontal, 4)
                 .padding(.vertical, 3)
             }
+            // Right-aligned whoever wrote the message (decision 0125).
+            if group { ReadFaces(people: item.readHere).frame(maxWidth: .infinity, alignment: .trailing) }
         }
         .frame(maxWidth: .infinity, alignment: item.own ? .trailing : .leading)
         .padding(.horizontal, 16)
@@ -236,7 +238,7 @@ struct Bubble: View {
 
     /// The small line under a message (`meta`): the edited marker, then a
     /// clock while sending (decision 0043), then who read it.
-    private var parts: [MetaPart] { meta(item, readBy: readBy) }
+    private var parts: [MetaPart] { meta(item, readBy: readWordCount(readBy, group: group)) }
 
     /// The line's words, led by the time when a tap showed it; the clock is drawn beside them.
     private var words: String {
@@ -245,7 +247,7 @@ struct Bubble: View {
             switch part {
             case .edited: localized("edited_marker")
             case .sending: nil
-            case .read: readBy.map { readMarker($0, group: group) }
+            case .read: readWordCount(readBy, group: group).map { readMarker($0, group: group) }
             }
         }
         return words.joined(separator: " · ")
@@ -468,16 +470,4 @@ private struct Failed: View {
             Button("try_again", action: onResend).font(.sans(12, black: true, relativeTo: .caption))
         }
     }
-}
-
-/// Who read the reader's message (decision 0022): "Lesin" in a 1:1, the count in a group; the list's row
-/// says the same.
-func readMarker(_ count: UInt32, group: Bool) -> String {
-    group ? plural("read_by_count", Int(count)) : localized("read_marker")
-}
-
-/// The read marker for the reader's own sent `item` that someone read, or nil (decision 0043).
-func readLine(_ item: Item, group: Bool) -> String? {
-    guard item.own, item.status == .sent, item.readBy > 0 else { return nil }
-    return readMarker(item.readBy, group: group)
 }

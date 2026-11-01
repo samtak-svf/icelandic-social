@@ -22,13 +22,13 @@ func makePost(
     anonymous: Bool = false, own: Bool? = nil, emojis: [EmojiCount] = [], mine: String? = nil,
     comments: UInt64 = 0,
     state: ModerationState = .visible, createdAt: UInt64 = FakeAccount.now, pinned: Bool = false,
-    latestComment: Comment? = nil, poll: Poll? = nil
+    latestComment: Comment? = nil, poll: Poll? = nil, imported: Bool = false
 ) -> Post {
     Post(
         postId: id, communityId: community, author: author, anonymous: anonymous,
         mine: own ?? (author?.accountId == jon.accountId), body: body, images: [], createdAt: createdAt,
         emojis: emojis, myEmoji: mine, commentCount: comments, latestComment: latestComment, state: state,
-        pinned: pinned, poll: poll)
+        pinned: pinned, imported: imported, poll: poll)
 }
 
 /// Somebody in a community's member list.

@@ -617,7 +617,7 @@ func item(
     readBy: UInt32 = 0,
     expiresAt: UInt64? = nil,
     forwarded: Bool = false,
-    receivedAt: UInt64? = nil
+    receivedAt: UInt64? = nil, readHere: [Person] = []
 ) -> Item {
     Item(
         seq: seq,
@@ -632,6 +632,6 @@ func item(
         readBy: readBy,
         expiresAt: expiresAt,
         forwarded: forwarded,
-        receivedAt: receivedAt
+        receivedAt: receivedAt, readHere: readHere
     )
 }

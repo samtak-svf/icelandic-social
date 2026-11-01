@@ -90,6 +90,26 @@ final class HostedRenderTests: XCTestCase {
         attach(image, "anonymous-post-card")
     }
 
+    func testFacesAreDrawnAsAFortyFourPointTarget() async {
+        let many = (1...6).map { person("a\($0)", "Nafn\($0)") }
+        let image = await render(ReadFaces(people: many))
+        assertDrawn(image, "faces")
+        XCTAssertGreaterThanOrEqual(image.size.height, 44, "the row is a 44 pt target")
+        attach(image, "read-faces")
+    }
+
+    func testAnImportedPostCarriesAMarkAndANativeOneDoesNot() async {
+        func card(imported: Bool) -> PostCard {
+            PostCard(post: makePost("p1", "k1", imported: imported), linked: false, writes: true, onReact: { _ in })
+        }
+        let native = await render(card(imported: false))
+        let imported = await render(card(imported: true))
+        assertDrawn(native, "native card")
+        assertDrawn(imported, "imported card")
+        XCTAssertGreaterThan(imported.size.height, native.size.height, "the mark takes a line")
+        attach(imported, "imported-post-card")
+    }
+
     /// The precondition can fail: a flat picture and an empty one are refused by the helper.
     func testAFlatPictureHasOneColour() {
         let flat = UIGraphicsImageRenderer(size: CGSize(width: 40, height: 40)).image { context in
