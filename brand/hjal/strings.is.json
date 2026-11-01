@@ -332,6 +332,7 @@
   "wall_bio_too_long": "Textinn er of langur.",
   "wall_joined": "Skráð í {month}",
   "wall_cover_alt": "Forsíðumynd",
+  "wall_own_title": "Minn [[wall.nom]]",
   "wall_audience_label": "Hverjir lesa þetta",
   "wall_audience_friends": "[[Friend.nom.pl]]",
   "wall_audience_everyone": "Allir innskráðir",

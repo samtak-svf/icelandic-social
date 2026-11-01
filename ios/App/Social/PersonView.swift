@@ -18,6 +18,12 @@ struct PersonView: View {
     @State private var blocking = false
     @Environment(\.dismiss) private var dismiss
 
+    /// The header below carries the name, so one's own wall is titled by what it is rather than repeating it.
+    private var title: Text {
+        if model.person?.relation == .oneself { return Text("wall_own_title") }
+        return Text(verbatim: model.person?.shownName ?? "")
+    }
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
@@ -37,7 +43,7 @@ struct PersonView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
         }
         .background(BrandTokens.Colors.bg)
-        .navigationTitle(Text(verbatim: model.person?.shownName ?? ""))
+        .navigationTitle(title)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar(.visible, for: .navigationBar)
         .toolbar { if let person = model.person, person.relation != .oneself { menu(person) } }
