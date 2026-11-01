@@ -96,6 +96,12 @@ export class Core {
      */
     static linkQr(code: string): LinkQr;
     linkState(): LinkState;
+    /**
+     * Everything up to the item `seq` is on screen (0022): moves this
+     * account's mark, and with read markers on queues the receipt the next
+     * sync sends.
+     */
+    markRead(conversation_id: string, seq: number): void;
     me(): Me;
     /**
      * A frame the realtime socket delivered.
@@ -168,6 +174,7 @@ export interface InitOutput {
     readonly core_leave: (a: number, b: number, c: number, d: number) => void;
     readonly core_linkQr: (a: number, b: number, c: number) => void;
     readonly core_linkState: (a: number, b: number) => void;
+    readonly core_markRead: (a: number, b: number, c: number, d: number, e: number) => void;
     readonly core_me: (a: number, b: number) => void;
     readonly core_onFrame: (a: number, b: number, c: number, d: number) => void;
     readonly core_open: (a: number, b: number) => number;
@@ -191,8 +198,8 @@ export interface InitOutput {
     readonly rust_sqlite_wasm_realloc: (a: number, b: number) => number;
     readonly sqlite3_os_end: () => number;
     readonly sqlite3_os_init: () => number;
-    readonly __wasm_bindgen_func_elem_6784: (a: number, b: number, c: number, d: number) => void;
-    readonly __wasm_bindgen_func_elem_6799: (a: number, b: number, c: number, d: number) => void;
+    readonly __wasm_bindgen_func_elem_6787: (a: number, b: number, c: number, d: number) => void;
+    readonly __wasm_bindgen_func_elem_6802: (a: number, b: number, c: number, d: number) => void;
     readonly __wbindgen_export: (a: number, b: number) => number;
     readonly __wbindgen_export2: (a: number, b: number, c: number, d: number) => number;
     readonly __wbindgen_export3: (a: number) => void;

@@ -196,6 +196,17 @@ impl Core {
         )
     }
 
+    /// Everything up to the item `seq` is on screen (0022): moves this
+    /// account's mark, and with read markers on queues the receipt the next
+    /// sync sends.
+    #[wasm_bindgen(js_name = markRead)]
+    pub fn mark_read(&mut self, conversation_id: &str, seq: f64) -> Result<(), JsValue> {
+        // A seq is far below 2^53, so a JS number holds it exactly.
+        self.client
+            .mark_read(conversation_id, seq as u64)
+            .map_err(|error| fail(Failure::from(&error)))
+    }
+
     /// Queues a text message; the envelope id.
     #[wasm_bindgen(unchecked_return_type = "string")]
     pub fn send(&mut self, conversation_id: &str, text: String) -> Result<JsValue, JsValue> {
