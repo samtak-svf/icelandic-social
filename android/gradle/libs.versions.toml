@@ -2,7 +2,7 @@
 # so one Gradle cache serves both on the shared runners.
 
 [versions]
-agp = "9.4.1"
+agp = "9.5.0"
 kotlin = "2.4.21"
 ktlint = "14.2.0"
 detekt = "2.0.0-alpha.6"
