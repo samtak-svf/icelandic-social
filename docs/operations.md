@@ -221,19 +221,23 @@ Every platform moderator is told on the web when a report reaches the queue, exc
 it, by one notice that goes when the queue empties. No app and no push says so, so nobody is told
 who does not open the web ([decision 0115](decisions/0115-the-wall.md)).
 
-The role is never granted by a route:
+The role is never granted by a route. These commands run from `backend/`, signed in to Samtak's
+Cloudflare account with `CLOUDFLARE_ACCOUNT_ID` set. cf names a database by id, and
+`cloudflare.config.ts` is the one place it is written:
 
 ```bash
+DB=$(node --input-type=module -e 'import { databaseId } from "./scripts/d1.ts"; console.log(await databaseId())')
+
 # Grant the role to an account:
-cf d1 execute spjall-db --remote --command \
+pnpm exec cf d1 query "$DB" --sql \
   "INSERT INTO platform_moderators (account_id, added_at) VALUES ('<accountId>', $(date +%s%3N))"
 
 # Remove the role:
-cf d1 execute spjall-db --remote --command \
+pnpm exec cf d1 query "$DB" --sql \
   "DELETE FROM platform_moderators WHERE account_id = '<accountId>'"
 
 # List current platform moderators:
-cf d1 execute spjall-db --remote --command \
+pnpm exec cf d1 query "$DB" --sql \
   "SELECT account_id, added_at FROM platform_moderators ORDER BY added_at"
 ```
 
@@ -242,10 +246,10 @@ cf d1 execute spjall-db --remote --command \
 A platform moderator lifts a suspension from the moderation page, which logs it and tells the
 person (decision 0115). Use the database only when no moderator can act, for instance when the
 only one is the suspended account. This write leaves no log entry and sends no notice, so tell
-the person yourself and note why:
+the person yourself and note why. Set `DB` as above:
 
 ```bash
-cf d1 execute spjall-db --remote --command \
+pnpm exec cf d1 query "$DB" --sql \
   "UPDATE accounts SET suspended_at = NULL, suspended_until = NULL WHERE account_id = '<accountId>'"
 ```
 

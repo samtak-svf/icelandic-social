@@ -29,7 +29,7 @@
   lower rank**: a moderator acts on members, the owner on moderators and members, a platform
   moderator on anyone; nobody on their own content. The owner is never removed or banned.
 - **Platform moderators** are rows in `platform_moderators`, added by the maintainer with
-  `cf d1 execute`, never by a route. A platform moderator reads every community, private ones
+  `cf d1 query`, never by a route. A platform moderator reads every community, private ones
   too, and its actions are logged with `as_platform`.
 - **A report goes to one queue.** The platform's when the reporter asks for it, the reason is
   `unlawful`, or the target is a community or an account; the community's otherwise. An account
