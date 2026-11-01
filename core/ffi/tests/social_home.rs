@@ -49,6 +49,24 @@ fn an_empty_home_page_with_a_cursor_is_more() {
     assert_eq!(last_path(&a1), "/v1/home?before=c2&limit=30");
 }
 
+/// The mark reaches the app, and a post written here does not carry it.
+#[test]
+fn an_imported_post_says_so_to_the_app() {
+    let relay = Relay::new();
+    let a1 = phone(&relay, "a", "a1");
+    let imported = POST.replacen("\"body\"", "\"imported\":true,\"body\"", 1);
+    answer(
+        &a1,
+        200,
+        &format!(r#"{{"posts":[{imported},{POST}],"next":null}}"#),
+    );
+    let HomePage::End { posts } = a1.client.home(None, 30).unwrap() else {
+        panic!("a cursor")
+    };
+    assert!(posts[0].imported);
+    assert!(!posts[1].imported);
+}
+
 /// The default target is the core's, not one each app writes for itself.
 #[test]
 fn the_default_target_is_the_own_wall_for_friends() {
