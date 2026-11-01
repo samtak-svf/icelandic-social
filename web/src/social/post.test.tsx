@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { Post } from "../generated/api.ts";
 import { strings } from "../generated/brand/strings.ts";
 import { AuthorName, lastWord } from "./author-name.tsx";
-import { PostView } from "./post.tsx";
+import { PostMarks, PostView } from "./post.tsx";
 import { isPostTombstone } from "./post-tombstone.tsx";
 
 vi.mock("@tanstack/react-router", () => ({
@@ -85,6 +85,14 @@ describe("a removed post's place", () => {
     expect(isPostTombstone(tombstone({ author: author(false) }))).toBe(false);
     expect(isPostTombstone(tombstone({ anonymous: true }))).toBe(false);
     expect(isPostTombstone(tombstone({ state: "hidden" }))).toBe(false);
+  });
+
+  it("marks a post that was imported, and only that one", () => {
+    const mark = (over: Partial<Post>) =>
+      renderToStaticMarkup(<PostMarks post={tombstone(over)} />);
+    expect(mark({ imported: true })).toContain(strings.post_imported);
+    expect(mark({ imported: false })).not.toContain(strings.post_imported);
+    expect(mark({})).not.toContain(strings.post_imported);
   });
 
   it("tells a member only that it was removed", () => {

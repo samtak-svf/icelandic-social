@@ -1513,6 +1513,42 @@
         }
       }
     },
+    "read_by_title": {
+      "comment": "Title of the sheet naming everyone who has read a message in a group (docs/decisions/0125).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lesið af"
+          }
+        }
+      }
+    },
+    "read_by_faces": {
+      "comment": "Accessible name of the row of faces under a message: the names of those who have read it, joined as a list (docs/decisions/0125).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lesið af %1$@"
+          }
+        }
+      }
+    },
+    "read_by_more": {
+      "comment": "After the last face under a message: how many more have read it (docs/decisions/0125).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "+%1$lld"
+          }
+        }
+      }
+    },
     "read_receipts_setting": {
       "comment": "Toggle in Me: send read markers.",
       "extractionState": "manual",
@@ -5577,6 +5613,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "Fest"
+          }
+        }
+      }
+    },
+    "post_imported": {
+      "comment": "Small mark on a post that came from a person's file from another platform, backlog included (decision 0119)",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Innflutt"
           }
         }
       }

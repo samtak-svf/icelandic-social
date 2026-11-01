@@ -25,6 +25,7 @@ test("a browser adds a person, removes a member, names a group and leaves it", a
   await signIn(page, "Hópstjóri Prófsson", subject);
   await writeFile(join(dir, "subject"), subject);
   await awaited(dir, "ready");
+  const second = await awaited(dir, "second");
   const third = await awaited(dir, "third");
   const fourth = await awaited(dir, "fourth");
 
@@ -37,6 +38,14 @@ test("a browser adds a person, removes a member, names a group and leaves it", a
   await expect(conversation).toHaveCount(1, { timeout: 120_000 });
   await conversation.click();
   await expect(page.getByText("halló hópur", { exact: true })).toBeVisible();
+
+  // Read: the second member's face comes under the message, and pressing it names them (0125).
+  await page.getByRole("button", { name: strings.read_by_faces({ names: second }) }).click();
+  const readers = page.getByRole("dialog", { name: strings.read_by_title });
+  await expect(readers.getByText(second, { exact: true })).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(readers).toHaveCount(0);
+
   await page.getByRole("link", { name: strings.conversation_info }).click();
   const members = page.getByRole("region", { name: strings.group_member_count({ count: 2 }) });
   await expect(members).toBeVisible();

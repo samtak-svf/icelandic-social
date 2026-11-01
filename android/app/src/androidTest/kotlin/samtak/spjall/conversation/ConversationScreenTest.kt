@@ -245,17 +245,17 @@ class ConversationScreenTest {
     }
 
     @Test
-    fun aGroupNamesTheSenderAndCountsReaders() {
+    fun aGroupNamesTheSenderAndShowsReadersAsFaces() {
         val other = Person("a3", "Björn", false)
         show(
             item(1u, Content.Text("Halló", null)),
-            item(2u, Content.Text("Hæ", null), own = true, readBy = 2u),
+            item(2u, Content.Text("Hæ", null), own = true, readBy = 2u).copy(readHere = listOf(anna, other)),
             members = listOf(anna, other),
             typing = true,
         )
         compose.onNodeWithText("Anna Jónsdóttir").assertIsDisplayed()
         compose
-            .onNodeWithText(context.resources.getQuantityString(R.plurals.read_by_count, 2, 2), substring = true)
+            .onNodeWithContentDescription(context.getString(R.string.read_by_faces, "Anna Jónsdóttir, Björn"))
             .assertIsDisplayed()
         compose.onNodeWithContentDescription(text(R.string.typing_indicator_group)).assertIsDisplayed()
     }

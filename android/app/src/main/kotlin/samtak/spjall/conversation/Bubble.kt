@@ -61,7 +61,8 @@ private fun Tombstone() {
 /**
  * One message (1c): own on the right in red, the other party's on the left
  * in muted, the corner nearest the sender squared off. Tapping it shows its
- * time (0045); on the newest own message someone read, "Lesin". Its
+ * time (0045); in a 1:1, on the newest own message someone read, "Lesin"; in a group, faces under the
+ * message each member last read (0125). Its
  * reactions are one pill on its bottom edge.
  */
 @Composable
@@ -107,6 +108,8 @@ internal fun Bubble(
             ItemStatus.FAILED -> Failed(actions::resend)
             ItemStatus.PENDING, ItemStatus.SENT -> Meta(row, group, open)
         }
+        // Under any message in a group, whoever wrote it (0125); the core says who.
+        if (group) ReadFaces(item.readHere, Modifier.align(Alignment.End))
     }
 }
 
@@ -292,7 +295,7 @@ private fun Meta(
     group: Boolean,
     open: Boolean,
 ) {
-    val parts = row.meta(open)
+    val parts = row.meta(open, group)
     if (parts.isEmpty()) return
     val item = row.item
     val words =

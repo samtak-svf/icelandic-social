@@ -91,7 +91,7 @@ function LivePost({
       className="-mx-4 flex flex-col gap-2 rounded-none border-x-0 border-y border-border p-4 medium:mx-0 medium:rounded-md medium:border"
     >
       <StateMark state={post.state} />
-      {post.pinned && <PinnedMark />}
+      <PostMarks post={post} />
       <header className="flex items-start gap-3">
         <PostHeading post={post} community={post.wall === undefined ? community : null} />
         <PostMenu post={post} deleted={deleted} changed={changed} moderates={moderates} />
@@ -131,6 +131,18 @@ function PinIcon() {
       <path d="M12 17v5" />
       <path d="M9 3h6l-1 7 3 3v2H7v-2l3-3z" />
     </svg>
+  );
+}
+
+/** What a card says about its post above the heading: pinned, and imported from another platform. */
+export function PostMarks({ post }: Readonly<{ post: Post }>) {
+  return (
+    <>
+      {post.pinned && <PinnedMark />}
+      {post.imported === true && (
+        <p className="text-sm font-medium text-muted-fg">{strings.post_imported}</p>
+      )}
+    </>
   );
 }
 

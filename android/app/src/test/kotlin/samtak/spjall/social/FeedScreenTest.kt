@@ -63,6 +63,18 @@ class FeedScreenTest {
     private fun pollPost(id: String = "p1") = post(id, communityId = "k1", poll = feedPoll())
 
     @Test
+    fun anImportedPostIsMarkedAndAnotherIsNot() {
+        show(feedState(listOf(post("p1", imported = true), post("p2", body = "Annað"))))
+        compose.onAllNodesWithText(text(R.string.post_imported)).assertCountEquals(1)
+    }
+
+    @Test
+    fun aPostThatWasNotImportedHasNoMark() {
+        show(feedState(listOf(post("p1"))))
+        compose.onAllNodesWithText(text(R.string.post_imported)).assertCountEquals(0)
+    }
+
+    @Test
     fun anOpenPollInAnUnmutedCommunityTakesAVote() {
         show(feedState(listOf(pollPost()), mine = listOf(memberOf("k1"))))
         compose.onNodeWithTag("$POLL_OPTION-0").assertIsEnabled().performClick()

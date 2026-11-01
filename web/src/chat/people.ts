@@ -145,6 +145,19 @@ export function readLine(count: number, group: boolean): string {
   return group ? strings.read_by_count({ count }) : strings.read_marker;
 }
 
+/** Faces shown under a message before the rest fold into "+N" (0125). */
+const FACES_SHOWN = 4;
+
+/** The faces to draw under a message and how many more there are; the core decided who (0125). */
+export function readFaces(people: Person[]): { shown: Person[]; more: number } {
+  return { shown: people.slice(0, FACES_SHOWN), more: Math.max(0, people.length - FACES_SHOWN) };
+}
+
+/** The accessible sentence for the faces, naming everyone, hidden ones too. */
+export function readFacesLine(people: Person[]): string {
+  return strings.read_by_faces({ names: names(people) });
+}
+
 const RUN_MS = 300_000;
 
 /**

@@ -1,6 +1,6 @@
 # 0125. A group shows who has read, as faces under the message
 
-- Status: accepted; designed, not yet implemented
+- Status: accepted; implemented on Android, iOS and the web in core 0.60.0 and app 0.22.7
 - Date: 2026-11-01
 - Decided by: Guðröður Atli Jónsson
 - Amends: [0022](0022-the-conversation-surfaces.md) (a group's thread shows who has read, not how many)

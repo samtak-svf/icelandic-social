@@ -91,10 +91,13 @@ enum class MetaPart { EDITED, SENDING, TIME, READ }
 
 /**
  * The line under a bubble: the edited marker, then a clock while sending
- * (0043) or the time when the bubble was tapped open (0045), then who read it.
+ * (0043) or the time when the bubble was tapped open (0045), then, in a 1:1, who read it.
  * The times otherwise go between messages.
  */
-fun Row.Bubble.meta(open: Boolean = false): List<MetaPart> =
+fun Row.Bubble.meta(
+    open: Boolean = false,
+    group: Boolean = false,
+): List<MetaPart> =
     listOfNotNull(
         MetaPart.EDITED.takeIf { item.edited },
         when {
@@ -102,7 +105,8 @@ fun Row.Bubble.meta(open: Boolean = false): List<MetaPart> =
             open -> MetaPart.TIME
             else -> null
         },
-        MetaPart.READ.takeIf { readBy != null },
+        // A group shows faces instead (0125), drawn by ReadFaces.
+        MetaPart.READ.takeIf { !group && readBy != null },
     )
 
 fun Item.isCard() =

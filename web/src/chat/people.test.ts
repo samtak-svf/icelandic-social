@@ -10,6 +10,8 @@ import {
   isGroup,
   itemLine,
   previewLine,
+  readFaces,
+  readFacesLine,
   readLine,
 } from "./people.ts";
 
@@ -171,4 +173,21 @@ test("a quiet conversation says why, in the apps' words, and takes no message", 
     expect(canSend(at(state))).toBe(false);
   }
   expect(canSend(at("active", []))).toBe(false);
+});
+
+test("read faces: up to four are drawn and the rest fold into a count (0125)", () => {
+  const people = (n: number) =>
+    Array.from({ length: n }, (_, i) => ({ ...person(`P${i}`), account: `p${i}` }));
+  expect(readFaces([])).toEqual({ shown: [], more: 0 });
+  expect(readFaces(people(1)).shown).toHaveLength(1);
+  expect(readFaces(people(4))).toMatchObject({ more: 0 });
+  const five = readFaces(people(5));
+  expect(five.shown).toHaveLength(4);
+  expect(five.more).toBe(1);
+  expect(readFaces(people(9)).more).toBe(5);
+});
+
+test("the accessible sentence names everyone, folded faces included", () => {
+  const people = ["Ása", "Bo", "Cy", "Di", "Eva"].map((n) => person(n));
+  expect(readFacesLine(people)).toBe(strings.read_by_faces({ names: "Ása, Bo, Cy, Di, Eva" }));
 });

@@ -162,7 +162,7 @@ struct PostCard: View {
         Panel {
             VStack(alignment: .leading, spacing: 10) {
                 StateMark(state: post.state)
-                if post.pinned { pinned }
+                PostMarks(post: post)
                 Byline(
                     author: post.author, anonymousName: anonymousByline(post), createdAt: post.createdAt,
                     community: community, audience: post.audience, short: true
@@ -184,17 +184,6 @@ struct PostCard: View {
             }
             .padding(14)
         }
-    }
-
-    private var pinned: some View {
-        HStack(spacing: 4) {
-            Image(systemName: "pin.fill")
-                .font(.system(size: 10, weight: .semibold))
-                .accessibilityHidden(true)
-            Text("post_pinned")
-        }
-        .font(.sans(12, black: true))
-        .foregroundStyle(BrandTokens.Colors.mutedFg)
     }
 
     /// What a tap opens: the post's own screen, of which its text and images are the way in.
