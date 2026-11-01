@@ -5,6 +5,7 @@
 //! bytes it takes are what the server stored.
 
 use crate::CIPHERSUITE;
+use crate::is_id;
 use crate::storage::{Provider, StorageError};
 use openmls::prelude::tls_codec::{Deserialize as _, Serialize as _};
 use openmls::prelude::*;
@@ -70,13 +71,6 @@ fn at<E: std::fmt::Debug>(step: &'static str) -> impl FnOnce(E) -> GroupError {
         step,
         detail: format!("{error:?}"),
     }
-}
-
-fn is_id(text: &str) -> bool {
-    (1..=128).contains(&text.len())
-        && text
-            .bytes()
-            .all(|b| b.is_ascii_alphanumeric() || b == b'_' || b == b'-')
 }
 
 /// One leaf: a device of an account. Its credential's identity is

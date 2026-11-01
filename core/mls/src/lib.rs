@@ -16,6 +16,16 @@ use openmls_rust_crypto::OpenMlsRustCrypto;
 /// The only ciphersuite this core creates or joins (0002).
 pub const CIPHERSUITE: Ciphersuite = Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
 
+/// An id the server gave or a client made: what `OpaqueId` allows
+/// (`backend/src/api/common.ts`), so safe in a path, a route and a file name.
+/// `api/id.vectors.json` holds the two together.
+pub fn is_id(text: &str) -> bool {
+    (1..=128).contains(&text.len())
+        && text
+            .bytes()
+            .all(|b| b.is_ascii_alphanumeric() || b == b'_' || b == b'-')
+}
+
 #[derive(Debug, thiserror::Error)]
 #[error("MLS self-test failed at {step}: {detail}")]
 pub struct MlsError {
@@ -142,6 +152,19 @@ pub fn self_test() -> Result<u64, MlsError> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn an_id_is_what_the_shared_vectors_say() {
+        let vectors: serde_json::Value =
+            serde_json::from_str(include_str!("../../../api/id.vectors.json")).unwrap();
+        let cases = vectors["cases"].as_array().unwrap();
+        assert!(!cases.is_empty());
+        for case in cases {
+            let note = case["note"].as_str().unwrap();
+            let text = case["text"].as_str().unwrap();
+            assert_eq!(is_id(text), case["valid"].as_bool().unwrap(), "{note}");
+        }
+    }
 
     #[test]
     fn self_test_passes_at_epoch_one() {

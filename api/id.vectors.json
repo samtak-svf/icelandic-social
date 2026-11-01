@@ -1,0 +1,70 @@
+{
+  "note": "What an id may look like: OpaqueId in the API and is_id in the core take the same strings. An id goes in a path, a route and a file name.",
+  "cases": [
+    {
+      "note": "a server's id",
+      "text": "c_9f3a1b",
+      "valid": true
+    },
+    {
+      "note": "letters, digits, underscore and hyphen",
+      "text": "aZ09_-",
+      "valid": true
+    },
+    {
+      "note": "one character",
+      "text": "a",
+      "valid": true
+    },
+    {
+      "note": "128 characters",
+      "text": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "valid": true
+    },
+    {
+      "note": "nothing",
+      "text": "",
+      "valid": false
+    },
+    {
+      "note": "129 characters",
+      "text": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "valid": false
+    },
+    {
+      "note": "a letter outside ASCII",
+      "text": "ð",
+      "valid": false
+    },
+    {
+      "note": "a space",
+      "text": "a b",
+      "valid": false
+    },
+    {
+      "note": "a slash",
+      "text": "a/b",
+      "valid": false
+    },
+    {
+      "note": "a dot",
+      "text": "..",
+      "valid": false
+    },
+    {
+      "note": "a percent sign",
+      "text": "a%2Fb",
+      "valid": false
+    },
+    {
+      "note": "a line end after an id",
+      "text": "abc\n",
+      "valid": false
+    },
+    {
+      "note": "a line end before an id",
+      "text": "\nabc",
+      "valid": false
+    }
+  ]
+}

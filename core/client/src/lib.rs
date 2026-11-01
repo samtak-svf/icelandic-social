@@ -28,7 +28,6 @@ pub mod frames;
 pub mod group_photo;
 mod history;
 mod hosted;
-mod ids;
 mod incoming;
 mod link;
 mod media;
@@ -55,7 +54,6 @@ pub use directory::{Directory, ListSearch, MAX_QUERY, blank, fold_name};
 pub use history::{HistoryError, HistoryKey, Imported, MAX_HISTORY, history_key};
 pub use hosted::Hosted;
 use hosted::{SharedToken, authed, read_token};
-use ids::is_id;
 use incoming::Incoming;
 pub use link::{DeviceLink, Enrolled, LinkCode, LinkError, LinkRequest, LinkState};
 pub use media::{MAX_SIZE, MediaError};
@@ -70,6 +68,7 @@ use spjall_envelope::{Body, Envelope, EnvelopeError, is_place};
 use spjall_mls::group::{
     Claimed, Device, Group, GroupError, Identity, Received, generate_device_key, is_commit,
 };
+use spjall_mls::is_id;
 use spjall_mls::storage::Provider;
 use spjall_store::rusqlite::{self, OptionalExtension, Transaction, params};
 use spjall_store::{Key, Store};
