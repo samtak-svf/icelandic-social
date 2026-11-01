@@ -145,6 +145,34 @@ export function readLine(count: number, group: boolean): string {
   return group ? strings.read_by_count({ count }) : strings.read_marker;
 }
 
+const RUN_MS = 300_000;
+
+/**
+ * Which items start a run, as the apps group a thread (0022): one sender's
+ * messages within 5 minutes of each other run together, and a card ends a run.
+ * A time never goes back, whatever the sender's clock said (0048).
+ */
+export function runStarts(items: Item[]): boolean[] {
+  let previous: Item | null = null;
+  let previousAt = 0;
+  let before = 0;
+  return items.map((item) => {
+    const at = Math.max(item.receivedAt ?? item.ts, before);
+    before = at;
+    if (isCard(item)) {
+      previous = null;
+      return false;
+    }
+    const runs =
+      previous !== null &&
+      previous.sender.account === item.sender.account &&
+      at - previousAt <= RUN_MS;
+    previous = item;
+    previousAt = at;
+    return !runs;
+  });
+}
+
 /** A card says what happened to the conversation (members, timer, name, photo), not what someone said. */
 export function isCard(item: Item): boolean {
   const { kind } = item.content;

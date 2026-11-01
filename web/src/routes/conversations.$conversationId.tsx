@@ -3,14 +3,8 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState, type SubmitE
 import { useChat } from "../chat/chat.tsx";
 import { ConversationAvatar } from "../chat/conversation-avatar.tsx";
 import { useDraft } from "../chat/drafts.ts";
-import {
-  canSend,
-  conversationBanner,
-  conversationTitle,
-  isCard,
-  isGroup,
-  itemLine,
-} from "../chat/people.ts";
+import { canSend, conversationBanner, conversationTitle, isGroup } from "../chat/people.ts";
+import { itemKey, ThreadItems } from "../chat/thread-items.tsx";
 import { strings } from "../generated/brand/strings.ts";
 import type { Conversation, Item } from "../generated/core.d.ts";
 import { Button, Status } from "../ui/kit.tsx";
@@ -160,32 +154,7 @@ function Thread() {
             {strings.history_device_local_notice}
           </p>
         )}
-        <ol className="flex flex-col gap-2">
-          {items.map((m, i) => {
-            const line = itemLine(m, group);
-            // A card says what happened to the conversation, between the bubbles.
-            if (isCard(m)) {
-              return (
-                <li
-                  key={itemKey(m, i)}
-                  className="self-center px-3 text-center text-sm text-muted-fg"
-                >
-                  {line}
-                </li>
-              );
-            }
-            return (
-              <li
-                key={itemKey(m, i)}
-                className={`max-w-[85%] whitespace-pre-wrap break-words rounded-md px-3 py-2 ${
-                  m.own ? "self-end bg-primary text-primary-fg" : "self-start bg-muted"
-                }`}
-              >
-                {line}
-              </li>
-            );
-          })}
-        </ol>
+        <ThreadItems items={items} group={group} />
       </div>
       <Status>{failed && strings.message_failed}</Status>
       <form onSubmit={(e) => void send(e)} className="flex gap-2">
@@ -211,10 +180,14 @@ function ThreadHeader({
   group,
 }: Readonly<{ conversation: Conversation | null; group: boolean }>) {
   // The title's line is held while it loads, so nothing below it moves.
+  // A title of members' names runs long: two lines, and all of it on hover.
+  const title = conversation === null ? "" : conversationTitle(conversation);
   const shown = conversation !== null && (
     <>
-      <ConversationAvatar conversation={conversation} className="size-10 rounded-full" />
-      <h1 className="min-w-0 truncate font-headline text-2xl">{conversationTitle(conversation)}</h1>
+      <ConversationAvatar conversation={conversation} className="size-10 shrink-0 rounded-full" />
+      <h1 title={title} className="line-clamp-2 min-w-0 break-words font-headline text-2xl">
+        {title}
+      </h1>
     </>
   );
   return (
@@ -238,9 +211,4 @@ function ThreadHeader({
 /** The seq of the oldest item that has one: where the next older page ends. */
 function firstSeq(items: Item[]): number | undefined {
   return items.find((m) => m.seq !== null)?.seq ?? undefined;
-}
-
-/** A stable key: the seq once stored, else the envelope id, else the place. */
-function itemKey(item: Item, index: number): string {
-  return item.seq !== null ? `s${item.seq}` : (item.envelopeId ?? `i${index}`);
 }
