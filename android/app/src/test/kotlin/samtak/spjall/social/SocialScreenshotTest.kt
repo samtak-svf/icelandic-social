@@ -93,6 +93,7 @@ class SocialScreenshotTest {
 
     private val postState =
         PostViewModel.State(
+            writes = true,
             post = withImages,
             comments =
                 listOf(

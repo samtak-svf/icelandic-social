@@ -104,8 +104,7 @@ fun PostScreen(
                 }
                 commentItems(state, actions, delete, onReport = { reporting = it })
             }
-            // The box to write in stays at the foot of the screen, reachable without scrolling past every comment.
-            if (post?.isTombstone() == false) ReplyBox(state, actions, focus)
+            if (post?.isTombstone() == false) PostFoot(state, actions, focus)
         }
     }
     Dialogs(
@@ -116,6 +115,19 @@ fun PostScreen(
         onReported = { reporting = null },
         onRemoved = { removing = null },
     ) { deleting = null }
+}
+
+/**
+ * The box to write in, which stays at the foot of the screen, reachable without scrolling past every comment,
+ * or the reason a member has none.
+ */
+@Composable
+private fun PostFoot(
+    state: PostViewModel.State,
+    actions: PostActions,
+    focus: FocusRequester,
+) {
+    if (state.writes) ReplyBox(state, actions, focus) else state.noPostNotice?.let { NoReplyNotice(it) }
 }
 
 /** The post itself at the head of the screen, with its poll when it is one. */
@@ -225,6 +237,15 @@ private fun ReplyBox(
                 onRemoveImage = actions::removeImage,
             )
         }
+    }
+}
+
+/** Why this member has no box to write in, at the foot of the screen where the box would be. */
+@Composable
+private fun NoReplyNotice(text: Int) {
+    Column {
+        HorizontalDivider(color = Palette.border)
+        Column(modifier = Modifier.padding(16.dp)) { Muted(stringResource(text)) }
     }
 }
 

@@ -74,8 +74,8 @@ class CommunityViewModel(
         val reported: Set<String> = emptySet(),
         /** Whether this account may write a post: a member, not muted, in a community that still has an owner. */
         val writes: Boolean = false,
-        /** A moderator muted this account here. */
-        val muted: Boolean = false,
+        /** Why this member has no composer here, as a string resource. */
+        val noPostNotice: Int? = null,
         /** Until when (Unix ms) a moderator's decline keeps this account from asking again; null when it may ask. */
         val declinedUntil: ULong? = null,
         val problem: Problem? = null,
@@ -617,7 +617,7 @@ class CommunityViewModel(
                 posts = page?.posts.orEmpty(),
                 next = page?.next,
                 writes = community.writes(now()),
-                muted = community.muted(now()),
+                noPostNotice = community.noPostNotice(now()),
                 declinedUntil = community.joinDeclinedUntil?.takeIf { it.toLong() > now() },
                 tab =
                     if (it.tab == CommunityTab.FEATURED && community.featured.isEmpty()) {

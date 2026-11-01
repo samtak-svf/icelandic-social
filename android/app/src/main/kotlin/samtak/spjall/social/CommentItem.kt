@@ -7,8 +7,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
@@ -165,38 +165,44 @@ private fun CommentLine(
     onReply: (() -> Unit)?,
 ) {
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        Text(
-            text = agoText(comment.createdAt),
-            style = MaterialTheme.typography.labelMedium,
-            color = Palette.mutedFg,
-        )
-        Text(
-            text = stringResource(R.string.comment_like),
-            style = MaterialTheme.typography.labelLarge,
-            fontWeight = if (comment.liked) FontWeight.Bold else null,
-            color = if (comment.liked) Palette.primary else Palette.mutedFg,
-            modifier =
-                Modifier
-                    .heightIn(
-                        min = TOUCH.dp,
-                    ).wrapContentHeight(Alignment.CenterVertically)
-                    .clickable(role = Role.Button, onClick = onLike),
-        )
-        if (onReply != null) {
+        // Wraps, so an action that no longer fits on a narrow screen moves down whole instead of being squeezed.
+        FlowRow(
+            modifier = Modifier.weight(1f),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            itemVerticalAlignment = Alignment.CenterVertically,
+        ) {
             Text(
-                text = stringResource(R.string.comment_reply),
-                style = MaterialTheme.typography.labelLarge,
+                text = agoText(comment.createdAt),
+                style = MaterialTheme.typography.labelMedium,
                 color = Palette.mutedFg,
+            )
+            Text(
+                text = stringResource(R.string.comment_like),
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = if (comment.liked) FontWeight.Bold else null,
+                color = if (comment.liked) Palette.primary else Palette.mutedFg,
                 modifier =
                     Modifier
                         .heightIn(
                             min = TOUCH.dp,
-                        ).wrapContentHeight(
-                            Alignment.CenterVertically,
-                        ).clickable(role = Role.Button, onClick = onReply),
+                        ).wrapContentHeight(Alignment.CenterVertically)
+                        .clickable(role = Role.Button, onClick = onLike),
             )
+            if (onReply != null) {
+                Text(
+                    text = stringResource(R.string.comment_reply),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = Palette.mutedFg,
+                    modifier =
+                        Modifier
+                            .heightIn(
+                                min = TOUCH.dp,
+                            ).wrapContentHeight(
+                                Alignment.CenterVertically,
+                            ).clickable(role = Role.Button, onClick = onReply),
+                )
+            }
         }
-        Spacer(Modifier.weight(1f))
         CardActions(reported = reported, onReport = onReport, onDelete = onDelete)
     }
 }

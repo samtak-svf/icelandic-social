@@ -58,8 +58,11 @@ final class PostModel {
         return canWrite(community, now: now())
     }
 
-    /// A moderator muted this account in the post's community.
-    var muted: Bool { community.map { isMuted($0, now: now()) } ?? false }
+    /// Why this member of the post's community has no comment box on a post still shown.
+    var noPostNotice: String? {
+        guard post?.wallOwner == nil, post?.state == .visible else { return nil }
+        return community.flatMap { noPostNoticeKey($0, now: now()) }
+    }
 
     /// The post or comment is this account's own, which it may delete.
     func mine(_ author: Author) -> Bool { me != nil && author.accountId == me }

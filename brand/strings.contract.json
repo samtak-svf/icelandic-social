@@ -1462,7 +1462,7 @@
       "description": "Shown to a muted member in place of the composer."
     },
     "community_read_only": {
-      "surfaces": ["web"],
+      "surfaces": ["android", "ios", "web"],
       "description": "Shown to a member in place of the composer when nobody can write in the community any more: its owner's account was deleted and it had no moderator to inherit it."
     },
     "post_compose": {

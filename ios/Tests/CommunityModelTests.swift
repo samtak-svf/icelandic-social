@@ -122,7 +122,7 @@ final class CommunityModelTests: XCTestCase {
 
     func testAMutedMemberReadsButDoesNotWrite() async {
         let model = await model(makeCommunity("k1", "Fuglar", role: .member, mutedUntil: FakeAccount.now + 60_000))
-        XCTAssertTrue(model.muted)
+        XCTAssertEqual(model.noPostNotice, "community_muted")
         XCTAssertFalse(model.writes)
         XCTAssertEqual(model.posts.count, 2)
     }

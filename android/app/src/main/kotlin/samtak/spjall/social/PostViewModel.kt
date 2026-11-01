@@ -52,6 +52,8 @@ class PostViewModel(
         val replyingTo: Comment? = null,
         val sending: Boolean = false,
         val writes: Boolean = false,
+        /** Why this member has no comment box here, as a string resource. */
+        val noPostNotice: Int? = null,
         val reacting: Boolean = false,
         /** The poll's vote, withdraw or close is on its way. */
         val answering: Boolean = false,
@@ -105,6 +107,7 @@ class PostViewModel(
                         next = page?.next,
                         me = me,
                         writes = if (wall) !tombstone else community?.writes(now()) == true,
+                        noPostNotice = community?.noPostNotice(now()),
                         moderates = community?.moderates == true,
                         loaded = true,
                         busy = false,
@@ -355,16 +358,7 @@ class PostViewModel(
                     val gone = left.size < s.comments.size
                     s.copy(
                         comments = left,
-                        post =
-                            s.post?.let { post ->
-                                if (gone &&
-                                    post.commentCount > 0uL
-                                ) {
-                                    post.copy(commentCount = post.commentCount - 1uL)
-                                } else {
-                                    post
-                                }
-                            },
+                        post = if (gone) s.post?.withOneCommentFewer() else s.post,
                     )
                 }
             } catch (e: CoreException) {

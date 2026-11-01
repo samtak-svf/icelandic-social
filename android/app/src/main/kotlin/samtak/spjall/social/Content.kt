@@ -58,6 +58,21 @@ fun Community.muted(now: Long): Boolean = mutedUntil?.let { it.toLong() > now } 
 /** Whether this account may write a post here at [now]. */
 fun Community.writes(now: Long): Boolean = role != null && !readOnly && !muted(now)
 
+/**
+ * The string telling a member at [now] why there is no composer, or null when there is one or this
+ * account has not joined.
+ */
+fun Community.noPostNotice(now: Long): Int? =
+    when {
+        role == null -> null
+        readOnly -> R.string.community_read_only
+        muted(now) -> R.string.community_muted
+        else -> null
+    }
+
+/** This post with one comment fewer to count, never below none. */
+fun Post.withOneCommentFewer(): Post = if (commentCount > 0uL) copy(commentCount = commentCount - 1uL) else this
+
 /** The longest post the server takes. */
 const val POST_LIMIT = 5000
 

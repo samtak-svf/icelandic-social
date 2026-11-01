@@ -45,8 +45,8 @@ struct PostView: View {
                         .pickerStyle(.segmented)
                         .disabled(!mayWrite(suspension) || model.busy)
                     }
-                    if model.muted {
-                        SocialNote(text: "community_muted")
+                    if let notice = model.noPostNotice {
+                        SocialNote(text: LocalizedStringKey(notice))
                     }
                     if !isPostTombstone(post) { comments }
                 } else if !model.loaded {
