@@ -72,6 +72,21 @@ describe("parsing a posts file", () => {
     expect(kept?.body).toBe(`sjá ${link}`);
   });
 
+  it("reads an AVIF image, which a real export holds beside JPEG and PNG", async () => {
+    const { items, skipped } = await parseExportFile([
+      { timestamp: at, attachments: [{ data: [{ media: { uri: "posts/media/a.avif" } }] }] },
+    ]);
+    expect(skipped).toBe(0);
+    expect(items[0]?.images).toEqual(["posts/media/a.avif"]);
+  });
+
+  it("repairs the escaped letters of a link, as it does a post's text", async () => {
+    const link = "https://example.test/grein-um-ísland";
+    const attach = { attachments: [{ data: [{ external_context: { url: escaped(link) } }] }] };
+    const [item] = (await parseExportFile([post(attach)])).items;
+    expect(item?.body).toBe(`Fyrsta færsla\n${link}`);
+  });
+
   it("gives the same id to the same post and another to another", async () => {
     const [a, b, other] = (
       await parseExportFile([post(), post(), post({ data: [{ post: "önnur" }] })])

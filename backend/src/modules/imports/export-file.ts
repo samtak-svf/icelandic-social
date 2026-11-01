@@ -19,7 +19,7 @@ export type ParsedItem = {
   hasVideo: boolean;
 };
 
-const IMAGE = /\.(jpe?g|png|webp|gif)$/i;
+const IMAGE = /\.(jpe?g|png|webp|gif|avif)$/i;
 const VIDEO = /\.(mp4|mov|m4v|webm)$/i;
 /** A row in D1 and a post both stay far under this. */
 const MAX_BODY = 100_000;
@@ -82,8 +82,8 @@ const uriOf = (item: unknown) => {
 };
 
 const linkOf = (item: unknown) => {
-  const url = record(record(item)?.["external_context"])?.["url"];
-  return typeof url === "string" && url !== "" ? url : null;
+  const url = textOf(record(record(item)?.["external_context"])?.["url"]);
+  return url === "" ? null : url;
 };
 
 /** What the attachments of a post point at: media in the ZIP and links. */
