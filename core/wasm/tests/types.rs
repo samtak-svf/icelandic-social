@@ -88,6 +88,7 @@ fn item() -> dto::Item {
         edited: false,
         reactions: vec![],
         read_by: 0,
+        read_here: vec![],
         expires_at: None,
         forwarded: false,
     }

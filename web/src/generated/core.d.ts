@@ -22,7 +22,7 @@ export interface Reaction { emoji: string; own: boolean; people: Person[] }
 export interface Item {
     seq: number | null; envelopeId: string | null; sender: Person; own: boolean; ts: number;
     receivedAt: number | null; status: "sent" | "pending" | "failed"; content: Content; edited: boolean;
-    reactions: Reaction[]; readBy: number; expiresAt: number | null; forwarded: boolean;
+    reactions: Reaction[]; readBy: number; readHere: Person[]; expiresAt: number | null; forwarded: boolean;
 }
 export interface Conversation {
     id: string; state: ConversationState; name: string | null; photo: string | null; members: Person[];
@@ -198,8 +198,8 @@ export interface InitOutput {
     readonly rust_sqlite_wasm_realloc: (a: number, b: number) => number;
     readonly sqlite3_os_end: () => number;
     readonly sqlite3_os_init: () => number;
-    readonly __wasm_bindgen_func_elem_6787: (a: number, b: number, c: number, d: number) => void;
-    readonly __wasm_bindgen_func_elem_6802: (a: number, b: number, c: number, d: number) => void;
+    readonly __wasm_bindgen_func_elem_6801: (a: number, b: number, c: number, d: number) => void;
+    readonly __wasm_bindgen_func_elem_6816: (a: number, b: number, c: number, d: number) => void;
     readonly __wbindgen_export: (a: number, b: number) => number;
     readonly __wbindgen_export2: (a: number, b: number, c: number, d: number) => number;
     readonly __wbindgen_export3: (a: number) => void;

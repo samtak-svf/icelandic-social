@@ -40,6 +40,7 @@ describe("what is unread (0124)", () => {
       edited: false,
       reactions: [],
       readBy: 0,
+      readHere: [],
       expiresAt: null,
       forwarded: false,
     };

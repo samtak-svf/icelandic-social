@@ -2,7 +2,12 @@
 //! account's mark is the highest seq its receipts reached; this account's
 //! own mark also moves when it reads or sends here, on any of its devices.
 
+use std::collections::HashMap;
+
 use spjall_store::rusqlite::{self, OptionalExtension, Transaction, params};
+
+/// The rows a reader sees as messages: what a count counts and a mark lands on.
+const MESSAGE: &str = "kind IN ('text', 'media', 'post', 'location') AND deleted = 0";
 
 /// The toggles of 0009. Off stops both sending and showing.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -87,9 +92,10 @@ pub(crate) fn advance(
 /// Messages from others after this account's mark.
 pub(crate) fn unread(tx: &Transaction, group: &[u8], me: &str) -> rusqlite::Result<u32> {
     tx.query_row(
-        "SELECT COUNT(*) FROM timeline
-         WHERE group_id = ?1 AND seq > ?3 AND sender_account != ?2
-               AND kind IN ('text', 'media', 'post', 'location') AND deleted = 0",
+        &format!(
+            "SELECT COUNT(*) FROM timeline
+             WHERE group_id = ?1 AND seq > ?3 AND sender_account != ?2 AND {MESSAGE}"
+        ),
         params![group, me, mark(tx, group, me)? as i64],
         |r| r.get(0),
     )
@@ -107,4 +113,52 @@ pub(crate) fn read_by(
         params![group, sender, seq as i64],
         |r| r.get(0),
     )
+}
+
+/// The newest message at or before `seq`: where a mark at `seq` lands.
+pub(crate) fn landing(tx: &Transaction, group: &[u8], seq: u64) -> rusqlite::Result<Option<u64>> {
+    let found: Option<i64> = tx.query_row(
+        &format!("SELECT MAX(seq) FROM timeline WHERE group_id = ?1 AND seq <= ?2 AND {MESSAGE}"),
+        params![group, seq as i64],
+        |r| r.get(0),
+    )?;
+    Ok(found.map(|s| s as u64))
+}
+
+/// Who has read up to each message and no further (0125), by seq: the members
+/// besides this account whose mark lands there. It is worked out from the
+/// whole conversation, so a page shows the same faces wherever it starts. The
+/// sender of the message is left out, as is an account this one blocked.
+pub(crate) fn read_here(
+    tx: &Transaction,
+    group: &[u8],
+    me: &str,
+) -> rusqlite::Result<HashMap<u64, Vec<String>>> {
+    let mut statement = tx.prepare(
+        "SELECT r.account, r.seq FROM read_state r
+         JOIN members m ON m.group_id = r.group_id AND m.account = r.account
+         WHERE r.group_id = ?1 AND r.account != ?2
+               AND r.account NOT IN (SELECT account FROM blocks)
+         ORDER BY r.account",
+    )?;
+    let marks = statement
+        .query_map(params![group, me], |r| {
+            Ok((r.get::<_, String>(0)?, r.get::<_, i64>(1)? as u64))
+        })?
+        .collect::<rusqlite::Result<Vec<_>>>()?;
+    let mut here: HashMap<u64, Vec<String>> = HashMap::new();
+    for (account, seq) in marks {
+        let Some(at) = landing(tx, group, seq)? else {
+            continue;
+        };
+        let sender: String = tx.query_row(
+            "SELECT sender_account FROM timeline WHERE group_id = ?1 AND seq = ?2",
+            params![group, at as i64],
+            |r| r.get(0),
+        )?;
+        if sender != account {
+            here.entry(at).or_default().push(account);
+        }
+    }
+    Ok(here)
 }

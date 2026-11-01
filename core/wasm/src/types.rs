@@ -25,7 +25,7 @@ export interface Reaction { emoji: string; own: boolean; people: Person[] }
 export interface Item {
   seq: number | null; envelopeId: string | null; sender: Person; own: boolean; ts: number;
   receivedAt: number | null; status: "sent" | "pending" | "failed"; content: Content; edited: boolean;
-  reactions: Reaction[]; readBy: number; expiresAt: number | null; forwarded: boolean;
+  reactions: Reaction[]; readBy: number; readHere: Person[]; expiresAt: number | null; forwarded: boolean;
 }
 export interface Conversation {
   id: string; state: ConversationState; name: string | null; photo: string | null; members: Person[];
