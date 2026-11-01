@@ -1,4 +1,5 @@
 import { createRoute, z } from "@hono/zod-openapi";
+import { LIMITS } from "../limits.gen.ts";
 import {
   ACCOUNT,
   AUTHED,
@@ -21,7 +22,7 @@ export { MAX_BIO, MediaId, POST_FIELDS, WallAudience } from "./post-fields.ts";
 // not there, so the answer says nothing about a private community or a block.
 
 /** The largest image a post takes, before it is re-encoded. */
-export const MAX_SOCIAL_UPLOAD = 10 * 1024 * 1024;
+export const MAX_SOCIAL_UPLOAD = LIMITS.imageBytes;
 
 export { emojiOfKind, kindOfEmoji, REACTIONS, type ReactionKind } from "./reaction-kinds.ts";
 
@@ -365,9 +366,9 @@ export const createCommentRoute = createRoute({
       content: {
         "application/json": {
           schema: z.object({
-            body: z.string().trim().max(2000).default(""),
+            body: z.string().trim().max(LIMITS.commentChars).default(""),
             parentCommentId: CommentId.nullable().optional(),
-            media: z.array(MediaId).max(1).default([]),
+            media: z.array(MediaId).max(LIMITS.commentMediaCount).default([]),
           }),
         },
       },

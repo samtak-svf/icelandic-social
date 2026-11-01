@@ -1170,7 +1170,7 @@ fn a_community_image_is_refused_before_a_request_when_empty_or_too_big() {
     let big = dir.path().join("big.png");
     std::fs::File::create(&big)
         .unwrap()
-        .set_len(spjall_client::MAX_PHOTO + 1)
+        .set_len(spjall_client::text::limits::IMAGE_BYTES + 1)
         .unwrap();
     let ok = dir.path().join("ok.png");
     std::fs::write(&ok, b"image").unwrap();

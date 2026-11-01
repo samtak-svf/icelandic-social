@@ -18,6 +18,7 @@ import samtak.spjall.brand.R
 import samtak.spjall.core.CoreException
 import samtak.spjall.core.LinkRequest
 import samtak.spjall.core.isLinkCode
+import samtak.spjall.limits.Limits
 
 /**
  * Links a browser to this account (decisions 0064, 0077): the code the browser shows is scanned or pasted,
@@ -169,4 +170,4 @@ class LinkViewModel(
 }
 
 /** "Síðustu 90 dagar" (0077). */
-private const val RECENT_MILLIS = 90L * 24 * 60 * 60 * 1000
+private const val RECENT_MILLIS = Limits.LINK_RECENT_DAYS * 24L * 60 * 60 * 1000

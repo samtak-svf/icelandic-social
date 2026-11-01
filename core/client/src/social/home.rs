@@ -9,7 +9,7 @@ use crate::clock::now;
 use crate::{Client, ClientError, Hosted};
 
 /// The largest page of the home feed the server takes.
-const MAX_HOME_PAGE: u32 = 30;
+const MAX_HOME_PAGE: u32 = crate::text::limits::HOME_PAGE;
 
 /// Where a post goes (0116). The audience belongs to the wall, the anonymous
 /// choice to a community (0091): a wall has none (0115).

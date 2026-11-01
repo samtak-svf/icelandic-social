@@ -12,6 +12,8 @@ import { outcome } from "./outcome.ts";
 import { PicturePick, sendImage } from "./picture-pick.tsx";
 import { useSuspended } from "./suspended.tsx";
 import { Button } from "../ui/kit.tsx";
+import { LIMITS } from "../generated/limits.ts";
+import { clipText } from "../lib/char-count.ts";
 
 // `community_create` (decisions 0063, 0080): the name, the description, the
 // audience and, if wanted, a picture and a cover. The community is made
@@ -96,17 +98,17 @@ export function CreateCommunity() {
         <input
           id={`${id}-name`}
           required
-          maxLength={80}
           value={name}
-          onChange={(event) => setName(event.target.value)}
+          onChange={(event) => setName(clipText(event.target.value, LIMITS.communityNameChars))}
           className={field}
         />
         <label htmlFor={`${id}-description`}>{strings.community_description}</label>
         <textarea
           id={`${id}-description`}
-          maxLength={500}
           value={description}
-          onChange={(event) => setDescription(event.target.value)}
+          onChange={(event) =>
+            setDescription(clipText(event.target.value, LIMITS.communityDescriptionChars))
+          }
           className={`${field} py-2`}
         />
         <fieldset className="flex flex-col">

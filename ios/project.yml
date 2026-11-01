@@ -146,6 +146,8 @@ targets:
         buildPhase: resources
       - path: ../api/link.vectors.json
         buildPhase: resources
+      - path: ../api/text-length.vectors.json
+        buildPhase: resources
     dependencies:
       - target: Spjall
       - package: SpjallCore

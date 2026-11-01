@@ -10,6 +10,7 @@ import { REFUSED } from "./composer.tsx";
 import { MAX_COMMENT_IMAGES, IMAGE_TYPES, refusal } from "./images.ts";
 import { outcome, type Outcome } from "./outcome.ts";
 import { useSuspended } from "./suspended.tsx";
+import { clipText } from "../lib/char-count.ts";
 
 /** A picked image as a small preview, its object URL revoked when it goes. */
 function Preview({ file }: Readonly<{ file: File }>) {
@@ -115,10 +116,9 @@ export function CommentComposer({
           <textarea
             id={id}
             value={text}
-            maxLength={max}
             rows={1}
             placeholder={placeholder}
-            onChange={(event) => setText(event.target.value)}
+            onChange={(event) => setText(clipText(event.target.value, max))}
             className="field-sizing-content max-h-[7.5rem] min-h-11 min-w-0 flex-1 resize-none rounded-field bg-muted px-4 py-2.5 leading-6"
           />
           <label

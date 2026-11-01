@@ -9,13 +9,14 @@ use crate::api::{
 };
 use crate::frames::{Frame, FrameKind, Framing};
 use crate::photo::{forget_tree, frame_dir, framing_error};
+use crate::text::{limits, text_length};
 use crate::{Client, ClientError, Hosted, MediaError, authed, this_device};
 
 /// The longest bio, in characters (0115).
-pub const MAX_BIO: usize = 120;
+pub const MAX_BIO: usize = limits::BIO_CHARS;
 
 /// The longest reason for removing a comment, in characters (0115).
-const MAX_REASON: usize = 500;
+const MAX_REASON: usize = limits::MODERATION_NOTE_CHARS;
 
 /// A bio as the server takes it: any line breaks a space, trimmed, at most
 /// `MAX_BIO`. Empty clears it.
@@ -26,7 +27,7 @@ fn clean_bio(bio: &str) -> Result<String, ClientError> {
         .collect::<Vec<_>>()
         .join(" ");
     let clean = joined.trim();
-    if clean.chars().count() > MAX_BIO {
+    if text_length(clean) > MAX_BIO {
         return Err(ClientError::Invalid("a bio over 120 characters"));
     }
     Ok(clean.to_owned())
@@ -108,7 +109,7 @@ impl<T: Transport> Hosted<T> {
         if reason.is_empty() {
             return Err(ClientError::Invalid("no reason"));
         }
-        if reason.chars().count() > MAX_REASON {
+        if text_length(reason) > MAX_REASON {
             return Err(ClientError::Invalid("a reason over 500 characters"));
         }
         Ok(self.api()?.remove_wall_comment(comment, reason)?)

@@ -128,8 +128,8 @@ private struct ReportCard: View {
                         BrandTokens.Colors.muted, in: RoundedRectangle(cornerRadius: BrandTokens.Radius.thumbnail)
                     )
                     .onChange(of: reason) { _, text in
-                        if text.count > ReportsModel.reasonLimit {
-                            reason = String(text.prefix(ReportsModel.reasonLimit))
+                        if textLength(text) > ReportsModel.reasonLimit {
+                            reason = clippedText(text, to: ReportsModel.reasonLimit)
                         }
                     }
                 if !ReportsModel.valid(reason) {

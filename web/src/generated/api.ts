@@ -561,6 +561,8 @@ export interface Community {
   readOnly: boolean;
   /** When it was deleted (Unix milliseconds); only a platform moderator sees a deleted community, and restores it within 30 days */
   deletedAt: number | null;
+  /** Until when a platform moderator can restore it (Unix milliseconds), or null when it is not deleted */
+  restorableUntil: number | null;
   /** A moderator declined the caller's join request: it may ask again from this time (Unix milliseconds) */
   joinDeclinedUntil: number | null;
   /** How many join requests wait; null unless the caller moderates the community */

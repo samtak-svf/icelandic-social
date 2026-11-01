@@ -1,11 +1,12 @@
 import { db, mediaBucket } from "../../env/index.ts";
+import { LIMITS } from "../../limits.gen.ts";
 
 // Photos and files as encrypted blobs in R2 (decision 0023). The core
 // encrypts before upload and the key stays inside MLS, so the Worker stores
 // and hands out opaque bytes, and checks only who may.
 
 /** The largest file the core sends: 25 MB of plaintext. */
-const MAX_PLAINTEXT = 25 * 1024 * 1024;
+const MAX_PLAINTEXT = LIMITS.mediaBytes;
 
 /** The core seals a file in segments of this many bytes, each with a 16-byte tag. */
 const SEGMENT = 64 * 1024;

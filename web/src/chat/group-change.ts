@@ -1,5 +1,6 @@
 import type { ChatCall } from "./protocol.ts";
 import { isFailure } from "./protocol.ts";
+import { LIMITS } from "../generated/limits.ts";
 
 // The four changes a member makes to a group (decision 0078), each one call to
 // the core through the worker. The core queues a change like a message, so the
@@ -17,7 +18,7 @@ export type GroupChange =
 export type GroupProblem = "unreachable" | "failed";
 
 /** The longest a group's name may be (0078): a title, not a sentence. */
-export const NAME_LIMIT = 64;
+export const NAME_LIMIT = LIMITS.groupNameChars;
 
 /** The problem a failed change shows. */
 export function groupProblem(error: unknown): GroupProblem {

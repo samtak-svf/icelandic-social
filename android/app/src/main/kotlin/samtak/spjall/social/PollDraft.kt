@@ -1,6 +1,8 @@
 package samtak.spjall.social
 
 import samtak.spjall.core.pollDraftValid
+import samtak.spjall.limits.Limits
+import samtak.spjall.ui.fitsIn
 
 /**
  * Whether the server would take a poll (decision 0090). The core holds the rule; a test without its native library
@@ -20,11 +22,11 @@ object CorePollRule : PollRule {
     ): Boolean = pollDraftValid(question, options)
 }
 
-/** The poll half of the post form (decision 0090): the limits mirror the API's `POLL_OPTIONS`. */
+/** The poll half of the post form (decision 0090): the limits are the API's. */
 object PollDraft {
-    const val MIN_OPTIONS = 2
-    const val MAX_OPTIONS = 6
-    const val OPTION_MAX = 80
+    const val MIN_OPTIONS = Limits.POLL_OPTIONS_MIN
+    const val MAX_OPTIONS = Limits.POLL_OPTIONS_MAX
+    const val OPTION_MAX = Limits.POLL_OPTION_CHARS
 
     /** Two empty fields, where a poll starts. */
     fun empty(): List<String> = List(MIN_OPTIONS) { "" }
@@ -41,7 +43,7 @@ object PollDraft {
         index: Int,
         text: String,
     ): List<String> =
-        if (text.codePointCount(0, text.length) > OPTION_MAX) {
+        if (!text.fitsIn(OPTION_MAX)) {
             poll
         } else {
             poll.mapIndexed { i, old -> if (i == index) text else old }

@@ -17,13 +17,14 @@ import { outcome, useLoad } from "../social/outcome.ts";
 import { usePaged, type Paged } from "../social/paged.ts";
 import { Button, ProblemText, Status } from "../ui/kit.tsx";
 import { failureSentence, usePoll } from "./shared.tsx";
+import { LIMITS } from "../generated/limits.ts";
 
 // One import (decisions 0119, 0120): what was read and, while it waits, the choice of
 // what to publish. Nothing is published until the person says so, and a whole
 // import can always be taken back.
 
 /** Most posts one publication can leave out; the API refuses more. */
-export const MOST_EXCLUDED = 1000;
+export const MOST_EXCLUDED = LIMITS.excludedPostsCount;
 
 const WAITING: readonly ImportStatus["state"][] = ["parsing", "publishing", "removing"];
 

@@ -80,17 +80,20 @@ describe("deleting a community", () => {
     expect(await status(member, "DELETE", `/v1/communities/${id}`)).toBe(403);
     expect(await status(platform, "DELETE", `/v1/communities/${id}`)).toBe(204);
 
-    const seen = await ok<{ deletedAt: number | null }>(
+    const seen = await ok<{ deletedAt: number | null; restorableUntil: number | null }>(
       await platform.call("GET", `/v1/communities/${id}`),
     );
     expect(seen.deletedAt).toEqual(expect.any(Number));
+    expect(seen.restorableUntil).toBe((seen.deletedAt ?? 0) + 30 * 24 * 60 * 60 * 1000);
     expect(await status(owner, "POST", `/v1/communities/${id}/restore`)).toBe(404);
     expect(await status(member, "POST", `/v1/communities/${id}/restore`)).toBe(404);
 
-    const restored = await ok<{ deletedAt: number | null; memberCount: number }>(
-      await platform.call("POST", `/v1/communities/${id}/restore`),
-    );
-    expect(restored).toMatchObject({ deletedAt: null, memberCount: 2 });
+    const restored = await ok<{
+      deletedAt: number | null;
+      restorableUntil: number | null;
+      memberCount: number;
+    }>(await platform.call("POST", `/v1/communities/${id}/restore`));
+    expect(restored).toMatchObject({ deletedAt: null, restorableUntil: null, memberCount: 2 });
     expect(await status(member, "GET", `/v1/posts/${postId}`)).toBe(200);
     expect((await inbox(owner)).unread).toBe(1);
     // A live one restores as it is; an owner who is no platform moderator may not.

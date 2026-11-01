@@ -1,6 +1,6 @@
 import type { PostView } from "../../api/social.ts";
 import { db } from "../../env/index.ts";
-import { DECLINED_MS, READ_ONLY_MS } from "./communities.ts";
+import { DECLINED_MS, READ_ONLY_MS, RESTORABLE_MS } from "./communities.ts";
 
 // A community's deletion (decision 0070). Deleting marks it, and it is gone
 // for everyone at once; for 30 days a platform moderator can restore it. Then
@@ -10,8 +10,6 @@ import { DECLINED_MS, READ_ONLY_MS } from "./communities.ts";
 // (decision 0063) is purged by the same path.
 
 const DAY_MS = 24 * 60 * 60 * 1000;
-/** A deleted community can be restored this long, then it is purged. */
-const RESTORABLE_MS = 30 * DAY_MS;
 /** A deleted community's row, its log and its reports are kept this long. */
 const KEPT_MS = 365 * DAY_MS;
 

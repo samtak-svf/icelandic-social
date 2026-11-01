@@ -22,7 +22,7 @@ final class ReportModel {
 
     /// A reason is picked and the note is not over the limit.
     var sendable: Bool {
-        reason != nil && note.trimmingCharacters(in: .whitespacesAndNewlines).utf16.count <= Self.noteLimit && !sent
+        reason != nil && textLength(note.trimmingCharacters(in: .whitespacesAndNewlines)) <= Self.noteLimit && !sent
     }
 
     func send() async {
@@ -41,13 +41,11 @@ final class ReportModel {
         busy = false
     }
 
-    /// The longest note the server takes, in UTF-16 units as the server counts.
-    nonisolated static let noteLimit = 500
+    /// The longest note the server takes.
+    nonisolated static let noteLimit = Limits.moderationNoteChars
 
-    /// A note cut to what the server takes, never through a character.
+    /// A note cut to what the server takes.
     nonisolated static func capped(_ text: String) -> String {
-        var kept = text
-        while kept.utf16.count > noteLimit { kept.removeLast() }
-        return kept
+        clippedText(text, to: noteLimit)
     }
 }

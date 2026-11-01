@@ -230,8 +230,8 @@ pub(crate) fn group_name(sent: &str) -> Option<Option<String>> {
     if name.is_empty() {
         return Some(None);
     }
-    (name.chars().count() <= 64 && !name.chars().any(char::is_control))
-        .then(|| Some(name.to_owned()))
+    let fits = crate::text::text_length(name) <= crate::text::limits::GROUP_NAME_CHARS;
+    (fits && !name.chars().any(char::is_control)).then(|| Some(name.to_owned()))
 }
 
 /// A file name a peer sent, as a name and never a path: the last component,

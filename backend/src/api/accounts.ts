@@ -1,4 +1,5 @@
 import { createRoute, z } from "@hono/zod-openapi";
+import { LIMITS } from "../limits.gen.ts";
 import {
   AUTHED,
   ACCOUNT,
@@ -88,11 +89,11 @@ export const listPeopleRoute = createRoute({
         .string()
         .trim()
         .min(1)
-        .max(100)
+        .max(LIMITS.peopleSearchChars)
         .optional()
         .openapi({ description: "The start of a name or of a word in it" }),
       after: z.string().min(1).max(600).optional().openapi({ description: "From `next`" }),
-      limit: z.coerce.number().int().min(1).max(50).default(30),
+      limit: z.coerce.number().int().min(1).max(LIMITS.pageSize).default(30),
     }),
   },
   responses: {
@@ -147,7 +148,7 @@ export const unblockRoute = createRoute({
 });
 
 /** The largest upload of a profile photo (decision 0039), before it is re-encoded. */
-export const MAX_PHOTO_UPLOAD = 10 * 1024 * 1024;
+export const MAX_PHOTO_UPLOAD = LIMITS.imageBytes;
 
 const Binary = z.string().openapi({ type: "string", format: "binary" });
 

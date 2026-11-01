@@ -3,6 +3,7 @@ package samtak.spjall.media
 import android.graphics.Bitmap
 import androidx.core.graphics.scale
 import samtak.spjall.frames.ImageSize
+import samtak.spjall.limits.Limits
 import java.io.ByteArrayOutputStream
 import java.io.File
 
@@ -10,7 +11,7 @@ import java.io.File
 const val MASTER_LONGEST = 2400
 
 /** A master must stay under what the server accepts for an image. */
-const val MASTER_LIMIT = 10L * 1024 * 1024
+const val MASTER_LIMIT = Limits.IMAGE_BYTES
 
 /** JPEG qualities tried in turn, from the best down. */
 val MASTER_QUALITIES = listOf(90, 80, 70, 60)

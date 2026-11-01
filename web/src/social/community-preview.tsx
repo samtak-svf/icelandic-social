@@ -25,6 +25,7 @@ export function draftCommunity(draft: Draft): Community {
     mutedUntil: null,
     readOnly: false,
     deletedAt: null,
+    restorableUntil: null,
     joinDeclinedUntil: null,
     pendingJoinRequests: null,
     openReports: null,

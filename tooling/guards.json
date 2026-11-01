@@ -12,6 +12,12 @@
       "flag": "--check"
     },
     {
+      "name": "limits-gen-check",
+      "script": "limits-gen",
+      "stages": ["push", "ci"],
+      "flag": "--check"
+    },
+    {
       "name": "brand-leak",
       "script": "brand-leak-guard",
       "stages": ["push", "ci"]

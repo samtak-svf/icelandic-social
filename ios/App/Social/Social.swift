@@ -383,8 +383,8 @@ let likeEmoji = "👍"
 let reportReasons: [ReportReason] = [.unlawful, .harassment, .spam, .other]
 
 /// The longest name and description a community takes, as the server holds them.
-let communityNameLimit = 80
-let communityDescriptionLimit = 500
+let communityNameLimit = Limits.communityNameChars
+let communityDescriptionLimit = Limits.communityDescriptionChars
 
 /// Now, in Unix milliseconds, as the server counts.
 @Sendable func nowMillis() -> UInt64 {

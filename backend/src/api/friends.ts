@@ -1,4 +1,5 @@
 import { createRoute, z } from "@hono/zod-openapi";
+import { LIMITS } from "../limits.gen.ts";
 import { ACCOUNT, AUTHED, errorResponse, INVALID, OpaqueId, PhotoVersion } from "./common.ts";
 import { Profile } from "./accounts.ts";
 
@@ -124,7 +125,7 @@ export const listFriendsRoute = createRoute({
         .string()
         .trim()
         .min(1)
-        .max(100)
+        .max(LIMITS.peopleSearchChars)
         .optional()
         .openapi({ description: "The start of a name or of a word in it" }),
       sort: z.enum(["newest", "name"]).default("newest"),
@@ -240,7 +241,7 @@ export const listFriendSuggestionsRoute = createRoute({
   request: {
     query: z.object({
       after: z.string().min(1).max(600).optional().openapi({ description: "From `next`" }),
-      limit: z.coerce.number().int().min(1).max(50).default(20),
+      limit: z.coerce.number().int().min(1).max(LIMITS.pageSize).default(20),
     }),
   },
   responses: {

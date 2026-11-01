@@ -28,6 +28,7 @@ import samtak.spjall.brand.R
 import samtak.spjall.core.ReportReason
 import samtak.spjall.ui.Palette
 import samtak.spjall.ui.capitals
+import samtak.spjall.ui.fitsIn
 
 /**
  * Reporting a post or a comment (decision 0066): a reason, an optional note, and send. The moderators are never
@@ -69,7 +70,7 @@ fun ReportDialog(
                 }
                 OutlinedTextField(
                     value = note,
-                    onValueChange = { if (it.length <= NOTE_LIMIT) note = it },
+                    onValueChange = { if (it.fitsIn(NOTE_LIMIT)) note = it },
                     label = { Text(stringResource(R.string.report_note)) },
                     modifier = Modifier.fillMaxWidth(),
                 )

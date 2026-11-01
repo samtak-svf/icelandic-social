@@ -22,8 +22,8 @@ import { useSuspended } from "./suspended.tsx";
 // the header, joining and withdrawing a join request, the row of tabs and,
 // on an expanded window, the aside beside the tab. The community and its
 // members are loaded once here; a tab reads them from `useCommunityTab`. A
-// platform moderator alone sees a deleted one, and restores it within its 30
-// days (decision 0070).
+// platform moderator alone sees a deleted one, and restores it within the
+// days the server reports (decision 0070).
 
 type Shared = { community: Community; members: Members | undefined; changed: () => void };
 
@@ -171,8 +171,6 @@ function Membership({
   );
 }
 
-const RESTORABLE_MS = 30 * 24 * 60 * 60 * 1000;
-
 /** What a platform moderator sees of a deleted community: when it goes, and the way back. */
 function Deleted({
   community,
@@ -180,7 +178,6 @@ function Deleted({
 }: Readonly<{ community: Community; restored: () => void }>) {
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<Problem | null>(null);
-  const deletedAt = community.deletedAt ?? 0;
   async function restore() {
     setBusy(true);
     setProblem(null);
@@ -196,7 +193,7 @@ function Deleted({
     <>
       <h1 className="font-headline text-3xl">{community.name}</h1>
       <p className="mt-2">
-        {strings.community_deleted_notice({ date: formatIsDate(deletedAt + RESTORABLE_MS) })}
+        {strings.community_deleted_notice({ date: formatIsDate(community.restorableUntil ?? 0) })}
       </p>
       <div className="mt-4 flex flex-col items-start gap-2">
         <Button tone="primary" disabled={busy} onClick={() => void restore()}>

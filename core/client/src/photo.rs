@@ -21,7 +21,7 @@ use crate::members::store_photo;
 use crate::{Client, ClientError, MediaError, authed, is_id, this_device};
 
 /// The largest image the server takes as a photo, in bytes (0039).
-pub const MAX_PHOTO: u64 = 10 * 1024 * 1024;
+pub(crate) const MAX_PHOTO: u64 = crate::text::limits::IMAGE_BYTES;
 
 /// Removes every file in `dir` but `keep`. Gone already is fine; anything
 /// else is tried again on the next fetch.

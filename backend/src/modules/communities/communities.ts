@@ -31,6 +31,8 @@ export type Standing = {
   platformModerator: boolean;
   /** When it was deleted; only a platform moderator sees a deleted one (decision 0070). */
   deletedAt: number | null;
+  /** Until when a platform moderator can restore it, or null when it is not deleted. */
+  restorableUntil: number | null;
   /** Its content is gone; it is kept only for its log, and cannot be restored. */
   purged: boolean;
   /** Until when the viewer's declined request keeps it from asking again, or null. */
@@ -71,6 +73,8 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 export const READ_ONLY_MS = 90 * DAY_MS;
 /** A declined account may ask to join again this long after (decision 0070). */
 export const DECLINED_MS = 30 * DAY_MS;
+/** A deleted community can be restored this long, then it is purged. */
+export const RESTORABLE_MS = 30 * DAY_MS;
 
 // ?1 is the viewer in every query that uses these.
 const COLUMNS = `c.community_id, c.name, c.description, c.audience, c.created_at,
@@ -162,6 +166,7 @@ function standingOf(row: Row): Standing {
     mutedUntil: row.muted_until,
     platformModerator: row.platform === 1,
     deletedAt: row.deleted_at,
+    restorableUntil: row.deleted_at === null ? null : row.deleted_at + RESTORABLE_MS,
     purged: row.purged_at !== null,
     joinDeclinedUntil:
       row.declined_at !== null && row.declined_at + DECLINED_MS > Date.now()
@@ -271,6 +276,7 @@ export async function createCommunity(
     mutedUntil: null,
     platformModerator: false,
     deletedAt: null,
+    restorableUntil: null,
     purged: false,
     joinDeclinedUntil: null,
     pendingJoinRequests: 0,

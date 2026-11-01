@@ -122,6 +122,9 @@ and the migration number are the only things two such branches share, and the br
 main's, regenerates the contract and commits that, with nothing to edit by hand. Two branches changing the
 same source file still stop at the rebase, for a person. `migration-guard --base` refuses a number main has passed.
 
+**Limits (decision 0123).** A limit a client and the server share lives in `api/limits.json`, and `tooling/limits-gen.mjs`
+writes it to every platform (`check:limits`). A text's length is its code points; each platform has one helper for it.
+
 Tooling is plain `.mjs` with `// @ts-check` and JSDoc, type-checked by `tsc --noEmit`
 (`checkJs`). Node ≥ 24.2 (`import.meta.main`). pnpm, one workspace (the root and `backend/`)
 with one lockfile; build scripts are allowed only for the root `pnpm.onlyBuiltDependencies`.

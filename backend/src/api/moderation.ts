@@ -1,4 +1,5 @@
 import { createRoute, z } from "@hono/zod-openapi";
+import { LIMITS } from "../limits.gen.ts";
 import { ACCOUNT, AUTHED, errorResponse, INVALID, OpaqueId } from "./common.ts";
 import { Author } from "./social.ts";
 
@@ -9,7 +10,7 @@ import { Author } from "./social.ts";
 // account that made it.
 
 /** The longest note on a report, and reason for an action, in characters. */
-const MAX_NOTE = 500;
+const MAX_NOTE = LIMITS.moderationNoteChars;
 
 export const REPORT_KINDS = ["post", "comment", "community", "account"] as const;
 export const REPORT_REASONS = ["unlawful", "harassment", "spam", "other"] as const;

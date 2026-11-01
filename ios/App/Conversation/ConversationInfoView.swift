@@ -109,13 +109,12 @@ struct ConversationInfoView: View {
         .alert(Text("group_name_title"), isPresented: $renaming) {
             TextField(localized("group_name_hint"), text: $draftName)
             Button("save") {
-                let next = String(draftName.prefix(64)).trimmingCharacters(in: .whitespacesAndNewlines)
+                let next = clippedText(draftName, to: Limits.groupNameChars)
+                    .trimmingCharacters(in: .whitespacesAndNewlines)
                 Task { await model.rename(next.isEmpty ? nil : next) }
             }
             if model.conversation?.name != nil {
-                Button("group_name_remove", role: .destructive) {
-                    Task { await model.rename(nil) }
-                }
+                Button("group_name_remove", role: .destructive) { Task { await model.rename(nil) } }
             }
             Button("cancel", role: .cancel) {}
         }

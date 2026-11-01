@@ -24,16 +24,16 @@ use crate::api::{
 use crate::{ClientError, Hosted, is_id};
 
 /// The most references one `cards` call resolves; the server refuses more.
-pub const MAX_CARDS: usize = 50;
+pub const MAX_CARDS: usize = crate::text::limits::CARD_REFS_COUNT;
 
 /// The most images a post holds (0065); the server refuses more.
-pub const MAX_POST_MEDIA: usize = 4;
+pub const MAX_POST_MEDIA: usize = crate::text::limits::POST_MEDIA_COUNT;
 
 /// The most images a comment carries (0082).
-pub const MAX_COMMENT_MEDIA: usize = 1;
+pub const MAX_COMMENT_MEDIA: usize = crate::text::limits::COMMENT_MEDIA_COUNT;
 
 /// The largest image the server takes for a post, in bytes (0065).
-pub const MAX_POST_IMAGE: u64 = 10 * 1024 * 1024;
+pub const MAX_POST_IMAGE: u64 = crate::text::limits::IMAGE_BYTES;
 
 fn id(text: &str, what: &'static str) -> Result<(), ClientError> {
     if is_id(text) {

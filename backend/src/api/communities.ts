@@ -1,4 +1,5 @@
 import { createRoute, z } from "@hono/zod-openapi";
+import { LIMITS } from "../limits.gen.ts";
 import { Framing } from "./image-frames.ts";
 import { Post } from "./social.ts";
 import { ACCOUNT, AUTHED, errorResponse, INVALID, OpaqueId, PhotoVersion } from "./common.ts";
@@ -16,8 +17,8 @@ const Audience = z.enum(["open", "private"]).openapi({
 
 export const Role = z.enum(["owner", "moderator", "member"]);
 
-const Name = z.string().trim().min(1).max(80);
-const Description = z.string().trim().max(500);
+const Name = z.string().trim().min(1).max(LIMITS.communityNameChars);
+const Description = z.string().trim().max(LIMITS.communityDescriptionChars);
 
 const Community = z
   .object({
@@ -43,6 +44,10 @@ const Community = z
     deletedAt: z.int().nullable().openapi({
       description:
         "When it was deleted (Unix milliseconds); only a platform moderator sees a deleted community, and restores it within 30 days",
+    }),
+    restorableUntil: z.int().nullable().openapi({
+      description:
+        "Until when a platform moderator can restore it (Unix milliseconds), or null when it is not deleted",
     }),
     joinDeclinedUntil: z.int().nullable().openapi({
       description:
@@ -162,7 +167,7 @@ export const listCommunitiesRoute = createRoute({
   security: ACCOUNT,
   request: {
     query: z.object({
-      q: z.string().trim().min(1).max(80).optional(),
+      q: z.string().trim().min(1).max(LIMITS.communitySearchChars).optional(),
       after: z
         .string()
         .regex(/^\d{1,16}-[A-Za-z0-9_]{1,64}$/)

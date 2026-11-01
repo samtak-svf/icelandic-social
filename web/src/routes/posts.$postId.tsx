@@ -29,6 +29,7 @@ import { ReportButton } from "../social/report.tsx";
 import { useSuspended } from "../social/suspended.tsx";
 import { Button, ProblemText, Status } from "../ui/kit.tsx";
 import { CardPlaceholders, Loading } from "../ui/placeholder.tsx";
+import { LIMITS } from "../generated/limits.ts";
 
 // One post and its comments (decision 0071): each top-level comment with the
 // replies under it, oldest first, and the box to write in, answering a
@@ -195,7 +196,7 @@ function PostScreen({ post, reloadPost }: Readonly<{ post: Post; reloadPost: () 
               label={strings.comment_compose}
               placeholder={strings.post_write_comment}
               action={strings.comment_publish}
-              max={2000}
+              max={LIMITS.commentChars}
               send={async (body, media) => {
                 const sent = await outcome(
                   createComment({

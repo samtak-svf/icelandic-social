@@ -39,6 +39,7 @@ mod photo;
 pub mod place;
 mod read;
 pub mod social;
+pub mod text;
 mod timeline;
 mod view;
 
@@ -61,7 +62,6 @@ pub use members::Person;
 pub use mute::{Mute, MuteFor};
 pub use notice::{Notice, NoticeKind, Notices, SocialNotice};
 pub use own_link::{OwnLink, own_link};
-pub use photo::MAX_PHOTO;
 pub use read::Settings;
 pub use social::{MAX_CARDS, MAX_COMMENT_MEDIA, MAX_POST_IMAGE, MAX_POST_MEDIA, PostTarget};
 use spjall_envelope::{Body, Envelope, EnvelopeError, is_place};

@@ -1,0 +1,102 @@
+{
+  "$comment": "Every limit a client must agree on with the server, read by tooling/limits-gen.mjs (decision 0123). Text limits count code points; api/text-length.vectors.json pins that on every platform.",
+  "limits": [
+    { "name": "postBodyChars", "unit": "chars", "value": 5000, "doc": "A post's text." },
+    { "name": "commentChars", "unit": "chars", "value": 2000, "doc": "A comment's text." },
+    {
+      "name": "moderationNoteChars",
+      "unit": "chars",
+      "value": 500,
+      "doc": "A report's note, and a moderator's reason."
+    },
+    { "name": "communityNameChars", "unit": "chars", "value": 80, "doc": "A community's name." },
+    {
+      "name": "communityDescriptionChars",
+      "unit": "chars",
+      "value": 500,
+      "doc": "A community's description."
+    },
+    {
+      "name": "communitySearchChars",
+      "unit": "chars",
+      "value": 80,
+      "doc": "A search for communities."
+    },
+    { "name": "peopleSearchChars", "unit": "chars", "value": 100, "doc": "A search for people." },
+    {
+      "name": "groupNameChars",
+      "unit": "chars",
+      "value": 64,
+      "doc": "A group conversation's name, kept by the clients: the server never reads it."
+    },
+    { "name": "bioChars", "unit": "chars", "value": 120, "doc": "A bio (decision 0115)." },
+    { "name": "pollOptionChars", "unit": "chars", "value": 80, "doc": "One option of a poll." },
+    {
+      "name": "postMediaCount",
+      "unit": "count",
+      "value": 4,
+      "doc": "Images on a post (decision 0065)."
+    },
+    {
+      "name": "commentMediaCount",
+      "unit": "count",
+      "value": 1,
+      "doc": "Images on a comment (decision 0082)."
+    },
+    {
+      "name": "pollOptionsMin",
+      "unit": "count",
+      "value": 2,
+      "doc": "The fewest options a poll holds."
+    },
+    {
+      "name": "pollOptionsMax",
+      "unit": "count",
+      "value": 6,
+      "doc": "The most options a poll holds."
+    },
+    {
+      "name": "excludedPostsCount",
+      "unit": "count",
+      "value": 1000,
+      "doc": "Posts left out of one import."
+    },
+    {
+      "name": "cardRefsCount",
+      "unit": "count",
+      "value": 50,
+      "doc": "References one call for cards resolves."
+    },
+    { "name": "pageSize", "unit": "page", "value": 50, "doc": "The longest page of people." },
+    {
+      "name": "homePage",
+      "unit": "page",
+      "value": 30,
+      "doc": "The longest page of the home feed."
+    },
+    {
+      "name": "mediaBytes",
+      "unit": "bytes",
+      "value": 26214400,
+      "doc": "A file sent in a conversation, in plaintext (decision 0023)."
+    },
+    {
+      "name": "imageBytes",
+      "unit": "bytes",
+      "value": 10485760,
+      "doc": "An image for a post or a photo (decisions 0039, 0065)."
+    },
+    {
+      "name": "historyBytes",
+      "unit": "bytes",
+      "value": 1073741824,
+      "doc": "A history sent to a new device, in plaintext (decision 0064)."
+    },
+    {
+      "name": "linkRecentDays",
+      "unit": "days",
+      "value": 90,
+      "doc": "How far back a link to a new device offers history."
+    }
+  ]
+}

@@ -21,6 +21,7 @@ import samtak.spjall.core.FrameKind
 import samtak.spjall.core.Framing
 import samtak.spjall.frames.FrameRequest
 import samtak.spjall.frames.newImageRequest
+import samtak.spjall.ui.fitsIn
 import java.io.File
 
 /** Creating a community (decision 0063): its name, description and audience, then into it. */
@@ -58,11 +59,11 @@ class CreateCommunityViewModel(
     val created: Flow<String> = _created.receiveAsFlow()
 
     fun name(text: String) {
-        if (text.length <= NAME_LIMIT) _state.update { it.copy(name = text) }
+        if (text.fitsIn(NAME_LIMIT)) _state.update { it.copy(name = text) }
     }
 
     fun description(text: String) {
-        if (text.length <= DESCRIPTION_LIMIT) _state.update { it.copy(description = text) }
+        if (text.fitsIn(DESCRIPTION_LIMIT)) _state.update { it.copy(description = text) }
     }
 
     fun audience(audience: CommunityAudience) {

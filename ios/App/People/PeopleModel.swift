@@ -12,7 +12,13 @@ final class PeopleModel {
     /// The people met through a shared conversation.
     private(set) var people: [Person] = []
     /// The search as typed; `search()` asks the directory for it.
-    var query = ""
+    var query = "" {
+        didSet {
+            if textLength(query) > Limits.peopleSearchChars {
+                query = clippedText(query, to: Limits.peopleSearchChars)
+            }
+        }
+    }
     /// The directory's pages so far, for `query`.
     private(set) var directory: [Person] = []
     /// The cursor of the directory's next page, nil on the last.

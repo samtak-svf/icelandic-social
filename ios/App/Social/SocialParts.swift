@@ -82,7 +82,7 @@ struct SocialSearchField: View {
             .autocorrectionDisabled()
             .submitLabel(.search)
             .onChange(of: text) { _, typed in
-                if let limit, typed.count > limit { text = String(typed.prefix(limit)) }
+                if let limit, textLength(typed) > limit { text = clippedText(typed, to: limit) }
             }
         }
         .padding(.horizontal, 12)
@@ -658,7 +658,7 @@ struct SocialComposer<Above: View, Leading: View>: View {
                             .strokeBorder(focused ? BrandTokens.Colors.borderStrong : BrandTokens.Colors.border)
                     }
                     .onChange(of: draft) { _, text in
-                        if text.count > limit { draft = String(text.prefix(limit)) }
+                        if textLength(text) > limit { draft = clippedText(text, to: limit) }
                     }
                 RoundButton(
                     systemImage: "arrow.up", label: send, fill: BrandTokens.Colors.primary,

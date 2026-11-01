@@ -29,6 +29,32 @@ const OUTPUTS = [
     reference: /from "[./]+\/generated\/api\.ts"/,
     skip: ["web/src/generated/"],
   },
+  {
+    output: "backend/src/limits.gen.ts",
+    consumerDirs: ["backend/src/api"],
+    reference: /from "\.\.\/limits\.gen\.ts"/,
+  },
+  {
+    output: "web/src/generated/limits.ts",
+    consumerDirs: ["web/src"],
+    reference: /generated\/limits\.ts"/,
+    skip: ["web/src/generated/"],
+  },
+  {
+    output: "core/client/src/generated/limits.rs",
+    consumerDirs: ["core/client/src/text.rs"],
+    reference: /generated\/limits\.rs/,
+  },
+  {
+    output: "android/app/src/generated/kotlin/samtak/spjall/limits/Limits.kt",
+    consumerDirs: ["android/app/src/main/kotlin/samtak/spjall/social"],
+    reference: /samtak\.spjall\.limits\.Limits/,
+  },
+  {
+    output: "ios/App/generated/Limits.swift",
+    consumerDirs: ["ios/App/Social"],
+    reference: /\bLimits\./,
+  },
 ];
 
 /**
