@@ -12,8 +12,8 @@ mod worker;
 use std::path::Path;
 use std::time::{Duration, Instant, SystemTime};
 
-use spjall_client::Event;
 use spjall_client::api::DeviceKind;
+use spjall_client::{Content, Event};
 use spjall_envelope::Body;
 use worker::*;
 
@@ -91,7 +91,7 @@ fn named(run: u64, tag: &str, name: &str) -> Phone {
 /// of three and links the browser, which then adds a fourth person, removes
 /// the third, names the group and leaves it. Each change is checked on the
 /// side of a member who stays, or of the one added. Files in
-/// `SPJALL_BROWSER_DIR`: `subject` and `code` (the spec), `ready`, `third`
+/// `SPJALL_BROWSER_DIR`: `subject` and `code` (the spec), `ready`, `second`, `third`
 /// and `fourth` (the names the spec picks, written here).
 #[test]
 #[ignore = "driven by web/e2e/group.spec.ts under `cf dev --mode interop`"]
@@ -108,7 +108,8 @@ fn a_browser_manages_a_group() {
     let mut phone = Phone::signed_in(Person::Google(&subject), None);
     let third_name = format!("Thridji {run}");
     let fourth_name = format!("Fjordi {run}");
-    let mut second = named(run, "second", &format!("Annar {run}"));
+    let second_name = format!("Annar {run}");
+    let mut second = named(run, "second", &second_name);
     let mut third = named(run, "third", &third_name);
     let mut fourth = named(run, "fourth", &fourth_name);
 
@@ -125,6 +126,7 @@ fn a_browser_manages_a_group() {
     phone.send(&conversation, "halló hópur");
     phone.sync();
     second.deliver_until(count(1));
+    std::fs::write(dir.join("second"), &second_name).unwrap();
     std::fs::write(dir.join("third"), &third_name).unwrap();
     std::fs::write(dir.join("fourth"), &fourth_name).unwrap();
     std::fs::write(dir.join("ready"), &conversation).unwrap();
@@ -132,11 +134,30 @@ fn a_browser_manages_a_group() {
     let code = awaited(&dir.join("code"));
     phone.client.approve_link(&code, None, true).unwrap();
 
-    // Added: the new person is welcomed, and a member who stays is told.
-    fourth.deliver_until(has(joined));
-    // A frame can carry several of these, and what one wait reads past its own
+    // A frame can carry several events, and what one wait reads past its own
     // condition has to count for the next, so `seen` runs through all of them.
     let mut seen = Vec::new();
+    // Read: once the second member has seen the browser join, a read mark
+    // reaches the browser too, and the spec waits for that face (0125).
+    second.deliver_keeping(&mut seen, |events| {
+        events
+            .iter()
+            .any(|e| matches!(e, Event::Devices { joined, .. } if !joined.is_empty()))
+    });
+    let seq = second
+        .client
+        .timeline(&conversation, None, 10)
+        .unwrap()
+        .iter()
+        .rev()
+        .find(|item| matches!(&item.content, Content::Text { text, .. } if text == "halló hópur"))
+        .and_then(|item| item.seq)
+        .unwrap();
+    second.client.mark_read(&conversation, seq).unwrap();
+    second.sync();
+
+    // Added: the new person is welcomed, and a member who stays is told.
+    fourth.deliver_until(has(joined));
     let fourth_account = fourth.account.clone();
     second.deliver_keeping(&mut seen, |events| {
         events.iter().any(
