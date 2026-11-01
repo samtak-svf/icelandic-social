@@ -23,7 +23,7 @@ import type { AppEnv } from "../../http.ts";
 import { space } from "../../env/index.ts";
 import { blockedEither, notSuspended } from "../../identity/index.ts";
 import { CLIENT_HEADER, decodesEveryNotice } from "../../shared/client-version.ts";
-import { fail } from "../../shared/errors.ts";
+import { cancelBody, fail } from "../../shared/errors.ts";
 import { log } from "../../shared/log.ts";
 import { markRead } from "../communities/index.ts";
 import { notice } from "../jobs/index.ts";
@@ -92,14 +92,11 @@ export function socialRoutes(app: OpenAPIHono<AppEnv>): void {
   app.openapi(notSuspended(uploadSocialMediaRoute), async (c) => {
     const { accountId } = c.var.session;
     const { communityId } = c.req.valid("param");
-    const body = c.req.raw.body;
-    // A refusal cancels the body, so the client stops sending it.
-    const refuse = async <T>(answer: T) => (await body?.cancel(), answer);
     const access = await spaceAccess(c.env, accountId, communityId);
-    if (!access) return refuse(fail(c, 404, "not_found"));
+    if (!access) return cancelBody(c, fail(c, 404, "not_found"));
     // On a wall, whoever reads it may attach an image to a comment (0115).
     const refused = access.wall ? null : refusal(access);
-    if (refused) return refuse(fail(c, 403, refused));
+    if (refused) return cancelBody(c, fail(c, 403, refused));
     const stored = await storedUpload(c, communityId, accountId);
     return "error" in stored ? fail(c, stored.status, stored.error) : c.json(stored, 200);
   });

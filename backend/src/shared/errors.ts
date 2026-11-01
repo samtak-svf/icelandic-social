@@ -60,6 +60,16 @@ export function fail<S extends ContentfulStatusCode>(
 }
 
 /**
+ * Cancels an unread request body before returning `answer`, so a client that
+ * is uploading stops sending it. A refusal that leaves the body unread makes
+ * the client finish a body nobody will read, which workerd then resets.
+ */
+export async function cancelBody<T>(c: Context<AppEnv>, answer: T): Promise<T> {
+  await c.req.raw.body?.cancel();
+  return answer;
+}
+
+/**
  * What a thrown error answers. A body that is not JSON is the client's
  * mistake; anything else is ours, logged with the request id and never with
  * the error's message, which may hold what the request carried (0008).

@@ -1,25 +1,21 @@
-import { useEffect, useId, useState, type ChangeEvent, type FormEvent } from "react";
+import { useId, useState, type ChangeEvent, type FormEvent } from "react";
 import { useAccount } from "../account.tsx";
 import type { Problem } from "../problem.ts";
 import { uploadSocialMedia } from "../generated/api.ts";
 import { strings } from "../generated/brand/strings.ts";
-import { Button, ProblemText, Status } from "../ui/kit.tsx";
+import { Button } from "../ui/kit.tsx";
 import { Avatar } from "./avatar.tsx";
 import { canSendComment, commentMedia } from "./comment-draft.ts";
-import { REFUSED } from "./composer.tsx";
+import { ImageProblem, REFUSED } from "./image-problem.tsx";
 import { MAX_COMMENT_IMAGES, IMAGE_TYPES, refusal } from "./images.ts";
+import { useObjectUrl } from "./object-url.ts";
 import { outcome, type Outcome } from "./outcome.ts";
 import { useSuspended } from "./suspended.tsx";
 import { clipText } from "../lib/char-count.ts";
 
 /** A picked image as a small preview, its object URL revoked when it goes. */
 function Preview({ file }: Readonly<{ file: File }>) {
-  const [url, setUrl] = useState<string | null>(null);
-  useEffect(() => {
-    const made = URL.createObjectURL(file);
-    setUrl(made);
-    return () => URL.revokeObjectURL(made);
-  }, [file]);
+  const url = useObjectUrl(file);
   if (url === null) return null;
   return <img src={url} alt="" className="size-16 rounded-md object-cover" />;
 }
@@ -171,11 +167,7 @@ export function CommentComposer({
           </button>
         </div>
         {/* Inline: the one-row box takes no height for a problem it does not have. */}
-        <Status inline>
-          {typeof problem === "string"
-            ? REFUSED[problem]
-            : problem !== null && <ProblemText problem={problem} />}
-        </Status>
+        <ImageProblem problem={problem} inline />
       </fieldset>
     </form>
   );

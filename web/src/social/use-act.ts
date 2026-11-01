@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import type { Problem } from "../problem.ts";
 import type { Outcome } from "./outcome.ts";
 
@@ -10,14 +10,24 @@ export function useAct(done: () => void): {
 } {
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<Problem | null>(null);
-  const act = (write: () => Promise<Outcome<unknown>>) => {
-    setBusy(true);
-    setProblem(null);
-    void write().then((result) => {
-      setBusy(false);
-      if (result.ok) done();
-      else setProblem(result.problem);
-    });
-  };
+  // A write that rejects is as unreachable as one that answers nothing, and
+  // either way the busy flag must come down: a stuck true takes the form away.
+  const act = useCallback(
+    (write: () => Promise<Outcome<unknown>>) => {
+      setBusy(true);
+      setProblem(null);
+      write()
+        .then((result) => {
+          setBusy(false);
+          if (result.ok) done();
+          else setProblem(result.problem);
+        })
+        .catch(() => {
+          setBusy(false);
+          setProblem({ kind: "unreachable" });
+        });
+    },
+    [done],
+  );
   return { busy, problem, act };
 }

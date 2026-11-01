@@ -13,6 +13,7 @@ import { strings } from "../generated/brand/strings.ts";
 import { Dialog } from "../ui/dialog.tsx";
 import { Button, ProblemText, Status } from "../ui/kit.tsx";
 import { Avatar } from "./avatar.tsx";
+import { REFUSED } from "./image-problem.tsx";
 import { IMAGE_TYPES, refusal } from "./images.ts";
 import { outcome } from "./outcome.ts";
 import { canPublishPoll, emptyPoll, pollOptions } from "./poll-draft.ts";
@@ -28,12 +29,6 @@ import { clipText } from "../lib/char-count.ts";
 export type Target = Readonly<{ communityId: string; name: string; anonymousAllowed: boolean }>;
 
 const WALL = "";
-
-export const REFUSED = {
-  too_many: strings.post_images_too_many,
-  too_large: strings.post_image_too_large,
-  invalid_image: strings.post_image_failed,
-} as const;
 
 type Place = { wall: boolean; communityId: string; anonymousAllowed: boolean };
 

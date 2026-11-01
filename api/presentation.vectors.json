@@ -440,6 +440,24 @@
     },
     {
       "outcome": "refused",
+      "status": 403,
+      "code": "request_refused",
+      "key": "problem_request_refused"
+    },
+    {
+      "outcome": "refused",
+      "status": 429,
+      "code": "request_limit",
+      "key": "problem_request_limit"
+    },
+    {
+      "outcome": "refused",
+      "status": 409,
+      "code": "friend_limit",
+      "key": "problem_friend_limit"
+    },
+    {
+      "outcome": "refused",
       "status": 500,
       "code": "internal_error",
       "key": "error_generic"

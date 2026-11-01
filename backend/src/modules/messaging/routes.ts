@@ -12,12 +12,13 @@ import { SOCKET_ACCOUNT, SOCKET_DEVICE, socketRoute } from "../../api/socket.ts"
 import { toBase64 } from "../../shared/bytes.ts";
 import { webSocketDevice } from "../../shared/credentials.ts";
 import { conversation, inbox } from "../../env/index.ts";
-import { fail } from "../../shared/errors.ts";
+import { fail, cancelBody } from "../../shared/errors.ts";
 import type { AppEnv } from "../../http.ts";
 import { activeDevicesOf, blockersAmong, ownsLeaf } from "../../identity/index.ts";
 import { checkSend } from "./conversations.ts";
 import { groupPhotoRoutes } from "./group-photo-routes.ts";
 import { getMedia, MAX_CIPHERTEXT, putMedia } from "./media.ts";
+import { requireMember } from "./membership.ts";
 import { muteRoutes } from "./mutes.ts";
 
 /**
@@ -139,20 +140,14 @@ export function messagingRoutes(app: OpenAPIHono<AppEnv>): void {
   app.openapi(putMediaRoute, async (c) => {
     const { conversationId, mediaId } = c.req.valid("param");
     const body = c.req.raw.body;
-    // A refusal cancels the body, so the client stops sending it.
-    const refuse = async <T>(answer: T) => (await body?.cancel(), answer);
     const length = Number(c.req.header("content-length") ?? Number.NaN);
     if (!Number.isSafeInteger(length) || length < 1 || !body) {
-      return refuse(fail(c, 400, "invalid_request"));
+      return cancelBody(c, fail(c, 400, "invalid_request"));
     }
-    if (length > MAX_CIPHERTEXT) return refuse(fail(c, 413, "too_large"));
+    if (length > MAX_CIPHERTEXT) return cancelBody(c, fail(c, 413, "too_large"));
     const { accountId } = c.var.device;
-    const member = await conversation(c.env, conversationId).member(accountId);
-    if ("error" in member) {
-      return member.error === "not_found"
-        ? refuse(fail(c, 404, member.error))
-        : refuse(fail(c, 403, "not_a_member"));
-    }
+    const refused = await requireMember(c, conversationId);
+    if (refused) return cancelBody(c, refused);
     try {
       const stored = await putMedia(c.env, {
         mediaId,
@@ -161,7 +156,7 @@ export function messagingRoutes(app: OpenAPIHono<AppEnv>): void {
         size: length,
         body,
       });
-      if (stored === "conflict") return refuse(fail(c, 409, "conflict"));
+      if (stored === "conflict") return cancelBody(c, fail(c, 409, "conflict"));
     } catch {
       // The body ended short of, or ran past, its Content-Length.
       return fail(c, 400, "invalid_request");
@@ -171,12 +166,8 @@ export function messagingRoutes(app: OpenAPIHono<AppEnv>): void {
 
   app.openapi(getMediaRoute, async (c) => {
     const { conversationId, mediaId } = c.req.valid("param");
-    const member = await conversation(c.env, conversationId).member(c.var.device.accountId);
-    if ("error" in member) {
-      return member.error === "not_found"
-        ? fail(c, 404, member.error)
-        : fail(c, 403, "not_a_member");
-    }
+    const refused = await requireMember(c, conversationId);
+    if (refused) return refused;
     const object = await getMedia(c.env, conversationId, mediaId);
     if (!object) return fail(c, 404, "not_found");
     return c.body(object.body, 200, {

@@ -5,6 +5,7 @@ import {
   communityPictureKey,
   deleteImage,
   IMAGE_TYPES,
+  readExactly,
 } from "../../shared/images.ts";
 import { log } from "../../shared/log.ts";
 import type { MediaRef } from "./do/space.ts";
@@ -24,18 +25,6 @@ const MAX_SIDE = 2048;
 const UNATTACHED_MS = 24 * 60 * 60 * 1000;
 
 const newMediaId = () => `sm_${randomHex(16)}`;
-
-/** Reads exactly `size` bytes of `body`; throws when it is shorter or longer. */
-async function readExactly(body: ReadableStream<Uint8Array>, size: number): Promise<ArrayBuffer> {
-  const { readable, writable } = new FixedLengthStream(size);
-  const [piped, read] = await Promise.allSettled([
-    body.pipeTo(writable),
-    new Response(readable).arrayBuffer(),
-  ]);
-  if (piped.status === "rejected") throw piped.reason;
-  if (read.status === "rejected") throw read.reason;
-  return read.value;
-}
 
 /** The re-encoded image and its size, or "invalid_image". */
 async function reencode(

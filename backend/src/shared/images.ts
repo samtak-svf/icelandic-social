@@ -69,6 +69,24 @@ function refused(error: unknown): "invalid_image" {
 }
 
 /**
+ * Reads exactly `size` bytes of `body`; throws when it is shorter or longer, so
+ * an upload that disagrees with its Content-Length is the caller's mistake.
+ */
+export async function readExactly(
+  body: ReadableStream<Uint8Array>,
+  size: number,
+): Promise<ArrayBuffer> {
+  const { readable, writable } = new FixedLengthStream(size);
+  const [piped, read] = await Promise.allSettled([
+    body.pipeTo(writable),
+    new Response(readable).arrayBuffer(),
+  ]);
+  if (piped.status === "rejected") throw piped.reason;
+  if (read.status === "rejected") throw read.reason;
+  return read.value;
+}
+
+/**
  * Re-encodes an upload of `size` bytes to the master: a WebP without metadata,
  * its long edge at most MASTER_EDGE. Throws when the body is not `size` bytes
  * long; "invalid_image" when it is not a raster format Images decodes (an SVG
@@ -79,14 +97,7 @@ async function reencode(
   body: ReadableStream<Uint8Array>,
   size: number,
 ): Promise<ArrayBuffer | "invalid_image"> {
-  const { readable, writable } = new FixedLengthStream(size);
-  const [piped, read] = await Promise.allSettled([
-    body.pipeTo(writable),
-    new Response(readable).arrayBuffer(),
-  ]);
-  if (piped.status === "rejected") throw piped.reason;
-  if (read.status === "rejected") throw read.reason;
-  const bytes = read.value;
+  const bytes = await readExactly(body, size);
   try {
     const info = await images(env).info(new Blob([bytes]).stream());
     if (!IMAGE_TYPES.has(info.format)) throw new Error("format");
@@ -234,18 +245,19 @@ export type UploadRefusal =
   | { status: 413; error: "too_large" };
 
 /**
- * The checks every image upload passes before a byte is decoded: the photo
- * rate limit under `key`, a Content-Length, and `max`. A refusal cancels the
- * body, so the client stops sending it.
+ * The checks every image upload passes before a byte is decoded: the rate
+ * limit under `limitKey` (the photo allowance by default), a Content-Length,
+ * and `max`. A refusal cancels the body, so the client stops sending it.
  */
 export async function takeUpload(
   c: Context<AppEnv>,
   key: string,
   max: number,
+  limitKey: string = key,
 ): Promise<{ body: ReadableStream<Uint8Array>; length: number } | UploadRefusal> {
   const body = c.req.raw.body;
   const refuse = async (refusal: UploadRefusal) => (await body?.cancel(), refusal);
-  if (await overLimit(c, "photos", key)) return refuse({ status: 429, error: "rate_limited" });
+  if (await overLimit(c, "photos", limitKey)) return refuse({ status: 429, error: "rate_limited" });
   const length = Number(c.req.header("content-length") ?? Number.NaN);
   if (!Number.isSafeInteger(length) || length < 1 || !body) {
     return refuse({ status: 400, error: "invalid_request" });

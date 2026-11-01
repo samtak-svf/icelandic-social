@@ -16,7 +16,7 @@ import type { AppEnv } from "../../http.ts";
 import type { Context } from "hono";
 import { framingFits } from "../../api/image-frames.ts";
 import { db } from "../../env/index.ts";
-import { fail } from "../../shared/errors.ts";
+import { fail, cancelBody } from "../../shared/errors.ts";
 import {
   communityCoverKey,
   communityPictureKey,
@@ -78,8 +78,9 @@ export function communityImageRoutes(app: OpenAPIHono<AppEnv>, hooks: LifecycleH
       const { accountId } = c.var.session;
       const { communityId } = c.req.valid("param");
       const found = await standing(c.env, accountId, communityId);
-      if (!found) return fail(c, 404, "not_found");
-      if (!moderates(found)) return fail(c, 403, "not_permitted");
+      // A refusal cancels the body, so a client that is uploading stops sending it.
+      if (!found) return cancelBody(c, fail(c, 404, "not_found"));
+      if (!moderates(found)) return cancelBody(c, fail(c, 403, "not_permitted"));
       const { frames, key } = KINDS[kind];
       const stored = await uploadedImage(c, accountId, key(communityId), frames);
       if ("error" in stored) return fail(c, stored.status, stored.error);
