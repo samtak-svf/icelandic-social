@@ -1,5 +1,5 @@
 import { strings } from "../src/generated/brand/strings.ts";
-import { png } from "./images.ts";
+import { expectLoaded, png } from "./images.ts";
 import { found, person, post, write } from "./social-helpers.ts";
 import { expect, test } from "./origin.ts";
 
@@ -35,11 +35,7 @@ test("a comment carries one image, alone or with text, opened in the viewer", as
     .filter({ has: owner.getByRole("button", { name: strings.comment_image_alt }) });
   const opener = bubble.getByRole("button", { name: strings.comment_image_alt });
   await expect(opener).toBeVisible();
-  await expect
-    .poll(() =>
-      opener.locator("img").evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth),
-    )
-    .toBeGreaterThan(0);
+  await expectLoaded(opener.locator("img"));
 
   // It opens in the viewer; Escape closes it and focus returns to the image.
   await opener.click();

@@ -1,5 +1,5 @@
 import { strings } from "../src/generated/brand/strings.ts";
-import { png } from "./images.ts";
+import { expectLoaded, png } from "./images.ts";
 import {
   cardMenu,
   expectMember,
@@ -170,9 +170,7 @@ test("a member posts images, deletes a comment and the post, and withdraws a joi
     ).toBeVisible();
   }
   for (const one of await images.all()) {
-    await expect
-      .poll(() => one.evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth))
-      .toBeGreaterThan(0);
+    await expectLoaded(one);
   }
   // Someone else sees them too, and has no delete on another's post.
   await owner.goto(open);

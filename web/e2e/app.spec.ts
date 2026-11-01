@@ -1,6 +1,6 @@
 import type { Page } from "@playwright/test";
 import { strings } from "../src/generated/brand/strings.ts";
-import { png } from "./images.ts";
+import { expectLoaded, png } from "./images.ts";
 import { CLIENT, expect, serveOrigin, test, WEB } from "./origin.ts";
 import { addMark, signIn, signInVerified } from "./accounts.ts";
 import { newGoogleSubject, newKennitala } from "./people.ts";
@@ -71,7 +71,7 @@ test("sets, changes and removes the photo on Ég", async ({ page }) => {
   await page.getByRole("dialog").getByLabel(strings.photo_choose).setInputFiles(file);
   await sheet.getByRole("button", { name: strings.save }).click();
   await expect(photo).toBeVisible();
-  expect(await photo.evaluate((img: HTMLImageElement) => img.naturalWidth)).toBeGreaterThan(0);
+  await expectLoaded(photo);
 
   await page.getByRole("button", { name: strings.photo_change }).click();
   await page.getByRole("dialog").getByLabel(strings.photo_change).setInputFiles(file);

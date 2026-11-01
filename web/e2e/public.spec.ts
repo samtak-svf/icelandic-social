@@ -1,4 +1,5 @@
 import { strings } from "../src/generated/brand/strings.ts";
+import { expectLoaded } from "./images.ts";
 import { expect, test, WEB } from "./origin.ts";
 
 // The pages anyone reads without signing in: the privacy policy and support
@@ -41,8 +42,6 @@ test("serves the public tester guide from the sign-in screen, with both platform
     const img = android.getByRole("img", { name: alt, exact: true });
     await img.scrollIntoViewIfNeeded();
     await expect(img).toBeVisible();
-    expect(await img.evaluate((e: HTMLImageElement) => e.complete && e.naturalWidth > 0)).toBe(
-      true,
-    );
+    await expectLoaded(img);
   }
 });
