@@ -45,13 +45,10 @@ fn a_phone_links_a_real_browser() {
         return;
     };
     let dir = Path::new(&dir);
-    let run = SystemTime::now()
-        .duration_since(SystemTime::UNIX_EPOCH)
-        .unwrap()
-        .as_secs();
     let subject = awaited(&dir.join("subject"));
     let mut phone = Phone::signed_in(Person::Google(&subject), None);
-    let mut other = Phone::signed_in(Person::Google(&format!("interop-{run}-other")), None);
+    // Named after the spec's own subject: specs run side by side, and each needs its own.
+    let mut other = Phone::signed_in(Person::Google(&format!("{subject}-other")), None);
 
     let conversation = phone
         .client

@@ -97,7 +97,8 @@ test("a phone links this browser, which shows the phone's message and replies", 
   await away.goto(`${WEB}/communities`);
   await writeFile(join(dir, "away"), "go");
   await expect(place(page)).toContainText(unread, { timeout: 30_000 });
-  await expect(place(away)).toContainText(unread);
+  // A fresh tab shows the server's page first: it counts once it has loaded its scripts.
+  await expect(place(away)).toContainText(unread, { timeout: 30_000 });
   const who = page.getByRole("region", { name: strings.notifications_conversations_unread });
   await expect(who).toContainText(unread);
   await expect(page.getByText("annað frá öðrum")).toHaveCount(0);
