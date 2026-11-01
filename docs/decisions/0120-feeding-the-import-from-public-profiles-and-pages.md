@@ -1,10 +1,11 @@
 # 0120. Feeding the import from public profiles and pages
 
-- Status: accepted; implemented for all three feeds, with the page feed switched off until the platform
+- Status: accepted; amended by 0127; implemented for all three feeds, with the page feed switched off until the platform
   has reviewed the app and so untested against it (#461)
 - Date: 2026-10-31
 - Decided by: Guðröður Atli Jónsson (collection from public profiles is allowed in the product, and page sync runs on Samtak svf.'s own developer app); the design is the overseer's
 - Amends: [0119](0119-importing-a-persons-own-content.md)
+- Amended by: [0127](0127-what-a-real-export-holds-and-how-it-comes-in.md) (the export file only)
 
 ## Decision
 
