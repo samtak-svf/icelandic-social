@@ -127,3 +127,161 @@ fn a_queued_delete_shows_the_tombstone() {
     let after = fold.items();
     assert_eq!(after[0], before[0]);
 }
+
+pub(super) fn media(caption: Option<&str>, name: Option<&str>, forwarded: bool) -> Body {
+    Body::Media {
+        object: "o".into(),
+        mime: "image/png".into(),
+        size: 7,
+        key: "k".into(),
+        sha256: "h".into(),
+        caption: caption.map(Into::into),
+        name: name.map(Into::into),
+        forwarded,
+    }
+}
+
+/// A file, a share and a place queued but not sent show as pending items
+/// with their own content; a file name is never a path.
+#[test]
+fn queued_media_post_and_location_show_as_pending_items() {
+    let mut fold = Fold::new();
+    fold.queue("q1", media(Some("mynd"), Some("../../etc/y.png"), true));
+    fold.queue(
+        "q2",
+        Body::Post {
+            post_id: "p_1".into(),
+            forwarded: true,
+        },
+    );
+    fold.queue(
+        "q3",
+        Body::Location {
+            lat_e6: 64_000_000,
+            lon_e6: -21_000_000,
+            accuracy: Some(5),
+            forwarded: false,
+        },
+    );
+    let items = fold.items();
+    assert_eq!(items.len(), 3);
+    assert!(items.iter().all(|i| i.own && i.status == Status::Pending));
+    assert_eq!(
+        items[0].content,
+        Content::Media {
+            mime: "image/png".into(),
+            size: 7,
+            caption: Some("mynd".into()),
+            name: Some("y.png".into())
+        }
+    );
+    assert_eq!(
+        items[1].content,
+        Content::Post {
+            post_id: "p_1".into()
+        }
+    );
+    assert_eq!(
+        items[2].content,
+        Content::Location {
+            lat_e6: 64_000_000,
+            lon_e6: -21_000_000,
+            accuracy: Some(5)
+        }
+    );
+    let forwarded: Vec<bool> = items.iter().map(|i| i.forwarded).collect();
+    assert_eq!(forwarded, [true, true, false]);
+}
+
+#[test]
+fn a_queued_item_that_failed_to_send_is_failed() {
+    let mut fold = Fold::new();
+    fold.queue("q1", text("hæ"));
+    fold.store
+        .write(|tx| tx.execute("UPDATE outbox SET failed = 1", []))
+        .unwrap();
+    assert_eq!(fold.items()[0].status, Status::Failed);
+    // So does one this device cannot read back.
+    fold.store
+        .write(|tx| {
+            tx.execute(
+                "INSERT INTO outbox (group_id, kind, intent, created_at, failed)
+                 VALUES (?1, 'message', x'7b', 0, 1)",
+                [GROUP],
+            )
+        })
+        .unwrap();
+    let items = fold.items();
+    assert_eq!(items[1].status, Status::Failed);
+    assert!(matches!(items[1].content, Content::Unreadable { .. }));
+}
+
+/// A queued edit changes a stored text or a file's caption and nothing
+/// else: a share has no text to change.
+#[test]
+fn a_queued_edit_changes_a_text_or_a_caption_and_nothing_else() {
+    let mut fold = Fold::new();
+    fold.apply(("a", "a1"), "t", text("eitt"));
+    fold.apply(("a", "a1"), "f", media(Some("fyrr"), None, false));
+    let share = Body::Post {
+        post_id: "p_1".into(),
+        forwarded: false,
+    };
+    fold.apply(("a", "a1"), "s", share);
+    for target in ["t", "f", "s"] {
+        fold.queue(
+            &format!("e-{target}"),
+            Body::Edit {
+                target: target.into(),
+                text: "nýtt".into(),
+            },
+        );
+    }
+    let items = fold.items();
+    assert_eq!(
+        items[0].content,
+        Content::Text {
+            text: "nýtt".into(),
+            reply_to: None
+        }
+    );
+    assert!(matches!(
+        &items[1].content,
+        Content::Media { caption, .. } if caption.as_deref() == Some("nýtt")
+    ));
+    assert_eq!(
+        items[2].content,
+        Content::Post {
+            post_id: "p_1".into()
+        }
+    );
+    let edited: Vec<bool> = items.iter().map(|i| i.edited).collect();
+    assert_eq!(edited, [true, true, false]);
+}
+
+/// A queued add replaces the person's earlier reaction, as the fold does;
+/// a chip left with nobody goes, one others share stays.
+#[test]
+fn a_queued_reaction_replaces_the_earlier_one() {
+    let mut fold = Fold::new();
+    fold.apply(("b", "b1"), "m", text("eitt"));
+    fold.apply(("b", "b1"), "n", text("tvö"));
+    let add = |target: &str, emoji: &str| Body::Reaction {
+        target: target.into(),
+        emoji: emoji.into(),
+        remove: false,
+    };
+    fold.apply(("a", "a1"), "r1", add("m", "❤️"));
+    fold.apply(("c", "c1"), "r2", add("m", "❤️"));
+    fold.apply(("a", "a1"), "r3", add("n", "❤️"));
+    fold.queue("q1", add("m", "👍"));
+    fold.queue("q2", add("n", "👍"));
+    let items = fold.items();
+    let chips = |i: usize| -> Vec<(String, bool, usize)> {
+        let all = items[i].reactions.iter();
+        all.map(|r| (r.emoji.clone(), r.own, r.people.len()))
+            .collect()
+    };
+    assert_eq!(chips(0), [("❤️".into(), false, 1), ("👍".into(), true, 1)]);
+    assert_eq!(chips(1), [("👍".into(), true, 1)]);
+}

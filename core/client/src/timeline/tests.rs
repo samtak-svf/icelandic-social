@@ -320,5 +320,6 @@ fn typing_and_unknown_kinds_leave_no_item() {
     assert!(fold.items().is_empty());
 }
 
+mod cards;
 mod queued;
 mod read;
