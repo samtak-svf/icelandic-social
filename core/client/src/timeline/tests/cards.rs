@@ -77,7 +77,7 @@ fn a_receipt_for_a_message_not_here_changes_nothing() {
 }
 
 /// A mark that lands on no message (the one it read was deleted) shows no
-/// face, and the others do.
+/// face, not one under a message it never read.
 #[test]
 fn a_mark_on_a_deleted_message_shows_no_face() {
     let mut fold = Fold::new();
