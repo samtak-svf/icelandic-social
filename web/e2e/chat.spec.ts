@@ -106,7 +106,8 @@ test("a phone links this browser, which shows the phone's message and replies", 
 
   // Reading it clears the count in both tabs.
   await who.getByRole("link").click();
-  await expect(page.getByText("annað frá öðrum", { exact: true })).toBeVisible();
+  // In the thread: a wide window's list beside it may show the same words.
+  await expect(page.locator("ol").getByText("annað frá öðrum", { exact: true })).toBeVisible();
   await expect(place(page)).not.toContainText(unread);
   await expect(place(away)).not.toContainText(unread);
   await away.close();
