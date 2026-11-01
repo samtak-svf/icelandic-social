@@ -275,6 +275,7 @@
     "other": "{name} og {count} aðrir brugðust við póstinum þínum."
   },
   "notice_snippet": "„{text}“",
+  "notifications_conversations_unread": "Ólesin samtöl",
   "notice_section_new": "Nýjar",
   "notice_section_earlier": "Eldri",
   "notifications_mark_all_read": "Merkja allt lesið",

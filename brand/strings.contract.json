@@ -1131,6 +1131,10 @@
         "text": "string"
       }
     },
+    "notifications_conversations_unread": {
+      "surfaces": ["web"],
+      "description": "Heading on the notifications page over the conversations with unread messages, read from this browser's store; it names who wrote and shows no message (decision 0124)."
+    },
     "notice_section_new": {
       "surfaces": ["android", "ios", "web"],
       "description": "Heading over the notifications that came since the list was last opened (decision 0104)."

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { type ChatWorker, ownChat, type OwnerDeps, startChat } from "./owner";
+import { type ChatWorker, ownChat, type OwnerDeps, showChat, startChat } from "./owner";
 import { type ChatCall, ChatFailure } from "./protocol";
 
 /** One origin's locks, as far as `ifAvailable`, `steal`, `signal` and the queue go. */
@@ -153,5 +153,41 @@ describe("starting the store after a takeover", () => {
     const call = vi.fn<(op: string) => Promise<unknown>>().mockRejectedValue(busy);
     await expect(startChat(asCall(call), wait)).rejects.toBe(busy);
     expect(call).toHaveBeenCalledTimes(6);
+  });
+});
+
+describe("showChat (0124)", () => {
+  it("waits for the tab showing the chat to leave", async () => {
+    const locks = fakeLocks();
+    const first = await showChat(locks);
+    let second = false;
+    const waiting = showChat(locks).then((got) => {
+      second = true;
+      return got;
+    });
+    await Promise.resolve();
+    expect(second).toBe(false);
+    first.release();
+    await waiting;
+    expect(second).toBe(true);
+  });
+
+  it("use here takes it at once and tells the tab that had it", async () => {
+    const locks = fakeLocks();
+    const first = await showChat(locks);
+    let taken = false;
+    void first.taken.then(() => (taken = true));
+    await showChat(locks, { steal: true });
+    await new Promise((r) => setTimeout(r, 0));
+    expect(taken).toBe(true);
+  });
+
+  it("gives up the wait when asked to", async () => {
+    const locks = fakeLocks();
+    await showChat(locks);
+    const wait = new AbortController();
+    const waiting = showChat(locks, { signal: wait.signal });
+    wait.abort();
+    await expect(waiting).rejects.toThrow();
   });
 });

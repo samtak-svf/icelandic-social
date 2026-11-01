@@ -1,6 +1,7 @@
 import { mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import type { Page } from "@playwright/test";
 import { strings } from "../src/generated/brand/strings.ts";
 import { layoutOf } from "../src/ui/layout.ts";
 import { signIn } from "./accounts.ts";
@@ -66,7 +67,6 @@ test("a phone links this browser, which shows the phone's message and replies", 
   await page.getByRole("textbox", { name: strings.composer_placeholder }).fill("svar úr vafra");
   await page.getByRole("button", { name: strings.send }).click();
   await expect(page.getByText("svar úr vafra", { exact: true })).toBeVisible();
-  expect(await phoneDone).toBe(0);
 
   // A second tab of the same browser finds the chat open in the first.
   const second = await page.context().newPage();
@@ -85,6 +85,31 @@ test("a phone links this browser, which shows the phone's message and replies", 
   await expect(conversation).toHaveCount(1);
   // The row says who said the last thing: here the reader.
   await expect(conversation).toContainText(strings.last_line_own({ text: "svar úr vafra" }));
+
+  // Away from the conversations, the other person writes. This tab and one with the
+  // store held elsewhere count it, and neither shows the words (0124).
+  const unread = strings.unread_count({ count: 1 });
+  const place = (on: Page) => on.getByRole("link", { name: strings.tab_conversations });
+  await page.getByRole("link", { name: strings.notifications_title }).click();
+  const away = await page.context().newPage();
+  await serveOrigin(away);
+  await serveSocket(away);
+  await away.goto(`${WEB}/communities`);
+  await writeFile(join(dir, "away"), "go");
+  await expect(place(page)).toContainText(unread, { timeout: 30_000 });
+  await expect(place(away)).toContainText(unread);
+  const who = page.getByRole("region", { name: strings.notifications_conversations_unread });
+  await expect(who).toContainText(unread);
+  await expect(page.getByText("annað frá öðrum")).toHaveCount(0);
+  expect(await phoneDone).toBe(0);
+
+  // Reading it clears the count in both tabs.
+  await who.getByRole("link").click();
+  await expect(page.getByText("annað frá öðrum", { exact: true })).toBeVisible();
+  await expect(place(page)).not.toContainText(unread);
+  await expect(place(away)).not.toContainText(unread);
+  await away.close();
+
   const other = await page.context().browser()!.newContext();
   const elsewhere = await other.newPage();
   await serveOrigin(elsewhere);

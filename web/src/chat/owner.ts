@@ -3,6 +3,10 @@
 // Web Lock. Another tab shows that the chat is open elsewhere, waits its turn,
 // and can take it over at once: the lock is stolen, the old tab's worker is ended, and the new
 // tab's worker opens the store once the old one's file handles are gone.
+//
+// A tab that only counts what is unread holds the store too, so it must not
+// keep it from a tab showing the chat (decision 0124): a second lock says which
+// tab shows the chat. Its holder takes the store from a tab that merely counts.
 
 import { type ChatCall, ChatFailure, chatClient, type Port } from "./protocol.ts";
 import type { Start } from "./protocol.ts";
@@ -76,6 +80,47 @@ export function ownChat(deps: OwnerDeps, options: OwnOptions = {}): Promise<Owne
         options.onWaiting?.();
         settle(deps.locks.request(CHAT_LOCK, { signal: options.signal }, hold));
       });
+  });
+}
+
+/** The lock of the tab showing the chat's pages. */
+const FOREGROUND_LOCK = "spjall-chat-foreground";
+
+/** This tab shows the chat. */
+export interface Shown {
+  /** Settles when another tab takes the chat's pages over with "use here". */
+  taken: Promise<void>;
+  /** Gives the lock up: this tab left the chat's pages. */
+  release(): void;
+}
+
+export interface ShowOptions {
+  /** Take it from the tab that shows the chat (the "use here" button). */
+  steal?: boolean;
+  /** Gives up the wait. */
+  signal?: AbortSignal;
+}
+
+/** Waits until no other tab shows the chat; with `steal`, takes it at once. */
+export function showChat(
+  locks: Pick<LockManager, "request">,
+  options: ShowOptions = {},
+): Promise<Shown> {
+  return new Promise((resolve, reject) => {
+    let holding = false;
+    let release!: () => void;
+    const held = new Promise<void>((r) => (release = r));
+    let onTaken!: () => void;
+    const taken = new Promise<void>((r) => (onTaken = r));
+    const hold = async () => {
+      holding = true;
+      resolve({ taken, release });
+      await held;
+    };
+    const asked = options.steal
+      ? locks.request(FOREGROUND_LOCK, { steal: true }, hold)
+      : locks.request(FOREGROUND_LOCK, { signal: options.signal }, hold);
+    void asked.catch((error: unknown) => (holding ? onTaken() : reject(error)));
   });
 }
 

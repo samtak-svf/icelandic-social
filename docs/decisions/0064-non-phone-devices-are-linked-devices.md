@@ -15,7 +15,8 @@
   [0077](0077-the-link-code-and-what-the-phone-signs.md),
   [0081](0081-the-browser-runs-the-blocking-core-in-a-worker.md) (the browser client),
   [0096](0096-a-browser-link-that-waits-survives-a-reload.md) (the key while a link waits),
-  [0108](0108-the-socket-says-when-it-has-caught-up.md) (the browser asks for the history until it comes)
+  [0108](0108-the-socket-says-when-it-has-caught-up.md) (the browser asks for the history until it comes),
+  [0124](0124-unread-without-the-message.md) (the chat runs under every page of a linked browser)
 - Amends: 0006 (a linked device may receive history from the phone that approved it), 0016
   (the store in a browser)
 

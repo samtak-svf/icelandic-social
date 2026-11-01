@@ -1,16 +1,10 @@
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { strings } from "../generated/brand/strings.ts";
-import type { Conversation } from "../generated/core.d.ts";
 import { Status } from "../ui/kit.tsx";
 import { useChat } from "./chat.tsx";
 import { ConversationRow } from "./conversation-row.tsx";
+import type { Listed } from "./listed.ts";
 import type { CatchUp } from "./session.ts";
-
-/** The rows, and whether they were read once the chat had caught up (0108). */
-export interface Listed {
-  rows: Conversation[];
-  caughtUp: boolean;
-}
 
 /**
  * The line above the list, if any. "No conversations" is said only of a list
@@ -31,32 +25,16 @@ export function listNotice(
 }
 
 /**
- * The conversations of this browser's store, as the core lists them, reloaded
- * when it reports a change; who is typing comes from the same events. The
+ * The conversations of this browser's store, as the chat keeps them; who is
+ * typing comes from the core's events. The
  * heading is the page's own unless a conversation is open beside it.
  */
 export function ConversationList({ level }: Readonly<{ level: 1 | 2 }>) {
-  const { call, subscribe, catchUp } = useChat();
-  const [list, setList] = useState<Listed | null>(null);
-  const [failed, setFailed] = useState(false);
+  const { listed: list, listFailed: failed, subscribe, catchUp } = useChat();
   const [typing, setTyping] = useState<ReadonlySet<string>>(new Set());
-  // Read again when the chat catches up: an imported history reports no event.
-  const caughtUp = catchUp === "done";
-  const load = useCallback(() => {
-    if (call === undefined) return;
-    call("conversations").then(
-      (rows) => {
-        setList({ rows, caughtUp });
-        setFailed(false);
-      },
-      () => setFailed(true),
-    );
-  }, [call, caughtUp]);
-  useEffect(load, [load]);
   useEffect(
     () =>
       subscribe((events) => {
-        if (events.some((e) => e.kind !== "typing")) load();
         if (!events.some((e) => e.kind === "typing")) return;
         setTyping((was) => {
           const next = new Set(was);
@@ -68,7 +46,7 @@ export function ConversationList({ level }: Readonly<{ level: 1 | 2 }>) {
           return next;
         });
       }),
-    [subscribe, load],
+    [subscribe],
   );
 
   // The stamps are read against the moment the list was drawn.

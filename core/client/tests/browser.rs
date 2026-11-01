@@ -77,6 +77,11 @@ fn a_phone_links_a_real_browser() {
     );
     let me = phone.client.hosted().me().unwrap();
     assert!(me.devices.iter().any(|d| d.kind == DeviceKind::Web));
+
+    // The browser left the conversations: the other account writes, and it counts (0124).
+    awaited(&dir.join("away"));
+    other.send(&conversation, "annað frá öðrum");
+    other.sync();
 }
 
 /// A new account named `name`, a member for the browser to find by it.

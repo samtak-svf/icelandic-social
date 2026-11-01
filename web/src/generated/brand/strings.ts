@@ -306,6 +306,8 @@ export const strings = {
   /** The quoted start of the comment or post a notification is about, under its sentence (decision 0105). {text} is that text, already shortened. */
   notice_snippet: (args: { text: string }): string =>
     "„" + args.text + "“",
+  /** Heading on the notifications page over the conversations with unread messages, read from this browser's store; it names who wrote and shows no message (decision 0124). */
+  notifications_conversations_unread: "Ólesin samtöl",
   /** Heading over the notifications that came since the list was last opened (decision 0104). */
   notice_section_new: "Nýjar",
   /** Heading over the notifications the reader had already seen (decision 0104). */

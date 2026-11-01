@@ -37,6 +37,7 @@ function handlers(over: Partial<Handlers>): Handlers {
     conversations: unused,
     timeline: unused,
     send: unused,
+    markRead: unused,
     groupPhoto: unused,
     setGroupPhoto: unused,
     clearGroupPhoto: unused,

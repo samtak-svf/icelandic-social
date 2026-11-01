@@ -37,6 +37,7 @@ export interface CoreLike {
   conversations(): Conversation[];
   timeline(conversation: string, before: number | null | undefined, limit: number): Item[];
   send(conversation: string, text: string): string;
+  markRead(conversation: string, seq: number): void;
   groupPhoto(conversation: string): Uint8Array | null | undefined;
   setGroupPhoto(conversation: string, bytes: Uint8Array): string;
   clearGroupPhoto(conversation: string): string;
@@ -290,6 +291,7 @@ export function chatHost(deps: HostDeps): Handlers {
     timeline: (conversation, before, limit) =>
       onCore((c) => c.timeline(conversation, before, limit)),
     send: (conversation, text) => onCore((c) => c.send(conversation, text)),
+    markRead: (conversation, seq) => onCore((c) => c.markRead(conversation, seq)),
     groupPhoto: (conversation) => onCore((c) => c.groupPhoto(conversation) ?? null),
     setGroupPhoto: (conversation, bytes) => onCore((c) => c.setGroupPhoto(conversation, bytes)),
     clearGroupPhoto: (conversation) => onCore((c) => c.clearGroupPhoto(conversation)),
