@@ -106,7 +106,7 @@ android {
         }
     }
 
-    // The shared presentation vectors (api/presentation.vectors.json, #275) are read from the classpath.
+    // The vectors every platform shares (api/*.vectors.json, #275) are read from the classpath.
     sourceSets.getByName("test").resources.srcDir("../../api")
 
     // The screenshot tests (Roborazzi on Robolectric) render the real

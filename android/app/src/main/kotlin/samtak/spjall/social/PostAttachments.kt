@@ -17,10 +17,11 @@ data class Attached(
     val picked: List<String> = emptyList(),
     val poll: List<String>? = null,
     val notice: CommunityViewModel.ImageNotice? = null,
+    private val pollRule: PollRule = CorePollRule,
 ) {
     /** Text, or text with images; a poll needs its text and valid options and takes no images. */
     fun postable(draft: String): Boolean =
-        if (poll != null) draft.isNotBlank() && PollDraft.valid(poll) else draft.isNotBlank() || picked.isNotEmpty()
+        if (poll != null) pollRule.valid(draft, poll) else draft.isNotBlank() || picked.isNotEmpty()
 }
 
 /**
@@ -32,8 +33,9 @@ data class Attached(
 class PostAttachments(
     private val scope: CoroutineScope,
     private val io: CoroutineDispatcher,
+    private val pollRule: PollRule = CorePollRule,
 ) {
-    private val _state = MutableStateFlow(Attached())
+    private val _state = MutableStateFlow(Attached(pollRule = pollRule))
     val state: StateFlow<Attached> = _state.asStateFlow()
     private val uploaded = ConcurrentHashMap<String, String>()
 
@@ -96,6 +98,6 @@ class PostAttachments(
         val files = _state.value.picked
         withContext(io) { files.forEach { File(it).delete() } }
         uploaded.clear()
-        _state.value = Attached()
+        _state.value = Attached(pollRule = pollRule)
     }
 }

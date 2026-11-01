@@ -36,6 +36,7 @@ class FeedViewModel(
     private val social: Social,
     private val io: CoroutineDispatcher = Dispatchers.IO,
     private val now: () -> Long = System::currentTimeMillis,
+    pollRule: PollRule = CorePollRule,
     defaultTarget: () -> PostTarget = ::defaultPostTarget,
 ) : ViewModel() {
     data class State(
@@ -99,7 +100,7 @@ class FeedViewModel(
 
     private val _state = MutableStateFlow(State(target = defaultTarget()))
     val state: StateFlow<State> = _state.asStateFlow()
-    val attachments = PostAttachments(viewModelScope, io)
+    val attachments = PostAttachments(viewModelScope, io, pollRule)
 
     /** A paging request came while another call was on its way: it is made once that call is done. */
     private var skipped = false

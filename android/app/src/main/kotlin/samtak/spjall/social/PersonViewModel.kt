@@ -42,6 +42,7 @@ class PersonViewModel(
     private val accountId: String,
     private val social: Social,
     private val io: CoroutineDispatcher = Dispatchers.IO,
+    pollRule: PollRule = CorePollRule,
 ) : ViewModel() {
     data class State(
         val profile: PersonProfile? = null,
@@ -74,7 +75,7 @@ class PersonViewModel(
     private var failed: (() -> Unit)? = null
 
     /** The images and the poll of the post being written; the one logic every composer shares. */
-    val attachments = PostAttachments(viewModelScope, io)
+    val attachments = PostAttachments(viewModelScope, io, pollRule)
 
     init {
         load()

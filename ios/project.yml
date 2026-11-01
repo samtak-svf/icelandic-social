@@ -142,6 +142,8 @@ targets:
       # The cases every platform shares (#275).
       - path: ../api/presentation.vectors.json
         buildPhase: resources
+      - path: ../api/poll.vectors.json
+        buildPhase: resources
     dependencies:
       - target: Spjall
       - package: SpjallCore

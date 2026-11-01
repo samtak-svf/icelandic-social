@@ -17,7 +17,7 @@ struct PollFields: View {
                             get: { model.pollFields?[safe: index] ?? "" },
                             set: { text in
                                 guard model.pollFields?.indices.contains(index) == true else { return }
-                                model.pollFields?[index] = String(text.prefix(CommunityModel.pollOptionLimit))
+                                model.pollFields?[index] = CommunityModel.cappedPollOption(text)
                             })
                     )
                     .font(.sans(14))
