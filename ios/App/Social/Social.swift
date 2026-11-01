@@ -476,17 +476,6 @@ func summaryEmojis(_ post: Post, limit: Int = 3) -> String {
     post.emojis.filter { $0.count > 0 }.sorted { $0.count > $1.count }.prefix(limit).map(\.emoji).joined()
 }
 
-/// Whether this account may post, comment and react in `community`: a member, in a community that is not
-/// read-only, and not muted there (0063).
-func canWrite(_ community: Community, now: UInt64) -> Bool {
-    community.role != nil && !community.readOnly && !isMuted(community, now: now)
-}
-
-/// A moderator muted this account in `community`, and the mute has not ended.
-func isMuted(_ community: Community, now: UInt64) -> Bool {
-    community.role != nil && (community.mutedUntil.map { $0 > now } ?? false)
-}
-
 /// The card's reference, whatever it shows.
 func reference(_ card: Card) -> CardRef {
     switch card {

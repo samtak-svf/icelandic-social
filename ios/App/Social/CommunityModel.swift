@@ -96,8 +96,8 @@ final class CommunityModel {
     /// This account may post, comment and react here.
     var writes: Bool { community.map { canWrite($0, now: now()) } ?? false }
 
-    /// A moderator muted this account here, so it reads but does not write.
-    var muted: Bool { community.map { isMuted($0, now: now()) } ?? false }
+    /// Why this member reads but does not write here.
+    var noPostNotice: String? { community.flatMap { noPostNoticeKey($0, now: now()) } }
 
     /// This account moderates here, and sees the report queue.
     var moderates: Bool { community?.role == .owner || community?.role == .moderator }

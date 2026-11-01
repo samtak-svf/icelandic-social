@@ -71,7 +71,7 @@ class CommunityViewModelTest {
             val state = model().state.value
             assertEquals(listOf("p2", "p1"), state.posts.map { it.postId })
             assertTrue(state.writes)
-            assertFalse(state.muted)
+            assertNull(state.noPostNotice)
         }
 
     @Test
@@ -114,7 +114,7 @@ class CommunityViewModelTest {
         runTest(dispatcher) {
             social.communities["k1"] = community("k1", role = CommunityRole.MEMBER, mutedUntil = (now + 1).toULong())
             val model = model()
-            assertTrue(model.state.value.muted)
+            assertEquals(samtak.spjall.brand.R.string.community_muted, model.state.value.noPostNotice)
             assertFalse(model.state.value.writes)
             model.draft("Halló")
             model.publish()

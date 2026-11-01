@@ -225,7 +225,7 @@ internal fun About(
                 )
             }
         }
-        if (state.muted) Muted(stringResource(R.string.community_muted))
+        state.noPostNotice?.let { Muted(stringResource(it)) }
     }
 }
 

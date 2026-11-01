@@ -86,4 +86,16 @@ class ContentTest {
         assertFalse(muted.muted(100))
         assertFalse(community("k1", role = CommunityRole.MEMBER).copy(readOnly = true).writes(0))
     }
+
+    @Test
+    fun aMemberReadsWhyThereIsNoComposerAndAReadOnlyCommunityOutlastsAMute() {
+        val member = community("k1", role = CommunityRole.MEMBER)
+        assertNull(member.noPostNotice(0))
+        assertEquals(R.string.community_read_only, member.copy(readOnly = true).noPostNotice(0))
+        val muted = member.copy(mutedUntil = 100uL)
+        assertEquals(R.string.community_muted, muted.noPostNotice(99))
+        assertNull(muted.noPostNotice(100))
+        assertEquals(R.string.community_read_only, muted.copy(readOnly = true).noPostNotice(99))
+        assertNull(community("k1").copy(readOnly = true).noPostNotice(0))
+    }
 }

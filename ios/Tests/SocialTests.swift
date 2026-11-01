@@ -115,6 +115,11 @@ final class SocialTests: XCTestCase {
         let ended = makeCommunity("k1", "Fuglar", role: .member, mutedUntil: now - 1)
         XCTAssertFalse(isMuted(ended, now: now))
         XCTAssertTrue(canWrite(ended, now: now))
+        XCTAssertNil(noPostNoticeKey(ended, now: now))
+        XCTAssertEqual(noPostNoticeKey(muted, now: now), "community_muted")
+        let mutedAndReadOnly = makeCommunity("k1", "Fuglar", role: .member, mutedUntil: now + 1, readOnly: true)
+        XCTAssertEqual(noPostNoticeKey(mutedAndReadOnly, now: now), "community_read_only")
+        XCTAssertNil(noPostNoticeKey(makeCommunity("k1", "Fuglar", readOnly: true), now: now))
     }
 
     func testEachReasonAndReactionHasItsOwnWords() {

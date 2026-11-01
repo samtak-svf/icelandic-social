@@ -56,6 +56,14 @@ final class PostModelTests: XCTestCase {
         XCTAssertFalse(social.calls.contains { $0.hasPrefix("react") })
     }
 
+    func testAMemberOfAReadOnlyCommunityReadsWhyThereIsNoCommentBox() async {
+        let model = await model()
+        social.communities = ["k1": makeCommunity("k1", "Fuglar", role: .member, readOnly: true)]
+        await model.load()
+        XCTAssertFalse(model.writes)
+        XCTAssertEqual(model.noPostNotice, "community_read_only")
+    }
+
     func testAHiddenPostTakesNoReplies() async {
         let model = await model(role: .moderator, state: .hidden)
         XCTAssertFalse(model.writes)

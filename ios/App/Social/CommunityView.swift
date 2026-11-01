@@ -310,8 +310,8 @@ struct CommunityView: View {
         if community.role != nil {
             CommunityLevelPicker(communityId: community.communityId, social: social)
         }
-        if model.muted {
-            SocialNote(text: "community_muted")
+        if let notice = model.noPostNotice {
+            SocialNote(text: LocalizedStringKey(notice))
         }
     }
 
