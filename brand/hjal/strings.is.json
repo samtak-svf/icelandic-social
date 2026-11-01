@@ -810,12 +810,19 @@
   "imports_page_declined": "Hætt var við innskráninguna. Ekkert var sótt.",
   "imports_page_expired": "Innskráningin er útrunnin. Skráðu þig inn aftur.",
   "imports_preview_title": "Veldu pósta",
-  "imports_counts": "Póstar: {posts}. Myndir: {images}. Myndbönd: {videos}.",
+  "imports_classes_title": "Veldu hvað kemur með",
+  "imports_class_own": "Eigin orð og myndir",
+  "imports_class_link": "Tenglar án eigin texta",
+  "imports_class_other_timeline": "Skrifað á [[wall.acc.pl]] eða síður annarra",
+  "imports_class_hidden": "Falið á hinum miðlinum",
+  "imports_class_counts": "Póstar: {posts}. Myndir: {images}.",
+  "imports_no_class": "Veldu að minnsta kosti einn flokk.",
+  "imports_lost_heading": "Þetta kemur ekki með:",
   "imports_range": "Tímabil",
   "imports_from": "Frá",
   "imports_to": "Til",
   "imports_include": "Birta þennan póst",
-  "imports_item_video": "Myndbandið fylgir ekki, aðeins tengill á upprunalega póstinn.",
+  "imports_item_video": "Myndbandið fylgir ekki.",
   "imports_excluded_full": "Ekki er hægt að sleppa fleiri en 1.000 póstum. Þrengdu tímabilið til að sleppa fleirum.",
   "imports_empty_range": "Engir póstar á þessu tímabili.",
   "imports_publish": "Birta valda pósta",
@@ -836,6 +843,7 @@
   "imports_failed_too_big": "Of mikið er í skránni. Sæktu afrit af styttra tímabili.",
   "imports_failed_corrupt": "Skráin er skemmd. Sæktu hana aftur.",
   "imports_failed_no_posts": "Engir póstar fundust í skránni. Athugaðu hvort þú hafir valið JSON-snið og pósta í afritinu.",
+  "imports_failed_outdated": "Skráin var lesin með eldri útgáfu. Eyddu henni og sendu hana aftur.",
   "imports_failed_expired": "Innflutningurinn rann út áður en honum lauk. Byrjaðu upp á nýtt.",
   "imports_sync_posts": {
     "one": "{count} póstur kominn inn",
@@ -844,6 +852,30 @@
   "imports_skipped": {
     "one": "Ekki var hægt að lesa {count} færslu.",
     "other": "Ekki var hægt að lesa {count} færslur."
+  },
+  "imports_lost_videos": {
+    "one": "Myndband úr {count} pósti, textinn kemur með",
+    "other": "Myndbönd úr {count} póstum, textinn kemur með"
+  },
+  "imports_lost_images": {
+    "one": "{count} mynd sem ekki er hægt að flytja",
+    "other": "{count} myndir sem ekki er hægt að flytja"
+  },
+  "imports_lost_video_only": {
+    "one": "{count} póstur sem er aðeins myndband",
+    "other": "{count} póstar sem eru aðeins myndbönd"
+  },
+  "imports_lost_foreign_only": {
+    "one": "{count} póstur með mynd annarra og engum orðum frá þér",
+    "other": "{count} póstar með myndum annarra og engum orðum frá þér"
+  },
+  "imports_lost_foreign_images": {
+    "one": "{count} mynd sem aðrir settu inn",
+    "other": "{count} myndir sem aðrir settu inn"
+  },
+  "imports_lost_empty": {
+    "one": "{count} póstur án efnis sem hægt er að flytja",
+    "other": "{count} póstar án efnis sem hægt er að flytja"
   },
   "imports_item_images": { "one": "{count} mynd", "other": "{count} myndir" },
   "imports_rate_limited": "Of margar tilraunir í einu. Reyndu aftur eftir smástund.",

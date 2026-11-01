@@ -25,8 +25,23 @@ type Status = {
   state: string;
   failure: string | null;
   counts: { posts: number; images: number; videos: number; skipped: number };
+  classes: {
+    class: string;
+    posts: number;
+    images: number;
+    imagesLost: number;
+    videos: number;
+  }[];
+  lost: { videoOnly: number; foreignOnly: number; foreignImages: number; empty: number };
 };
-type Item = { id: string; at: number; text: string; images: number; hasVideo: boolean };
+type Item = {
+  id: string;
+  at: number;
+  text: string;
+  images: number;
+  hasVideo: boolean;
+  class: string;
+};
 type Read = WallPost & { createdAt: number; imported?: boolean; media: unknown[] };
 
 /** How the export writes text: each UTF-8 byte as one Latin-1 code point. */
@@ -98,6 +113,13 @@ const rows = async (importId: string) =>
 const stored = async (importId: string) =>
   (await mediaBucket(E).head(`imports/${importId}`)) !== null;
 
+/** The person's own album, which says whose the media beside the posts are. */
+const album = (...uris: string[]): FixtureEntry => ({
+  name: "posts/album/0.json",
+  data: utf8({ photos: uris.map((uri) => ({ uri })) }),
+});
+const OWN_MEDIA = album("posts/media/a.png", "posts/media/b.png", "posts/media/c.mp4");
+
 const SAMPLE = [
   entry(MAY_2019 / 1000, "Fyrsta færsla með þ, ð, æ, ö"),
   entry(MAY_2019 / 1000 + 60, "Með mynd 😀", media("posts/media/a.png", "posts/media/b.png")),
@@ -108,6 +130,7 @@ async function sampleZip(entries: unknown[] = SAMPLE) {
   const image = await png(8, 8);
   return buildZip([
     postsFile(entries),
+    OWN_MEDIA,
     { name: "posts/media/a.png", data: image },
     { name: "posts/media/b.png", data: image, method: "deflate" },
     { name: "posts/media/c.mp4", data: new Uint8Array([1, 2, 3]) },
@@ -161,11 +184,28 @@ describe("an export file from upload to the wall", () => {
     const owner = await person("eigandi");
     const zip = await buildZip([
       postsFile([entry(MAY_2019 / 1000, "Mynd vantar", media("posts/media/gone.png"))]),
+      album("posts/media/gone.png"),
     ]);
-    await publish(owner, await upload(owner, zip));
+    const importId = await upload(owner, zip);
+    const { classes } = await status(owner, importId);
+    expect(classes.find((c) => c.class === "own")).toMatchObject({
+      posts: 1,
+      images: 0,
+      imagesLost: 1,
+    });
+    await publish(owner, importId);
     const [post] = await wall(owner, owner);
     expect(post).toMatchObject({ body: "Mynd vantar" });
     expect(post?.media).toHaveLength(0);
+  });
+
+  it("brings a long text in whole, however long a post written here may be", async () => {
+    const owner = await person("eigandi");
+    const long = "ð".repeat(49_143);
+    const importId = await upload(owner, await sampleZip([entry(MAY_2019 / 1000, long)]));
+    await publish(owner, importId);
+    const [post] = await wall(owner, owner);
+    expect(post?.body).toBe(long);
   });
 
   it("brings in more than one run's worth, chaining the runs", async () => {
@@ -205,6 +245,140 @@ describe("an export file from upload to the wall", () => {
       excluded: [third!.id],
     });
     expect((await wall(owner, owner)).map((p) => p.body)).toEqual([second!.text]);
+  });
+});
+
+describe("the kinds of post a file holds (decision 0127)", () => {
+  const AT = MAY_2019 / 1000;
+  const LINK = "https://example.test/grein";
+  const linkOnly = { attachments: [{ data: [{ external_context: { url: LINK } }] }] };
+  const KINDS = [
+    entry(AT, "Mín orð", media("posts/media/a.png", "posts/media/b.png", "posts/media/c.mp4")),
+    { timestamp: AT + 1, ...linkOnly },
+    entry(AT + 2, "Á síðu annars"),
+    entry(AT + 3, "Falið"),
+    { timestamp: AT + 4, attachments: [{ data: [{ media: { uri: "posts/media/d.png" } }] }] },
+    { timestamp: AT + 5, attachments: [{ data: [{ media: { uri: "posts/media/c.mp4" } }] }] },
+    { timestamp: AT + 6, data: [] },
+    entry(AT + 7, "Með mynd annars", media("posts/media/d.png")),
+  ];
+
+  async function kindsZip(entries: unknown[] = KINDS) {
+    const image = await png(8, 8);
+    return buildZip([
+      postsFile(entries),
+      OWN_MEDIA,
+      {
+        name: "posts/posts_on_other_pages_and_profiles.json",
+        data: utf8({ wall: [{ timestamp: AT + 2 }] }),
+      },
+      {
+        name: "posts/archive.json",
+        data: utf8({ archive: [{ timestamp: AT + 3, label_values: [{ value: "Falið" }] }] }),
+      },
+      { name: "posts/media/a.png", data: image },
+      { name: "posts/media/b.png", data: image },
+      { name: "posts/media/c.mp4", data: new Uint8Array([1]) },
+      { name: "posts/media/d.png", data: image },
+    ]);
+  }
+
+  it("counts each kind, and says what will not come, and why", async () => {
+    const owner = await person("eigandi");
+    const read = await status(owner, await upload(owner, await kindsZip()));
+    expect(read.classes).toEqual([
+      { class: "own", posts: 2, images: 2, imagesLost: 0, videos: 1 },
+      { class: "link", posts: 1, images: 0, imagesLost: 0, videos: 0 },
+      { class: "other_timeline", posts: 1, images: 0, imagesLost: 0, videos: 0 },
+      { class: "hidden", posts: 1, images: 0, imagesLost: 0, videos: 0 },
+    ]);
+    expect(read.lost).toEqual({ videoOnly: 1, foreignOnly: 1, foreignImages: 1, empty: 1 });
+  });
+
+  it("labels each preview row with its kind", async () => {
+    const owner = await person("eigandi");
+    const preview = await items(owner, await upload(owner, await kindsZip()));
+    expect(preview.map((i) => i.class)).toEqual(["own", "link", "other_timeline", "hidden", "own"]);
+  });
+
+  it("publishes only the person's own posts when no kind is named", async () => {
+    const owner = await person("eigandi");
+    await publish(owner, await upload(owner, await kindsZip()));
+    const posts = await wall(owner, owner);
+    expect(posts.map((p) => p.body).sort()).toEqual(["Með mynd annars", "Mín orð"]);
+    expect(posts.find((p) => p.body === "Með mynd annars")?.media).toHaveLength(0);
+  });
+
+  it("publishes exactly the kinds chosen", async () => {
+    const owner = await person("eigandi");
+    const importId = await upload(owner, await kindsZip());
+    await publish(owner, importId, { classes: ["link", "hidden"] });
+    expect((await wall(owner, owner)).map((p) => p.body).sort()).toEqual(["Falið", LINK]);
+    expect((await status(owner, importId)).state).toBe("done");
+  });
+
+  it("refuses an empty choice of kinds and a kind there is not", async () => {
+    const owner = await person("eigandi");
+    const importId = await upload(owner, await kindsZip());
+    for (const classes of [[], ["everything"]]) {
+      const response = await owner.call("POST", `/v1/imports/${importId}/publish`, { classes });
+      expect(response.status).toBe(400);
+    }
+  });
+
+  it("the preview's counts are what arrives on the wall", async () => {
+    const owner = await person("eigandi");
+    const importId = await upload(owner, await kindsZip());
+    const { classes } = await status(owner, importId);
+    const own = classes.find((c) => c.class === "own");
+    await publish(owner, importId);
+    const posts = await wall(owner, owner);
+    expect(posts).toHaveLength(own!.posts);
+    expect(posts.reduce((sum, p) => sum + p.media.length, 0)).toBe(own!.images);
+  });
+
+  it("brings no image when the export has no lists saying whose it is, and counts them", async () => {
+    const owner = await person("eigandi");
+    const zip = await buildZip([
+      postsFile([entry(AT, "Orð", media("posts/media/a.png"))]),
+      { name: "posts/media/a.png", data: await png(8, 8) },
+    ]);
+    const importId = await upload(owner, zip);
+    expect((await status(owner, importId)).lost.foreignImages).toBe(1);
+    await publish(owner, importId);
+    const [post] = await wall(owner, owner);
+    expect(post?.media).toHaveLength(0);
+  });
+
+  it("counts an entry the export repeats once", async () => {
+    const owner = await person("eigandi");
+    const video = {
+      timestamp: AT,
+      attachments: [{ data: [{ media: { uri: "posts/media/c.mp4" } }] }],
+    };
+    const twice = [
+      video,
+      video,
+      entry(AT + 1, "Annars", media("posts/media/d.png")),
+      entry(AT + 1, "Annars", media("posts/media/d.png")),
+    ];
+    const read = await status(owner, await upload(owner, await kindsZip(twice)));
+    expect(read.lost).toMatchObject({ videoOnly: 1, foreignImages: 1 });
+    expect(read.classes.find((c) => c.class === "own")?.posts).toBe(1);
+  });
+});
+
+describe("a file read before the kinds of post were counted", () => {
+  it("failing as outdated is a state the screen can name", async () => {
+    const owner = await person("eigandi");
+    const importId = await upload(owner, await sampleZip());
+    await env.DB.prepare(
+      "UPDATE import_files SET state = 'failed', failure = 'outdated' WHERE import_id = ?",
+    )
+      .bind(importId)
+      .run();
+    expect(await status(owner, importId)).toMatchObject({ state: "failed", failure: "outdated" });
+    expect((await owner.call("DELETE", `/v1/imports/${importId}`)).status).toBe(204);
   });
 });
 

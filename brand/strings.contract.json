@@ -3305,14 +3305,41 @@
       "surfaces": ["web"],
       "description": "Title of the screen choosing what to publish."
     },
-    "imports_counts": {
+    "imports_classes_title": {
       "surfaces": ["web"],
-      "description": "What an import holds.",
+      "description": "Legend of the kinds of post an import holds."
+    },
+    "imports_class_own": {
+      "surfaces": ["web"],
+      "description": "The person's own words and images."
+    },
+    "imports_class_link": {
+      "surfaces": ["web"],
+      "description": "Posts that are only a link."
+    },
+    "imports_class_other_timeline": {
+      "surfaces": ["web"],
+      "description": "Posts written on someone else's timeline or page."
+    },
+    "imports_class_hidden": {
+      "surfaces": ["web"],
+      "description": "Posts the person hid at the source."
+    },
+    "imports_class_counts": {
+      "surfaces": ["web"],
+      "description": "What one kind of post holds.",
       "placeholders": {
         "posts": "string",
-        "images": "string",
-        "videos": "string"
+        "images": "string"
       }
+    },
+    "imports_no_class": {
+      "surfaces": ["web"],
+      "description": "When no kind of post is chosen."
+    },
+    "imports_lost_heading": {
+      "surfaces": ["web"],
+      "description": "Above the list of what does not come."
     },
     "imports_range": {
       "surfaces": ["web"],
@@ -3414,6 +3441,10 @@
       "surfaces": ["web"],
       "description": "No posts were found."
     },
+    "imports_failed_outdated": {
+      "surfaces": ["web"],
+      "description": "The file was read by an earlier version and must be sent again."
+    },
     "imports_failed_expired": {
       "surfaces": ["web"],
       "description": "The import ran out of time."
@@ -3429,6 +3460,54 @@
     "imports_skipped": {
       "surfaces": ["web"],
       "description": "Entries the reader could not read.",
+      "plural": true,
+      "placeholders": {
+        "count": "int"
+      }
+    },
+    "imports_lost_videos": {
+      "surfaces": ["web"],
+      "description": "Posts whose video stays behind while the text comes.",
+      "plural": true,
+      "placeholders": {
+        "count": "int"
+      }
+    },
+    "imports_lost_images": {
+      "surfaces": ["web"],
+      "description": "Images that cannot come.",
+      "plural": true,
+      "placeholders": {
+        "count": "int"
+      }
+    },
+    "imports_lost_video_only": {
+      "surfaces": ["web"],
+      "description": "Entries that were only a video.",
+      "plural": true,
+      "placeholders": {
+        "count": "int"
+      }
+    },
+    "imports_lost_foreign_only": {
+      "surfaces": ["web"],
+      "description": "Entries with someone else's image and no words of the person's.",
+      "plural": true,
+      "placeholders": {
+        "count": "int"
+      }
+    },
+    "imports_lost_foreign_images": {
+      "surfaces": ["web"],
+      "description": "Someone else's images on the person's posts.",
+      "plural": true,
+      "placeholders": {
+        "count": "int"
+      }
+    },
+    "imports_lost_empty": {
+      "surfaces": ["web"],
+      "description": "Entries with nothing that can come.",
       "plural": true,
       "placeholders": {
         "count": "int"

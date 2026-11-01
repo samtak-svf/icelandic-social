@@ -196,17 +196,17 @@ describe("importing a post", () => {
     expect(loaded).toBe(false);
   });
 
-  it("keeps a post within the length every post has, and says so", async () => {
+  it("keeps a post within the length an imported post has, and says so", async () => {
     const owner = await person("eigandi");
     const result = await importPost(
       E,
       await opened(owner),
-      post({ body: "a".repeat(6000) }),
+      post({ body: "a".repeat(100_001) }),
       "backlog",
     );
     expect(result).toMatchObject({ outcome: "imported", shortened: true });
     const [read] = (await wall(owner, owner)).posts;
-    expect(read?.body).toHaveLength(5000);
+    expect(read?.body).toHaveLength(100_000);
   });
 
   it("finishes a post a run left half done, and leaves one post", async () => {

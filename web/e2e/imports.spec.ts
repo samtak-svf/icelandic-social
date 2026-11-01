@@ -37,7 +37,7 @@ test("an export file: the choice, the wall, and taking it all back", async ({ br
   await expect(choose).toBeEnabled();
   await choose.setInputFiles(await exportFile());
   await a.waitForURL(/\/imports\/[^/]+$/);
-  const counts = strings.imports_counts({ posts: "2", images: "0", videos: "0" });
+  const counts = strings.imports_class_counts({ posts: "2", images: "0" });
   await expect(async () => {
     await runJobs();
     await expect(a.getByText(counts, { exact: true })).toBeVisible({ timeout: 4000 });

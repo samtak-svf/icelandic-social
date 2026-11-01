@@ -13,13 +13,16 @@ import { parseExportFile } from "../../../src/modules/imports/export-file.ts";
 
 describe("the export's post fields", () => {
   it("name every field the importer reads from a real parsed post", async () => {
-    const { items } = await parseExportFile([
-      {
-        timestamp: 1_558_096_245,
-        data: [{ post: "Fyrsta færsla" }],
-        attachments: [{ data: [{ media: { uri: "posts/media/a.jpg" } }] }],
-      },
-    ]);
+    const { items } = await parseExportFile(
+      [
+        {
+          timestamp: 1_558_096_245,
+          data: [{ post: "Fyrsta færsla" }],
+          attachments: [{ data: [{ media: { uri: "posts/media/a.jpg" } }] }],
+        },
+      ],
+      { ownMedia: new Set(["posts/media/a.jpg"]), otherTimelines: new Set(), archived: new Map() },
+    );
     expect(items).toHaveLength(1);
     expect(Object.keys(items[0]!).sort()).toEqual(Object.keys(fromImport).sort());
   });

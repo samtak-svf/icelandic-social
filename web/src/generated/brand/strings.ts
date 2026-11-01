@@ -1338,9 +1338,23 @@ export const strings = {
   imports_page_expired: "Innskráningin er útrunnin. Skráðu þig inn aftur.",
   /** Title of the screen choosing what to publish. */
   imports_preview_title: "Veldu pósta",
-  /** What an import holds. */
-  imports_counts: (args: { posts: string; images: string; videos: string }): string =>
-    "Póstar: " + args.posts + ". Myndir: " + args.images + ". Myndbönd: " + args.videos + ".",
+  /** Legend of the kinds of post an import holds. */
+  imports_classes_title: "Veldu hvað kemur með",
+  /** The person's own words and images. */
+  imports_class_own: "Eigin orð og myndir",
+  /** Posts that are only a link. */
+  imports_class_link: "Tenglar án eigin texta",
+  /** Posts written on someone else's timeline or page. */
+  imports_class_other_timeline: "Skrifað á veggi eða síður annarra",
+  /** Posts the person hid at the source. */
+  imports_class_hidden: "Falið á hinum miðlinum",
+  /** What one kind of post holds. */
+  imports_class_counts: (args: { posts: string; images: string }): string =>
+    "Póstar: " + args.posts + ". Myndir: " + args.images + ".",
+  /** When no kind of post is chosen. */
+  imports_no_class: "Veldu að minnsta kosti einn flokk.",
+  /** Above the list of what does not come. */
+  imports_lost_heading: "Þetta kemur ekki með:",
   /** Legend of the date range. */
   imports_range: "Tímabil",
   /** Label of the range's start. */
@@ -1350,7 +1364,7 @@ export const strings = {
   /** Checkbox: this post is published. */
   imports_include: "Birta þennan póst",
   /** On a post with a video. */
-  imports_item_video: "Myndbandið fylgir ekki, aðeins tengill á upprunalega póstinn.",
+  imports_item_video: "Myndbandið fylgir ekki.",
   /** The limit on posts left out was reached. */
   imports_excluded_full: "Ekki er hægt að sleppa fleiri en 1.000 póstum. Þrengdu tímabilið til að sleppa fleirum.",
   /** No post in the chosen range. */
@@ -1391,6 +1405,8 @@ export const strings = {
   imports_failed_corrupt: "Skráin er skemmd. Sæktu hana aftur.",
   /** No posts were found. */
   imports_failed_no_posts: "Engir póstar fundust í skránni. Athugaðu hvort þú hafir valið JSON-snið og pósta í afritinu.",
+  /** The file was read by an earlier version and must be sent again. */
+  imports_failed_outdated: "Skráin var lesin með eldri útgáfu. Eyddu henni og sendu hana aftur.",
   /** The import ran out of time. */
   imports_failed_expired: "Innflutningurinn rann út áður en honum lauk. Byrjaðu upp á nýtt.",
   /** How many posts a connection has brought in. */
@@ -1403,6 +1419,36 @@ export const strings = {
     plural.select(args.count) === "one"
       ? "Ekki var hægt að lesa " + String(args.count) + " færslu."
       : "Ekki var hægt að lesa " + String(args.count) + " færslur.",
+  /** Posts whose video stays behind while the text comes. */
+  imports_lost_videos: (args: { count: number }): string =>
+    plural.select(args.count) === "one"
+      ? "Myndband úr " + String(args.count) + " pósti, textinn kemur með"
+      : "Myndbönd úr " + String(args.count) + " póstum, textinn kemur með",
+  /** Images that cannot come. */
+  imports_lost_images: (args: { count: number }): string =>
+    plural.select(args.count) === "one"
+      ? String(args.count) + " mynd sem ekki er hægt að flytja"
+      : String(args.count) + " myndir sem ekki er hægt að flytja",
+  /** Entries that were only a video. */
+  imports_lost_video_only: (args: { count: number }): string =>
+    plural.select(args.count) === "one"
+      ? String(args.count) + " póstur sem er aðeins myndband"
+      : String(args.count) + " póstar sem eru aðeins myndbönd",
+  /** Entries with someone else's image and no words of the person's. */
+  imports_lost_foreign_only: (args: { count: number }): string =>
+    plural.select(args.count) === "one"
+      ? String(args.count) + " póstur með mynd annarra og engum orðum frá þér"
+      : String(args.count) + " póstar með myndum annarra og engum orðum frá þér",
+  /** Someone else's images on the person's posts. */
+  imports_lost_foreign_images: (args: { count: number }): string =>
+    plural.select(args.count) === "one"
+      ? String(args.count) + " mynd sem aðrir settu inn"
+      : String(args.count) + " myndir sem aðrir settu inn",
+  /** Entries with nothing that can come. */
+  imports_lost_empty: (args: { count: number }): string =>
+    plural.select(args.count) === "one"
+      ? String(args.count) + " póstur án efnis sem hægt er að flytja"
+      : String(args.count) + " póstar án efnis sem hægt er að flytja",
   /** How many images a post has. */
   imports_item_images: (args: { count: number }): string =>
     plural.select(args.count) === "one"

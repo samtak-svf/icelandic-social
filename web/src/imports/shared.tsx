@@ -30,6 +30,7 @@ const FAILURES: Readonly<Record<string, string>> = {
   too_big: strings.imports_failed_too_big,
   corrupt: strings.imports_failed_corrupt,
   no_posts: strings.imports_failed_no_posts,
+  outdated: strings.imports_failed_outdated,
 };
 
 /** Why an import failed; one with no reason ran out of time while it was being published. */
