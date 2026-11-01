@@ -1,6 +1,6 @@
 import type { Page } from "@playwright/test";
 import { strings } from "../src/generated/brand/strings.ts";
-import { png } from "./images.ts";
+import { expectLoaded, png } from "./images.ts";
 import { expect, test } from "./origin.ts";
 import { cardMenu, found, join, openComposer, person, post, write } from "./social-helpers.ts";
 
@@ -64,11 +64,7 @@ test("each tab is a route with its own content, the row sticks and back returns 
     await openTab(owner, strings.community_tab_images, "/images", root);
     const grid = owner.getByRole("main").getByRole("link", { name: strings.post_title });
     await expect(grid).toHaveCount(1);
-    await expect
-      .poll(() =>
-        grid.locator("img").evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth),
-      )
-      .toBeGreaterThan(0);
+    await expectLoaded(grid.locator("img"));
 
     // Meðlimir: the owner first, then the member.
     await openTab(owner, strings.community_tab_members, "/people", root);
