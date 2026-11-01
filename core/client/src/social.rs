@@ -9,9 +9,12 @@ mod home;
 mod media;
 mod moderation;
 mod notifications;
+mod poll;
 mod wall;
 
 pub use home::PostTarget;
+pub use poll::poll_draft_valid;
+use poll::{check_poll, server_trim};
 
 use crate::api::{
     Audience, Author, Card, Comment, CommentPage, Community, CommunityImagePage, CommunityMember,
@@ -503,35 +506,6 @@ impl<T: Transport> Hosted<T> {
     }
 }
 
-/// The bounds of a poll's options (0090), as the server holds them.
-const POLL_OPTIONS: std::ops::RangeInclusive<usize> = 2..=6;
-const POLL_OPTION_CHARS: usize = 80;
-
-/// A poll is refused before it is sent when the server would refuse it.
-fn check_poll(body: &str, media: &[String], options: &[String]) -> Result<(), ClientError> {
-    if body.trim().is_empty() {
-        return Err(ClientError::Invalid("a poll needs a question"));
-    }
-    if !media.is_empty() {
-        return Err(ClientError::Invalid("a poll takes no image"));
-    }
-    if !POLL_OPTIONS.contains(&options.len()) {
-        return Err(ClientError::Invalid("a poll has two to six options"));
-    }
-    let mut seen = Vec::with_capacity(options.len());
-    for option in options {
-        let option = option.trim();
-        if option.is_empty() || option.chars().count() > POLL_OPTION_CHARS {
-            return Err(ClientError::Invalid("an option of 1 to 80 characters"));
-        }
-        if seen.contains(&option) {
-            return Err(ClientError::Invalid("a poll's options differ"));
-        }
-        seen.push(option);
-    }
-    Ok(())
-}
-
 /// What makes a post sendable, in a community or on a wall: text or images, or
 /// a poll with no image, at most 4 images. The options as the server takes them.
 fn check_post(
@@ -550,5 +524,5 @@ fn check_post(
     for m in media {
         id(m, "media id")?;
     }
-    Ok(poll.map(|o| o.iter().map(|t| t.trim().to_owned()).collect()))
+    Ok(poll.map(|o| o.iter().map(|t| server_trim(t).to_owned()).collect()))
 }

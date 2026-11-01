@@ -158,3 +158,11 @@ pub struct PostPage {
     /// The `before` of the next, older page; none on the last.
     pub next: Option<String>,
 }
+
+/// Whether the server would take a poll with this question and these options,
+/// so both apps ask rather than hold the rule (0090).
+#[uniffi::export]
+#[must_use]
+pub fn poll_draft_valid(question: String, options: Vec<String>) -> bool {
+    spjall_client::social::poll_draft_valid(&question, &options)
+}

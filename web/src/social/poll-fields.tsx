@@ -1,6 +1,6 @@
 import { strings } from "../generated/brand/strings.ts";
 import { Button } from "../ui/kit.tsx";
-import { POLL_MAX_OPTIONS, POLL_MIN_OPTIONS, POLL_OPTION_MAX } from "./poll-draft.ts";
+import { POLL_MAX_OPTIONS, POLL_MIN_OPTIONS, cappedOption } from "./poll-draft.ts";
 
 /** The option fields of a poll being written (decision 0090): two to six, each its own line. */
 export function PollFields({
@@ -15,12 +15,13 @@ export function PollFields({
           <input
             type="text"
             value={option}
-            maxLength={POLL_OPTION_MAX}
             aria-label={strings.composer_poll_option({ n: at + 1 })}
             placeholder={strings.composer_poll_option({ n: at + 1 })}
             disabled={busy}
             onChange={(event) =>
-              change(options.map((value, i) => (i === at ? event.target.value : value)))
+              change(
+                options.map((value, i) => (i === at ? cappedOption(event.target.value) : value)),
+              )
             }
             className="min-h-11 min-w-0 flex-1 rounded-md border border-border-strong bg-surface px-2"
           />

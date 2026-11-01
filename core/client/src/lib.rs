@@ -39,7 +39,7 @@ mod own_link;
 mod photo;
 pub mod place;
 mod read;
-mod social;
+pub mod social;
 mod timeline;
 mod view;
 
