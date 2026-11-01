@@ -8,6 +8,7 @@ import {
   removeConnection,
 } from "../../../src/modules/imports/connections.ts";
 import { createApp } from "../../../src/app.ts";
+import { openHeld } from "../../../src/modules/imports/held.ts";
 import { mediaBucket } from "../../../src/env/index.ts";
 import { expireFiles, publishFile, type Choice } from "../../../src/modules/imports/file.ts";
 import { jobHandlers } from "../../../src/modules/imports/index.ts";
@@ -141,10 +142,14 @@ async function proven(owner: Person, posts: Item[], audience?: "friends" | "ever
   return { importId: connection.importId, fake, shown };
 }
 
-/** Publishes the preview as the person would. */
+/** Brings the preview in and opens it, as the person would, to the connection's audience. */
 async function choose(owner: Person, importId: string, choice: Choice = {}) {
   expect(await publishFile(E, owner.accountId, importId, choice)).toBe("ok");
   await drain();
+  const source = await env.DB.prepare("SELECT audience FROM import_sources WHERE import_id = ?")
+    .bind(importId)
+    .first<{ audience: "friends" | "everyone" }>();
+  await openHeld(E, owner.accountId, importId, { audience: source?.audience ?? "friends" });
 }
 
 /** A connection whose first posts have been chosen and have come in. */
@@ -570,11 +575,11 @@ describe("the first collection", () => {
     ).toBeNull();
   });
 
-  it("applies the audience chosen at publishing to the later runs", async () => {
+  it("applies the audience chosen at connecting to the later runs", async () => {
     const owner = await person("Sigga");
     const reader = await person("Jón");
-    const { importId, shown } = await proven(owner, [item("a", "Fyrsta")]);
-    await choose(owner, importId, { audience: "everyone" });
+    const { importId, shown } = await proven(owner, [item("a", "Fyrsta")], "everyone");
+    await choose(owner, importId);
     shown.push(item("n", "Ný", { timestamp: (Date.now() + DAY_MS + 5000) / 1000 }));
     await tick(E, DAY_MS + 1000);
     const seen = await ok<{ posts: unknown[] }>(

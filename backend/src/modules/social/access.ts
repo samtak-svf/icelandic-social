@@ -17,7 +17,7 @@ export type IndexedPost = {
   communityId: string;
   authorId: string;
   createdAt: number;
-  state: "visible" | "pending" | "hidden" | "removed";
+  state: "visible" | "pending" | "hidden" | "removed" | "held";
   /** 1 for an anonymous post (decision 0091): its author is named to no reader but the author. */
   anonymous: number;
   /** Who reads a wall post (decision 0115); null on a community's, and only there. */
@@ -163,8 +163,11 @@ export function replyRefusal(
 /**
  * Whether the post is one this access sees: visible, or any to a moderator,
  * and no block. Its author also sees their own post waiting for approval (0091).
+ * A post an import holds is its author's alone, whoever else asks, a moderator
+ * included (0127).
  */
 function sees(access: SpaceAccess, post: IndexedPost): boolean {
+  if (post.state === "held") return post.authorId === access.viewer.account;
   if (access.wall && !readsWall(access.wall, post.audience, access.viewer.account)) return false;
   const own = post.state === "pending" && post.authorId === access.viewer.account;
   if (post.state !== "visible" && !access.moderator && !own) return false;

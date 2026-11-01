@@ -10,7 +10,7 @@ import {
   SUSPENDED,
 } from "./common.ts";
 import { WallAudience } from "./post-fields.ts";
-import { Cursor, json } from "./social.ts";
+import { Cursor, json, PostPage } from "./social.ts";
 
 // Importing a person's own posts from an export file (decision 0119): the ZIP
 // goes up in parts, a job reads it into a preview, the person chooses, and a
@@ -86,6 +86,32 @@ const ImportSummary = ImportStatus.extend({
   createdAt: z.int().openapi({ description: "Milliseconds since the epoch" }),
 }).openapi("ImportSummary");
 
+const HeldQuery = {
+  class: ImportItemClass.optional(),
+  year: z.coerce.number().int().min(1970).max(9999).optional().openapi({
+    description: "Only posts of this year, by their original date in UTC",
+  }),
+};
+
+const ImportDetail = ImportStatus.extend({
+  held: z
+    .object({
+      posts: z.int().openapi({ description: "Posts still held, seen by nobody but the caller" }),
+      groups: z.array(z.object({ class: ImportItemClass, year: z.int(), posts: z.int() })),
+    })
+    .openapi({ description: "What this import brought in and the caller has not opened" }),
+}).openapi("ImportDetail");
+
+const OpenHeld = z
+  .object({
+    audience: WallAudience,
+    class: ImportItemClass.optional().openapi({ description: "Only this kind of post" }),
+    year: z.int().min(1970).max(9999).optional().openapi({ description: "Only this year" }),
+  })
+  .openapi("OpenHeld");
+
+const OpenedHeld = z.object({ opened: z.int() }).openapi("OpenedHeld");
+
 const ImportItem = z
   .object({
     id: z.string(),
@@ -103,10 +129,6 @@ const ImportItemPage = z
 
 const PublishImport = z
   .object({
-    audience: WallAudience.optional().openapi({
-      description:
-        "Who reads the posts; friends when left out, since nothing is public unless chosen",
-    }),
     from: z.int().min(0).optional().openapi({ description: "Only posts from this date on" }),
     to: z.int().min(0).optional().openapi({ description: "Only posts up to this date" }),
     excluded: z.array(z.string().max(64)).max(LIMITS.excludedPostsCount).optional().openapi({
@@ -204,7 +226,7 @@ export const getImportRoute = createRoute({
   summary: "Where an import stands, and what the file held",
   security: ACCOUNT,
   request: { params: Params },
-  responses: { 200: json("The import", ImportStatus), 404: NOT_FOUND, ...INVALID, ...AUTHED },
+  responses: { 200: json("The import", ImportDetail), 404: NOT_FOUND, ...INVALID, ...AUTHED },
 });
 
 export const listImportItemsRoute = createRoute({
@@ -233,6 +255,42 @@ export const publishImportRoute = createRoute({
     204: { description: "Publishing has begun; watch the import's state" },
     404: NOT_FOUND,
     409: errorResponse("conflict: the import is not ready"),
+    ...SUSPENDED,
+    ...INVALID,
+    ...RATE_LIMITED,
+    ...AUTHED,
+  },
+});
+
+export const listHeldRoute = createRoute({
+  method: "get",
+  path: "/v1/imports/{importId}/held",
+  operationId: "listHeldPosts",
+  tags,
+  summary: "The posts this import holds, newest first, as the caller's own to review",
+  security: ACCOUNT,
+  request: {
+    params: Params,
+    query: z.object({ ...HeldQuery, before: Cursor.optional() }),
+  },
+  responses: { 200: json("A page", PostPage), 404: NOT_FOUND, ...INVALID, ...AUTHED },
+});
+
+export const openHeldRoute = createRoute({
+  method: "post",
+  path: "/v1/imports/{importId}/open",
+  operationId: "openHeldPosts",
+  tags,
+  summary: "Open the held posts, all of them or one kind or year, to an audience",
+  security: ACCOUNT,
+  request: {
+    params: Params,
+    body: { required: true, content: { "application/json": { schema: OpenHeld } } },
+  },
+  responses: {
+    200: json("How many posts were opened", OpenedHeld),
+    404: NOT_FOUND,
+    409: errorResponse("conflict: posts are still coming in"),
     ...SUSPENDED,
     ...INVALID,
     ...RATE_LIMITED,

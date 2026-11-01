@@ -126,6 +126,16 @@ export const READS = [
     why: "the home feed asks how old a wall in its sources is, to know when there is nothing older to read (decision 0116)",
   },
   {
+    module: "social",
+    table: "imported_posts",
+    why: "opening what an import holds sets state and audience in one statement, by the import's kinds and years (decision 0127)",
+  },
+  {
+    module: "social",
+    table: "import_sources",
+    why: "an import being removed opens nothing, in that same statement (decision 0127)",
+  },
+  {
     module: "identity",
     table: "platform_moderators",
     why: "the account's own /v1/me says whether it is a platform moderator, so its client shows the way to the queue (decision 0115)",

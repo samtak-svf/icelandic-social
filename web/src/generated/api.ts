@@ -1156,6 +1156,19 @@ export interface ImportStatus {
   };
 }
 
+export type ImportDetail = ImportStatus & {
+  /** What this import brought in and the caller has not opened */
+  held: {
+    /** Posts still held, seen by nobody but the caller */
+    posts: number;
+    groups: Array<{
+      class: ImportItemClass;
+      year: number;
+      posts: number;
+    }>;
+  };
+};
+
 export interface ImportItemPage {
   items: Array<ImportItem>;
   /** The `next` of the page before */
@@ -1174,8 +1187,6 @@ export interface ImportItem {
 }
 
 export interface PublishImport {
-  /** Who reads the posts; friends when left out, since nothing is public unless chosen */
-  audience?: WallAudience;
   /** Only posts from this date on */
   from?: number;
   /** Only posts up to this date */
@@ -1184,6 +1195,18 @@ export interface PublishImport {
   excluded?: Array<string>;
   /** The kinds of post to bring in; only the person's own when left out */
   classes?: Array<ImportItemClass>;
+}
+
+export interface OpenedHeld {
+  opened: number;
+}
+
+export interface OpenHeld {
+  audience: WallAudience;
+  /** Only this kind of post */
+  class?: ImportItemClass;
+  /** Only this year */
+  year?: number;
 }
 
 export interface ExportSummary {
@@ -3710,7 +3733,7 @@ export function getImport(args: {
     importId: string;
   };
 }, init?: CallInit): Promise<
-  | { status: 200; data: ImportStatus }
+  | { status: 200; data: ImportDetail }
   | { status: 400; data: ApiError }
   | { status: 401; data: ApiError }
   | { status: 404; data: ApiError }
@@ -3770,6 +3793,47 @@ export function publishImport(args: {
   | { status: 429; data: ApiError }
 > {
   return call("POST", "/v1/imports/{importId}/publish", args, init);
+}
+
+/** The posts this import holds, newest first, as the caller's own to review */
+export function listHeldPosts(args: {
+  path: {
+    importId: string;
+  };
+  query?: {
+    class?: ImportItemClass;
+    /** Only posts of this year, by their original date in UTC */
+    year?: number;
+    /** The `next` of the page before */
+    before?: string;
+  };
+}, init?: CallInit): Promise<
+  | { status: 200; data: PostPage }
+  | { status: 400; data: ApiError }
+  | { status: 401; data: ApiError }
+  | { status: 404; data: ApiError }
+  | { status: 426; data: ApiError }
+> {
+  return call("GET", "/v1/imports/{importId}/held", args, init);
+}
+
+/** Open the held posts, all of them or one kind or year, to an audience */
+export function openHeldPosts(args: {
+  path: {
+    importId: string;
+  };
+  body: OpenHeld;
+}, init?: CallInit): Promise<
+  | { status: 200; data: OpenedHeld }
+  | { status: 400; data: ApiError }
+  | { status: 401; data: ApiError }
+  | { status: 403; data: ApiError }
+  | { status: 404; data: ApiError }
+  | { status: 409; data: ApiError }
+  | { status: 426; data: ApiError }
+  | { status: 429; data: ApiError }
+> {
+  return call("POST", "/v1/imports/{importId}/open", args, init);
 }
 
 /** The caller's exports that have not expired, newest first */

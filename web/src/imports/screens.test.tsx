@@ -3,9 +3,11 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import type {
   ImportConnection,
+  ImportDetail,
   ImportItem,
   ImportPageConnection,
   ImportStatus,
+  Post,
 } from "../generated/api.ts";
 import { strings } from "../generated/brand/strings.ts";
 import type { Paged } from "../social/paged.ts";
@@ -20,6 +22,7 @@ import {
   type Choice,
 } from "./preview.tsx";
 import { lostLines } from "./classes.tsx";
+import { heldCount, HeldView, mayOpen, openQuestion, type HeldFilter } from "./held.tsx";
 import { ConnectionRow, connectionSentence } from "./profile-section.tsx";
 import { EarlierList } from "./screen.tsx";
 import { failureSentence, ImportProblem } from "./shared.tsx";
@@ -68,7 +71,6 @@ const choice = (over: Partial<Choice> = {}): Choice => ({
   from: "",
   to: "",
   excluded: new Set(),
-  audience: "friends",
   classes: new Set(["own"]),
   ...over,
 });
@@ -205,8 +207,9 @@ describe("the choice of what to publish", () => {
     expect(html).toContain(strings.imports_lost_foreign_only({ count: 177 }));
   });
 
-  it("starts on friends, never on everyone", () => {
-    expect(drawChoice(paged())).toMatch(/checked=""[^>]*value="friends"/);
+  it("asks for no audience, since what comes in is held", () => {
+    expect(drawChoice(paged())).not.toContain('value="friends"');
+    expect(drawChoice(paged())).not.toContain('value="everyone"');
   });
 
   it("says when the range holds nothing, only once everything has been read", () => {
@@ -356,5 +359,77 @@ describe("a refusal", () => {
     expect(renderToStaticMarkup(<ImportProblem problem={refusal("other")} />)).toContain(
       strings.error_generic,
     );
+  });
+});
+
+describe("what an import holds", () => {
+  const held: ImportDetail["held"] = {
+    posts: 6,
+    groups: [
+      { class: "own", year: 2021, posts: 3 },
+      { class: "link", year: 2021, posts: 1 },
+      { class: "own", year: 2019, posts: 2 },
+    ],
+  };
+  const detail = (over: Partial<ImportDetail>): ImportDetail => ({
+    ...status({ state: "done" }),
+    held,
+    ...over,
+  });
+  const none: Paged<Post> = {
+    items: [],
+    problem: null,
+    hasMore: false,
+    sentinel: () => undefined,
+    reload: () => undefined,
+  };
+  const drawHeld = (filter: HeldFilter = {}) =>
+    renderToStaticMarkup(
+      <HeldView
+        held={held}
+        list={none}
+        filter={filter}
+        change={() => undefined}
+        audience="friends"
+        changeAudience={() => undefined}
+        open={() => undefined}
+        removed={() => undefined}
+      />,
+    );
+
+  it("counts what a filter names, and the same filter is what opens", () => {
+    expect(heldCount(held, {})).toBe(6);
+    expect(heldCount(held, { class: "own" })).toBe(5);
+    expect(heldCount(held, { year: 2021 })).toBe(4);
+    expect(heldCount(held, { class: "own", year: 2019 })).toBe(2);
+    expect(heldCount(held, { class: "link", year: 2019 })).toBe(0);
+    expect(drawHeld({ year: 2019 })).toContain(strings.imports_held_open({ count: 2 }));
+  });
+
+  it("offers each kind and year with what it holds under the other filter", () => {
+    const html = drawHeld({ year: 2019 });
+    expect(html).toContain(`${strings.imports_class_own} (2)`);
+    expect(html).toContain(`${strings.imports_class_link} (0)`);
+    expect(html).toContain(">2021 (4)<");
+  });
+
+  it("cannot open nothing, and says so", () => {
+    const html = drawHeld({ class: "link", year: 2019 });
+    expect(html).toContain(strings.imports_held_empty);
+    expect(html).toMatch(/<button[^>]*disabled=""[^>]*>[^<]*0/);
+    expect(drawHeld()).not.toMatch(/<button[^>]*disabled=""/);
+  });
+
+  it("asks with the number and the audience that will read them", () => {
+    expect(openQuestion("friends", 3)).toBe(strings.imports_held_confirm_friends({ count: 3 }));
+    expect(openQuestion("everyone", 3)).toBe(strings.imports_held_confirm_everyone({ count: 3 }));
+  });
+
+  it("appears once the posts are in and while any is held", () => {
+    expect(mayOpen(detail({}))).toBe(true);
+    expect(mayOpen(detail({ state: "failed" }))).toBe(true);
+    expect(mayOpen(detail({ state: "publishing" }))).toBe(false);
+    expect(mayOpen(detail({ state: "removing" }))).toBe(false);
+    expect(mayOpen(detail({ held: { posts: 0, groups: [] } }))).toBe(false);
   });
 });

@@ -765,7 +765,7 @@
     "other": "{count} [[friend.shared.nom.pl]] [[friend.nom.pl]]"
   },
   "imports_title": "Flytja inn pósta",
-  "imports_intro": "Hér geturðu flutt inn eldri pósta þína af öðrum miðli. Ekkert birtist fyrr en þú hefur skoðað póstana og valið að birta þá.",
+  "imports_intro": "Hér geturðu flutt inn eldri pósta af öðrum miðli. Þeir fara fyrst í bið og enginn sér þá nema þú fyrr en þú hefur skoðað þá og birt.",
   "imports_file_title": "Úr skrá",
   "imports_file_hint": "Sæktu afrit af gögnunum þínum á hinum miðlinum og veldu JSON-snið. Þú færð ZIP-skrá sem má vera allt að 4 GB.",
   "imports_file_choose": "Velja ZIP-skrá",
@@ -778,8 +778,8 @@
   "imports_state_uploading": "Sendingin kláraðist ekki",
   "imports_state_parsing": "Verið er að lesa skrána",
   "imports_state_ready": "Bíður þess að þú veljir pósta",
-  "imports_state_publishing": "Verið er að birta póstana",
-  "imports_state_done": "Birt",
+  "imports_state_publishing": "Verið er að flytja póstana inn",
+  "imports_state_done": "Komið inn",
   "imports_state_failed": "Tókst ekki",
   "imports_profile_title": "Af opinberum prófíl",
   "imports_profile_hint": "Límdu slóðina á opinbera prófílinn þinn á hinum miðlinum. Þú sannar með kóða að prófíllinn sé þinn. Eftir það bætast nýir póstar við af sjálfu sér.",
@@ -793,7 +793,7 @@
   "imports_profile_checking": "Verið er að leita að kóðanum.",
   "imports_profile_not_found": "Kóðinn fannst ekki. Athugaðu hvort pósturinn sé opinber og reyndu aftur.",
   "imports_sync_importing": "Verið er að sækja póstana.",
-  "imports_sync_preview": "Póstarnir eru tilbúnir. Skoðaðu þá og veldu hverjir birtast.",
+  "imports_sync_preview": "Póstarnir eru tilbúnir. Skoðaðu þá og veldu hverja á að flytja inn.",
   "imports_sync_last": "Síðast sótt {date}.",
   "imports_sync_capped": "Beðið er með að sækja póstana. Reynt verður aftur síðar.",
   "imports_sync_failed": "Síðasta tilraun tókst ekki. Reynt verður aftur.",
@@ -821,18 +821,18 @@
   "imports_range": "Tímabil",
   "imports_from": "Frá",
   "imports_to": "Til",
-  "imports_include": "Birta þennan póst",
+  "imports_include": "Taka þennan póst með",
   "imports_item_video": "Myndbandið fylgir ekki.",
   "imports_excluded_full": "Ekki er hægt að sleppa fleiri en 1.000 póstum. Þrengdu tímabilið til að sleppa fleirum.",
   "imports_empty_range": "Engir póstar á þessu tímabili.",
-  "imports_publish": "Birta valda pósta",
-  "imports_preview_kept": "Það sem ekki hefur verið birt eyðist eftir 7 daga.",
-  "imports_not_ready": "Þessi innflutningur er ekki tilbúinn til birtingar.",
+  "imports_publish": "Flytja inn valda pósta",
+  "imports_preview_kept": "Það sem ekki hefur verið flutt inn eyðist eftir 7 daga.",
+  "imports_not_ready": "Þessi innflutningur er ekki tilbúinn.",
   "imports_wait_parsing": "Verið er að lesa skrána. Þú mátt loka síðunni og koma aftur síðar.",
-  "imports_wait_publishing": "Verið er að birta póstana. Þú mátt loka síðunni.",
+  "imports_wait_publishing": "Verið er að flytja póstana inn. Þú mátt loka síðunni.",
   "imports_wait_removing": "Verið er að eyða póstunum.",
   "imports_unfinished": "Sending þessarar skrár kláraðist ekki. Eyddu henni og byrjaðu upp á nýtt.",
-  "imports_done": "Póstarnir eru komnir á [[wall.acc.def]] með upprunalegum dagsetningum.",
+  "imports_done": "Póstarnir eru komnir inn með upprunalegum dagsetningum.",
   "imports_remove": "Eyða þessum innflutningi",
   "imports_remove_confirm": "Eyða þessum innflutningi og öllum póstum sem fylgdu honum? Þetta er ekki hægt að afturkalla.",
   "imports_back": "Aftur í innflutning",
@@ -877,7 +877,10 @@
     "one": "{count} póstur án efnis sem hægt er að flytja",
     "other": "{count} póstar án efnis sem hægt er að flytja"
   },
-  "imports_item_images": { "one": "{count} mynd", "other": "{count} myndir" },
+  "imports_item_images": {
+    "one": "{count} mynd",
+    "other": "{count} myndir"
+  },
   "imports_rate_limited": "Of margar tilraunir í einu. Reyndu aftur eftir smástund.",
   "export_title": "Sækja efnið þitt",
   "export_intro": "Hér færðu ZIP-skrá með því sem þú hefur birt hér: póstum, athugasemdum, viðbrögðum, atkvæðum í könnunum, myndum, lista yfir [[friend.acc.pl]] þína og prófílnum þínum. Skráin er tiltæk í viku.",
@@ -890,5 +893,28 @@
   "export_download": "Sækja skrána",
   "export_failed": "Ekki tókst að búa skrána til. Þú getur beðið um nýja.",
   "export_failed_too_big": "Efnið er of mikið til að rúmast í einni skrá. Sendu tölvupóst á samtak@samtak.is.",
-  "export_conflict": "Þú getur beðið um nýja skrá einu sinni á sólarhring."
+  "export_conflict": "Þú getur beðið um nýja skrá einu sinni á sólarhring.",
+  "imports_held_title": "Póstar í bið",
+  "imports_held_intro": "Enginn sér þessa pósta nema þú. Þegar þú birtir þá fara þeir á [[wall.acc.def]] þinn með upprunalegum dagsetningum, án tilkynninga og án þess að birtast í Fljótinu.",
+  "imports_held_class": "Flokkur",
+  "imports_held_year": "Ár",
+  "imports_held_all_classes": "Allir flokkar",
+  "imports_held_all_years": "Öll ár",
+  "imports_held_empty": "Engir póstar í bið passa við þetta val.",
+  "imports_held_open": {
+    "one": "Birta {count} póst",
+    "other": "Birta {count} pósta"
+  },
+  "imports_held_confirm_friends": {
+    "one": "Birta {count} póst [[friend.dat.pl]] þínum?",
+    "other": "Birta {count} pósta [[friend.dat.pl]] þínum?"
+  },
+  "imports_held_confirm_everyone": {
+    "one": "Birta {count} póst öllum innskráðum?",
+    "other": "Birta {count} pósta öllum innskráðum?"
+  },
+  "imports_held_opened": {
+    "one": "{count} póstur birtur.",
+    "other": "{count} póstar birtir."
+  }
 }

@@ -8,8 +8,9 @@ import { SOURCE_KEY } from "./export-file.ts";
 // An uploaded export file (decision 0119). The ZIP is in the EU media bucket under
 // `imports/<importId>`, uploaded with R2 multipart like a history transfer. A parse
 // job reads it into preview rows, the person chooses, and a publish job brings the
-// chosen posts in; the bytes and the rows go when that is done, when the person
-// removes the import, or when 7 days have passed with nothing published.
+// chosen posts in, held until they open them (decision 0127); the bytes and the rows
+// go when that is done, when the person removes the import, or when 7 days have passed
+// with nothing published.
 
 /** The most a file may be: 4 GiB less a byte. */
 export const MAX_FILE = 4 * 1024 * 1024 * 1024 - 1;
@@ -194,14 +195,13 @@ export async function completeFile(
 }
 
 export type Choice = {
-  audience?: "friends" | "everyone" | undefined;
   from?: number | undefined;
   to?: number | undefined;
   excluded?: string[] | undefined;
   classes?: ItemClass[] | undefined;
 };
 
-/** Starts publishing what the person chose; nothing is public unless they said so. */
+/** Starts bringing in what the person chose, held: nobody else sees it until they open it. */
 export async function publishFile(
   env: Env,
   accountId: string,
@@ -212,14 +212,7 @@ export async function publishFile(
   const file = await fileOf(env, accountId, importId);
   if (!file || file.removing) return "not_found";
   if (file.state !== "ready") return "conflict";
-  const ready = "EXISTS (SELECT 1 FROM import_files WHERE import_id = ?1 AND state = 'ready')";
   await db(env).batch([
-    db(env)
-      .prepare(
-        `UPDATE import_sources SET audience = COALESCE(?2, audience)
-          WHERE import_id = ?1 AND ${ready}`,
-      )
-      .bind(importId, choice.audience ?? null),
     db(env)
       .prepare(
         `UPDATE import_files

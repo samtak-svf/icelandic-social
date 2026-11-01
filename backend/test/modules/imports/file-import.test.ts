@@ -2,107 +2,38 @@ import { env } from "cloudflare:workers";
 import { describe, expect, it } from "vitest";
 import { mediaBucket } from "../../../src/env/index.ts";
 import { MAX_FILE, FILE_MS } from "../../../src/modules/imports/file.ts";
-import { expireFiles, jobHandlers } from "../../../src/modules/imports/index.ts";
-import { runJobs } from "../../../src/modules/jobs/index.ts";
+import { expireFiles } from "../../../src/modules/imports/index.ts";
 import { deleteAccount } from "../../../src/compose/account-deletion.ts";
 import { worker } from "../../main.ts";
 import { png } from "../../images.ts";
-import { errorOf, ok, person, type Person } from "../../people.ts";
-import { euEnv } from "../../support.ts";
-import { befriend, type WallPost } from "../social/wall-support.ts";
-import { buildZip, type FixtureEntry } from "./zip-fixture.ts";
+import { errorOf, person, type Person } from "../../people.ts";
+import {
+  album,
+  arrive,
+  BASE,
+  drain,
+  E,
+  entry,
+  get,
+  items,
+  MAY_2019,
+  media,
+  OWN_MEDIA,
+  postsFile,
+  sampleZip,
+  status,
+  upload,
+  utf8,
+  wall,
+  SAMPLE,
+  type Status,
+} from "./file-support.ts";
+import { buildZip } from "./zip-fixture.ts";
 
 // An export file, from upload to the wall (decision 0119). The bug each test names:
-// a repeat that duplicates, text mangled or a date lost, something public nobody
-// chose, a bad entry or a bad archive that takes the whole import with it, someone
-// else reaching an upload, and bytes or rows left behind.
-
-const E = euEnv(env);
-const BASE = "https://spjall.test";
-const MAY_2019 = Date.UTC(2019, 4, 17, 12, 30, 45);
-
-type Status = {
-  state: string;
-  failure: string | null;
-  counts: { posts: number; images: number; videos: number; skipped: number };
-  classes: {
-    class: string;
-    posts: number;
-    images: number;
-    imagesLost: number;
-    videos: number;
-  }[];
-  lost: { videoOnly: number; foreignOnly: number; foreignImages: number; empty: number };
-};
-type Item = {
-  id: string;
-  at: number;
-  text: string;
-  images: number;
-  hasVideo: boolean;
-  class: string;
-};
-type Read = WallPost & { createdAt: number; imported?: boolean; media: unknown[] };
-
-/** How the export writes text: each UTF-8 byte as one Latin-1 code point. */
-const escaped = (text: string) => String.fromCharCode(...new TextEncoder().encode(text));
-const utf8 = (value: unknown) => new TextEncoder().encode(JSON.stringify(value));
-
-const entry = (seconds: number, text: string, extra: object = {}) => ({
-  timestamp: seconds,
-  data: [{ post: escaped(text) }],
-  ...extra,
-});
-const media = (...uris: string[]) => ({
-  attachments: [{ data: uris.map((uri) => ({ media: { uri } })) }],
-});
-
-const postsFile = (entries: unknown[], name = "your_posts_1.json"): FixtureEntry => ({
-  name: `posts/${name}`,
-  data: utf8(entries),
-  method: "deflate",
-});
-
-async function drain(): Promise<void> {
-  for (let i = 0; i < 30; i++) {
-    const { done } = await runJobs(E, jobHandlers(), Date.now() + 1);
-    if (done === 0) return;
-  }
-  throw new Error("the jobs did not finish");
-}
-
-const get = async <T>(owner: Person, path: string) => ok<T>(await owner.call("GET", path));
-
-/** Uploads `zip` as `owner` in one part, completes it, and runs the parse. */
-async function upload(owner: Person, zip: Uint8Array): Promise<string> {
-  const started = await owner.call("POST", "/v1/imports/file", { size: zip.length });
-  expect(started.status).toBe(201);
-  const { importId } = (await started.json()) as { importId: string };
-  const put = await worker.fetch(`${BASE}/v1/imports/${importId}/parts/1`, {
-    method: "PUT",
-    headers: { ...owner.auth, "content-type": "application/octet-stream" },
-    body: zip,
-  });
-  expect(put.status).toBe(204);
-  expect((await owner.call("POST", `/v1/imports/${importId}/complete`)).status).toBe(204);
-  await drain();
-  return importId;
-}
-
-const status = (owner: Person, importId: string) => get<Status>(owner, `/v1/imports/${importId}`);
-const items = async (owner: Person, importId: string) =>
-  (await get<{ items: Item[] }>(owner, `/v1/imports/${importId}/items`)).items;
-
-async function publish(owner: Person, importId: string, choice: object = {}) {
-  const response = await owner.call("POST", `/v1/imports/${importId}/publish`, choice);
-  expect(response.status).toBe(204);
-  await drain();
-}
-
-/** One page of 50, which holds every post these tests bring in. */
-const wall = async (reader: Person, owner: Person) =>
-  (await get<{ posts: Read[] }>(reader, `/v1/accounts/${owner.accountId}/wall/posts?limit=50`))
-    .posts;
+// a repeat that duplicates, text mangled or a date lost, a bad entry or a bad archive
+// that takes the whole import with it, someone else reaching an upload, and bytes or rows
+// left behind.
 
 const rows = async (importId: string) =>
   (
@@ -113,37 +44,13 @@ const rows = async (importId: string) =>
 const stored = async (importId: string) =>
   (await mediaBucket(E).head(`imports/${importId}`)) !== null;
 
-/** The person's own album, which says whose the media beside the posts are. */
-const album = (...uris: string[]): FixtureEntry => ({
-  name: "posts/album/0.json",
-  data: utf8({ photos: uris.map((uri) => ({ uri })) }),
-});
-const OWN_MEDIA = album("posts/media/a.png", "posts/media/b.png", "posts/media/c.mp4");
-
-const SAMPLE = [
-  entry(MAY_2019 / 1000, "Fyrsta færsla með þ, ð, æ, ö"),
-  entry(MAY_2019 / 1000 + 60, "Með mynd 😀", media("posts/media/a.png", "posts/media/b.png")),
-  entry(MAY_2019 / 1000 + 120, "Með myndbandi", media("posts/media/c.mp4")),
-];
-
-async function sampleZip(entries: unknown[] = SAMPLE) {
-  const image = await png(8, 8);
-  return buildZip([
-    postsFile(entries),
-    OWN_MEDIA,
-    { name: "posts/media/a.png", data: image },
-    { name: "posts/media/b.png", data: image, method: "deflate" },
-    { name: "posts/media/c.mp4", data: new Uint8Array([1, 2, 3]) },
-  ]);
-}
-
 describe("an export file from upload to the wall", () => {
   it("running one file through upload, parse and publish twice creates each post once", async () => {
     const owner = await person("eigandi");
     const zip = await sampleZip();
     for (let run = 0; run < 2; run++) {
       const importId = await upload(owner, zip);
-      await publish(owner, importId);
+      await arrive(owner, importId);
     }
     expect(await wall(owner, owner)).toHaveLength(3);
   });
@@ -151,7 +58,7 @@ describe("an export file from upload to the wall", () => {
   it("keeps the date, repairs the Icelandic text, carries the images and marks the post imported", async () => {
     const owner = await person("eigandi");
     const importId = await upload(owner, await sampleZip());
-    await publish(owner, importId);
+    await arrive(owner, importId);
     const posts = await wall(owner, owner);
     const first = posts.find((p) => p.body.startsWith("Fyrsta"));
     expect(first).toMatchObject({
@@ -193,7 +100,7 @@ describe("an export file from upload to the wall", () => {
       images: 0,
       imagesLost: 1,
     });
-    await publish(owner, importId);
+    await arrive(owner, importId);
     const [post] = await wall(owner, owner);
     expect(post).toMatchObject({ body: "Mynd vantar" });
     expect(post?.media).toHaveLength(0);
@@ -203,7 +110,7 @@ describe("an export file from upload to the wall", () => {
     const owner = await person("eigandi");
     const long = "ð".repeat(49_143);
     const importId = await upload(owner, await sampleZip([entry(MAY_2019 / 1000, long)]));
-    await publish(owner, importId);
+    await arrive(owner, importId);
     const [post] = await wall(owner, owner);
     expect(post?.body).toBe(long);
   });
@@ -212,34 +119,16 @@ describe("an export file from upload to the wall", () => {
     const owner = await person("eigandi");
     const many = Array.from({ length: 23 }, (_, i) => entry(MAY_2019 / 1000 + i, `færsla ${i}`));
     const importId = await upload(owner, await buildZip([postsFile(many)]));
-    await publish(owner, importId);
+    await arrive(owner, importId);
     expect(await wall(owner, owner)).toHaveLength(23);
     expect((await status(owner, importId)).state).toBe("done");
-  });
-
-  it("makes nothing public unless chosen", async () => {
-    const owner = await person("eigandi");
-    const friend = await person("vinur");
-    const stranger = await person("okunnugur");
-    await befriend(owner, friend);
-    await publish(owner, await upload(owner, await sampleZip()));
-    expect(await wall(friend, owner)).toHaveLength(3);
-    expect(await wall(stranger, owner)).toHaveLength(0);
-  });
-
-  it("makes the posts public when the person chose that", async () => {
-    const owner = await person("eigandi");
-    const stranger = await person("okunnugur");
-    const importId = await upload(owner, await sampleZip());
-    await publish(owner, importId, { audience: "everyone" });
-    expect(await wall(stranger, owner)).toHaveLength(3);
   });
 
   it("publishes only the dates and posts chosen", async () => {
     const owner = await person("eigandi");
     const importId = await upload(owner, await sampleZip());
     const [first, second, third] = await items(owner, importId);
-    await publish(owner, importId, {
+    await arrive(owner, importId, {
       from: first!.at + 1,
       to: third!.at,
       excluded: [third!.id],
@@ -303,7 +192,7 @@ describe("the kinds of post a file holds (decision 0127)", () => {
 
   it("publishes only the person's own posts when no kind is named", async () => {
     const owner = await person("eigandi");
-    await publish(owner, await upload(owner, await kindsZip()));
+    await arrive(owner, await upload(owner, await kindsZip()));
     const posts = await wall(owner, owner);
     expect(posts.map((p) => p.body).sort()).toEqual(["Með mynd annars", "Mín orð"]);
     expect(posts.find((p) => p.body === "Með mynd annars")?.media).toHaveLength(0);
@@ -312,7 +201,7 @@ describe("the kinds of post a file holds (decision 0127)", () => {
   it("publishes exactly the kinds chosen", async () => {
     const owner = await person("eigandi");
     const importId = await upload(owner, await kindsZip());
-    await publish(owner, importId, { classes: ["link", "hidden"] });
+    await arrive(owner, importId, { classes: ["link", "hidden"] });
     expect((await wall(owner, owner)).map((p) => p.body).sort()).toEqual(["Falið", LINK]);
     expect((await status(owner, importId)).state).toBe("done");
   });
@@ -331,7 +220,7 @@ describe("the kinds of post a file holds (decision 0127)", () => {
     const importId = await upload(owner, await kindsZip());
     const { classes } = await status(owner, importId);
     const own = classes.find((c) => c.class === "own");
-    await publish(owner, importId);
+    await arrive(owner, importId);
     const posts = await wall(owner, owner);
     expect(posts).toHaveLength(own!.posts);
     expect(posts.reduce((sum, p) => sum + p.media.length, 0)).toBe(own!.images);
@@ -345,7 +234,7 @@ describe("the kinds of post a file holds (decision 0127)", () => {
     ]);
     const importId = await upload(owner, zip);
     expect((await status(owner, importId)).lost.foreignImages).toBe(1);
-    await publish(owner, importId);
+    await arrive(owner, importId);
     const [post] = await wall(owner, owner);
     expect(post?.media).toHaveLength(0);
   });
@@ -473,6 +362,8 @@ describe("whose import it is", () => {
       await other.call("GET", `/v1/imports/${id}`),
       await other.call("GET", `/v1/imports/${id}/items`),
       await other.call("POST", `/v1/imports/${id}/publish`, {}),
+      await other.call("GET", `/v1/imports/${id}/held`),
+      await other.call("POST", `/v1/imports/${id}/open`, { audience: "everyone" }),
       await other.call("DELETE", `/v1/imports/${id}`),
     ];
     for (const response of calls) {
@@ -488,7 +379,7 @@ describe("what is left behind", () => {
     const owner = await person("eigandi");
     const importId = await upload(owner, await sampleZip());
     expect(await stored(importId)).toBe(true);
-    await publish(owner, importId);
+    await arrive(owner, importId);
     expect(await stored(importId)).toBe(false);
     expect(await rows(importId)).toBe(0);
     expect((await status(owner, importId)).state).toBe("done");
@@ -508,7 +399,7 @@ describe("what is left behind", () => {
   it("removes the posts a finished import brought in", async () => {
     const owner = await person("eigandi");
     const importId = await upload(owner, await sampleZip());
-    await publish(owner, importId);
+    await arrive(owner, importId);
     await owner.call("DELETE", `/v1/imports/${importId}`);
     await drain();
     expect(await wall(owner, owner)).toHaveLength(0);
@@ -545,7 +436,7 @@ describe("the list of a person's file imports", () => {
     const owner = await person("eigandi");
     const other = await person("annar");
     const importId = await upload(owner, await sampleZip());
-    await publish(owner, importId);
+    await arrive(owner, importId);
     const [only, ...rest] = await listed(owner);
     expect(rest).toEqual([]);
     expect(only).toMatchObject({ importId, state: "done", counts: { posts: 3 } });

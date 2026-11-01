@@ -187,7 +187,7 @@ function LatestComment({ comment }: Readonly<{ comment: Comment }>) {
 }
 
 /** The text, cut to five lines with Sjá meira when it is longer, and a link to the post in a feed. */
-function Body({ post, linked }: Readonly<{ post: Post; linked: boolean }>) {
+export function Body({ post, linked }: Readonly<{ post: Post; linked: boolean }>) {
   const ref = useRef<HTMLParagraphElement>(null);
   const [expanded, setExpanded] = useState(false);
   const [cut, setCut] = useState(false);

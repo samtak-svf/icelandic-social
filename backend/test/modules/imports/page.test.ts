@@ -4,6 +4,7 @@ import { createApp } from "../../../src/app.ts";
 import { browserSession, newBrowserSession } from "../../../src/identity/sessions.ts";
 import { createConnection } from "../../../src/modules/imports/connections.ts";
 import { publishFile, SYNC_AFTER_MS } from "../../../src/modules/imports/file.ts";
+import { openHeld } from "../../../src/modules/imports/held.ts";
 import { jobHandlers } from "../../../src/modules/imports/index.ts";
 import { startDuePages } from "../../../src/modules/imports/page-jobs.ts";
 import {
@@ -215,10 +216,10 @@ async function syncing(owner: Person, posts: Post[], leftOut: string[] = []) {
   expect(
     await publishFile(E, owner.accountId, made.importId, {
       excluded: leftOut,
-      audience: "friends",
     }),
   ).toBe("ok");
   await drain();
+  await openHeld(E, owner.accountId, made.importId, { audience: "friends" });
   return made;
 }
 

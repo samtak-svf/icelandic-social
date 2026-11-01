@@ -43,8 +43,7 @@ test("an export file: the choice, the wall, and taking it all back", async ({ br
     await expect(a.getByText(counts, { exact: true })).toBeVisible({ timeout: 4000 });
   }).toPass();
 
-  // Nothing is out before it is chosen, and it starts on friends, never on everyone.
-  await expect(a.getByRole("radio", { name: strings.wall_audience_friends })).toBeChecked();
+  // Nothing is out before it is chosen.
   await expect(a.getByRole("listitem").filter({ hasText: KEPT })).toBeVisible();
   expect(await pageOverflow(a)).toBe(0);
   await a.goto(`${WEB}/me`);
@@ -58,7 +57,23 @@ test("an export file: the choice, the wall, and taking it all back", async ({ br
     await expect(a.getByText(strings.imports_done, { exact: true })).toBeVisible({ timeout: 4000 });
   }).toPass();
 
+  // It came in held: nobody reads it, its author included, until it is opened.
   const preview = a.url();
+  await a.goto(`${WEB}/me`);
+  await expect(post(a, KEPT)).toHaveCount(0);
+  await a.goto(preview);
+  await expect(a.getByRole("radio", { name: strings.wall_audience_friends })).toBeChecked();
+  await expect(a.getByRole("article").filter({ hasText: KEPT })).toBeVisible();
+  await expect(a.getByRole("article").filter({ hasText: LEFT_OUT })).toHaveCount(0);
+  expect(await pageOverflow(a)).toBe(0);
+  a.once("dialog", (dialog) => void dialog.accept());
+  await a
+    .getByRole("button", { name: strings.imports_held_open({ count: 1 }), exact: true })
+    .click();
+  await expect(
+    a.getByText(strings.imports_held_opened({ count: 1 }), { exact: true }),
+  ).toBeVisible();
+
   await a.goto(`${WEB}/me`);
   await expect(post(a, KEPT)).toBeVisible();
   await expect(post(a, LEFT_OUT)).toHaveCount(0);

@@ -3176,11 +3176,11 @@
     },
     "imports_state_publishing": {
       "surfaces": ["web"],
-      "description": "An earlier file import: being published."
+      "description": "An earlier import is bringing its posts in."
     },
     "imports_state_done": {
       "surfaces": ["web"],
-      "description": "An earlier file import: published."
+      "description": "An earlier import has brought its posts in."
     },
     "imports_state_failed": {
       "surfaces": ["web"],
@@ -3399,7 +3399,7 @@
     },
     "imports_done": {
       "surfaces": ["web"],
-      "description": "The posts are published."
+      "description": "The posts have come in, each with its original date; nobody else sees them yet."
     },
     "imports_remove": {
       "surfaces": ["web"],
@@ -3575,6 +3575,66 @@
     "export_conflict": {
       "surfaces": ["web"],
       "description": "Refusal text when a person asks for an export file twice within a day."
+    },
+    "imports_held_title": {
+      "surfaces": ["web"],
+      "description": "Heading over the posts an import holds until the person opens them."
+    },
+    "imports_held_intro": {
+      "surfaces": ["web"],
+      "description": "Says nobody else sees held posts, and what opening does: to the wall, original dates, no notification, not in the feed."
+    },
+    "imports_held_class": {
+      "surfaces": ["web"],
+      "description": "Label of the filter by kind of post."
+    },
+    "imports_held_year": {
+      "surfaces": ["web"],
+      "description": "Label of the filter by year."
+    },
+    "imports_held_all_classes": {
+      "surfaces": ["web"],
+      "description": "The filter by kind, every kind."
+    },
+    "imports_held_all_years": {
+      "surfaces": ["web"],
+      "description": "The filter by year, every year."
+    },
+    "imports_held_empty": {
+      "surfaces": ["web"],
+      "description": "No held post matches the two filters together."
+    },
+    "imports_held_open": {
+      "surfaces": ["web"],
+      "description": "Button that opens the held posts the filters name, with how many.",
+      "plural": true,
+      "placeholders": {
+        "count": "int"
+      }
+    },
+    "imports_held_confirm_friends": {
+      "surfaces": ["web"],
+      "description": "Asks before opening that many held posts to the person's friends.",
+      "plural": true,
+      "placeholders": {
+        "count": "int"
+      }
+    },
+    "imports_held_confirm_everyone": {
+      "surfaces": ["web"],
+      "description": "Asks before opening that many held posts to everyone signed in.",
+      "plural": true,
+      "placeholders": {
+        "count": "int"
+      }
+    },
+    "imports_held_opened": {
+      "surfaces": ["web"],
+      "description": "How many held posts were just opened.",
+      "plural": true,
+      "placeholders": {
+        "count": "int"
+      }
     }
   }
 }

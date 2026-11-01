@@ -1,4 +1,5 @@
 import { db, mediaBucket } from "../../env/index.ts";
+import type { ItemClass } from "../../api/imports.ts";
 import { MAX_POST_MEDIA } from "../../api/post-fields.ts";
 import { MAX_SOCIAL_UPLOAD } from "../../api/social.ts";
 import { log } from "../../shared/log.ts";
@@ -186,6 +187,7 @@ type Chosen = {
   images: string;
   hasVideo: number;
   link: string | null;
+  class: ItemClass;
 };
 
 /** The image loaders of a post: those whose entry is in the ZIP, and within what a post takes. */
@@ -241,7 +243,7 @@ const publish: Handler = async (env, _key, payload) => {
   if (!row) return;
   const { results } = await db(env)
     .prepare(
-      `SELECT item_id AS id, at, body, images, has_video AS hasVideo, link
+      `SELECT item_id AS id, at, body, images, has_video AS hasVideo, link, class
          FROM import_file_items
         WHERE import_id = ?1 AND published = 0
           AND (?2 IS NULL OR at >= ?2) AND (?3 IS NULL OR at <= ?3)
@@ -270,6 +272,7 @@ const publish: Handler = async (env, _key, payload) => {
         body: item.body,
         images: imagesOf(JSON.parse(item.images) as string[]),
         link: item.link ?? undefined,
+        class: item.class,
       },
       "backlog",
     );
