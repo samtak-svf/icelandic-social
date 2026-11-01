@@ -1,0 +1,152 @@
+{
+  "note": "A draft poll against the server's rule (decision 0090). The server, the core and the web each run these; the apps ask the core.",
+  "cases": [
+    {
+      "note": "two options",
+      "question": "Hvað?",
+      "options": ["Já", "Nei"],
+      "valid": true
+    },
+    {
+      "note": "six options",
+      "question": "Hvað?",
+      "options": ["a", "b", "c", "d", "e", "f"],
+      "valid": true
+    },
+    {
+      "note": "one option",
+      "question": "Hvað?",
+      "options": ["Já"],
+      "valid": false
+    },
+    {
+      "note": "seven options",
+      "question": "Hvað?",
+      "options": ["a", "b", "c", "d", "e", "f", "g"],
+      "valid": false
+    },
+    {
+      "note": "no question",
+      "question": "",
+      "options": ["Já", "Nei"],
+      "valid": false
+    },
+    {
+      "note": "a blank question",
+      "question": "  \n",
+      "options": ["Já", "Nei"],
+      "valid": false
+    },
+    {
+      "note": "a blank option",
+      "question": "Hvað?",
+      "options": ["Já", " "],
+      "valid": false
+    },
+    {
+      "note": "the same option",
+      "question": "Hvað?",
+      "options": ["Já", "Já"],
+      "valid": false
+    },
+    {
+      "note": "the same after trimming",
+      "question": "Hvað?",
+      "options": ["Já", " Já "],
+      "valid": false
+    },
+    {
+      "note": "case: differs only by case",
+      "question": "Hvað?",
+      "options": ["Já", "JÁ"],
+      "valid": false
+    },
+    {
+      "note": "case: an Icelandic capital",
+      "question": "Hvað?",
+      "options": ["Þór", "þór"],
+      "valid": false
+    },
+    {
+      "note": "case: different words",
+      "question": "Hvað?",
+      "options": ["Þór", "Þóra"],
+      "valid": true
+    },
+    {
+      "note": "length: 80 code points",
+      "question": "Hvað?",
+      "options": [
+        "Já",
+        "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      ],
+      "valid": true
+    },
+    {
+      "note": "length: 81 code points",
+      "question": "Hvað?",
+      "options": [
+        "Já",
+        "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      ],
+      "valid": false
+    },
+    {
+      "note": "length: 80 astral characters are 80 code points, though 160 UTF-16 units",
+      "question": "Hvað?",
+      "options": [
+        "Já",
+        "😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀"
+      ],
+      "valid": true
+    },
+    {
+      "note": "length: 81 astral characters are 81 code points",
+      "question": "Hvað?",
+      "options": [
+        "Já",
+        "😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀"
+      ],
+      "valid": false
+    },
+    {
+      "note": "length: 40 decomposed letters are 80 code points",
+      "question": "Hvað?",
+      "options": ["Já", "éééééééééééééééééééééééééééééééééééééééé"],
+      "valid": true
+    },
+    {
+      "note": "length: 41 decomposed letters are 82 code points, though 41 graphemes",
+      "question": "Hvað?",
+      "options": ["Já", "ééééééééééééééééééééééééééééééééééééééééé"],
+      "valid": false
+    },
+    {
+      "note": "length: spaces around 80 code points are trimmed first",
+      "question": "Hvað?",
+      "options": [
+        "Já",
+        " aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa "
+      ],
+      "valid": true
+    },
+    {
+      "note": "trim: a byte order mark alone is blank",
+      "question": "Hvað?",
+      "options": ["Já", "\uFEFF"],
+      "valid": false
+    },
+    {
+      "note": "trim: a question of a byte order mark is blank",
+      "question": "\uFEFF",
+      "options": ["Já", "Nei"],
+      "valid": false
+    },
+    {
+      "note": "trim: a next-line control is not blank",
+      "question": "Hvað?",
+      "options": ["Já", "\u0085"],
+      "valid": true
+    }
+  ]
+}

@@ -23,7 +23,7 @@
   "core/client/src/link.rs": 467,
   "core/client/src/media.rs": 673,
   "core/client/src/photo.rs": 442,
-  "core/client/src/social.rs": 554,
+  "core/client/src/social.rs": 528,
   "core/client/src/timeline.rs": 1917,
   "core/client/tests/backend.rs": 512,
   "core/client/tests/sign_in.rs": 523,

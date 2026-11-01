@@ -1,9 +1,17 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
+import vectors from "../../../api/poll.vectors.json" with { type: "json" };
 import { strings } from "../generated/brand/strings.ts";
 import type { Poll, Post } from "../generated/api.ts";
 import { PollCard, share, showsResults } from "./poll.tsx";
-import { POLL_MAX_OPTIONS, canPublishPoll, emptyPoll, pollOptions } from "./poll-draft.ts";
+import {
+  POLL_MAX_OPTIONS,
+  POLL_OPTION_MAX,
+  canPublishPoll,
+  cappedOption,
+  emptyPoll,
+  pollOptions,
+} from "./poll-draft.ts";
 
 // Server render: the card's first paint from the API's answer. Clicking is e2e/.
 const poll = (over: Partial<Poll> = {}): Poll => ({
@@ -140,5 +148,19 @@ describe("poll draft", () => {
         Array.from({ length: POLL_MAX_OPTIONS + 1 }, (_, i) => `${i}`),
       ),
     ).toBe(false);
+  });
+});
+
+// The cases the server and the core run too (#494).
+describe("cappedOption", () => {
+  it("keeps as many code points as the API takes, whole", () => {
+    expect(cappedOption("😀".repeat(POLL_OPTION_MAX + 1))).toBe("😀".repeat(POLL_OPTION_MAX));
+    expect(cappedOption("já")).toBe("já");
+  });
+});
+
+describe("canPublishPoll on the shared vectors", () => {
+  it.each(vectors.cases)("$note", ({ question, options, valid }) => {
+    expect(canPublishPoll(question, options)).toBe(valid);
   });
 });
