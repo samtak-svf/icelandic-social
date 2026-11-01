@@ -1,5 +1,14 @@
 import { createRoute, z } from "@hono/zod-openapi";
-import { ACCOUNT, AUTHED, errorResponse, INVALID, OpaqueId, RATE_LIMITED } from "./common.ts";
+import {
+  ACCOUNT,
+  AUTHED,
+  errorResponse,
+  INVALID,
+  OpaqueId,
+  RATE_LIMITED,
+  SUSPENDED,
+} from "./common.ts";
+import { WallAudience } from "./post-fields.ts";
 import { json } from "./social.ts";
 
 // A connection to a person's own public profile (decision 0120): they publish a
@@ -8,11 +17,6 @@ import { json } from "./social.ts";
 
 const tags = ["imports"];
 const Params = z.object({ importId: OpaqueId });
-const SUSPENDED = {
-  403: errorResponse(
-    "suspended: the account is suspended now, with `until` when it ends (decision 0115)",
-  ),
-};
 const NOT_FOUND = errorResponse("not_found: no such connection of the caller's");
 const UNAVAILABLE = { 503: errorResponse("unavailable: this feed is switched off here") };
 
@@ -38,7 +42,7 @@ const ImportConnection = z
 const CreateImportConnection = z
   .object({
     profileUrl: z.string().max(2048),
-    audience: z.enum(["friends", "everyone"]).optional().openapi({
+    audience: WallAudience.optional().openapi({
       description:
         "Who reads the posts; friends when left out, since nothing is public unless chosen",
     }),

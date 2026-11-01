@@ -1,5 +1,6 @@
 import { db } from "../../env/index.ts";
 import { unseal } from "../../shared/seal.ts";
+import { CONNECTION_JOINS, postsBroughtIn } from "./connection-rules.ts";
 import { connectionsHeld, MAX_CONNECTIONS } from "./connections.ts";
 import { openImport } from "./core.ts";
 import { SOURCE_KEY } from "./export-file.ts";
@@ -30,8 +31,7 @@ const COLUMNS = `c.import_id AS importId, s.account_id AS accountId, s.source, s
   c.page_id AS pageId, c.page_name AS pageName, c.token, c.phase, c.next_run_at AS nextRunAt,
   c.run_started_at AS runStartedAt, c.outcome, c.last_ok_at AS lastOkAt, f.state AS fileState`;
 
-const TABLES = `import_page_connections c JOIN import_sources s USING (import_id)
-  LEFT JOIN import_files f USING (import_id)`;
+const TABLES = `import_page_connections c ${CONNECTION_JOINS}`;
 
 /** A connection nobody has asked to remove. */
 export const pageRowOf = (env: Env, importId: string) =>
@@ -51,19 +51,13 @@ export type PageConnection = {
 };
 
 async function connectionOf(env: Env, row: PageRow): Promise<PageConnection> {
-  const count = await db(env)
-    .prepare(
-      "SELECT COUNT(*) AS posts FROM imported_posts WHERE import_id = ? AND done_at IS NOT NULL",
-    )
-    .bind(row.importId)
-    .first<{ posts: number }>();
   return {
     importId: row.importId,
     pageId: row.pageId,
     pageName: row.pageName,
     state: row.phase === "sync" ? "connected" : row.fileState === "ready" ? "preview" : "importing",
     outcome: row.outcome,
-    posts: count?.posts ?? 0,
+    posts: await postsBroughtIn(env, row.importId),
     lastSyncAt: row.lastOkAt,
   };
 }

@@ -2,9 +2,9 @@ import { db } from "../../env/index.ts";
 import { log } from "../../shared/log.ts";
 import { job, type Handler } from "../jobs/index.ts";
 import { rowOf, type Row } from "./connections.ts";
-import { openPreview, stageItem, stagedPosts } from "./connection-preview.ts";
+import { openPreview, stageItem } from "./connection-preview.ts";
+import { BACKLOG_POSTS, firstCollectionEnd, HOUR_MS, POSTS_PER_PART } from "./connection-rules.ts";
 import { importPost, type ImportSource } from "./core.ts";
-import { previewReady } from "./file-jobs.ts";
 import { dropFile, SYNC_AFTER_MS } from "./file.ts";
 import {
   readItems,
@@ -23,12 +23,9 @@ const START = "imports.scrape.start";
 const COLLECT = "imports.scrape.collect";
 const ITEMS = "imports.scrape.items";
 
-const LIMIT = { unproven: 5, backlog: 200, sync: 20 } as const;
-/** Posts one job reads: each may fetch and store several images. */
-const ITEMS_PER_RUN = 10;
+const LIMIT = { unproven: 5, backlog: BACKLOG_POSTS, sync: 20 } as const;
 /** How many minutes a run may take before it counts as failed. */
 const POLLS = 30;
-const HOUR_MS = 60 * 60 * 1000;
 /** A claim whose run never got stored, because the Worker died, is taken back after this. */
 const LOST_RUN_MS = 30 * 60 * 1000;
 /** A run whose jobs have given up, its figure never read, is written off after this. */
@@ -261,16 +258,13 @@ const collect: Handler = async (env, _key, payload) => {
 
 /** The run's last part is read: the first collection now waits for the person, if it holds anything. */
 async function endFirstCollection(env: Env, row: Row, micros: number): Promise<void> {
-  const { posts, latest } = await stagedPosts(env, row.importId);
-  if (posts === 0) await dropFile(env, row.importId);
+  const end = await firstCollectionEnd(env, row.importId, row.runStartedAt ?? 0);
   await endRun(env, row, {
     micros,
     outcome: "ok",
-    // Past a post written while the run ran, which the person has seen and may leave out.
-    synced: Math.max(row.runStartedAt ?? 0, latest + 1),
-    ...(posts > 0
-      ? { nextRunAt: null, also: [previewReady(env, row.importId, 0)] }
-      : { phase: "sync" as const, nextRunAt: Date.now() + SYNC_AFTER_MS }),
+    synced: end.lastOkAt,
+    also: end.also,
+    ...end.next,
   });
 }
 
@@ -325,12 +319,12 @@ const importItems: Handler = async (env, _key, payload) => {
   const row = await rowOf(env, importId);
   const settings = scrapeSettings(env);
   if (!row || row.runId !== runId || !settings) return;
-  const { items, read, answer } = await readItems(settings, datasetId, offset, ITEMS_PER_RUN);
+  const { items, read, answer } = await readItems(settings, datasetId, offset, POSTS_PER_PART);
   const first = row.phase === "backlog";
   if (first && offset === 0) await openPreview(env, importId);
   const imported = await takeItems(env, row, items);
   if (imported > 0) log("imports.scraped", { accountId: row.accountId, count: imported });
-  if (read === ITEMS_PER_RUN) {
+  if (read === POSTS_PER_PART) {
     await itemsJob(env, importId, runId, datasetId, offset + read).run();
     return;
   }

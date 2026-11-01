@@ -3974,12 +3974,14 @@
             "maxLength": 2048
           },
           "audience": {
-            "type": "string",
-            "enum": [
-              "friends",
-              "everyone"
-            ],
-            "description": "Who reads the posts; friends when left out, since nothing is public unless chosen"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/WallAudience"
+              },
+              {
+                "description": "Who reads the posts; friends when left out, since nothing is public unless chosen"
+              }
+            ]
           }
         },
         "required": [
@@ -4112,12 +4114,14 @@
             "maxLength": 64
           },
           "audience": {
-            "type": "string",
-            "enum": [
-              "friends",
-              "everyone"
-            ],
-            "description": "Who reads the posts; friends when left out, since nothing is public unless chosen"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/WallAudience"
+              },
+              {
+                "description": "Who reads the posts; friends when left out, since nothing is public unless chosen"
+              }
+            ]
           }
         },
         "required": [
@@ -4324,12 +4328,14 @@
         "type": "object",
         "properties": {
           "audience": {
-            "type": "string",
-            "enum": [
-              "friends",
-              "everyone"
-            ],
-            "description": "Who reads the posts; friends when left out, since nothing is public unless chosen"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/WallAudience"
+              },
+              {
+                "description": "Who reads the posts; friends when left out, since nothing is public unless chosen"
+              }
+            ]
           },
           "from": {
             "type": "integer",

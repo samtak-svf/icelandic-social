@@ -1,5 +1,14 @@
 import { createRoute, z } from "@hono/zod-openapi";
-import { ACCOUNT, AUTHED, errorResponse, INVALID, OpaqueId, RATE_LIMITED } from "./common.ts";
+import {
+  ACCOUNT,
+  AUTHED,
+  errorResponse,
+  INVALID,
+  OpaqueId,
+  RATE_LIMITED,
+  SUSPENDED,
+} from "./common.ts";
+import { WallAudience } from "./post-fields.ts";
 import { json } from "./social.ts";
 
 // A connection to a page the person manages on another platform (decision 0120). The
@@ -7,11 +16,6 @@ import { json } from "./social.ts";
 // hour, and the one they choose comes in and stays in step. A token is never returned.
 
 const tags = ["imports"];
-const SUSPENDED = {
-  403: errorResponse(
-    "suspended: the account is suspended now, with `until` when it ends (decision 0115)",
-  ),
-};
 
 const ImportPageOffer = z
   .object({ pageId: z.string(), pageName: z.string() })
@@ -37,7 +41,7 @@ const ImportPageConnection = z
 const CreateImportPage = z
   .object({
     pageId: z.string().min(1).max(64),
-    audience: z.enum(["friends", "everyone"]).optional().openapi({
+    audience: WallAudience.optional().openapi({
       description:
         "Who reads the posts; friends when left out, since nothing is public unless chosen",
     }),

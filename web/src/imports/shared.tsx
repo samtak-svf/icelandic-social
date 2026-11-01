@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { ImportStatus } from "../generated/api.ts";
 import { strings } from "../generated/brand/strings.ts";
 import type { Problem } from "../problem.ts";
@@ -47,6 +47,28 @@ export const STATE_WORD: Readonly<Record<ImportStatus["state"], string>> = {
   failed: strings.imports_state_failed,
   removing: strings.imports_wait_removing,
 };
+
+/**
+ * A section's one request at a time: `act` holds `busy` while the request runs, keeps what
+ * it refused, reloads the list and says whether it went through.
+ */
+export function useAct(reload: () => void) {
+  const [busy, setBusy] = useState(false);
+  const [problem, setProblem] = useState<Problem | null>(null);
+  const act = useCallback(
+    async (pending: Promise<{ ok: true } | { ok: false; problem: Problem }>) => {
+      setBusy(true);
+      setProblem(null);
+      const result = await pending;
+      setBusy(false);
+      if (!result.ok) setProblem(result.problem);
+      reload();
+      return result.ok;
+    },
+    [reload],
+  );
+  return { busy, problem, act };
+}
 
 /** Calls `reload` every `ms` for as long as `active` holds. */
 export function usePoll(active: boolean, reload: () => void, ms = 3000) {

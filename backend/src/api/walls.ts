@@ -1,6 +1,14 @@
 import { createRoute, z } from "@hono/zod-openapi";
 import { MAX_PHOTO_UPLOAD } from "./accounts.ts";
-import { ACCOUNT, AUTHED, errorResponse, INVALID, OpaqueId, RATE_LIMITED } from "./common.ts";
+import {
+  ACCOUNT,
+  AUTHED,
+  errorResponse,
+  INVALID,
+  OpaqueId,
+  RATE_LIMITED,
+  SUSPENDED,
+} from "./common.ts";
 import { COMMUNITY_IMAGE_PAGE } from "./community-gallery.ts";
 import { Framing, FRAME_NAMES } from "./image-frames.ts";
 import { reason } from "./moderation.ts";
@@ -80,12 +88,6 @@ export const wallImagesRoute = createRoute({
   responses: { 200: COMMUNITY_IMAGE_PAGE, ...INVALID, ...AUTHED, ...NO_ACCOUNT },
 });
 
-const REFUSED = {
-  403: errorResponse(
-    "suspended: the account is suspended now, with `until` when it ends (decision 0115)",
-  ),
-};
-
 export const createWallPostRoute = createRoute({
   method: "post",
   path: "/v1/wall/posts",
@@ -109,7 +111,7 @@ export const createWallPostRoute = createRoute({
     400: errorResponse(
       "invalid_request: neither a text nor an image, or a poll with no question, repeated options or an image; invalid_media: an image that is not the caller's upload to this wall, or is already in a post",
     ),
-    ...REFUSED,
+    ...SUSPENDED,
     ...AUTHED,
   },
 });
@@ -129,7 +131,7 @@ export const uploadWallMediaRoute = createRoute({
     ),
     413: errorResponse("too_large: more than the upload limit"),
     ...RATE_LIMITED,
-    ...REFUSED,
+    ...SUSPENDED,
     ...AUTHED,
   },
 });
@@ -152,7 +154,7 @@ export const setPostAudienceRoute = createRoute({
   responses: {
     204: { description: "Changed" },
     ...INVALID,
-    ...REFUSED,
+    ...SUSPENDED,
     ...AUTHED,
     404: errorResponse("not_found: no such wall post by the caller"),
   },
@@ -174,7 +176,7 @@ export const setBioRoute = createRoute({
       },
     },
   },
-  responses: { 204: { description: "Set" }, ...INVALID, ...REFUSED, ...AUTHED },
+  responses: { 204: { description: "Set" }, ...INVALID, ...SUSPENDED, ...AUTHED },
 });
 
 const CoverSet = z.object({ version: OpaqueId }).openapi("WallCoverSet");
@@ -197,7 +199,7 @@ export const putWallCoverRoute = createRoute({
     ),
     413: errorResponse("too_large: more than the upload limit"),
     ...RATE_LIMITED,
-    ...REFUSED,
+    ...SUSPENDED,
     ...AUTHED,
   },
 });
@@ -230,7 +232,7 @@ export const patchWallCoverFramesRoute = createRoute({
     404: errorResponse("not_found: no cover"),
     409: errorResponse("no_master: a cover stored before masters were kept"),
     ...RATE_LIMITED,
-    ...REFUSED,
+    ...SUSPENDED,
     ...AUTHED,
   },
 });
