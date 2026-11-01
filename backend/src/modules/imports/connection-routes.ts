@@ -9,8 +9,8 @@ import type { AppEnv } from "../../http.ts";
 import { notSuspended } from "../../identity/index.ts";
 import { fail } from "../../shared/errors.ts";
 import { log } from "../../shared/log.ts";
+import { overLimit, rateLimited } from "../../shared/rate-limit.ts";
 import { askForCheck, createConnection, listConnections, removeConnection } from "./connections.ts";
-import { limited } from "./routes.ts";
 import { scrapeSettings } from "./scrape.ts";
 
 // The routes of a connection to a public profile (decision 0120). Another person's
@@ -19,7 +19,7 @@ import { scrapeSettings } from "./scrape.ts";
 export function connectionRoutes(app: OpenAPIHono<AppEnv>): void {
   app.openapi(notSuspended(createImportConnectionRoute), async (c) => {
     const { accountId } = c.var.session;
-    if (await limited(c, accountId)) return fail(c, 429, "rate_limited");
+    if (await overLimit(c, "photos", accountId)) return rateLimited(c);
     const created = await createConnection(c.env, accountId, c.req.valid("json"));
     if (created === "unavailable") return fail(c, 503, "unavailable");
     if (created === "invalid_request") return fail(c, 400, "invalid_request");
@@ -40,7 +40,7 @@ export function connectionRoutes(app: OpenAPIHono<AppEnv>): void {
 
   app.openapi(notSuspended(checkImportConnectionRoute), async (c) => {
     const { accountId } = c.var.session;
-    if (await limited(c, accountId)) return fail(c, 429, "rate_limited");
+    if (await overLimit(c, "photos", accountId)) return rateLimited(c);
     const asked = await askForCheck(c.env, accountId, c.req.valid("param").importId);
     if (asked === "unavailable") return fail(c, 503, "unavailable");
     if (asked === "not_found") return fail(c, 404, "not_found");

@@ -1,11 +1,12 @@
 import { type Context, Hono } from "hono";
 import { deleteCookie, getCookie, setCookie } from "hono/cookie";
 import ids from "../../../../identifiers/ids.json" with { type: "json" };
-import { db, withinLimit } from "../../env/index.ts";
+import { db } from "../../env/index.ts";
 import type { AppEnv } from "../../http.ts";
 import { randomToken, sessionCookie, signedIn, suspension } from "../../identity/index.ts";
 import { fail } from "../../shared/errors.ts";
 import { log } from "../../shared/log.ts";
+import { overAddressLimit, rateLimited } from "../../shared/rate-limit.ts";
 import { seal, unseal } from "../../shared/seal.ts";
 import {
   authorizeAddress,
@@ -32,16 +33,8 @@ type Flow = { state: string; sessionId: string; expires: number };
 
 const redirectUri = () => `https://${ids.hosts.web}${CALLBACK}`;
 
-async function refusedAddress(c: Context<AppEnv>) {
-  const address = c.req.header("cf-connecting-ip");
-  if (!address || (await withinLimit(c.env, "public", address))) return null;
-  log("request.rate_limited", { code: "public", requestId: c.var.requestId });
-  return fail(c, 429, "rate_limited");
-}
-
 async function start(c: Context<AppEnv>) {
-  const refused = await refusedAddress(c);
-  if (refused) return refused;
+  if (await overAddressLimit(c)) return rateLimited(c);
   const session = await signedIn(c);
   if (!session) return fail(c, 401, "unauthorized");
   const settings = pageSettings(c.env);
@@ -97,8 +90,7 @@ async function storeOffers(
 
 /** Back from the platform: the cookie is spent whatever follows, and only its session gets offers. */
 async function callback(c: Context<AppEnv>) {
-  const refused = await refusedAddress(c);
-  if (refused) return refused;
+  if (await overAddressLimit(c)) return rateLimited(c);
   const cookie = getCookie(c, FLOW_COOKIE, "host");
   deleteCookie(c, FLOW_COOKIE, sessionCookie(0));
   const settings = pageSettings(c.env);

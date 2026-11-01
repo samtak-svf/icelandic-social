@@ -11,6 +11,15 @@ export function toBase64(bytes: Uint8Array): string {
   return btoa(binary);
 }
 
+/** Lower-case hex, two digits a byte: stored hashes and ids are this text, so it must not change. */
+export function toHex(bytes: Uint8Array): string {
+  return Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+/** `size` random bytes as hex. */
+export const randomHex = (size: number): string =>
+  toHex(crypto.getRandomValues(new Uint8Array(size)));
+
 /** Unpadded base64url, the form of a group id as a conversation id (decision 0017). */
 export function base64url(bytes: Uint8Array): string {
   return toBase64(bytes).replaceAll("+", "-").replaceAll("/", "_").replace(/=+$/, "");

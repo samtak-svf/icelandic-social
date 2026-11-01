@@ -1,4 +1,5 @@
 import { db } from "../../env/index.ts";
+import { randomHex } from "../../shared/bytes.ts";
 import { openImport } from "./core.ts";
 import { SOURCE_KEY } from "./export-file.ts";
 import { removeFile } from "./file.ts";
@@ -123,10 +124,7 @@ export async function createConnection(
     source: SOURCE_KEY,
     audience: input.audience,
   });
-  const random = crypto.getRandomValues(new Uint8Array(6));
-  const code = Array.from(random, (b) => b.toString(16).padStart(2, "0"))
-    .join("")
-    .toUpperCase();
+  const code = randomHex(6).toUpperCase();
   await db(env)
     .prepare(
       `INSERT INTO import_connections (import_id, profile_url, code, phase, created_at)

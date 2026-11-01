@@ -1,5 +1,6 @@
 import { MAX_POST_MEDIA } from "../../api/post-fields.ts";
 import { db, mediaBucket } from "../../env/index.ts";
+import { toHex } from "../../shared/bytes.ts";
 import { keyOf } from "./core.ts";
 import { FILE_MS } from "./file.ts";
 import { loadImage, type ScrapedItem } from "./scrape.ts";
@@ -22,7 +23,7 @@ export const openPreview = (env: Env, importId: string, now = Date.now()) =>
 /** A fixed length and alphabet, whatever the provider uses for a post's id. */
 async function keyPart(id: string): Promise<string> {
   const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(id));
-  return Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, "0")).join("");
+  return toHex(new Uint8Array(digest));
 }
 
 /** Stores a post's images and writes its preview row; repeating it changes nothing. */

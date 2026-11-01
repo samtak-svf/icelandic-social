@@ -8,8 +8,8 @@ import type { AppEnv } from "../../http.ts";
 import { notSuspended } from "../../identity/index.ts";
 import { fail } from "../../shared/errors.ts";
 import { log } from "../../shared/log.ts";
+import { overLimit, rateLimited } from "../../shared/rate-limit.ts";
 import { connectPage, listPages, removePage } from "./pages.ts";
-import { limited } from "./routes.ts";
 
 // The routes of a page connection (decision 0120). Another person's connection answers
 // not_found, as one that does not exist.
@@ -21,7 +21,7 @@ export function pageRoutes(app: OpenAPIHono<AppEnv>): void {
 
   app.openapi(notSuspended(createImportPageRoute), async (c) => {
     const { accountId } = c.var.session;
-    if (await limited(c, accountId)) return fail(c, 429, "rate_limited");
+    if (await overLimit(c, "photos", accountId)) return rateLimited(c);
     const connected = await connectPage(c.env, accountId, c.req.valid("json"));
     if (connected === "unavailable") return fail(c, 503, "unavailable");
     if (connected === "not_found") return fail(c, 404, "not_found");

@@ -1,14 +1,11 @@
 import type { Context } from "hono";
 import { MAX_SOCIAL_UPLOAD } from "../../api/social.ts";
-import { withinLimit } from "../../env/index.ts";
 import type { AppEnv } from "../../http.ts";
+import { takeUpload, type UploadRefusal } from "../../shared/images.ts";
 import { log } from "../../shared/log.ts";
 import { upload } from "./media.ts";
 
-type Refused =
-  | { status: 429; error: "rate_limited" }
-  | { status: 400; error: "invalid_request" | "invalid_image" }
-  | { status: 413; error: "too_large" };
+type Refused = UploadRefusal | { status: 400; error: "invalid_image" };
 
 type Stored = Exclude<Awaited<ReturnType<typeof upload>>, "invalid_image">;
 
@@ -21,17 +18,10 @@ export async function storedUpload(
   communityId: string,
   accountId: string,
 ): Promise<Stored | Refused> {
-  const body = c.req.raw.body;
-  const refuse = async (answer: Refused) => (await body?.cancel(), answer);
-  if (!(await withinLimit(c.env, "photos", `social:${accountId}`))) {
-    log("request.rate_limited", { code: "photos", requestId: c.var.requestId });
-    return refuse({ status: 429, error: "rate_limited" });
-  }
-  const length = Number(c.req.header("content-length") ?? Number.NaN);
-  if (!Number.isSafeInteger(length) || length < 1 || !body) {
-    return refuse({ status: 400, error: "invalid_request" });
-  }
-  if (length > MAX_SOCIAL_UPLOAD) return refuse({ status: 413, error: "too_large" });
+  // Its own key: a post's images do not spend the account's photo allowance.
+  const taken = await takeUpload(c, `social:${accountId}`, MAX_SOCIAL_UPLOAD);
+  if ("error" in taken) return taken;
+  const { body, length } = taken;
   let stored: Awaited<ReturnType<typeof upload>>;
   try {
     stored = await upload(c.env, communityId, accountId, body, length);

@@ -4,7 +4,6 @@ import { deleteCookie, getCookie, setCookie } from "hono/cookie";
 import { createMiddleware } from "hono/factory";
 import ids from "../../../identifiers/ids.json" with { type: "json" };
 import type { AppEnv } from "../http.ts";
-import { withinLimit } from "../env/index.ts";
 import { fail } from "./errors.ts";
 import {
   deviceForToken,
@@ -16,7 +15,8 @@ import {
   sessionForSecret,
   wipeBrowserStorage,
 } from "../identity/index.ts";
-import { log, timed } from "./log.ts";
+import { timed } from "./log.ts";
+import { overAddressLimit, rateLimited } from "./rate-limit.ts";
 
 // The credentials a request presents (decision 0061). Every route declares
 // the security schemes it takes in the contract, and these guards read that
@@ -100,11 +100,8 @@ export function guards(app: OpenAPIHono<AppEnv>) {
   const schemesOf = declaredSchemes(app);
 
   const publicLimit = createMiddleware<AppEnv>(async (c, next) => {
-    const address = c.req.header("cf-connecting-ip");
-    if (schemesOf(c.req.method, c.req.path)?.length !== 0 || !address) return next();
-    if (await withinLimit(c.env, "public", address)) return next();
-    log("request.rate_limited", { code: "public", requestId: c.var.requestId });
-    return fail(c, 429, "rate_limited");
+    if (schemesOf(c.req.method, c.req.path)?.length !== 0) return next();
+    return (await overAddressLimit(c)) ? rateLimited(c) : next();
   });
 
   /**

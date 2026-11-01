@@ -1,3 +1,4 @@
+import { toHex } from "../../shared/bytes.ts";
 // The posts file of an export (decision 0119), parsed tolerantly: one entry in a
 // shape this does not know is skipped and counted, and never fails the file.
 
@@ -59,7 +60,7 @@ const zipPath = (uri: string) => uri.replace(/^(\.?\/)+/, "");
 async function idOf(at: number, text: string, firstMedia: string): Promise<string> {
   const data = new TextEncoder().encode(`${at}\n${text}\n${firstMedia}`);
   const digest = await crypto.subtle.digest("SHA-256", data);
-  return Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, "0")).join("");
+  return toHex(new Uint8Array(digest));
 }
 
 /** The text of a post's `data` parts, joined. */
