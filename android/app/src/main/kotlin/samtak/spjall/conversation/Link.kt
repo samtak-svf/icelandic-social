@@ -41,18 +41,34 @@ internal data class Link(
 
 /**
  * The web links in [text] (0046): runs of non-space characters from `http://`, `https://` or
- * `www.`, less the punctuation that ends the sentence around them. `www.` opens as `https://`.
+ * `www.`, less the punctuation that ends the sentence around them. A link opens with its scheme
+ * lower-cased, as the core reads an own link (0121), and `www.` opens as `https://`. An address with no
+ * host is no link. api/link.vectors.json holds this with iOS.
  */
 internal fun links(text: String): List<Link> =
     START
         .findAll(text)
         .mapNotNull { match ->
             val written = trimEnd(match.value)
-            val prefix = match.groupValues[1]
+            val prefix = match.groupValues[1].lowercase()
             if (written.length <= prefix.length) return@mapNotNull null
-            val url = if (prefix.equals("www.", ignoreCase = true)) "https://$written" else written
-            Link(match.range.first, match.range.first + written.length, url)
+            val rest = written.drop(prefix.length)
+            val url = if (prefix == "www.") "https://www.$rest" else "$prefix$rest"
+            if (hasHost(url)) Link(match.range.first, match.range.first + written.length, url) else null
         }.toList()
+
+/** Whether [address] names a host: something before its path, query or port, and a port only of digits. */
+private fun hasHost(address: String): Boolean {
+    val authority =
+        address
+            .substringAfter("://")
+            .takeWhile { it !in "/?#" }
+            .substringAfterLast('@')
+    val literal = authority.startsWith('[')
+    val port = if (literal) authority.substringAfter(']', "\u0000") else authority.substringAfter(':', "")
+    val digits = port.removePrefix(":").all { it in '0'..'9' }
+    return digits && (if (literal) authority.indexOf(']') > 1 else authority.substringBefore(':').isNotEmpty())
+}
 
 /** Drops sentence punctuation, and a closing bracket or quote whose opening one is not in the link. */
 private fun trimEnd(candidate: String): String {
@@ -159,7 +175,12 @@ private fun copy(
     }
 }
 
-private val START = Regex("""(?<![\p{L}\p{N}])(https?://|www\.)\S+""", RegexOption.IGNORE_CASE)
+/**
+ * Every white space by name: `\s` alone is ASCII on the JVM that runs the tests and wider on a phone, and a
+ * no-break space ends a link everywhere.
+ */
+private const val NOT_SPACE = """[^\s\u0085\u00A0\u1680\u2000-\u200A\u2028\u2029\u202F\u205F\u3000]"""
+private val START = Regex("""(?<![\p{L}\p{N}\p{M}])(https?://|www\.)$NOT_SPACE+""", RegexOption.IGNORE_CASE)
 private const val SENTENCE_END = ".,;:!?"
 private val CLOSERS =
     mapOf(

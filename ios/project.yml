@@ -144,6 +144,8 @@ targets:
         buildPhase: resources
       - path: ../api/poll.vectors.json
         buildPhase: resources
+      - path: ../api/link.vectors.json
+        buildPhase: resources
     dependencies:
       - target: Spjall
       - package: SpjallCore

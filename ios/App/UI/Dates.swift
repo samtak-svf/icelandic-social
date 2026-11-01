@@ -42,12 +42,12 @@ enum Dates {
         format("d. MMM yyyy", at, calendar)
     }
 
-    /// A year and month as the server sends them ("2026-03"), in words: "mars 2026". Nil when the text is not one.
-    static func month(_ yearMonth: String, calendar: Calendar = .current) -> String? {
-        let parts = yearMonth.split(separator: "-").compactMap { Int($0) }
-        guard parts.count == 2, (1...12).contains(parts[1]),
-            let date = calendar.date(from: DateComponents(year: parts[0], month: parts[1], day: 1))
-        else { return nil }
+    /// A year and month as the server sends them ("2026-03"), in words: "mars 2026". The text itself when it is not one.
+    static func month(_ yearMonth: String, calendar: Calendar = .current) -> String {
+        guard let parts = yearMonth.wholeMatch(of: /([0-9]{4})-([0-9]{2})/),
+            let year = Int(parts.1), let month = Int(parts.2), (1...12).contains(month),
+            let date = calendar.date(from: DateComponents(year: year, month: month, day: 1))
+        else { return yearMonth }
         return format("LLLL yyyy", date, calendar)
     }
 

@@ -14,7 +14,8 @@ struct WebLink: Equatable {
 /// a word. Punctuation that ends the sentence (`.,;:!?`) is not part of it, nor
 /// is a closing bracket or quote whose opening one is not in the link, so
 /// `(see https://x.is)` gives `https://x.is` and a link with a balanced `(…)`
-/// keeps its `)`. A `www.` link opens as `https://`.
+/// keeps its `)`. A `www.` link opens as `https://`, and an address with no host is no link
+/// (`api/link.vectors.json` holds this with Android).
 func webLinks(_ text: String) -> [WebLink] {
     var links: [WebLink] = []
     var index = text.startIndex
@@ -90,7 +91,7 @@ private func unpaired(_ closer: Character, opener: Character, in link: Substring
 private func linkURL(_ written: String, prefix: String) -> URL? {
     let rest = written.dropFirst(prefix.count)
     let address = prefix == "www." ? "https://www.\(rest)" : "\(prefix)\(rest)"
-    guard let url = URL(string: address), url.host() != nil else { return nil }
+    guard let url = URL(string: address), url.host()?.isEmpty == false else { return nil }
     return url
 }
 

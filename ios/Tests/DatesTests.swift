@@ -81,7 +81,7 @@ final class DatesTests: XCTestCase {
     func testAYearAndMonthFromTheServerReadsInWords() {
         XCTAssertEqual(Dates.month("2026-03", calendar: calendar), "mars 2026")
         XCTAssertEqual(Dates.month("2025-12", calendar: calendar), "desember 2025")
-        XCTAssertNil(Dates.month("2026-13", calendar: calendar))
-        XCTAssertNil(Dates.month("mars", calendar: calendar))
+        XCTAssertEqual(Dates.month("2026-13", calendar: calendar), "2026-13")
+        XCTAssertEqual(Dates.month("mars", calendar: calendar), "mars")
     }
 }

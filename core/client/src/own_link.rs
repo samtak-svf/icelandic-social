@@ -41,6 +41,31 @@ mod tests {
         assert_eq!(WEB_ORIGIN, origin);
     }
 
+    /// The apps find a link and open it as these say (`api/link.vectors.json`); this holds where it then goes.
+    #[test]
+    fn what_the_apps_open_goes_where_the_vectors_say() {
+        let vectors: serde_json::Value =
+            serde_json::from_str(include_str!("../../../api/link.vectors.json")).unwrap();
+        let mut screens = 0;
+        for case in vectors["cases"].as_array().unwrap() {
+            for link in case["links"].as_array().unwrap() {
+                let opens = link["opens"].as_str().unwrap();
+                let screen = &link["screen"];
+                let want = match screen["kind"].as_str() {
+                    Some("post") => Some(OwnLink::Post(screen["id"].as_str().unwrap().to_owned())),
+                    Some("community") => Some(OwnLink::Community(
+                        screen["id"].as_str().unwrap().to_owned(),
+                    )),
+                    Some(other) => panic!("{other} is no screen"),
+                    None => None,
+                };
+                screens += usize::from(want.is_some());
+                assert_eq!(own_link(opens), want, "{opens}");
+            }
+        }
+        assert!(screens > 0, "no case opens a screen");
+    }
+
     #[test]
     fn a_post_and_a_community_are_found() {
         assert_eq!(
