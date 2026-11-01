@@ -35,6 +35,7 @@ import samtak.spjall.core.Mute
 import samtak.spjall.core.Person
 import samtak.spjall.socket.item
 import samtak.spjall.socket.person
+import samtak.spjall.ui.IcelandZone
 import samtak.spjall.ui.SpjallTheme
 
 /** Faces under a message show who has read it in a group, the word stays in a 1:1 (0125). */
@@ -43,6 +44,8 @@ import samtak.spjall.ui.SpjallTheme
 @Config(sdk = [SCREENSHOT_SDK], qualifiers = SCREENSHOT_DEVICE, fontScale = 1f)
 class ReadFacesTest {
     @get:Rule val compose = createComposeRule()
+
+    @get:Rule val zone = IcelandZone()
 
     private val anna = person("a2", "Anna")
     private val bjorn = person("a3", "Björn")
