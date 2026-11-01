@@ -11,10 +11,11 @@ import {
 } from "../api/devices.ts";
 import { claimKeyPackagesRoute, uploadKeyPackagesRoute } from "../api/key-packages.ts";
 import { fromBase64, toBase64 } from "../shared/bytes.ts";
-import { identityProvider, inbox, withinLimit } from "../env/index.ts";
+import { identityProvider, inbox } from "../env/index.ts";
 import { fail } from "../shared/errors.ts";
 import type { AppEnv } from "../http.ts";
 import { log } from "../shared/log.ts";
+import { overLimit, rateLimited } from "../shared/rate-limit.ts";
 import { clearPushToken, me, registerDevice, revokeDevice, setPushToken } from "./accounts.ts";
 import { blockedByAny } from "./blocks.ts";
 import { claim, upload } from "./key-packages.ts";
@@ -168,10 +169,7 @@ export function identityRoutes(app: OpenAPIHono<AppEnv>, hooks: IdentityHooks): 
   });
 
   app.openapi(claimKeyPackagesRoute, async (c) => {
-    if (!(await withinLimit(c.env, "claims", c.var.device.accountId))) {
-      log("request.rate_limited", { code: "claims", requestId: c.var.requestId });
-      return fail(c, 429, "rate_limited");
-    }
+    if (await overLimit(c, "claims", c.var.device.accountId)) return rateLimited(c);
     const { accountId } = c.req.valid("param");
     if (await blockedByAny(c.env, c.var.device.accountId, [accountId])) {
       return fail(c, 403, "blocked");

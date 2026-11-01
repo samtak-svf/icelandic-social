@@ -1,5 +1,5 @@
 import type { Framing } from "../api/image-frames.ts";
-import { base64url } from "../shared/bytes.ts";
+import { base64url, toHex } from "../shared/bytes.ts";
 import { db, kennitalaKeys, type ProviderName } from "../env/index.ts";
 import type { Person } from "./providers.ts";
 import type { Platform } from "../shared/platforms.ts";
@@ -14,7 +14,7 @@ export type Device = { accountId: string; deviceId: string };
 /** Hex SHA-256 of a device token: what D1 keeps instead of the token. */
 export async function tokenHash(token: string): Promise<string> {
   const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(token));
-  return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
+  return toHex(new Uint8Array(digest));
 }
 
 /** The ids of an account's devices that are not revoked. */
@@ -188,7 +188,7 @@ async function hmacHex(secret: string, input: string): Promise<string> {
     ["sign"],
   );
   const mac = await crypto.subtle.sign("HMAC", key, encoder.encode(input));
-  return [...new Uint8Array(mac)].map((b) => b.toString(16).padStart(2, "0")).join("");
+  return toHex(new Uint8Array(mac));
 }
 
 /**

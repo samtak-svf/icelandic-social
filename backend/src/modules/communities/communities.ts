@@ -1,6 +1,7 @@
 import type { PostView } from "../../api/social.ts";
 import { type Framing, parseFraming } from "../../api/image-frames.ts";
 import { db } from "../../env/index.ts";
+import { randomHex } from "../../shared/bytes.ts";
 import { UNBLOCKED } from "../../identity/index.ts";
 import { transfer } from "./membership.ts";
 import { likeLiteral, nameKey } from "../profiles/index.ts";
@@ -223,8 +224,7 @@ export function view(
 
 /** A new community id: 16 random bytes, hex. */
 export function newCommunityId(): string {
-  const bytes = crypto.getRandomValues(new Uint8Array(16));
-  return `cm_${Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("")}`;
+  return `cm_${randomHex(16)}`;
 }
 
 /** Whether Kenni verified the account (decision 0063: only a verified account creates). */

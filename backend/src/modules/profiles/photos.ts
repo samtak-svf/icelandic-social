@@ -10,7 +10,7 @@ import {
 import { framingFits } from "../../api/image-frames.ts";
 import type { AppEnv } from "../../http.ts";
 import { setPhotoVersion, UNBLOCKED } from "../../identity/index.ts";
-import { db, withinLimit } from "../../env/index.ts";
+import { db } from "../../env/index.ts";
 import { fail } from "../../shared/errors.ts";
 import {
   deleteImage,
@@ -22,6 +22,7 @@ import {
   takeUpload,
 } from "../../shared/images.ts";
 import { log } from "../../shared/log.ts";
+import { overLimit, rateLimited } from "../../shared/rate-limit.ts";
 
 // The profile photo (decision 0039): one per account, shown to every signed-in
 // account but those a block stands between, and not end-to-end encrypted. The
@@ -116,10 +117,7 @@ export function photoRoutes(app: OpenAPIHono<AppEnv>): void {
       .bind(accountId)
       .first();
     if (!row) return fail(c, 404, "not_found");
-    if (!(await withinLimit(c.env, "photos", accountId))) {
-      log("request.rate_limited", { code: "photos", requestId: c.var.requestId });
-      return fail(c, 429, "rate_limited");
-    }
+    if (await overLimit(c, "photos", accountId)) return rateLimited(c);
     const rendered = await renderFrames(c.env, accountId, "photo", framing);
     if (rendered === "no_master") return fail(c, 409, "no_master");
     if (rendered === "invalid_image") return fail(c, 400, "invalid_image");

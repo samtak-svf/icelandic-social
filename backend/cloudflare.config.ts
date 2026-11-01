@@ -210,11 +210,8 @@ export default defineConfig(({ mode }) => {
         // One per community: its posts, comments and reactions (decisions 0060, 0065).
         SPACE: bindings.durableObject({ worker: own.worker, exportName: "Space" }),
         // Workers rate limits. Each is counted per Cloudflare location, so it is
-        // a brake on abuse, not an exact quota. PUBLIC_LIMIT is per address on
-        // the routes a person reaches before signing in; CLAIM_LIMIT is per
-        // account on key-package claims, which spend another account's
-        // packages. PHOTO_LIMIT is per account on profile photo uploads
-        // (decision 0039). A namespace is unique within the Cloudflare account;
+        // a brake on abuse, not an exact quota. What spends each is on RateLimit
+        // in src/env/index.ts (decision 0039). A namespace is unique within the Cloudflare account;
         PUBLIC_LIMIT: bindings.rateLimit({
           namespace: own.limits.public,
           simple: { limit: 30, period: 60 },

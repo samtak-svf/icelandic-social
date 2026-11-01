@@ -1,4 +1,5 @@
 import { db } from "../../env/index.ts";
+import { randomHex } from "../../shared/bytes.ts";
 import type {
   Action,
   PlatformAction,
@@ -26,11 +27,6 @@ import {
 
 type Kind = (typeof REPORT_KINDS)[number];
 type Reason = (typeof REPORT_REASONS)[number];
-
-const hex = (n: number) =>
-  Array.from(crypto.getRandomValues(new Uint8Array(n)), (b) =>
-    b.toString(16).padStart(2, "0"),
-  ).join("");
 
 /** Where a report on what `reporter` sees goes; null when it sees no such thing. */
 async function placeOf(
@@ -87,7 +83,7 @@ export async function fileReport(
     kind === "community" ||
     kind === "account" ||
     place.wall === true;
-  const reportId = `r_${hex(16)}`;
+  const reportId = `r_${randomHex(16)}`;
   await db(env).batch([
     db(env)
       .prepare(

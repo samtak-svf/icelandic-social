@@ -3,14 +3,10 @@ import { deleteCookie, getCookie, setCookie } from "hono/cookie";
 import ids from "../../../identifiers/ids.json" with { type: "json" };
 import type { AppEnv } from "../http.ts";
 import { base64url } from "../shared/bytes.ts";
-import {
-  kennitalaKeys,
-  type ProviderName,
-  webIdentityProvider,
-  withinLimit,
-} from "../env/index.ts";
+import { kennitalaKeys, type ProviderName, webIdentityProvider } from "../env/index.ts";
 import { fail } from "../shared/errors.ts";
 import { log } from "../shared/log.ts";
+import { overAddressLimit, rateLimited } from "../shared/rate-limit.ts";
 import { seal, unseal } from "../shared/seal.ts";
 import { enrol, randomToken } from "./accounts.ts";
 import type { Caller, Linked } from "./linking.ts";
@@ -99,11 +95,7 @@ async function challenge(verifier: string) {
 }
 
 async function start(c: Context<AppEnv>, name: ProviderName) {
-  const address = c.req.header("cf-connecting-ip");
-  if (address && !(await withinLimit(c.env, "public", address))) {
-    log("request.rate_limited", { code: "public", requestId: c.var.requestId });
-    return fail(c, 429, "rate_limited");
-  }
+  if (await overAddressLimit(c)) return rateLimited(c);
   const next = c.req.query("next") ?? "/";
   if (!SAME_ORIGIN_PATH.test(next)) return fail(c, 400, "invalid_request");
   const idp = webIdentityProvider(c.env, name);
@@ -153,11 +145,7 @@ async function flowOf(c: Context<AppEnv>, name: ProviderName) {
  * `state`, with that flow's verifier and nonce.
  */
 async function callback(c: Context<AppEnv>, name: ProviderName, link: LinkOrJoin) {
-  const address = c.req.header("cf-connecting-ip");
-  if (address && !(await withinLimit(c.env, "public", address))) {
-    log("request.rate_limited", { code: "public", requestId: c.var.requestId });
-    return fail(c, 429, "rate_limited");
-  }
+  if (await overAddressLimit(c)) return rateLimited(c);
   const flow = await flowOf(c, name);
   const code = c.req.query("code");
   if (!flow || !code) {

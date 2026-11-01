@@ -1,5 +1,6 @@
 import { INDEXED, listed, parseCursor } from "./post-page.ts";
 import { db, space } from "../../env/index.ts";
+import { randomHex } from "../../shared/bytes.ts";
 import { blockedEither, UNBLOCKED } from "../../identity/index.ts";
 import { notePost } from "../communities/index.ts";
 import { notice } from "../jobs/index.ts";
@@ -35,13 +36,8 @@ export type Post = Omit<PostContent, "author" | "latestComment"> & {
   pinned: boolean;
 };
 
-const hex = (n: number) =>
-  Array.from(crypto.getRandomValues(new Uint8Array(n)), (b) =>
-    b.toString(16).padStart(2, "0"),
-  ).join("");
-
-export const newPostId = () => `p_${hex(16)}`;
-const newCommentId = (postId: string) => `${postId}-${hex(8)}`;
+export const newPostId = () => `p_${randomHex(16)}`;
+const newCommentId = (postId: string) => `${postId}-${randomHex(8)}`;
 
 const NONE: ReadonlySet<string> = new Set();
 

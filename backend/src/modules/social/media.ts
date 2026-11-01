@@ -1,5 +1,11 @@
 import { db, images, socialBucket } from "../../env/index.ts";
-import { communityCoverKey, communityPictureKey, deleteImage } from "../../shared/images.ts";
+import { randomHex } from "../../shared/bytes.ts";
+import {
+  communityCoverKey,
+  communityPictureKey,
+  deleteImage,
+  IMAGE_TYPES,
+} from "../../shared/images.ts";
 import { log } from "../../shared/log.ts";
 import type { MediaRef } from "./do/space.ts";
 import { REMOVED_KEPT_MS } from "./do/space-schema.ts";
@@ -14,14 +20,10 @@ import { mediaKey } from "./posts.ts";
 /** The longest side a stored image has. */
 const MAX_SIDE = 2048;
 
-/** The upload formats taken; anything else, SVG above all, is refused. */
-const TAKEN = new Set(["image/jpeg", "image/png", "image/webp", "image/gif", "image/avif"]);
-
 /** An image no post took is deleted after this long. */
 const UNATTACHED_MS = 24 * 60 * 60 * 1000;
 
-const newMediaId = () =>
-  `sm_${Array.from(crypto.getRandomValues(new Uint8Array(16)), (b) => b.toString(16).padStart(2, "0")).join("")}`;
+const newMediaId = () => `sm_${randomHex(16)}`;
 
 /** Reads exactly `size` bytes of `body`; throws when it is shorter or longer. */
 async function readExactly(body: ReadableStream<Uint8Array>, size: number): Promise<ArrayBuffer> {
@@ -42,7 +44,7 @@ async function reencode(
 ): Promise<{ webp: ArrayBuffer; width: number; height: number } | "invalid_image"> {
   try {
     const info = await images(env).info(new Blob([bytes]).stream());
-    if (!TAKEN.has(info.format) || !("width" in info)) return "invalid_image";
+    if (!IMAGE_TYPES.has(info.format) || !("width" in info)) return "invalid_image";
     const encoded = await images(env)
       .input(new Blob([bytes]).stream())
       .transform({ width: MAX_SIDE, height: MAX_SIDE, fit: "scale-down" })

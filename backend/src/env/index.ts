@@ -126,15 +126,19 @@ export function db(env: Env): D1Database {
 }
 
 /**
- * Whether a request may go on: per address on the routes a person reaches
- * before signing in, per account on key-package claims and on profile photo
- * uploads (cloudflare.config.ts).
+ * The rate limit buckets, and what spends each (cloudflare.config.ts):
+ * - `public`, per address: the routes a person reaches before signing in, the
+ *   web sign-in and the page sign-in.
+ * - `claims`, per account: key-package claims, which spend another account's
+ *   packages.
+ * - `photos`, per account: image uploads and framings of a profile, a community
+ *   and a wall, and the routes that start or publish an import. A post's images
+ *   spend it too, under the key `social:<account>`, apart from the account's own.
  */
-export async function withinLimit(
-  env: Env,
-  limit: "public" | "claims" | "photos",
-  key: string,
-): Promise<boolean> {
+export type RateLimit = "public" | "claims" | "photos";
+
+/** Whether a request may go on. Routes go through shared/rate-limit.ts, which logs a refusal. */
+export async function withinLimit(env: Env, limit: RateLimit, key: string): Promise<boolean> {
   const binding = {
     public: env.PUBLIC_LIMIT,
     claims: env.CLAIM_LIMIT,

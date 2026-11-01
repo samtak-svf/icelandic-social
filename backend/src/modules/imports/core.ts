@@ -1,5 +1,6 @@
 import { MAX_POST_BODY, MAX_POST_MEDIA } from "../../api/post-fields.ts";
 import { db, mediaBucket } from "../../env/index.ts";
+import { toHex } from "../../shared/bytes.ts";
 import { log } from "../../shared/log.ts";
 import { ensureWall, wallOf } from "../communities/index.ts";
 import { job, type Handler } from "../jobs/index.ts";
@@ -100,7 +101,7 @@ async function fingerprintOf(createdAt: number, body: string): Promise<string | 
   if (body === "") return null;
   const text = `${Math.floor(createdAt / 1000)}\n${body}`;
   const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
-  return Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, "0")).join("");
+  return toHex(new Uint8Array(digest));
 }
 
 /** The text within what a post holds, not cutting a character in two. */

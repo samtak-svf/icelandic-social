@@ -15,7 +15,7 @@ import { MAX_PHOTO_UPLOAD } from "../../api/accounts.ts";
 import type { AppEnv } from "../../http.ts";
 import type { Context } from "hono";
 import { framingFits } from "../../api/image-frames.ts";
-import { db, withinLimit } from "../../env/index.ts";
+import { db } from "../../env/index.ts";
 import { fail } from "../../shared/errors.ts";
 import {
   communityCoverKey,
@@ -29,6 +29,7 @@ import {
   takeUpload,
 } from "../../shared/images.ts";
 import { log } from "../../shared/log.ts";
+import { overLimit, rateLimited } from "../../shared/rate-limit.ts";
 import { canRead, moderates } from "./access.ts";
 import { imageVersion, standing } from "./communities.ts";
 import type { LifecycleHooks } from "./lifecycle.ts";
@@ -139,10 +140,7 @@ export function communityImageRoutes(app: OpenAPIHono<AppEnv>, hooks: LifecycleH
       const { frames, key } = KINDS[kind];
       if (found[kind] === null) return fail(c, 404, "not_found");
       if (!framingFits(frames, framing)) return fail(c, 400, "invalid_request");
-      if (!(await withinLimit(c.env, "photos", accountId))) {
-        log("request.rate_limited", { code: "photos", requestId: c.var.requestId });
-        return fail(c, 429, "rate_limited");
-      }
+      if (await overLimit(c, "photos", accountId)) return rateLimited(c);
       const rendered = await renderFrames(c.env, key(communityId), frames, framing);
       if (rendered === "no_master") return fail(c, 409, "no_master");
       if (rendered === "invalid_image") return fail(c, 400, "invalid_image");

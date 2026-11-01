@@ -10,11 +10,11 @@ import {
   publishImportRoute,
   putImportPartRoute,
 } from "../../api/imports.ts";
-import { withinLimit } from "../../env/index.ts";
 import type { AppEnv } from "../../http.ts";
 import { notSuspended } from "../../identity/index.ts";
 import { fail } from "../../shared/errors.ts";
 import { log } from "../../shared/log.ts";
+import { overLimit, rateLimited } from "../../shared/rate-limit.ts";
 import { partRequest } from "../../shared/multipart.ts";
 import {
   completeFile,
@@ -44,17 +44,10 @@ function refusal<K extends Code>(c: Context<AppEnv>, code: K): Refusal<K> {
   return fail(c, STATUS[code], code) as Refusal<K>;
 }
 
-/** The rate limit of the routes that start work, as an upload's: per account. */
-export async function limited(c: Context<AppEnv>, accountId: string): Promise<boolean> {
-  if (await withinLimit(c.env, "photos", accountId)) return false;
-  log("request.rate_limited", { code: "photos", requestId: c.var.requestId });
-  return true;
-}
-
 export function importRoutes(app: OpenAPIHono<AppEnv>): void {
   app.openapi(notSuspended(createImportFileRoute), async (c) => {
     const { accountId } = c.var.session;
-    if (await limited(c, accountId)) return fail(c, 429, "rate_limited");
+    if (await overLimit(c, "photos", accountId)) return rateLimited(c);
     const created = await createFileImport(c.env, accountId, c.req.valid("json").size);
     if (created === "too_large") return fail(c, 413, "too_large");
     log("imports.started", { accountId });
@@ -110,7 +103,7 @@ export function importRoutes(app: OpenAPIHono<AppEnv>): void {
 
   app.openapi(notSuspended(publishImportRoute), async (c) => {
     const { accountId } = c.var.session;
-    if (await limited(c, accountId)) return fail(c, 429, "rate_limited");
+    if (await overLimit(c, "photos", accountId)) return rateLimited(c);
     const started = await publishFile(
       c.env,
       accountId,

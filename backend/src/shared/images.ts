@@ -1,7 +1,7 @@
 import type { Context } from "hono";
 import type { AppEnv } from "../http.ts";
 import { base64url } from "./bytes.ts";
-import { images, profilesBucket, withinLimit } from "../env/index.ts";
+import { images, profilesBucket } from "../env/index.ts";
 import {
   CENTRE,
   FRAME_SPECS,
@@ -12,6 +12,7 @@ import {
   type PixelRect,
 } from "../api/image-frames.ts";
 import { log } from "./log.ts";
+import { overLimit } from "./rate-limit.ts";
 
 // One path for every picture the Worker keeps in spjall-profiles: an account's
 // photo (decision 0039) and a community's picture and cover (decision 0080).
@@ -47,7 +48,13 @@ function keysOf(key: string, kind: FrameKind): string[] {
 }
 
 /** The upload formats taken; anything else, SVG above all, is refused. */
-const TAKEN = new Set(["image/jpeg", "image/png", "image/webp", "image/gif", "image/avif"]);
+export const IMAGE_TYPES = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/gif",
+  "image/avif",
+]);
 
 const WEBP = { httpMetadata: { contentType: "image/webp" } };
 
@@ -82,7 +89,7 @@ async function reencode(
   const bytes = read.value;
   try {
     const info = await images(env).info(new Blob([bytes]).stream());
-    if (!TAKEN.has(info.format)) throw new Error("format");
+    if (!IMAGE_TYPES.has(info.format)) throw new Error("format");
     const encoded = await images(env)
       .input(new Blob([bytes]).stream())
       .transform({ width: MASTER_EDGE, height: MASTER_EDGE, fit: "scale-down" })
@@ -228,20 +235,17 @@ export type UploadRefusal =
 
 /**
  * The checks every image upload passes before a byte is decoded: the photo
- * rate limit, a Content-Length, and the size. A refusal cancels the body, so
- * the client stops sending it.
+ * rate limit under `key`, a Content-Length, and `max`. A refusal cancels the
+ * body, so the client stops sending it.
  */
 export async function takeUpload(
   c: Context<AppEnv>,
-  accountId: string,
+  key: string,
   max: number,
 ): Promise<{ body: ReadableStream<Uint8Array>; length: number } | UploadRefusal> {
   const body = c.req.raw.body;
   const refuse = async (refusal: UploadRefusal) => (await body?.cancel(), refusal);
-  if (!(await withinLimit(c.env, "photos", accountId))) {
-    log("request.rate_limited", { code: "photos", requestId: c.var.requestId });
-    return refuse({ status: 429, error: "rate_limited" });
-  }
+  if (await overLimit(c, "photos", key)) return refuse({ status: 429, error: "rate_limited" });
   const length = Number(c.req.header("content-length") ?? Number.NaN);
   if (!Number.isSafeInteger(length) || length < 1 || !body) {
     return refuse({ status: 400, error: "invalid_request" });
