@@ -316,6 +316,16 @@ impl Phone {
         events
     }
 
+    /// `deliver_until` for a sequence of waits: each one also counts what the
+    /// waits before it read, in `seen`, and gets the whole of `PATIENCE`.
+    pub fn deliver_keeping(&mut self, seen: &mut Vec<Event>, done: impl Fn(&[Event]) -> bool) {
+        let new = self.deliver_until(|events| {
+            let all: Vec<Event> = seen.iter().chain(events).cloned().collect();
+            done(&all)
+        });
+        seen.extend(new);
+    }
+
     pub fn send(&mut self, conversation: &str, text: &str) {
         self.client
             .send(
