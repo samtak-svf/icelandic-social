@@ -67,7 +67,7 @@ internal fun ReadFaces(
                 .clearAndSetSemantics { contentDescription = spoken }
                 .padding(horizontal = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.End),
     ) {
         Row(horizontalArrangement = Arrangement.spacedBy(OVERLAP.dp)) {
             shown.forEach { person ->
