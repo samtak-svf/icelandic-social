@@ -1,5 +1,25 @@
 package samtak.spjall.social
 
+import samtak.spjall.core.pollDraftValid
+
+/**
+ * Whether the server would take a poll (decision 0090). The core holds the rule; a test without its native library
+ * provides a stand-in.
+ */
+fun interface PollRule {
+    fun valid(
+        question: String,
+        options: List<String>,
+    ): Boolean
+}
+
+object CorePollRule : PollRule {
+    override fun valid(
+        question: String,
+        options: List<String>,
+    ): Boolean = pollDraftValid(question, options)
+}
+
 /** The poll half of the post form (decision 0090): the limits mirror the API's `POLL_OPTIONS`. */
 object PollDraft {
     const val MIN_OPTIONS = 2
@@ -15,13 +35,17 @@ object PollDraft {
         hasImages: Boolean,
     ): List<String>? = if (poll != null || hasImages) null else empty()
 
-    /** [poll] with option [index] set to [text]; a text over the limit changes nothing. */
+    /** [poll] with option [index] set to [text]; a text over the limit, in the API's code points, changes nothing. */
     fun withOption(
         poll: List<String>,
         index: Int,
         text: String,
     ): List<String> =
-        if (text.length > OPTION_MAX) poll else poll.mapIndexed { i, old -> if (i == index) text else old }
+        if (text.codePointCount(0, text.length) > OPTION_MAX) {
+            poll
+        } else {
+            poll.mapIndexed { i, old -> if (i == index) text else old }
+        }
 
     /** [poll] with one more empty option, while the poll takes another. */
     fun added(poll: List<String>): List<String> = if (poll.size < MAX_OPTIONS) poll + "" else poll
@@ -34,14 +58,6 @@ object PollDraft {
 
     /** The options as the API takes them: trimmed. */
     fun options(fields: List<String>): List<String> = fields.map { it.trim() }
-
-    /** Two to six options, none empty, none over 80 characters, none the same as another. */
-    fun valid(fields: List<String>): Boolean {
-        val options = options(fields)
-        return options.size in MIN_OPTIONS..MAX_OPTIONS &&
-            options.none { it.isEmpty() || it.length > OPTION_MAX } &&
-            options.map { it.lowercase() }.toSet().size == options.size
-    }
 }
 
 /** The tabs of a community's screen (decision 0089), in the order shown. */

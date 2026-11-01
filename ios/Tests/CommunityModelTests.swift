@@ -557,19 +557,6 @@ final class CommunityModelTests: XCTestCase {
             ], total: 0, mine: nil, closed: closed)
     }
 
-    func testAPollNeedsItsQuestionAndTwoToSixDistinctOptions() {
-        let can = CommunityModel.canPublishPoll
-        XCTAssertTrue(can("Hvað?", ["Já", "Nei"]))
-        XCTAssertFalse(can("  ", ["Já", "Nei"]))
-        XCTAssertFalse(can("Hvað?", ["Já"]))
-        XCTAssertFalse(can("Hvað?", ["Já", " "]))
-        XCTAssertFalse(can("Hvað?", ["Já", " já "]))
-        XCTAssertFalse(can("Hvað?", ["Já", String(repeating: "a", count: 81)]))
-        XCTAssertTrue(can("Hvað?", ["Já", String(repeating: "a", count: 80)]))
-        XCTAssertTrue(can("Hvað?", (1...6).map { "v\($0)" }))
-        XCTAssertFalse(can("Hvað?", (1...7).map { "v\($0)" }))
-    }
-
     func testAPollPostGoesOutWithTrimmedOptionsAndTakesNoImage() async {
         let model = await model(makeCommunity("k1", "Fuglar", role: .member))
         model.setPoll(true)

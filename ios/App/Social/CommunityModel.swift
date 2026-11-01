@@ -184,7 +184,7 @@ final class CommunityModel {
         let body = draft.trimmingCharacters(in: .whitespacesAndNewlines)
         guard body.count <= Self.postLimit else { return false }
         if let pollFields {
-            return writes && images.isEmpty && Self.canPublishPoll(question: body, fields: pollFields)
+            return writes && images.isEmpty && pollDraftValid(question: body, options: pollFields)
         }
         return writes && (!body.isEmpty || !images.isEmpty)
     }
@@ -192,15 +192,9 @@ final class CommunityModel {
     /// This community lets members post without a name (decision 0091).
     var allowsAnonymous: Bool { community?.anonymousPosts ?? false }
 
-    /// A poll needs its question, two to six options, none empty or over 80 characters, none the same as another
-    /// when case is ignored (the API's `POLL_OPTIONS`, as the web's `canPublishPoll`).
-    nonisolated static func canPublishPoll(question: String, fields: [String]) -> Bool {
-        let options = fields.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-        guard !question.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
-            (pollMinOptions...pollMaxOptions).contains(options.count),
-            !options.contains(where: { $0.isEmpty || $0.count > pollOptionLimit })
-        else { return false }
-        return Set(options.map { $0.lowercased() }).count == options.count
+    /// What a poll's field keeps of [text]: the API counts code points, not what the screen draws as one character.
+    nonisolated static func cappedPollOption(_ text: String) -> String {
+        String(String.UnicodeScalarView(text.unicodeScalars.prefix(pollOptionLimit)))
     }
 
     nonisolated static let pollMinOptions = 2

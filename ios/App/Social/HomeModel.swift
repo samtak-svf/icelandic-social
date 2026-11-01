@@ -214,7 +214,7 @@ final class HomeModel {
         guard mayWrite(suspension), body.count <= CommunityModel.postLimit else { return false }
         if case .community(let id) = place, !targets.contains(where: { $0.communityId == id }) { return false }
         if let fields = attachments.pollFields {
-            return attachments.images.isEmpty && CommunityModel.canPublishPoll(question: body, fields: fields)
+            return attachments.images.isEmpty && pollDraftValid(question: body, options: fields)
         }
         return !body.isEmpty || !attachments.images.isEmpty
     }

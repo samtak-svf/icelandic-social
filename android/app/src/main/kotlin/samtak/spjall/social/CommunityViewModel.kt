@@ -45,6 +45,7 @@ class CommunityViewModel(
     private val social: Social,
     private val now: () -> Long = System::currentTimeMillis,
     private val io: CoroutineDispatcher = Dispatchers.IO,
+    pollRule: PollRule = CorePollRule,
 ) : ViewModel() {
     data class State(
         val community: Community? = null,
@@ -94,18 +95,14 @@ class CommunityViewModel(
         val answering: Set<String> = emptySet(),
         /** The authors a moderator asked to see, by post; an empty name is an account without one (0091). */
         val revealed: Map<String, String> = emptyMap(),
+        private val pollRule: PollRule = CorePollRule,
     ) {
         /** The posts a moderator featured, newest pin first. */
         val featured: List<Post> get() = community?.featured.orEmpty()
 
         /** Whether there is something to post: text, images, or both; a poll needs its text and valid options. */
         val postable: Boolean
-            get() =
-                if (poll != null) {
-                    draft.isNotBlank() && PollDraft.valid(poll)
-                } else {
-                    draft.isNotBlank() || images.isNotEmpty()
-                }
+            get() = if (poll != null) pollRule.valid(draft, poll) else draft.isNotBlank() || images.isNotEmpty()
     }
 
     /** Why an image did not go with the post. */
@@ -120,7 +117,7 @@ class CommunityViewModel(
         Invalid,
     }
 
-    private val _state = MutableStateFlow(State())
+    private val _state = MutableStateFlow(State(pollRule = pollRule))
     val state: StateFlow<State> = _state.asStateFlow()
 
     private val _deleted = Channel<Unit>(Channel.BUFFERED)

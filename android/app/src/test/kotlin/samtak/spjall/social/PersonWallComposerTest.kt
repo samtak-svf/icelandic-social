@@ -43,7 +43,7 @@ class PersonWallComposerTest {
     }
 
     private fun TestScope.model(id: String = self.accountId) =
-        PersonViewModel(id, social, dispatcher).also { advanceUntilIdle() }
+        PersonViewModel(id, social, dispatcher, FakePollRule).also { advanceUntilIdle() }
 
     private fun TestScope.picked(model: PersonViewModel): String {
         val file = File.createTempFile("wall", ".jpg")

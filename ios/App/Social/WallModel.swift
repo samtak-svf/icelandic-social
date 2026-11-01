@@ -124,7 +124,7 @@ final class WallModel {
         let body = draft.trimmingCharacters(in: .whitespacesAndNewlines)
         guard writes, body.count <= CommunityModel.postLimit else { return false }
         if let fields = attachments.pollFields {
-            return attachments.images.isEmpty && CommunityModel.canPublishPoll(question: body, fields: fields)
+            return attachments.images.isEmpty && pollDraftValid(question: body, options: fields)
         }
         return !body.isEmpty || !attachments.images.isEmpty
     }

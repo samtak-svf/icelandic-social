@@ -40,7 +40,7 @@ class CommunityFeaturedPollTest {
     private val CommunityViewModel.poll get() = snap.posts.first().poll
 
     private fun TestScope.model(id: String = "k1") =
-        CommunityViewModel(id, social, { now }, dispatcher).also { advanceUntilIdle() }
+        CommunityViewModel(id, social, { now }, dispatcher, FakePollRule).also { advanceUntilIdle() }
 
     @Test
     fun pinningFeaturesThePostAndTheFeedStaysChronological() =
