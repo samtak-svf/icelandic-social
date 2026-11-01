@@ -1403,13 +1403,13 @@ export const strings = {
   /** Title of the screen that builds a file of a person's own content, and the link to it. */
   export_title: "Sækja efnið þitt",
   /** What the export file holds, and how long it is kept. */
-  export_intro: "Hér færðu ZIP-skrá með því sem þú hefur sjálf birt hér: póstum, athugasemdum, viðbrögðum, atkvæðum í könnunum, myndum, lista yfir vini þína og prófílnum þínum. Skráin er til í viku.",
+  export_intro: "Hér færðu ZIP-skrá með því sem þú hefur birt hér: póstum, athugasemdum, viðbrögðum, atkvæðum í könnunum, myndum, lista yfir vini þína og prófílnum þínum. Skráin er tiltæk í viku.",
   /** What the export file does not hold: messages, other people's content, kennitala and phone number. */
-  export_left_out: "Skilaboð eru ekki í skránni því aðeins tækin þín geta lesið þau. Efni annarra er það ekki heldur, þar á meðal athugasemdir sem aðrir skrifuðu við pósta þína. Kennitala og símanúmer fylgja ekki.",
+  export_left_out: "Skilaboð eru ekki í skránni því aðeins tækin þín geta lesið þau. Efni annarra er ekki heldur í henni, þar á meðal athugasemdir sem aðrir skrifuðu við pósta þína. Kennitala og símanúmer fylgja ekki.",
   /** Which images are left out of the export file, and that the text stays. */
-  export_images_note: "Myndir sem stjórnandi hefur tekið niður og myndir af fjarlægðum eða földum póstum fylgja ekki, en textinn gerir það.",
+  export_images_note: "Myndir sem stjórnandi hefur fjarlægt og myndir úr fjarlægðum eða földum póstum fylgja ekki með, en textinn fylgir.",
   /** Warning that anonymous posts name their author in the export file. */
-  export_anonymous_warning: "Nafnlausir póstar eru merktir þér í skránni. Gættu þess hver fær hana.",
+  export_anonymous_warning: "Nafnlausir póstar eru merktir þér í skránni. Gættu að því hver fær hana.",
   /** Button that asks for an export file. */
   export_start: "Biðja um skrá",
   /** Status while the export file is being built. */
@@ -1422,7 +1422,7 @@ export const strings = {
   /** Status when building the export file failed. */
   export_failed: "Ekki tókst að búa skrána til. Þú getur beðið um nýja.",
   /** Status when the export file would be too large to build. */
-  export_failed_too_big: "Of mikið efni er til í eina skrá. Sendu póst á samtak@samtak.is.",
+  export_failed_too_big: "Efnið er of mikið til að rúmast í einni skrá. Sendu tölvupóst á samtak@samtak.is.",
   /** Refusal text when a person asks for an export file twice within a day. */
   export_conflict: "Þú getur beðið um nýja skrá einu sinni á sólarhring.",
 } as const;

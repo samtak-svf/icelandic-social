@@ -4387,7 +4387,7 @@
               "string",
               "null"
             ],
-            "description": "With failed, why: too_big, lost or stalled"
+            "description": "With failed, why: too_big, lost, build or stalled"
           },
           "size": {
             "type": [

@@ -14,7 +14,7 @@ const ExportSummary = z
     exportId: OpaqueId,
     state: z.enum(["building", "ready", "failed"]),
     failure: z.string().nullable().openapi({
-      description: "With failed, why: too_big, lost or stalled",
+      description: "With failed, why: too_big, lost, build or stalled",
     }),
     size: z.int().nullable().openapi({ description: "The file's bytes, once ready" }),
     createdAt: z.int().openapi({ description: "Milliseconds since the epoch" }),

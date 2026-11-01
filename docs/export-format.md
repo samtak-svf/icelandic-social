@@ -100,3 +100,5 @@ described above.
 
 A file holds at most 65 534 entries and ends below 4 GiB; a person with more gets the failure `too_big`
 (the format has no ZIP64 part, deliberately: the importer reads the same subset).
+
+A build that fails on its job's last try ends with the failure `build`, and one stuck for a day with `stalled`; the person may ask again at once after either.

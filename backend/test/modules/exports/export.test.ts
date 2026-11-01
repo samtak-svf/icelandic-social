@@ -5,6 +5,9 @@ import { mediaBucket, socialBucket } from "../../../src/env/index.ts";
 import { mediaKey } from "../../../src/modules/social/posts.ts";
 import { LIMITS, runExportBuild } from "../../../src/modules/exports/build.ts";
 import { expireExports } from "../../../src/modules/exports/index.ts";
+import { exportJobs } from "../../../src/modules/exports/jobs.ts";
+import { BUILD } from "../../../src/modules/exports/store.ts";
+import { MAX_ATTEMPTS } from "../../../src/modules/jobs/index.ts";
 import { worker } from "../../main.ts";
 import { png } from "../../images.ts";
 import { community, errorOf, ok, person, type Person } from "../../people.ts";
@@ -311,6 +314,26 @@ describe("an export", () => {
       .bind(Date.now() - 25 * 60 * 60 * 1000, made.exportId)
       .run();
     expect(await stateOf(me, made.exportId)).toMatchObject({ state: "failed", failure: "stalled" });
+    expect((await me.call("POST", "/v1/exports")).status).toBe(201);
+  });
+
+  it("reads as failed once its job has used its last try, and not before", async () => {
+    const me = await person("Brotinn");
+    const made = (await (await me.call("POST", "/v1/exports")).json()) as { exportId: string };
+    const broken = {
+      ...E,
+      MEDIA: new Proxy(E.MEDIA, {
+        get: () => () => Promise.reject(new Error("the bucket is down")),
+      }),
+    };
+    const handler = exportJobs()[BUILD];
+    const attempt = (n: number) => handler?.(broken, "key", { exportId: made.exportId, run: 1 }, n);
+
+    await expect(attempt(MAX_ATTEMPTS - 1)).rejects.toThrow("the bucket is down");
+    expect(await stateOf(me, made.exportId)).toMatchObject({ state: "building" });
+
+    await expect(attempt(MAX_ATTEMPTS)).rejects.toThrow("the bucket is down");
+    expect(await stateOf(me, made.exportId)).toMatchObject({ state: "failed", failure: "build" });
     expect((await me.call("POST", "/v1/exports")).status).toBe(201);
   });
 

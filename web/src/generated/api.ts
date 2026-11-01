@@ -1162,7 +1162,7 @@ export interface PublishImport {
 export interface ExportSummary {
   exportId: string;
   state: "building" | "ready" | "failed";
-  /** With failed, why: too_big, lost or stalled */
+  /** With failed, why: too_big, lost, build or stalled */
   failure: string | null;
   /** The file's bytes, once ready */
   size: number | null;
