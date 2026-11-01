@@ -271,8 +271,19 @@ test("a moderator hides, then restores and mutes and unmutes from the closed rep
   await writer.reload();
   await expect(writer.getByText(strings.community_muted)).toBeVisible();
   await expect(writer.getByRole("button", { name: strings.post_compose_prompt })).toHaveCount(0);
+  // The post's own page holds the same rule: no box, the reason, and no reaction (#502).
+  const mine = post(writer, "ódýra áburðinn");
+  await expect(mine.getByRole("link", { name: strings.post_write_comment })).toHaveCount(0);
+  await mine.getByRole("link", { name: strings.post_comment_action, exact: true }).click();
+  await expect(writer.getByText(strings.community_muted)).toBeVisible();
+  await expect(writer.getByPlaceholder(strings.post_write_comment)).toHaveCount(0);
+  await expect(writer.getByRole("button", { name: strings.post_like, exact: true })).toBeDisabled();
   await act(strings.moderation_unmute);
   await writer.reload();
+  await expect(writer.getByPlaceholder(strings.post_write_comment)).toBeVisible();
+  await expect(writer.getByText(strings.community_muted)).toHaveCount(0);
+  await expect(writer.getByRole("button", { name: strings.post_like, exact: true })).toBeEnabled();
+  await writer.goto(community);
   await expect(writer.getByRole("button", { name: strings.post_compose_prompt })).toBeVisible();
   await expect(writer.getByText(strings.community_muted)).toHaveCount(0);
 

@@ -3,11 +3,11 @@ import { useCallback, type ReactNode } from "react";
 import { useMe } from "../account.tsx";
 import { getCommunity, type Community, type Post } from "../generated/api.ts";
 import { outcome, useLoad } from "./outcome.ts";
-import { moderatesAs } from "./roles.tsx";
+import { postStanding, type PostStanding } from "./roles.tsx";
 
 // Where a post belongs (decision 0115): the community it was written in, or
 // the wall it was written on, which is Ég for its owner and a person's screen
-// for anyone else. A wall has no community to ask a role of.
+// for anyone else. A wall has no community to ask a standing of.
 
 /** Leaves a post that was deleted or removed, for the place it belonged to. */
 export function useLeavePost(post: Post): () => void {
@@ -53,22 +53,18 @@ export function PostHomeLink({
   );
 }
 
-const held = (role: Community["role"]) => ({ ok: true as const, data: { role } });
-
-/** Whether the reader moderates the post's community; a wall has none, so never there. */
-export function useModerates(post: Post): boolean {
+/** What the reader may do on the post's page, as its community stands; a wall has no community. */
+export function usePostStanding(post: Post): PostStanding {
   const { communityId } = post;
   const onWall = post.wall !== undefined;
-  const [community] = useLoad<{ role: Community["role"] }>(
+  const [community] = useLoad<Community | null>(
     useCallback(
       () =>
         onWall
-          ? Promise.resolve(held(null))
-          : outcome(getCommunity({ path: { communityId } }), 200).then((found) =>
-              found.ok ? held(found.data.role) : found,
-            ),
+          ? Promise.resolve({ ok: true as const, data: null })
+          : outcome(getCommunity({ path: { communityId } }), 200),
       [communityId, onWall],
     ),
   );
-  return community?.ok === true && moderatesAs(community.data.role);
+  return postStanding(post, community);
 }

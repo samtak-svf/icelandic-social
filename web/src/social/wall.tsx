@@ -20,6 +20,7 @@ import { outcome, useLoad } from "./outcome.ts";
 import { usePaged } from "./paged.ts";
 import { PersonMenu, RelationActions, Shared } from "./person-parts.tsx";
 import { PostView } from "./post.tsx";
+import { mayReplyTo } from "./roles.tsx";
 import { ReportForm } from "./report.tsx";
 import { useSuspended } from "./suspended.tsx";
 import { useAct } from "./use-act.ts";
@@ -315,7 +316,14 @@ function PostsTab({ accountId, owner }: Readonly<{ accountId: string; owner: boo
         <ul className="flex flex-col gap-4">
           {items.map((post) => (
             <li key={post.postId}>
-              <PostView post={post} linked deleted={reload} changed={reload} moderates={false} />
+              <PostView
+                post={post}
+                linked
+                deleted={reload}
+                changed={reload}
+                moderates={false}
+                mayReply={mayReplyTo(post)}
+              />
             </li>
           ))}
           <li ref={sentinel} aria-hidden="true" />

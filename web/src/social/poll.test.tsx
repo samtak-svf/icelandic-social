@@ -38,7 +38,7 @@ const post = (p: Poll): Post => ({
 
 describe("poll card", () => {
   it("shows only the total before the reader has voted", () => {
-    const html = renderToStaticMarkup(<PollCard post={post(poll())} />);
+    const html = renderToStaticMarkup(<PollCard post={post(poll())} mayReply={true} />);
     expect(html).toContain("Já");
     expect(html).toContain(strings.poll_votes({ count: 4 }));
     expect(html).not.toContain("data-bar");
@@ -58,6 +58,7 @@ describe("poll card", () => {
             ],
           }),
         )}
+        mayReply={true}
       />,
     );
     expect(html).toContain("1 · 25 %");
@@ -79,6 +80,7 @@ describe("poll card", () => {
             ],
           }),
         )}
+        mayReply={true}
       />,
     );
     expect(html).toContain(strings.poll_closed);
@@ -87,9 +89,30 @@ describe("poll card", () => {
     expect(html).toContain("disabled");
   });
 
+  it("takes no vote from someone who may not reply, who may still withdraw theirs", () => {
+    const html = renderToStaticMarkup(
+      <PollCard
+        post={post(
+          poll({
+            mine: "o1",
+            options: [
+              { optionId: "o0", text: "Já", votes: 1 },
+              { optionId: "o1", text: "Nei", votes: 3 },
+            ],
+          }),
+        )}
+        mayReply={false}
+      />,
+    );
+    expect(
+      html.match(/<button[^>]*role="radio"[^>]*>/g)?.every((b) => b.includes(' disabled=""')),
+    ).toBe(true);
+    expect(html).toContain(strings.poll_withdraw);
+  });
+
   it("draws nothing for a post that is not a poll", () => {
     const { poll: _unused, ...plain } = post(poll());
-    expect(renderToStaticMarkup(<PollCard post={plain} />)).toBe("");
+    expect(renderToStaticMarkup(<PollCard post={plain} mayReply={true} />)).toBe("");
   });
 
   it("measures shares", () => {

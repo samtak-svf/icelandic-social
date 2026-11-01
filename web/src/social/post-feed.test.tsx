@@ -6,7 +6,7 @@ import { strings } from "../generated/brand/strings.ts";
 import type { Problem } from "../problem.ts";
 import { feedPhase } from "./post-feed.tsx";
 import { PostView } from "./post.tsx";
-import { mayPostIn, noPostNotice } from "./roles.tsx";
+import { mayPostIn, mayReplyTo, noPostNotice, postStanding } from "./roles.tsx";
 
 vi.mock("@tanstack/react-router", () => ({
   useNavigate: () => () => undefined,
@@ -122,17 +122,135 @@ const live = (over: Partial<Post> = {}): Post => ({
   ...over,
 });
 
-const draw = (post: Post, community?: { communityId: string; name: string; photo: null }) =>
+const draw = (
+  post: Post,
+  community?: { communityId: string; name: string; photo: null },
+  mayReply = true,
+  linked = true,
+) =>
   renderToStaticMarkup(
     <PostView
       post={post}
-      linked={true}
+      linked={linked}
       deleted={() => undefined}
       changed={() => undefined}
       moderates={false}
+      mayReply={mayReply}
       community={community}
     />,
   );
+
+describe("who may reply to a post", () => {
+  const member = { role: "member", mutedUntil: null, readOnly: false } as const;
+  const muted = { ...member, mutedUntil: Date.now() + 60_000 };
+  const readOnly = { ...member, readOnly: true };
+  const wall = { state: "visible", wall: { accountId: "a1" } } as const;
+  const inCommunity = { state: "visible" } as const;
+
+  it("lets a member reply to a visible post", () => {
+    expect(mayReplyTo(inCommunity, member)).toBe(true);
+    expect(postStanding(inCommunity, { ok: true, data: member })).toEqual({
+      moderates: false,
+      mayReply: true,
+      notice: null,
+    });
+  });
+
+  it("stops a muted member, and says why", () => {
+    expect(mayReplyTo(inCommunity, muted)).toBe(false);
+    expect(postStanding(inCommunity, { ok: true, data: muted })).toEqual({
+      moderates: false,
+      mayReply: false,
+      notice: strings.community_muted,
+    });
+  });
+
+  it("stops a member of a read-only community, and says why", () => {
+    expect(mayReplyTo(inCommunity, readOnly)).toBe(false);
+    expect(postStanding(inCommunity, { ok: true, data: readOnly })).toEqual({
+      moderates: false,
+      mayReply: false,
+      notice: strings.community_read_only,
+    });
+  });
+
+  it("holds a moderator to the same rule, who still moderates", () => {
+    const moderator = { ...readOnly, role: "moderator" } as const;
+    expect(postStanding(inCommunity, { ok: true, data: moderator })).toEqual({
+      moderates: true,
+      mayReply: false,
+      notice: strings.community_read_only,
+    });
+  });
+
+  it("stops someone who has not joined, with no sentence for a member", () => {
+    const stranger = { role: null, mutedUntil: null, readOnly: false };
+    expect(postStanding(inCommunity, { ok: true, data: stranger })).toEqual({
+      moderates: false,
+      mayReply: false,
+      notice: null,
+    });
+  });
+
+  it("asks a wall post no community, whatever is passed", () => {
+    expect(mayReplyTo(wall)).toBe(true);
+    expect(mayReplyTo(wall, muted)).toBe(true);
+    expect(postStanding(wall, { ok: true, data: null })).toEqual({
+      moderates: false,
+      mayReply: true,
+      notice: null,
+    });
+  });
+
+  it("takes no reply on a post that is not visible, on a wall either", () => {
+    for (const state of ["pending", "hidden", "removed"] as const) {
+      expect(mayReplyTo({ state }, member)).toBe(false);
+      expect(mayReplyTo({ ...wall, state })).toBe(false);
+    }
+  });
+
+  it("offers no box until the community has answered", () => {
+    expect(postStanding(inCommunity, null).mayReply).toBe(false);
+    expect(postStanding(wall, null).mayReply).toBe(false);
+  });
+
+  it("leaves it to the server when the community is not known", () => {
+    expect(mayReplyTo(inCommunity)).toBe(true);
+    const failed = { ok: false, status: 500, problem: { kind: "unreachable" } } as const;
+    expect(postStanding(inCommunity, failed)).toEqual({
+      moderates: false,
+      mayReply: true,
+      notice: null,
+    });
+  });
+});
+
+describe("a post whose reader may not reply", () => {
+  const likeTag = (html: string) => /<button[^>]*aria-pressed[^>]*>/.exec(html)?.[0] ?? "";
+
+  it("offers no box to write in on a card, and keeps the way to its comments", () => {
+    const html = draw(live(), undefined, false);
+    expect(html).not.toContain(strings.post_write_comment);
+    expect(html).toContain(strings.post_comment_action);
+    expect(draw(live())).toContain(strings.post_write_comment);
+  });
+
+  it("disables the reaction", () => {
+    expect(likeTag(draw(live(), undefined, false))).toContain(' disabled=""');
+    expect(likeTag(draw(live()))).not.toContain(' disabled=""');
+  });
+
+  it("lets a reaction already given be taken back", () => {
+    expect(likeTag(draw(live({ myEmoji: "👍" }), undefined, false))).not.toContain(' disabled=""');
+  });
+
+  it("disables the action that would focus a box on the post's page", () => {
+    const action = (html: string) =>
+      new RegExp(`<button[^>]*>(?:(?!</button>).)*${strings.post_comment_action}`).exec(html)?.[0];
+    expect(action(draw(live(), undefined, false, false))).toContain(' disabled=""');
+    expect(action(draw(live(), undefined, true, false))).not.toContain(' disabled=""');
+  });
+});
 
 describe("a post card in the feed", () => {
   const community = { communityId: "c1", name: "Garðyrkjufélagið", photo: null };

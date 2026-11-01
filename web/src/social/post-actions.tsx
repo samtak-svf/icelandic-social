@@ -34,12 +34,13 @@ export function ActionRow({
   post,
   reactions,
   linked,
-}: Readonly<{ post: Post; reactions: ReactionState; linked: boolean }>) {
+  mayReply,
+}: Readonly<{ post: Post; reactions: ReactionState; linked: boolean; mayReply: boolean }>) {
   const [told, setTold] = useState(false);
   const commentsId = useId();
   return (
     <div className="grid grid-cols-3 border-y border-border py-1 text-sm">
-      <LikeButton reactions={reactions} />
+      <LikeButton reactions={reactions} mayReply={mayReply} />
       {linked ? (
         <Link
           to="/posts/$postId"
@@ -55,6 +56,7 @@ export function ActionRow({
         <button
           type="button"
           className={ACTION}
+          disabled={!mayReply}
           aria-describedby={post.commentCount > 0 ? commentsId : undefined}
           onClick={() =>
             document.querySelector<HTMLTextAreaElement>("[data-comment-composer] textarea")?.focus()
@@ -111,10 +113,14 @@ const HOLD_MS = 450;
 /**
  * Líkar: one press likes or takes the reaction back. A long press, or the
  * pointer resting on it, opens the quick bar; so does the arrow-up key,
- * which a keyboard has instead of either.
+ * which a keyboard has instead of either. Whoever may not react, suspended or
+ * by the post's rule, may still take back the reaction they gave.
  */
-function LikeButton({ reactions }: Readonly<{ reactions: ReactionState }>) {
-  const suspended = useSuspended();
+function LikeButton({
+  reactions,
+  mayReply,
+}: Readonly<{ reactions: ReactionState; mayReply: boolean }>) {
+  const barred = useSuspended() || !mayReply;
   const [open, setOpen] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const held = useRef(false);
@@ -148,9 +154,9 @@ function LikeButton({ reactions }: Readonly<{ reactions: ReactionState }>) {
         type="button"
         aria-pressed={mine !== null}
         aria-haspopup="true"
-        aria-expanded={open}
+        aria-expanded={open && !barred}
         aria-describedby={reactions.total > 0 ? totalId : undefined}
-        disabled={reactions.busy || (suspended && mine === null)}
+        disabled={reactions.busy || (barred && mine === null)}
         className={`${ACTION} w-full aria-pressed:text-primary`}
         onPointerDown={(event) => {
           held.current = false;
@@ -189,7 +195,7 @@ function LikeButton({ reactions }: Readonly<{ reactions: ReactionState }>) {
           {strings.reaction_count({ count: reactions.total })}
         </span>
       )}
-      {open && (
+      {open && !barred && (
         <div
           role="group"
           aria-label={strings.post_reactions_more}

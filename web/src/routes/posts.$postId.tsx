@@ -22,7 +22,7 @@ import { authorName, PersonName } from "../social/author-name.tsx";
 import { PostView, StateMark, useMine } from "../social/post.tsx";
 import { isPostTombstone } from "../social/post-tombstone.tsx";
 import { RoleBadge } from "../social/roles.tsx";
-import { PostHomeLink, useLeavePost, useModerates } from "../social/post-home.tsx";
+import { PostHomeLink, useLeavePost, usePostStanding } from "../social/post-home.tsx";
 import { RemoveWallComment } from "../social/wall-comment-remove.tsx";
 import { useMe } from "../account.tsx";
 import { ReportButton } from "../social/report.tsx";
@@ -34,7 +34,8 @@ import { CardPlaceholders, Loading } from "../ui/placeholder.tsx";
 // replies under it, oldest first, and the box to write in, answering a
 // comment when Svara was pressed on one. A removed comment stands as a
 // tombstone, so its replies stay anchored under it. A deleted post leaves
-// for its community.
+// for its community. Whoever may not reply reads the post without the box, and
+// a member is told why.
 export const Route = createFileRoute("/posts/$postId")({ component: PostPage });
 
 function PostPage() {
@@ -66,7 +67,14 @@ function RemovedPost({ post }: Readonly<{ post: Post }>) {
   return (
     <>
       <h1 className="sr-only">{strings.post_title}</h1>
-      <PostView post={post} linked={false} changed={gone} deleted={gone} moderates={false} />
+      <PostView
+        post={post}
+        linked={false}
+        changed={gone}
+        deleted={gone}
+        moderates={false}
+        mayReply={false}
+      />
     </>
   );
 }
@@ -74,7 +82,7 @@ function RemovedPost({ post }: Readonly<{ post: Post }>) {
 function PostScreen({ post, reloadPost }: Readonly<{ post: Post; reloadPost: () => void }>) {
   const { postId, communityId } = post;
   const leave = useLeavePost(post);
-  const moderates = useModerates(post);
+  const { moderates, mayReply, notice } = usePostStanding(post);
   const me = useMe();
   const ownWall = post.wall !== undefined && post.wall.accountId === me?.accountId;
   const [comments, reloadComments] = useLoad(
@@ -112,6 +120,7 @@ function PostScreen({ post, reloadPost }: Readonly<{ post: Post; reloadPost: () 
         linked={false}
         changed={reloadPost}
         moderates={moderates}
+        mayReply={mayReply}
         deleted={leave}
       />
       <section className="mt-3 flex flex-col gap-4">
@@ -131,8 +140,9 @@ function PostScreen({ post, reloadPost }: Readonly<{ post: Post; reloadPost: () 
                   comment={thread.comment}
                   deleted={changed}
                   removable={ownWall}
+                  mayReply={mayReply}
                   onReply={
-                    !isTombstone(thread.comment) && thread.comment.state !== "removed"
+                    mayReply && !isTombstone(thread.comment) && thread.comment.state !== "removed"
                       ? () => setReplyingTo(thread.comment)
                       : null
                   }
@@ -145,7 +155,13 @@ function PostScreen({ post, reloadPost }: Readonly<{ post: Post; reloadPost: () 
                     <ul className="ml-4 flex flex-col gap-3 border-l border-border pl-4">
                       {thread.replies.map((reply) => (
                         <li key={reply.commentId}>
-                          <CommentView comment={reply} deleted={changed} removable={ownWall} />
+                          <CommentView
+                            comment={reply}
+                            deleted={changed}
+                            removable={ownWall}
+                            mayReply={mayReply}
+                            onReply={null}
+                          />
                         </li>
                       ))}
                     </ul>
@@ -166,37 +182,40 @@ function PostScreen({ post, reloadPost }: Readonly<{ post: Post; reloadPost: () 
             </Button>
           </div>
         )}
-        <div
-          data-comment-composer
-          // -mb-6 takes back the page's own bottom padding, so nothing empty sits under the box;
-          // without the tab bar under it, the box itself clears the safe area.
-          className="sticky bottom-[var(--tabbar-height,0px)] -mb-6 border-t border-border bg-bg py-2 medium:pb-[max(0.5rem,env(safe-area-inset-bottom))]"
-        >
-          <CommentComposer
-            communityId={communityId}
-            label={strings.comment_compose}
-            placeholder={strings.post_write_comment}
-            action={strings.comment_publish}
-            max={2000}
-            send={async (body, media) => {
-              const sent = await outcome(
-                createComment({
-                  path: { postId },
-                  body:
-                    replyingTo === null
-                      ? { body, media }
-                      : { body, media, parentCommentId: replyingTo.commentId },
-                }),
-                200,
-              );
-              if (sent.ok) {
-                changed();
-                setReplyingTo(null);
-              }
-              return sent;
-            }}
-          />
-        </div>
+        {notice !== null && <p>{notice}</p>}
+        {mayReply && (
+          <div
+            data-comment-composer
+            // -mb-6 takes back the page's own bottom padding, so nothing empty sits under the box;
+            // without the tab bar under it, the box itself clears the safe area.
+            className="sticky bottom-[var(--tabbar-height,0px)] -mb-6 border-t border-border bg-bg py-2 medium:pb-[max(0.5rem,env(safe-area-inset-bottom))]"
+          >
+            <CommentComposer
+              communityId={communityId}
+              label={strings.comment_compose}
+              placeholder={strings.post_write_comment}
+              action={strings.comment_publish}
+              max={2000}
+              send={async (body, media) => {
+                const sent = await outcome(
+                  createComment({
+                    path: { postId },
+                    body:
+                      replyingTo === null
+                        ? { body, media }
+                        : { body, media, parentCommentId: replyingTo.commentId },
+                  }),
+                  200,
+                );
+                if (sent.ok) {
+                  changed();
+                  setReplyingTo(null);
+                }
+                return sent;
+              }}
+            />
+          </div>
+        )}
       </section>
     </>
   );
@@ -206,11 +225,14 @@ function CommentView({
   comment,
   deleted,
   onReply,
+  mayReply,
   removable = false,
 }: Readonly<{
   comment: Comment;
   deleted: () => void;
-  onReply?: (() => void) | null;
+  /** Answers this comment, or null when it cannot be answered: a reply has no replies of its own. */
+  onReply: (() => void) | null;
+  mayReply: boolean;
   /** Whether the reader owns the wall this comment is on, and may take it off. */
   removable?: boolean;
 }>) {
@@ -253,7 +275,7 @@ function CommentView({
               {strings.comment_reply}
             </Button>
           )}
-          <LikeComment like={like} />
+          <LikeComment like={like} mayReply={mayReply} />
           <span className="ml-auto flex items-center gap-1">
             {removable && !mine && (
               <RemoveWallComment commentId={comment.commentId} removed={deleted} />
@@ -302,7 +324,7 @@ function useCommentLike(comment: Comment): CommentLike {
 }
 
 /** Líkar þetta under a comment: bold while liked. */
-function LikeComment({ like }: Readonly<{ like: CommentLike }>) {
+function LikeComment({ like, mayReply }: Readonly<{ like: CommentLike; mayReply: boolean }>) {
   const suspended = useSuspended();
   return (
     <>
@@ -310,7 +332,7 @@ function LikeComment({ like }: Readonly<{ like: CommentLike }>) {
         tone="link"
         className={`text-sm ${like.liked ? "font-bold text-fg" : ""}`}
         aria-pressed={like.liked}
-        disabled={like.busy || (suspended && !like.liked)}
+        disabled={like.busy || ((suspended || !mayReply) && !like.liked)}
         onClick={like.toggle}
       >
         {strings.comment_like}

@@ -6,7 +6,7 @@ import { CardPlaceholders, Loading } from "../ui/placeholder.tsx";
 import type { Outcome } from "./outcome.ts";
 import { usePaged, type Page } from "./paged.ts";
 import { PostView } from "./post.tsx";
-import { moderatesAs } from "./roles.tsx";
+import { mayReplyTo, moderatesAs } from "./roles.tsx";
 
 // The one list of post cards that read from many communities (decisions 0079,
 // 0116): the hub's feed and the home feed. A page may be empty and still carry
@@ -79,6 +79,7 @@ export function PostFeed({
                 deleted={changed}
                 changed={changed}
                 moderates={moderatesAs(byId.get(post.communityId)?.role ?? null)}
+                mayReply={mayReplyTo(post, byId.get(post.communityId))}
                 community={context(byId.get(post.communityId))}
               />
             </li>
