@@ -53,6 +53,25 @@ function statusIsKnown(status) {
   return clause === undefined || STATES.some((state) => state.test(clause));
 }
 
+/**
+ * Who may be named as deciding: a person by name, the maintainer, or the overseer
+ * on a named person's question or order and only with that person's right to
+ * overturn it. A role that answers to nobody decides nothing.
+ */
+const DECIDERS = [
+  /^(?!(?:The|Overseer|Claude|Agent)\b)\p{Lu}\p{L}+(?=[\s,(;.]|$)/u,
+  /^the maintainer\b/,
+  /^the overseer, on \p{Lu}.*; his to overturn$/u,
+];
+
+/**
+ * @param {string} decider
+ * @returns {boolean}
+ */
+function deciderIsKnown(decider) {
+  return !/\bagent\b/i.test(decider) && DECIDERS.some((form) => form.test(decider));
+}
+
 describe("decision records", () => {
   it("are numbered without gaps from 0001", () => {
     const numbers = records.map((f) => Number(f.slice(0, 4)));
@@ -76,6 +95,21 @@ describe("decision records", () => {
     expect(statusIsKnown("proposed")).toBe(false);
   });
 
+  it("knows who may decide, and refuses an overseer nobody can overturn", () => {
+    expect(deciderIsKnown("Ada")).toBe(true);
+    expect(deciderIsKnown("Ada Lovelace (plan); the design is the overseer's")).toBe(true);
+    expect(deciderIsKnown("Þór, approving the plan")).toBe(true);
+    expect(deciderIsKnown("the maintainer, approving the plan")).toBe(true);
+    expect(deciderIsKnown("the overseer, on Ada Lovelace's order; his to overturn")).toBe(true);
+    expect(deciderIsKnown("the overseer")).toBe(false);
+    expect(deciderIsKnown("The overseer, deciding alone")).toBe(false);
+    expect(deciderIsKnown("the overseer, on Ada Lovelace's order")).toBe(false);
+    expect(deciderIsKnown("the overseer, on the plan; his to overturn")).toBe(false);
+    expect(deciderIsKnown("Overseer")).toBe(false);
+    expect(deciderIsKnown("an agent")).toBe(false);
+    expect(deciderIsKnown("Ada, through an agent")).toBe(false);
+  });
+
   it.each(records)("%s has its title, header block and decision", (file) => {
     const text = readFileSync(join(DIR, file), "utf8");
     expect(text.split("\n")[0]).toMatch(new RegExp(`^# ${file.slice(0, 4)}\\. \\S`));
@@ -83,8 +117,7 @@ describe("decision records", () => {
     expect(header.get("Status")).toMatch(/^accepted\b/);
     expect(statusIsKnown(header.get("Status") ?? ""), header.get("Status")).toBe(true);
     expect(header.get("Date")).toMatch(/^\d{4}-\d{2}-\d{2}\b/);
-    expect(header.get("Decided by")).toMatch(/^\S/);
-    expect(header.get("Decided by")).not.toMatch(/\bagent\b/i);
+    expect(deciderIsKnown(header.get("Decided by") ?? ""), header.get("Decided by")).toBe(true);
     expect(text).toMatch(/^## Decision$/m);
   });
 });
