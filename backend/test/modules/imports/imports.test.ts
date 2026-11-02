@@ -80,16 +80,37 @@ describe("importing a post", () => {
 
   it("creates a post once when a second route brings it under another id", async () => {
     const owner = await person("eigandi");
-    const source = await opened(owner);
-    const first = await comeIn(E, source, post({ id: "from-a-file" }), "backlog");
+    const first = await comeIn(E, await opened(owner), post({ id: "from-a-file" }), "backlog");
     const other = await comeIn(
       E,
-      source,
+      await opened(owner),
       post({ id: "from-a-collector", createdAt: YEARS_AGO + 400, body: `  ${post().body}\n` }),
       "backlog",
     );
     expect(other).toMatchObject({ outcome: "already", postId: first.postId });
     expect((await wall(owner, owner)).posts).toHaveLength(1);
+  });
+
+  it("keeps two posts of one import with the same date and text, and each only once", async () => {
+    // An album over the limit of one post, its photos taken in the same second, is split under
+    // one name. Merging them dropped every image after the first post's, and no count said so.
+    const owner = await person("eigandi");
+    const source = await opened(owner);
+    const parts = ["part-1", "part-2", "part-3"].map((id) => post({ id }));
+    const first = [];
+    for (const part of parts) first.push(await comeIn(E, source, part, "backlog"));
+    expect(first.map((result) => result.outcome)).toEqual(["imported", "imported", "imported"]);
+    expect(new Set(first.map((result) => result.postId)).size).toBe(3);
+    expect((await wall(owner, owner)).posts).toHaveLength(3);
+
+    // A retry of the run finds each under its own id, and a later route finds them all there.
+    for (const [at, part] of parts.entries()) {
+      const again = await comeIn(E, source, part, "backlog");
+      expect(again).toMatchObject({ outcome: "already", postId: first[at]?.postId });
+    }
+    const later = await comeIn(E, await opened(owner), post({ id: "from-a-collector" }), "backlog");
+    expect(later.outcome).toBe("already");
+    expect((await wall(owner, owner)).posts).toHaveLength(3);
   });
 
   it("keeps the date and the text, and marks the post as imported", async () => {

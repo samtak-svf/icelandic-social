@@ -70,6 +70,10 @@ class of its own, on by default when the person chose albums in their export:
   album's name as its text, and under it the album's description when it has one. In the measured
   file, 1296 photos in the person's own albums become 283 posts rather than 1296. A post whose
   text is only that name does not come in without its images.
+- One import names each of its posts once, so two of its posts with the same date and text stay two:
+  an album over 20 images taken in one second is split under one name. The match on date and text
+  finds only a post another route already brought. Measured on the real file, merging them left out
+  120 images in 8 posts while the preview promised them.
 - A photo already in a post is not brought in twice: the media path is the key.
 - **Profile pictures and cover photos** (146) are a class that starts off. They were never posts.
 - **Uncategorized photos** (1638 outside posts) are a class that starts off, because what the file
