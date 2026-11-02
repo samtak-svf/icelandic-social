@@ -2,7 +2,7 @@ import type { Context } from "hono";
 import { createMiddleware } from "hono/factory";
 import { db } from "../env/index.ts";
 import type { AppEnv } from "../http.ts";
-import { fail } from "../shared/errors.ts";
+import { cancelBody, fail } from "../shared/errors.ts";
 
 // A suspended account (decision 0115). This file alone says what a suspension
 // is and who is refused by it: a route that takes a new post, comment, reaction,
@@ -74,8 +74,7 @@ const refuseWhileSuspended = createMiddleware<AppEnv>(async (c, next) => {
   const refused = await suspendedRefusal(c);
   if (!refused) return next();
   // A refusal cancels the body, so a client that is uploading stops sending it.
-  await c.req.raw.body?.cancel();
-  return refused;
+  return cancelBody(c, refused);
 });
 
 /** `route`, refused to a suspended account before anything else about the request is read. */

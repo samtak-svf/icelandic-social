@@ -210,6 +210,20 @@ describe("moderation", () => {
     ).toBe(204);
     expect((await posting()).status).toBe(200);
 
+    // Lifting a mute needs one that still stands: a second lift finds nothing,
+    // and a mute whose end has passed is already over (decision 0070).
+    expect(
+      (await act(owner, id, { action: "unmute_member", targetId: member.accountId })).status,
+    ).toBe(404);
+    await env.DB.prepare(
+      "UPDATE community_members SET muted_until = ? WHERE community_id = ? AND account_id = ?",
+    )
+      .bind(Date.now() - 1, id, member.accountId)
+      .run();
+    expect(
+      (await act(owner, id, { action: "unmute_member", targetId: member.accountId })).status,
+    ).toBe(404);
+
     expect(
       (await act(owner, id, { action: "remove_member", targetId: member.accountId })).status,
     ).toBe(204);

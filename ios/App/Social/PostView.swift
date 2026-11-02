@@ -60,11 +60,7 @@ struct PostView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar(.visible, for: .navigationBar)
         .bellInNavigationBar()
-        .safeAreaInset(edge: .top) {
-            if let problem = model.problem {
-                ProblemCard(problem: problem) { Task { await model.retry() } }.padding(16)
-            }
-        }
+        .problemCard(model.problem) { Task { await model.retry() } }
         .safeAreaInset(edge: .top) { SuspendedNotice() }
         .safeAreaInset(edge: .bottom) {
             if model.writes {

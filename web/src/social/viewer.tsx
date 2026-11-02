@@ -11,23 +11,51 @@ import { stepBy } from "./viewer-nav.ts";
 /** One image to show: where it lives, what it is called. */
 export type ViewerItem = { postId: string; media: SocialMedia; alt: string };
 
+// One object URL per image, shared by everything that shows it: the thumbnail
+// a post is scrolled in and the viewer that thumbnail opens are one download,
+// and scrolling back to an image does not fetch it again. The map is bounded,
+// so a long feed cannot hold every image of a community in memory; an entry
+// that falls out is the only one whose URL is revoked, and a failed fetch is
+// not kept, so the next mount tries again.
+const CACHED = 200;
+const fetched = new Map<string, Promise<string | null>>();
+
+function mediaUrl(postId: string, mediaId: string): Promise<string | null> {
+  const key = `${postId}:${mediaId}`;
+  const known = fetched.get(key);
+  if (known !== undefined) return known;
+  const pending = getPostMedia({ path: { postId, mediaId } })
+    .then((answer) => (answer.status === 200 ? URL.createObjectURL(answer.data) : null))
+    .catch(() => null)
+    .then((url) => {
+      if (url === null && fetched.get(key) === pending) fetched.delete(key);
+      return url;
+    });
+  fetched.set(key, pending);
+  if (fetched.size > CACHED) {
+    const oldest = fetched.keys().next().value;
+    if (oldest !== undefined && oldest !== key) {
+      const gone = fetched.get(oldest);
+      fetched.delete(oldest);
+      void gone?.then((url) => {
+        if (url !== null) URL.revokeObjectURL(url);
+      });
+    }
+  }
+  return pending;
+}
+
 /** An image fetched with the client header the API asks of every call, as an object URL. */
 export function useMediaSrc(postId: string, mediaId: string): string | null {
   const [src, setSrc] = useState<string | null>(null);
   useEffect(() => {
-    let url: string | null = null;
     let live = true;
-    void getPostMedia({ path: { postId, mediaId } })
-      .then((answer) => {
-        if (!live || answer.status !== 200) return;
-        url = URL.createObjectURL(answer.data);
-        setSrc(url);
-      })
-      .catch(() => undefined);
+    setSrc(null);
+    void mediaUrl(postId, mediaId).then((url) => {
+      if (live) setSrc(url);
+    });
     return () => {
       live = false;
-      if (url !== null) URL.revokeObjectURL(url);
-      setSrc(null);
     };
   }, [postId, mediaId]);
   return src;

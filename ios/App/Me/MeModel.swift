@@ -11,20 +11,20 @@ import SpjallCore
 /// link before it, so doing it on its own would silently kill a link another
 /// device of the account has already shared.
 @MainActor @Observable
-final class MeModel {
+final class MeModel: ScreenModel {
     private(set) var me: Me?
     private(set) var link: String?
     private(set) var settings: Settings?
     private(set) var blocked: [Person] = []
-    private(set) var busy = false
-    private(set) var problem: Problem?
+    var busy = false
+    var problem: Problem?
     /// This device was revoked or the account deleted: back to sign-in.
     private(set) var signedOut = false
 
     private static let timing = Logger(subsystem: Bundle.main.bundleIdentifier ?? "app", category: "load")
 
     private let account: Account
-    private var failed: (() async -> Void)?
+    var failed: (() async -> Void)?
 
     init(account: Account) {
         self.account = account
@@ -167,11 +167,6 @@ final class MeModel {
         }
     }
 
-    /// Tries the action that failed again.
-    func retry() async {
-        await failed?()
-    }
-
     private func change(_ edit: @escaping (inout Settings) -> Void) async {
         guard var settings else { return }
         edit(&settings)
@@ -180,20 +175,5 @@ final class MeModel {
             try await offMain { try account.setSettings(changed) }
             self.settings = changed
         }
-    }
-
-    /// Runs `action`, one at a time; on failure, `again` is what `retry` repeats.
-    private func perform(again: @escaping () async -> Void, _ action: () async throws -> Void) async {
-        guard !busy else { return }
-        busy = true
-        problem = nil
-        do {
-            try await action()
-            failed = nil
-        } catch {
-            failed = again
-            problem = Problem(error)
-        }
-        busy = false
     }
 }

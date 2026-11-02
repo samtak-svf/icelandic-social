@@ -49,11 +49,7 @@ struct PersonView: View {
         .toolbar { if let person = model.person, person.relation != .oneself { menu(person) } }
         .toolbar { if let onSettings { gear(onSettings) } }
         .bellInNavigationBar()
-        .safeAreaInset(edge: .top) {
-            if let problem = model.problem {
-                ProblemCard(problem: problem) { Task { await model.retry() } }.padding(16)
-            }
-        }
+        .problemCard(model.problem) { Task { await model.retry() } }
         .task {
             if wall == nil { wall = WallModel(social: social, accountId: model.accountId) }
             await model.load()

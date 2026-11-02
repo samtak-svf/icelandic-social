@@ -1,17 +1,14 @@
 package samtak.spjall.social
 
-import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import samtak.spjall.account.Problem
 import samtak.spjall.account.problem
+import samtak.spjall.base.BaseViewModel
+import samtak.spjall.base.ScreenState
 import samtak.spjall.core.CoreException
 import samtak.spjall.core.ModerationStatement
 
@@ -22,75 +19,60 @@ import samtak.spjall.core.ModerationStatement
 class StatementsViewModel(
     private val social: Social,
     private val io: CoroutineDispatcher = Dispatchers.IO,
-) : ViewModel() {
+) : BaseViewModel<StatementsViewModel.State>(State(), io) {
     data class State(
         val statements: List<ModerationStatement> = emptyList(),
         val next: String? = null,
         val loaded: Boolean = false,
-        val busy: Boolean = false,
-        val problem: Problem? = null,
-    )
+        override val busy: Boolean = false,
+        override val problem: Problem? = null,
+    ) : ScreenState<State> {
+        override fun busy(on: Boolean): State = copy(busy = on)
 
-    private val _state = MutableStateFlow(State())
-    val state: StateFlow<State> = _state.asStateFlow()
+        override fun trouble(problem: Problem?): State = copy(problem = problem)
 
-    private var failed: (() -> Unit)? = null
+        override fun answered(): State = copy(loaded = true)
+    }
 
     init {
         load()
     }
 
     fun load() {
-        perform(::load) {}
+        perform(::load) { ask() }
     }
 
     fun ask(entryId: ULong) {
-        perform({ ask(entryId) }) { social.askModerationReview(entryId) }
+        perform({ ask(entryId) }) { ask { social.askModerationReview(entryId) } }
     }
 
+    /** The end of the list came into view: the next, older page, added to what is shown. */
     fun more() {
-        val next = _state.value.next ?: return
-        if (_state.value.busy) return
-        _state.update { it.copy(busy = true, problem = null) }
+        val next = current.next ?: return
+        if (current.busy) return
+        edit { it.busy(true).trouble(null) }
         viewModelScope.launch {
             try {
                 val page = withContext(io) { social.moderationStatements(next, PAGE) }
                 failed = null
-                _state.update {
+                edit {
                     it.copy(statements = it.statements + page.statements, next = page.next, busy = false)
                 }
             } catch (e: CoreException) {
                 failed = ::more
-                _state.update { it.copy(busy = false, problem = e.problem()) }
+                edit { it.busy(false).trouble(e.problem()) }
             }
         }
     }
 
-    fun retry() {
-        failed?.invoke()
-    }
-
-    /** Runs [action], if any, then asks for the list again from its start. */
-    private fun perform(
-        again: () -> Unit,
-        action: () -> Unit,
-    ) {
-        if (_state.value.busy) return
-        _state.update { it.copy(busy = true, problem = null) }
-        viewModelScope.launch {
-            try {
-                val page =
-                    withContext(io) {
-                        action()
-                        social.moderationStatements(null, PAGE)
-                    }
-                failed = null
-                _state.update { it.copy(statements = page.statements, next = page.next, loaded = true, busy = false) }
-            } catch (e: CoreException) {
-                failed = again
-                _state.update { it.copy(busy = false, loaded = true, problem = e.problem()) }
+    /** Runs [write], if any, then asks for the list again from its start. */
+    private suspend fun ask(write: suspend () -> Unit = {}) {
+        val page =
+            withContext(io) {
+                write()
+                social.moderationStatements(null, PAGE)
             }
-        }
+        edit { it.copy(statements = page.statements, next = page.next, loaded = true) }
     }
 }
 

@@ -28,8 +28,10 @@ export async function linkOrJoin(
     });
     return linked;
   }
-  if (linked.ok.merged) await deleteAccount(env, accountId);
-  if (linked.ok.merged) log("account.merged_away", { accountId });
+  if (linked.ok.merged) {
+    await deleteAccount(env, accountId);
+    log("account.merged_away", { accountId });
+  }
   log(linked.ok.merged ? "identity.merged" : "identity.linked", {
     accountId: linked.ok.accountId,
     sessionId: caller.sessionId,

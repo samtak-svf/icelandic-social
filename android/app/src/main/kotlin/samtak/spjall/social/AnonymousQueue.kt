@@ -28,21 +28,18 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import samtak.spjall.account.Problem
 import samtak.spjall.account.problem
+import samtak.spjall.base.BaseViewModel
+import samtak.spjall.base.ScreenState
 import samtak.spjall.brand.R
 import samtak.spjall.core.CoreException
 import samtak.spjall.core.Post
@@ -60,76 +57,60 @@ class AnonymousQueueViewModel(
     private val communityId: String,
     private val social: Social,
     private val io: CoroutineDispatcher = Dispatchers.IO,
-) : ViewModel() {
+) : BaseViewModel<AnonymousQueueViewModel.State>(State(), io) {
     data class State(
         val posts: List<Post> = emptyList(),
         val loaded: Boolean = false,
-        val busy: Boolean = false,
+        override val busy: Boolean = false,
         /** The authors asked for, by post; an empty name is an account without one. */
         val revealed: Map<String, String> = emptyMap(),
-        val problem: Problem? = null,
-    )
+        override val problem: Problem? = null,
+    ) : ScreenState<State> {
+        override fun busy(on: Boolean): State = copy(busy = on)
 
-    private val _state = MutableStateFlow(State())
-    val state: StateFlow<State> = _state.asStateFlow()
+        override fun trouble(problem: Problem?): State = copy(problem = problem)
 
-    private var failed: (() -> Unit)? = null
+        override fun answered(): State = copy(loaded = true)
+    }
 
     init {
         load()
     }
 
     fun load() {
-        perform(::load) {}
+        perform(::load) { ask() }
     }
 
     fun approve(postId: String) {
-        perform({ approve(postId) }) { social.approveAnonymousPost(postId) }
+        perform({ approve(postId) }) { ask { social.approveAnonymousPost(postId) } }
     }
 
     fun decline(postId: String) {
-        perform({ decline(postId) }) { social.declineAnonymousPost(postId) }
+        perform({ decline(postId) }) { ask { social.declineAnonymousPost(postId) } }
     }
 
     fun reveal(postId: String) {
-        if (_state.value.busy) return
-        _state.update { it.copy(busy = true, problem = null) }
+        if (current.busy) return
+        edit { it.busy(true).trouble(null) }
         viewModelScope.launch {
             try {
                 val author = withContext(io) { social.revealAuthor(postId) }
-                _state.update { it.copy(busy = false, revealed = it.revealed + (postId to author.name.orEmpty())) }
+                edit { it.copy(busy = false, revealed = it.revealed + (postId to author.name.orEmpty())) }
             } catch (e: CoreException) {
                 failed = { reveal(postId) }
-                _state.update { it.copy(busy = false, problem = e.problem()) }
+                edit { it.busy(false).trouble(e.problem()) }
             }
         }
     }
 
-    fun retry() {
-        failed?.invoke()
-    }
-
-    /** Runs [action], if any, then asks for the list again. */
-    private fun perform(
-        again: () -> Unit,
-        action: () -> Unit,
-    ) {
-        if (_state.value.busy) return
-        _state.update { it.copy(busy = true, problem = null) }
-        viewModelScope.launch {
-            try {
-                val page =
-                    withContext(io) {
-                        action()
-                        social.pendingAnonymousPosts(communityId, null, PAGE)
-                    }
-                failed = null
-                _state.update { it.copy(posts = page.posts, loaded = true, busy = false) }
-            } catch (e: CoreException) {
-                failed = again
-                _state.update { it.copy(busy = false, loaded = true, problem = e.problem()) }
+    /** Runs [write], if any, then asks for the list again. */
+    private suspend fun ask(write: suspend () -> Unit = {}) {
+        val page =
+            withContext(io) {
+                write()
+                social.pendingAnonymousPosts(communityId, null, PAGE)
             }
-        }
+        edit { it.copy(posts = page.posts, loaded = true) }
     }
 
     private companion object {

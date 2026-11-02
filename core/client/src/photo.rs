@@ -165,6 +165,31 @@ impl<T: Transport> Client<T> {
         self.source_to(to, |api, part| api.get_photo_source(part))
     }
 
+    /// Fetches through `fetch` into `part`, then renames it to `to`, so a
+    /// failed download leaves nothing at `to`. `part` is gone either way.
+    /// False on a 404, which leaves `to` as it was.
+    fn fetch_into(
+        &mut self,
+        to: &Path,
+        part: &Path,
+        fetch: impl FnOnce(&Api<'_, T>, &Path) -> Result<(), ApiError>,
+    ) -> Result<bool, ClientError> {
+        let fetched = fetch(&authed(&self.transport, &self.token, &self.client)?, part);
+        match fetched {
+            Ok(()) => {
+                self.blobs.rename(part, to).map_err(MediaError::from)?;
+                Ok(true)
+            }
+            Err(error) => {
+                let _ = self.blobs.remove_file(part);
+                match error {
+                    ApiError::Refused { status: 404, .. } => Ok(false),
+                    other => Err(other.into()),
+                }
+            }
+        }
+    }
+
     /// Fetches into `to` through a `.part` file beside it, so a failed
     /// download leaves nothing at `to`. False on a 404.
     pub(crate) fn source_to(
@@ -172,21 +197,7 @@ impl<T: Transport> Client<T> {
         to: &Path,
         fetch: impl FnOnce(&Api<'_, T>, &Path) -> Result<(), ApiError>,
     ) -> Result<bool, ClientError> {
-        let part = to.with_extension("part");
-        let fetched = fetch(&authed(&self.transport, &self.token, &self.client)?, &part);
-        match fetched {
-            Ok(()) => {
-                self.blobs.rename(&part, to).map_err(MediaError::from)?;
-                Ok(true)
-            }
-            Err(error) => {
-                let _ = self.blobs.remove_file(&part);
-                match error {
-                    ApiError::Refused { status: 404, .. } => Ok(false),
-                    other => Err(other.into()),
-                }
-            }
-        }
+        self.fetch_into(to, &to.with_extension("part"), fetch)
     }
 
     /// The file at `dir/<version>.webp`: kept from an earlier call, else
@@ -207,22 +218,11 @@ impl<T: Transport> Client<T> {
         }
         self.blobs.create_dir_all(&dir).map_err(MediaError::from)?;
         let part = dir.join(format!("{version}.part"));
-        let fetched = fetch(&authed(&self.transport, &self.token, &self.client)?, &part);
-        match fetched {
-            Ok(()) => {
-                self.blobs.rename(&part, &kept).map_err(MediaError::from)?;
-                clear(&*self.blobs, &dir, Some(&kept));
-                Ok(Some(kept))
-            }
-            Err(ApiError::Refused { status: 404, .. }) => {
-                let _ = self.blobs.remove_file(&part);
-                Ok(None)
-            }
-            Err(error) => {
-                let _ = self.blobs.remove_file(&part);
-                Err(error.into())
-            }
+        if !self.fetch_into(&kept, &part, fetch)? {
+            return Ok(None);
         }
+        clear(&*self.blobs, &dir, Some(&kept));
+        Ok(Some(kept))
     }
 
     /// The file of `account`'s photo at `version`, the version a `Person`,

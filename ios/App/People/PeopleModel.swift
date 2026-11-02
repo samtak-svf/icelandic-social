@@ -8,7 +8,7 @@ import SpjallCore
 /// with them at once, made when there is none (decision 0043); "new group"
 /// switches to picking several, who start a group.
 @MainActor @Observable
-final class PeopleModel {
+final class PeopleModel: ScreenModel {
     /// The people met through a shared conversation.
     private(set) var people: [Person] = []
     /// The search as typed; `search()` asks the directory for it.
@@ -25,7 +25,7 @@ final class PeopleModel {
     private(set) var next: String?
     /// A search or a further page is on its way.
     private(set) var searching = false
-    private(set) var loaded = false
+    var loaded = false
     /// Picking several people for a group rather than opening a 1:1 with one.
     private(set) var group = false
     /// Adding people to an existing group (decision 0078).
@@ -34,15 +34,15 @@ final class PeopleModel {
     private(set) var existing: Set<String>
     /// Account ids, in the order they were picked.
     private(set) var picked: [String] = []
-    private(set) var busy = false
-    private(set) var problem: Problem?
+    var busy = false
+    var problem: Problem?
     /// The conversation to go into.
     private(set) var opened: String?
 
     private let account: Account
     private let live: Live
     private let targetConversation: String?
-    private var failed: (() async -> Void)?
+    var failed: (() async -> Void)?
     private let sleep: @Sendable (Duration) async throws -> Void
 
     init(
@@ -181,31 +181,11 @@ final class PeopleModel {
     /// A directory page: a screenful and some.
     private nonisolated static let page: UInt32 = 30
 
-    /// Tries the action that failed again.
-    func retry() async {
-        await failed?()
-    }
-
     /// The 1:1 with this one person, if there is one to go back to.
     private nonisolated static func existing(_ picked: [String], in conversations: [Conversation]) -> String? {
         guard picked.count == 1 else { return nil }
         return conversations.first {
             $0.state != .removed && $0.state != .left && $0.name == nil && $0.members.map(\.account) == picked
         }?.id
-    }
-
-    private func perform(again: @escaping () async -> Void, _ action: () async throws -> Void) async {
-        guard !busy else { return }
-        busy = true
-        problem = nil
-        do {
-            try await action()
-            failed = nil
-        } catch {
-            failed = again
-            loaded = true
-            problem = Problem(error)
-        }
-        busy = false
     }
 }

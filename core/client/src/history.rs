@@ -661,7 +661,7 @@ impl<T: Transport> Client<T> {
         recipient: &[u8],
         to: &Path,
     ) -> Result<u64, ClientError> {
-        let (rows, media) = self.store.try_write(|tx| records(tx, since))?;
+        let (rows, media) = self.store.reader()?.read(|tx| records(tx, since))?;
         let parts = parts(&*self.blobs, &self.media, rows, media, MAX_HISTORY)?;
         let (enc, key) = hpke::seal_key(recipient, INFO).map_err(|_| HistoryError::Tampered)?;
         let plain = Plain {

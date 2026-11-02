@@ -8,7 +8,7 @@ import SpjallCore
 /// action on an open report answers it. A mute lasts a day, a week or 30 days. The API says nothing of whether an
 /// author is muted or banned, so both ways are offered and the server answers.
 @MainActor @Observable
-final class ReportsModel {
+final class ReportsModel: ScreenModel {
     let communityId: String
     /// Which reports are shown: those waiting, or those closed.
     private(set) var showing: ReportState = .open
@@ -19,15 +19,15 @@ final class ReportsModel {
     private(set) var revealed: [String: Author] = [:]
     /// The cursor of the next page, nil on the last.
     private(set) var next: String?
-    private(set) var loaded = false
+    var loaded = false
     /// An action was logged, until the next one starts.
     private(set) var done = false
-    private(set) var busy = false
-    private(set) var problem: Problem?
+    var busy = false
+    var problem: Problem?
 
     private let social: Social
     private let now: @Sendable () -> UInt64
-    private var failed: (() async -> Void)?
+    var failed: (() async -> Void)?
 
     init(social: Social, communityId: String, now: @escaping @Sendable () -> UInt64 = nowMillis) {
         self.social = social
@@ -76,6 +76,7 @@ final class ReportsModel {
     /// Asks who wrote the reported anonymous post; the community's moderation log records the asking.
     func reveal(_ report: Report) async {
         guard canReveal(report) else { return }
+        done = false
         let social = social
         let post = report.target.id
         await perform(again: { await self.reveal(report) }) {
@@ -89,6 +90,7 @@ final class ReportsModel {
     func act(_ report: Report, _ verb: ModerationVerb, reason: String, period: MutePeriod? = nil) async {
         let reason = reason.trimmingCharacters(in: .whitespacesAndNewlines)
         guard Self.valid(reason), let step = step(report, verb, reason: reason, period: period) else { return }
+        done = false
         await perform(again: { await self.act(report, verb, reason: reason, period: period) }) {
             try await offMain(step)
             self.done = true
@@ -149,25 +151,4 @@ final class ReportsModel {
 
     /// A page of reports.
     private nonisolated static let page: UInt32 = 30
-
-    /// Tries the action that failed again.
-    func retry() async {
-        await failed?()
-    }
-
-    private func perform(again: @escaping () async -> Void, _ action: () async throws -> Void) async {
-        guard !busy else { return }
-        busy = true
-        done = false
-        problem = nil
-        do {
-            try await action()
-            failed = nil
-        } catch {
-            failed = again
-            loaded = true
-            problem = Problem(error)
-        }
-        busy = false
-    }
 }

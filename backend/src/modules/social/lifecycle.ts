@@ -45,10 +45,11 @@ export async function deleteUnlessModerated(
     .bind(JSON.stringify(postIds))
     .all<{ postId: string }>();
   const kept = results.map((r) => r.postId);
+  const keptSet = new Set(kept);
   await deletePosts(
     env,
     communityId,
-    postIds.filter((id) => !kept.includes(id)),
+    postIds.filter((id) => !keptSet.has(id)),
   );
   return kept;
 }

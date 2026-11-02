@@ -19,7 +19,7 @@ export async function storedUpload(
   accountId: string,
 ): Promise<Stored | Refused> {
   // Its own key: a post's images do not spend the account's photo allowance.
-  const taken = await takeUpload(c, `social:${accountId}`, MAX_SOCIAL_UPLOAD);
+  const taken = await takeUpload(c, accountId, MAX_SOCIAL_UPLOAD, `social:${accountId}`);
   if ("error" in taken) return taken;
   const { body, length } = taken;
   let stored: Awaited<ReturnType<typeof upload>>;

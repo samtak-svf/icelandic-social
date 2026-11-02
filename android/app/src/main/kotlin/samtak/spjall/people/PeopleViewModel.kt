@@ -1,6 +1,5 @@
 package samtak.spjall.people
 
-import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
@@ -8,16 +7,14 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
-import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import samtak.spjall.account.Account
 import samtak.spjall.account.Problem
 import samtak.spjall.account.problem
+import samtak.spjall.base.BaseViewModel
+import samtak.spjall.base.ScreenState
 import samtak.spjall.core.ConversationState
 import samtak.spjall.core.CoreException
 import samtak.spjall.core.Person
@@ -38,7 +35,7 @@ class PeopleViewModel(
     private val io: CoroutineDispatcher = Dispatchers.IO,
     private val targetConversation: String? = null,
     private val existingMembers: Set<String> = emptySet(),
-) : ViewModel() {
+) : BaseViewModel<PeopleViewModel.State>(opened(targetConversation, existingMembers), io) {
     data class State(
         /** The people met through a shared conversation. */
         val people: List<Person> = emptyList(),
@@ -59,9 +56,9 @@ class PeopleViewModel(
         val adding: Boolean = false,
         /** Already in that group: shown checked, and not to be picked. */
         val existing: Set<String> = emptySet(),
-        val busy: Boolean = false,
-        val problem: Problem? = null,
-    ) {
+        override val busy: Boolean = false,
+        override val problem: Problem? = null,
+    ) : ScreenState<State> {
         /** Whom the list shows below [people]: without a search, the people met are not shown twice. */
         val everyone: List<Person>
             get() =
@@ -71,24 +68,18 @@ class PeopleViewModel(
                 } else {
                     directory
                 }
-    }
 
-    private val _state =
-        MutableStateFlow(
-            if (targetConversation == null) {
-                State()
-            } else {
-                State(group = true, adding = true, existing = existingMembers)
-            },
-        )
-    val state: StateFlow<State> = _state.asStateFlow()
+        override fun busy(on: Boolean): State = copy(busy = on)
+
+        override fun trouble(problem: Problem?): State = copy(problem = problem)
+
+        override fun answered(): State = copy(loaded = true)
+    }
 
     private val _opened = Channel<String>(Channel.BUFFERED)
 
     /** The conversation to go into. */
     val opened: Flow<String> = _opened.receiveAsFlow()
-
-    private var failed: (() -> Unit)? = null
 
     private var searchJob: Job? = null
 
@@ -98,12 +89,12 @@ class PeopleViewModel(
 
     /** `new_group`: the rows become checkboxes. */
     fun group() {
-        _state.update { it.copy(group = true) }
+        edit { it.copy(group = true) }
     }
 
     /** Back out of picking several: the picks are dropped, and a tap opens a 1:1 again. */
     fun single() {
-        _state.update { it.copy(group = false, picked = emptyList()) }
+        edit { it.copy(group = false, picked = emptyList()) }
     }
 
     /** Into the 1:1 with [person], made when there is none. */
@@ -117,14 +108,14 @@ class PeopleViewModel(
 
     fun toggle(account: String) {
         // Whoever is already in the group stays so; the row is shown taken.
-        if (account in _state.value.existing) return
-        _state.update { state ->
+        if (account in current.existing) return
+        edit { state ->
             state.copy(picked = if (account in state.picked) state.picked - account else state.picked + account)
         }
     }
 
     fun start() {
-        val picked = _state.value.picked
+        val picked = current.picked
         if (picked.isEmpty()) return
         val target = targetConversation
         if (target != null) {
@@ -142,7 +133,7 @@ class PeopleViewModel(
     }
 
     fun search(text: String) {
-        _state.update { it.copy(query = text) }
+        edit { it.copy(query = text) }
         searchJob?.cancel()
         searchJob =
             viewModelScope.launch {
@@ -152,7 +143,7 @@ class PeopleViewModel(
     }
 
     fun more() {
-        val state = _state.value
+        val state = current
         val next = state.next ?: return
         if (state.searching || searchJob?.isActive == true) return
         searchJob = viewModelScope.launch { page(state.query, after = next) }
@@ -163,11 +154,11 @@ class PeopleViewModel(
         query: String,
         after: String?,
     ) {
-        _state.update { it.copy(searching = true, problem = null) }
+        edit { it.copy(searching = true, problem = null) }
         try {
             val page = withContext(io) { account.directory(query.trim().ifEmpty { null }, after, PAGE) }
             failed = null
-            _state.update {
+            edit {
                 it.copy(
                     directory = if (after == null) page.people else it.directory + page.people,
                     next = page.next,
@@ -175,13 +166,9 @@ class PeopleViewModel(
                 )
             }
         } catch (e: CoreException) {
-            failed = { search(_state.value.query) }
-            _state.update { it.copy(searching = false, problem = e.problem()) }
+            failed = { search(current.query) }
+            edit { it.copy(searching = false, problem = e.problem()) }
         }
-    }
-
-    fun retry() {
-        failed?.invoke()
     }
 
     private fun load() {
@@ -190,12 +177,12 @@ class PeopleViewModel(
             val page = withContext(io) { account.directory(null, null, PAGE) }
             // Who is already in the group being added to, when the screen was not told (0078).
             val existing =
-                if (targetConversation != null && _state.value.existing.isEmpty()) {
+                if (targetConversation != null && current.existing.isEmpty()) {
                     withContext(io) { membersOf(targetConversation) }
                 } else {
-                    _state.value.existing
+                    current.existing
                 }
-            _state.update {
+            edit {
                 it.copy(people = people, directory = page.people, next = page.next, loaded = true, existing = existing)
             }
         }
@@ -224,24 +211,6 @@ class PeopleViewModel(
                         c.members.map { it.account } == listOf(person)
                 }?.id
         }
-
-    private fun perform(
-        again: () -> Unit,
-        action: suspend () -> Unit,
-    ) {
-        if (_state.value.busy) return
-        _state.update { it.copy(busy = true, problem = null) }
-        viewModelScope.launch {
-            try {
-                withContext(io) { action() }
-                failed = null
-                _state.update { it.copy(busy = false) }
-            } catch (e: CoreException) {
-                failed = again
-                _state.update { it.copy(busy = false, loaded = true, problem = e.problem()) }
-            }
-        }
-    }
 }
 
 /** How long the search waits for the typing to pause. */
@@ -249,3 +218,14 @@ private const val SEARCH_DELAY_MS = 300L
 
 /** A directory page: a screenful and some. */
 private const val PAGE = 30u
+
+/** The state the picker opens with: adding to a group that exists (0078), or the plain one. */
+private fun opened(
+    target: String?,
+    existing: Set<String>,
+): PeopleViewModel.State =
+    if (target == null) {
+        PeopleViewModel.State()
+    } else {
+        PeopleViewModel.State(group = true, adding = true, existing = existing)
+    }

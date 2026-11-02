@@ -129,6 +129,33 @@ export function Avatar({
 /** The cover's box takes the shape of the frame shown, so no frame is cut again by a fixed height. */
 const COVER_BOX = "aspect-[3/1] medium:aspect-[4/1] expanded:aspect-[8/3]";
 
+/** A cover that came back, and the request it answered. */
+type FetchedCover = Readonly<{ request: string; url: string | null }>;
+
+/** One cover request: whose cover, at one version and one frame. */
+export function coverKey(
+  kind: "cover" | "wallCover",
+  communityId: string,
+  version: string,
+  frame: SizeClass,
+): string {
+  return `${kind}:${communityId}:${version}:${frame}`;
+}
+
+/**
+ * The cover to show: the picture held in the browser, else the one fetched for
+ * exactly `request`, and nothing else. A cover fetched for another community or
+ * another version is never drawn, so choosing one community after another does
+ * not leave the first one's cover under the second while its own is on the way.
+ */
+export function coverSrc(
+  local: string | null | undefined,
+  stored: FetchedCover | null,
+  request: string | null,
+): string | null {
+  return local ?? (stored !== null && stored.request === request ? stored.url : null);
+}
+
 /**
  * A community's cover, or nothing while it has none or has not come. Only
  * the frame of the window's size class is fetched (the API needs the client
@@ -152,14 +179,18 @@ export function Cover({
 }>) {
   // A cover has one frame per size class (decision 0086), named as the class.
   const frame = useSizeClass();
-  const [fetchedSrc, setSrc] = useState<string | null>(null);
-  const src = local ?? fetchedSrc;
+  const [stored, setStored] = useState<FetchedCover | null>(null);
+  const src = coverSrc(
+    local,
+    stored,
+    version === null ? null : coverKey(kind, communityId, version, frame),
+  );
   useEffect(() => {
     let live = true;
-    if (version === null) setSrc(null);
-    else {
+    if (version !== null) {
+      const asked = coverKey(kind, communityId, version, frame);
       void pictureUrl(kind, communityId, version, frame).then((url) => {
-        if (live) setSrc(url);
+        if (live) setStored({ request: asked, url });
       });
     }
     return () => {

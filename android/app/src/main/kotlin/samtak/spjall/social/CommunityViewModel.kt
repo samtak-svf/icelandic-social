@@ -1,20 +1,17 @@
 package samtak.spjall.social
 
-import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
-import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import samtak.spjall.account.Problem
 import samtak.spjall.account.problem
+import samtak.spjall.base.BaseViewModel
+import samtak.spjall.base.ScreenState
 import samtak.spjall.conversation.Picked
 import samtak.spjall.core.Community
 import samtak.spjall.core.CommunityAudience
@@ -47,7 +44,7 @@ class CommunityViewModel(
     private val now: () -> Long = System::currentTimeMillis,
     private val io: CoroutineDispatcher = Dispatchers.IO,
     pollRule: PollRule = CorePollRule,
-) : ViewModel() {
+) : BaseViewModel<CommunityViewModel.State>(State(pollRule = pollRule), io) {
     data class State(
         val community: Community? = null,
         /** Newest first. */
@@ -59,7 +56,7 @@ class CommunityViewModel(
         val next: String? = null,
         val loaded: Boolean = false,
         /** Joining, leaving or the first load is on its way. */
-        val busy: Boolean = false,
+        override val busy: Boolean = false,
         val loadingMore: Boolean = false,
         /** The post being written. */
         val draft: String = "",
@@ -80,7 +77,7 @@ class CommunityViewModel(
         val noPostNotice: Int? = null,
         /** Until when (Unix ms) a moderator's decline keeps this account from asking again; null when it may ask. */
         val declinedUntil: ULong? = null,
-        val problem: Problem? = null,
+        override val problem: Problem? = null,
         /** The tab shown (0089). */
         val tab: CommunityTab = CommunityTab.DISCUSSION,
         /** The community's pictures, newest first, for Myndir; [galleryNext] is the cursor of the next page. */
@@ -97,13 +94,19 @@ class CommunityViewModel(
         /** The authors a moderator asked to see, by post; an empty name is an account without one (0091). */
         val revealed: Map<String, String> = emptyMap(),
         private val pollRule: PollRule = CorePollRule,
-    ) {
+    ) : ScreenState<State> {
         /** The posts a moderator featured, newest pin first. */
         val featured: List<Post> get() = community?.featured.orEmpty()
 
         /** Whether there is something to post: text, images, or both; a poll needs its text and valid options. */
         val postable: Boolean
             get() = if (poll != null) pollRule.valid(draft, poll) else draft.isNotBlank() || images.isNotEmpty()
+
+        override fun busy(on: Boolean): State = copy(busy = on)
+
+        override fun trouble(problem: Problem?): State = copy(problem = problem)
+
+        override fun answered(): State = copy(loaded = true)
     }
 
     /** Why an image did not go with the post. */
@@ -118,15 +121,10 @@ class CommunityViewModel(
         Invalid,
     }
 
-    private val _state = MutableStateFlow(State(pollRule = pollRule))
-    val state: StateFlow<State> = _state.asStateFlow()
-
     private val _deleted = Channel<Unit>(Channel.BUFFERED)
 
     /** The owner deleted the community: back to the list. */
     val deleted: Flow<Unit> = _deleted.receiveAsFlow()
-
-    private var failed: (() -> Unit)? = null
 
     /** The media id of each picked image already uploaded, by its local copy, so a retry does not send it again. */
     private val uploaded = ConcurrentHashMap<String, String>()
@@ -139,7 +137,7 @@ class CommunityViewModel(
     fun load() {
         perform(::load) {
             reload()
-            _state.update { it.copy(loaded = true) }
+            edit { it.copy(loaded = true) }
         }
     }
 
@@ -177,24 +175,24 @@ class CommunityViewModel(
     }
 
     fun onSearchQuery(query: String) {
-        _state.update { it.copy(searchQuery = query) }
+        edit { it.copy(searchQuery = query) }
     }
 
     fun searchPosts() {
         val query =
-            _state.value.searchQuery
+            current.searchQuery
                 .trim()
                 .ifEmpty { null }
-        if (_state.value.busy) return
-        _state.update { it.copy(loadingMore = false, busy = true, problem = null) }
+        if (current.busy) return
+        edit { it.copy(loadingMore = false, busy = true, problem = null) }
         viewModelScope.launch {
             try {
                 val page = withContext(io) { social.communityPosts(id, null, PAGE, query) }
                 failed = null
-                _state.update { it.copy(posts = page.posts, next = page.next, busy = false, loaded = true) }
+                edit { it.copy(posts = page.posts, next = page.next, busy = false, loaded = true) }
             } catch (e: CoreException) {
                 failed = ::searchPosts
-                _state.update { it.copy(busy = false, problem = e.problem()) }
+                edit { it.copy(busy = false, problem = e.problem()) }
             }
         }
     }
@@ -202,7 +200,7 @@ class CommunityViewModel(
     fun loadMembers() {
         perform(::loadMembers) {
             val members = social.communityMembers(id)
-            _state.update { it.copy(members = members) }
+            edit { it.copy(members = members) }
         }
     }
 
@@ -212,7 +210,7 @@ class CommunityViewModel(
     ) {
         perform({ setCommunityRole(accountId, role) }) {
             social.setCommunityRole(id, accountId, role)
-            _state.update { it.copy(members = social.communityMembers(id)) }
+            edit { it.copy(members = social.communityMembers(id)) }
         }
     }
 
@@ -223,7 +221,7 @@ class CommunityViewModel(
     ) {
         perform({ updateCommunity(name, description, audience) }) {
             val updated = social.updateCommunity(id, name, description, audience)
-            _state.update { it.copy(community = updated) }
+            edit { it.copy(community = updated) }
         }
     }
 
@@ -247,7 +245,7 @@ class CommunityViewModel(
     fun reframePictureRequest(temp: () -> File): FrameRequest =
         storedImageRequest(
             FrameKind.PHOTO,
-            { _state.value.community?.photoFrames },
+            { current.community?.photoFrames },
             { social.communityPictureSource(id, it) },
             temp,
         ) { framing ->
@@ -259,7 +257,7 @@ class CommunityViewModel(
     fun reframeCoverRequest(temp: () -> File): FrameRequest =
         storedImageRequest(
             FrameKind.COVER,
-            { _state.value.community?.coverFrames },
+            { current.community?.coverFrames },
             { social.communityCoverSource(id, it) },
             temp,
         ) { framing ->
@@ -268,7 +266,7 @@ class CommunityViewModel(
         }
 
     private fun refresh() {
-        _state.update { it.copy(community = social.community(id)) }
+        edit { it.copy(community = social.community(id)) }
     }
 
     fun removePicture() = removeImage(::removePicture, Social::removeCommunityAvatar)
@@ -281,30 +279,30 @@ class CommunityViewModel(
     ) {
         perform(again) {
             social.remove(id)
-            _state.update { it.copy(community = social.community(id)) }
+            edit { it.copy(community = social.community(id)) }
         }
     }
 
     fun loadModerationLog() {
         perform(::loadModerationLog) {
             val log = social.communityModerationLog(id, null, MODERATION_LOG_PAGE)
-            _state.update { it.copy(moderationLog = log.entries) }
+            edit { it.copy(moderationLog = log.entries) }
         }
     }
 
     fun draft(text: String) {
-        if (text.fitsIn(POST_LIMIT)) _state.update { it.copy(draft = text) }
+        if (text.fitsIn(POST_LIMIT)) edit { it.copy(draft = text) }
     }
 
     /** Whether another image fits in the post; when none does, says so instead of opening the picker. */
     fun roomForImage(): Boolean {
-        val room = _state.value.images.size < IMAGES
-        if (!room) _state.update { it.copy(imageNotice = ImageNotice.TooMany) }
+        val room = current.images.size < IMAGES
+        if (!room) edit { it.copy(imageNotice = ImageNotice.TooMany) }
         return room
     }
 
     /** How many more images the post takes. */
-    fun room(): Int = (IMAGES - _state.value.images.size).coerceAtLeast(0)
+    fun room(): Int = (IMAGES - current.images.size).coerceAtLeast(0)
 
     /** Adds the image picked to the post. */
     fun pick(picked: Picked) = pick(listOf(picked))
@@ -314,24 +312,24 @@ class CommunityViewModel(
      * they can be shown and sent. Those past the fourth, or over the server's limit, are left out with a notice.
      */
     fun pick(picked: List<Picked>) {
-        if (picked.isEmpty() || _state.value.poll != null || !roomForImage()) return
+        if (picked.isEmpty() || current.poll != null || !roomForImage()) return
         val (taken, notice) = fitting(picked, room())
-        _state.update { it.copy(imageNotice = notice) }
+        edit { it.copy(imageNotice = notice) }
         if (taken.isEmpty()) return
         viewModelScope.launch {
             copyPicked(
                 taken,
                 io,
-                have = { _state.value.images.size },
-                add = { path -> _state.update { it.copy(images = it.images + path) } },
-                failed = { _state.update { it.copy(imageNotice = ImageNotice.Invalid) } },
+                have = { current.images.size },
+                add = { path -> edit { it.copy(images = it.images + path) } },
+                failed = { edit { it.copy(imageNotice = ImageNotice.Invalid) } },
             )
         }
     }
 
     /** Takes a picked image out of the post. */
     fun unpick(path: String) {
-        _state.update { it.copy(images = it.images - path, imageNotice = null) }
+        edit { it.copy(images = it.images - path, imageNotice = null) }
         uploaded -= path
         viewModelScope.launch { withContext(io) { File(path).delete() } }
     }
@@ -341,10 +339,10 @@ class CommunityViewModel(
      * list and the box empties. An image the server refuses is named, and nothing is posted.
      */
     fun publish() {
-        val state = _state.value
+        val state = current
         val body = state.draft.trim()
         if (!state.postable || state.publishing || !state.writes) return
-        _state.update { it.copy(publishing = true, problem = null, imageNotice = null) }
+        edit { it.copy(publishing = true, problem = null, imageNotice = null) }
         viewModelScope.launch {
             try {
                 val post =
@@ -364,7 +362,7 @@ class CommunityViewModel(
                 failed = null
                 withContext(io) { state.images.forEach { File(it).delete() } }
                 uploaded.clear()
-                _state.update {
+                edit {
                     it.copy(
                         posts = listOf(post) + it.posts,
                         draft = "",
@@ -379,7 +377,7 @@ class CommunityViewModel(
                 // A media id the server no longer knows (over a day old): the next try uploads again.
                 if ((e as? CoreException.Refused)?.code == "invalid_media") uploaded.clear()
                 failed = if (notice == null) ::publish else null
-                _state.update {
+                edit {
                     if (notice == null) {
                         it.copy(publishing = false, problem = e.problem())
                     } else {
@@ -395,9 +393,9 @@ class CommunityViewModel(
         viewModelScope.launch {
             try {
                 withContext(io) { social.deletePost(postId) }
-                _state.update { s -> s.copy(posts = s.posts.without(postId)) }
+                edit { s -> s.copy(posts = s.posts.without(postId)) }
             } catch (e: CoreException) {
-                _state.update { it.copy(problem = e.problem()) }
+                edit { it.copy(problem = e.problem()) }
             }
         }
     }
@@ -407,13 +405,13 @@ class CommunityViewModel(
         postId: String,
         emoji: String,
     ) {
-        val post = _state.value.posts.firstOrNull { it.postId == postId } ?: return
-        if (postId in _state.value.reacting) return
-        _state.update { it.copy(reacting = it.reacting + postId, problem = null) }
+        val post = current.posts.firstOrNull { it.postId == postId } ?: return
+        if (postId in current.reacting) return
+        edit { it.copy(reacting = it.reacting + postId, problem = null) }
         viewModelScope.launch {
             try {
                 val changed = withContext(io) { social.toggle(post, emoji) }
-                _state.update { s ->
+                edit { s ->
                     s.copy(
                         posts =
                             s.posts.map {
@@ -429,7 +427,7 @@ class CommunityViewModel(
                     )
                 }
             } catch (e: CoreException) {
-                _state.update { it.copy(reacting = it.reacting - postId, problem = e.problem()) }
+                edit { it.copy(reacting = it.reacting - postId, problem = e.problem()) }
             }
         }
     }
@@ -447,23 +445,23 @@ class CommunityViewModel(
 
     /** Shows [tab]; Myndir reads its first page and Meðlimir the members when they are first opened. */
     fun selectTab(tab: CommunityTab) {
-        _state.update { it.copy(tab = tab) }
+        edit { it.copy(tab = tab) }
         when (tab) {
-            CommunityTab.IMAGES -> if (!_state.value.galleryLoaded) loadGallery()
-            CommunityTab.MEMBERS -> if (_state.value.members.isEmpty()) loadMembers()
+            CommunityTab.IMAGES -> if (!current.galleryLoaded) loadGallery()
+            CommunityTab.MEMBERS -> if (current.members.isEmpty()) loadMembers()
             else -> Unit
         }
     }
 
     /** The first page of the community's pictures. */
     fun loadGallery() {
-        if (_state.value.galleryLoading) return
-        _state.update { it.copy(galleryLoading = true, problem = null) }
+        if (current.galleryLoading) return
+        edit { it.copy(galleryLoading = true, problem = null) }
         viewModelScope.launch {
             try {
                 val page = withContext(io) { social.communityImages(id, null, GALLERY_PAGE) }
                 failed = null
-                _state.update {
+                edit {
                     it.copy(
                         gallery = page.images,
                         galleryNext = page.next,
@@ -473,45 +471,44 @@ class CommunityViewModel(
                 }
             } catch (e: CoreException) {
                 failed = ::loadGallery
-                _state.update { it.copy(galleryLoading = false, problem = e.problem()) }
+                edit { it.copy(galleryLoading = false, problem = e.problem()) }
             }
         }
     }
 
     /** The end of the grid came into view: the next, older page. */
     fun moreGallery() {
-        val state = _state.value
+        val state = current
         val next = state.galleryNext ?: return
         if (state.galleryLoading) return
-        _state.update { it.copy(galleryLoading = true) }
+        edit { it.copy(galleryLoading = true) }
         viewModelScope.launch {
             try {
                 val page = withContext(io) { social.communityImages(id, next, GALLERY_PAGE) }
-                _state.update {
+                edit {
                     it.copy(gallery = it.gallery + page.images, galleryNext = page.next, galleryLoading = false)
                 }
             } catch (e: CoreException) {
                 failed = ::moreGallery
-                _state.update { it.copy(galleryLoading = false, problem = e.problem()) }
+                edit { it.copy(galleryLoading = false, problem = e.problem()) }
             }
         }
     }
 
     /** Turns the post being written into a poll with two empty options, or back into a plain post. */
-    fun togglePoll() = _state.update { it.copy(poll = PollDraft.toggled(it.poll, it.images.isNotEmpty())) }
+    fun togglePoll() = edit { it.copy(poll = PollDraft.toggled(it.poll, it.images.isNotEmpty())) }
 
     fun pollOption(
         index: Int,
         text: String,
-    ) = _state.update { s -> s.poll?.let { s.copy(poll = PollDraft.withOption(it, index, text)) } ?: s }
+    ) = edit { s -> s.poll?.let { s.copy(poll = PollDraft.withOption(it, index, text)) } ?: s }
 
-    fun addPollOption() = _state.update { s -> s.poll?.let { s.copy(poll = PollDraft.added(it)) } ?: s }
+    fun addPollOption() = edit { s -> s.poll?.let { s.copy(poll = PollDraft.added(it)) } ?: s }
 
-    fun removePollOption(index: Int) =
-        _state.update { s -> s.poll?.let { s.copy(poll = PollDraft.removed(it, index)) } ?: s }
+    fun removePollOption(index: Int) = edit { s -> s.poll?.let { s.copy(poll = PollDraft.removed(it, index)) } ?: s }
 
     fun setAnonymous(on: Boolean) {
-        _state.update { it.copy(anonymous = on) }
+        edit { it.copy(anonymous = on) }
     }
 
     /** Votes for an option of the poll on [postId], or changes the vote to it. */
@@ -529,11 +526,11 @@ class CommunityViewModel(
         call: () -> Post,
     ) = viewModelScope.answerPoll(
         io,
-        busy = postId in _state.value.answering,
-        begin = { _state.update { it.copy(answering = it.answering + postId, problem = null) } },
+        busy = postId in current.answering,
+        begin = { edit { it.copy(answering = it.answering + postId, problem = null) } },
         call = call,
     ) { changed, problem ->
-        _state.update { s ->
+        edit { s ->
             val done = s.copy(answering = s.answering - postId)
             if (changed != null) done.replacing(changed) else done.copy(problem = problem)
         }
@@ -544,9 +541,9 @@ class CommunityViewModel(
         viewModelScope.launch {
             try {
                 val author = withContext(io) { social.revealAuthor(postId) }
-                _state.update { it.copy(revealed = it.revealed + (postId to author.name.orEmpty())) }
+                edit { it.copy(revealed = it.revealed + (postId to author.name.orEmpty())) }
             } catch (e: CoreException) {
-                _state.update { it.copy(problem = e.problem()) }
+                edit { it.copy(problem = e.problem()) }
             }
         }
     }
@@ -555,7 +552,7 @@ class CommunityViewModel(
     fun setAnonymousPosts(on: Boolean) {
         perform({ setAnonymousPosts(on) }) {
             val updated = social.setAnonymousPosts(id, on)
-            _state.update { it.copy(community = updated.copy(featured = it.featured)) }
+            edit { it.copy(community = updated.copy(featured = it.featured)) }
         }
     }
 
@@ -568,47 +565,43 @@ class CommunityViewModel(
         viewModelScope.launch {
             try {
                 withContext(io) { social.report(target, reason, note.trim()) }
-                _state.update { it.copy(reported = it.reported + target.id) }
+                edit { it.copy(reported = it.reported + target.id) }
             } catch (e: CoreException) {
-                _state.update { it.copy(problem = e.problem()) }
+                edit { it.copy(problem = e.problem()) }
             }
         }
     }
 
     /** The end of the list came into view: the next, older page. */
     fun more() {
-        val state = _state.value
+        val state = current
         val next = state.next ?: return
         if (state.loadingMore || state.busy) return
-        _state.update { it.copy(loadingMore = true) }
+        edit { it.copy(loadingMore = true) }
         viewModelScope.launch {
             try {
                 val query =
-                    _state.value.searchQuery
+                    current.searchQuery
                         .trim()
                         .ifEmpty { null }
                 val page = withContext(io) { social.communityPosts(id, next, PAGE, query) }
-                _state.update { it.copy(posts = it.posts + page.posts, next = page.next, loadingMore = false) }
+                edit { it.copy(posts = it.posts + page.posts, next = page.next, loadingMore = false) }
             } catch (e: CoreException) {
                 failed = ::more
-                _state.update { it.copy(loadingMore = false, problem = e.problem()) }
+                edit { it.copy(loadingMore = false, problem = e.problem()) }
             }
         }
     }
 
-    fun retry() {
-        failed?.invoke()
-    }
-
     private fun reload() {
         val community = social.community(id)
-        val me = _state.value.me ?: social.me()
+        val me = current.me ?: social.me()
         val query =
-            _state.value.searchQuery
+            current.searchQuery
                 .trim()
                 .ifEmpty { null }
         val page = if (community.reads) social.communityPosts(id, null, PAGE, query) else null
-        _state.update {
+        edit {
             it.copy(
                 community = community,
                 me = me,
@@ -629,27 +622,9 @@ class CommunityViewModel(
 
     /** The member list as the community now allows it; a refused read leaves it empty, never an error. */
     private fun reloadMembers() {
-        val readable = _state.value.community?.reads == true
+        val readable = current.community?.reads == true
         val members = if (readable) runCatching { social.communityMembers(id) }.getOrNull() else null
-        _state.update { it.copy(members = members.orEmpty()) }
-    }
-
-    private fun perform(
-        again: () -> Unit,
-        action: () -> Unit,
-    ) {
-        if (_state.value.busy) return
-        _state.update { it.copy(busy = true, problem = null) }
-        viewModelScope.launch {
-            try {
-                withContext(io) { action() }
-                failed = null
-                _state.update { it.copy(busy = false) }
-            } catch (e: CoreException) {
-                failed = again
-                _state.update { it.copy(busy = false, loaded = true, problem = e.problem()) }
-            }
-        }
+        edit { it.copy(members = members.orEmpty()) }
     }
 }
 

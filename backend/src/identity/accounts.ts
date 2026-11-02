@@ -41,10 +41,14 @@ export async function activeDevicesOf(
     )
     .bind(JSON.stringify(accounts))
     .all<{ accountId: string; deviceId: string }>();
-  return accounts.map((accountId) => ({
-    accountId,
-    deviceIds: results.filter((r) => r.accountId === accountId).map((r) => r.deviceId),
-  }));
+  // One pass over the rows: the order is the query's, by `device_id`, in every list.
+  const byAccount = new Map<string, string[]>();
+  for (const { accountId, deviceId } of results) {
+    const deviceIds = byAccount.get(accountId);
+    if (deviceIds) deviceIds.push(deviceId);
+    else byAccount.set(accountId, [deviceId]);
+  }
+  return accounts.map((accountId) => ({ accountId, deviceIds: byAccount.get(accountId) ?? [] }));
 }
 
 /**

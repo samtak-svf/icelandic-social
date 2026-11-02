@@ -191,6 +191,42 @@ async function anonymousPosts(env: Env, ids: string[]): Promise<Set<string>> {
   return new Set(results.map((r) => r.post_id));
 }
 
+/**
+ * The rows of one page of a queue, oldest first. The queue's key is an equality in
+ * its own statement, over an index (`reports_by_community`, `reports_to_platform`);
+ * one statement for both queues left the planner a scan of `reports_once` and a
+ * sort of the whole table.
+ */
+async function pageOf(
+  env: Env,
+  queue: { sql: string; bind: unknown[] },
+  query: { state: "open" | "closed"; after?: string; limit: number },
+  after: { t: number; id: string } | undefined,
+): Promise<Row[]> {
+  // Never the reporter: no column of it is read.
+  const { results } = await db(env)
+    .prepare(
+      `SELECT report_id, community_id, target_kind, target_id, target_account, reason, note,
+              state, created_at, closed_at, closed_by, decision, resolution
+         FROM reports
+        WHERE ${queue.sql}
+          AND state = ?
+          AND (? IS NULL OR created_at > ? OR (created_at = ? AND report_id > ?))
+        ORDER BY created_at, report_id LIMIT ?`,
+    )
+    .bind(
+      ...queue.bind,
+      query.state,
+      after?.t ?? null,
+      after?.t ?? null,
+      after?.t ?? null,
+      after?.id ?? null,
+      query.limit + 1,
+    )
+    .all<Row>();
+  return results;
+}
+
 /** A page of a queue, oldest first: a community's, or with null Samtak's. */
 export async function reportPage(
   env: Env,
@@ -198,30 +234,17 @@ export async function reportPage(
   query: { state: "open" | "closed"; after?: string; limit: number },
 ) {
   const cut = query.after?.indexOf("-") ?? -1;
-  const after = query.after && {
-    t: Number(query.after.slice(0, cut)),
-    id: query.after.slice(cut + 1),
-  };
-  // Never the reporter: no column of it is read.
-  const { results } = await db(env)
-    .prepare(
-      `SELECT report_id, community_id, target_kind, target_id, target_account, reason, note,
-              state, created_at, closed_at, closed_by, decision, resolution
-         FROM reports
-        WHERE (CASE WHEN ?1 IS NULL THEN to_platform = 1
-                    ELSE community_id = ?1 AND to_platform = 0 END)
-          AND state = ?2
-          AND (?3 IS NULL OR created_at > ?3 OR (created_at = ?3 AND report_id > ?4))
-        ORDER BY created_at, report_id LIMIT ?5`,
-    )
-    .bind(
-      communityId,
-      query.state,
-      after ? after.t : null,
-      after ? after.id : null,
-      query.limit + 1,
-    )
-    .all<Row>();
+  const after = query.after
+    ? { t: Number(query.after.slice(0, cut)), id: query.after.slice(cut + 1) }
+    : undefined;
+  const results = await pageOf(
+    env,
+    communityId === null
+      ? { sql: "to_platform = 1", bind: [] }
+      : { sql: "community_id = ? AND to_platform = 0", bind: [communityId] },
+    query,
+    after,
+  );
   const page = results.slice(0, query.limit);
   const names = await authors(
     env,
@@ -246,6 +269,28 @@ export async function reportPage(
         )
       : new Set<string>();
   const walls = await wallsAmong(env, [...new Set(page.flatMap((r) => r.community_id ?? []))]);
+  // A page often holds several reports on one post, or on one account in one
+  // community: each target is asked once and the reports on it share the answer.
+  const standings = new Map<string, Promise<(typeof TARGET_STANDINGS)[number] | null>>();
+  const states = new Map<string, Promise<(typeof TARGET_STATES)[number] | null>>();
+  const standingFor = (r: Row) => {
+    const key = `${r.target_kind}:${r.community_id ?? ""}:${r.target_account ?? ""}`;
+    let answer = standings.get(key);
+    if (!answer) {
+      answer = standingOf(env, r, known(r.target_account), walls);
+      standings.set(key, answer);
+    }
+    return answer;
+  };
+  const stateFor = (r: Row) => {
+    const key = `${r.target_kind}:${r.target_id}`;
+    let answer = states.get(key);
+    if (!answer) {
+      answer = stateOf(env, r);
+      states.set(key, answer);
+    }
+    return answer;
+  };
   const last = page.at(-1);
   return {
     reports: await Promise.all(
@@ -266,10 +311,8 @@ export async function reportPage(
         resolution: r.resolution,
         closedBy: named(r.closed_by),
         // An anonymous post's author stands nowhere a report shows (decision 0091).
-        targetStanding: anonymous.has(r.target_id)
-          ? null
-          : await standingOf(env, r, known(r.target_account), walls),
-        targetState: await stateOf(env, r),
+        targetStanding: anonymous.has(r.target_id) ? null : await standingFor(r),
+        targetState: await stateFor(r),
         // A comment's report carries its image, so the moderator sees it (decision 0082).
         targetMedia: (media.get(r.target_id) ?? []).map((m) => m.mediaId),
       })),

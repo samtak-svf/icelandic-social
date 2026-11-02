@@ -8,7 +8,7 @@ import os
 /// first. The bell shows how many are unseen: opening the list marks them seen, and only opening a row (or
 /// "mark all read") reads it. Rows made since the last look are listed apart, as new.
 @MainActor @Observable
-final class NotificationsModel {
+final class NotificationsModel: ScreenModel {
     private(set) var notifications: [SocialNotification] = []
     /// How many are unread, as the server counts them.
     private(set) var unread = 0
@@ -19,13 +19,13 @@ final class NotificationsModel {
     private(set) var seenAt: UInt64?
     /// The cursor of the next, older page, nil on the last.
     private(set) var next: String?
-    private(set) var loaded = false
-    private(set) var busy = false
-    private(set) var problem: Problem?
+    var loaded = false
+    var busy = false
+    var problem: Problem?
 
     private let social: Social
     private let cancel: @Sendable ([String]) async -> Void
-    private var failed: (() async -> Void)?
+    var failed: (() async -> Void)?
     /// This visit has marked the list seen, so a page loaded after keeps the boundary from before.
     private var visiting = false
 
@@ -186,24 +186,4 @@ final class NotificationsModel {
 
     /// A page of notifications.
     private nonisolated static let page: UInt32 = 30
-
-    /// Tries the action that failed again.
-    func retry() async {
-        await failed?()
-    }
-
-    private func perform(again: @escaping () async -> Void, _ action: () async throws -> Void) async {
-        guard !busy else { return }
-        busy = true
-        problem = nil
-        do {
-            try await action()
-            failed = nil
-        } catch {
-            failed = again
-            loaded = true
-            problem = Problem(error)
-        }
-        busy = false
-    }
 }

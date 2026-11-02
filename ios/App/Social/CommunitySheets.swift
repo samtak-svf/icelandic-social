@@ -40,11 +40,7 @@ struct CommunityInfoSheet: View {
                     }
                 }
             }
-            .safeAreaInset(edge: .top) {
-                if let problem = model.problem {
-                    ProblemCard(problem: problem) { Task { await model.retry() } }.padding(16)
-                }
-            }
+            .problemCard(model.problem) { Task { await model.retry() } }
             .task { await model.loadMembers() }
         }
         .presentationDetents([.medium, .large])
@@ -366,11 +362,7 @@ private struct CommunityMembersView: View {
         }
         .navigationTitle(Text("community_members_title"))
         .navigationBarTitleDisplayMode(.inline)
-        .safeAreaInset(edge: .top) {
-            if let problem = model.problem {
-                ProblemCard(problem: problem) { Task { await model.retry() } }.padding(16)
-            }
-        }
+        .problemCard(model.problem) { Task { await model.retry() } }
         .task { await model.loadMembers() }
     }
 
@@ -416,11 +408,7 @@ private struct ModerationLogView: View {
         .background(BrandTokens.Colors.bg)
         .navigationTitle(Text("moderation_log_title"))
         .navigationBarTitleDisplayMode(.inline)
-        .safeAreaInset(edge: .top) {
-            if let problem = model.problem {
-                ProblemCard(problem: problem) { Task { await model.retry() } }.padding(16)
-            }
-        }
+        .problemCard(model.problem) { Task { await model.retry() } }
         .task { await model.loadLog() }
     }
 }
