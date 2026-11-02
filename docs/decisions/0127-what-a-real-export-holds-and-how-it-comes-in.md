@@ -31,6 +31,14 @@ Note: 158 of the 224 entries in the other-pages file also sit in the posts file,
 counted under this class in the first measurement, which also looked at titles. The build counts it
 structurally.
 
+Note, 2026-11-02: the table is the first measurement, over all 6293 entries with the file's repeats
+counted each time. The built parser, run on the same file at #541, counts each of the 5871 different
+entries once: own 2698, bare link 931, someone else's timeline 111, hidden 12, video 115, someone
+else's image 177, nothing 1827. The 422 between the two totals are the entries the file repeats. The
+published import holds 2700 own posts: 2698 entries, one of them with 41 images, which comes in as
+three posts of at most 20 under the same date. With the 283 posts of album photos that is the 2983 on
+production.
+
 **Someone else's image never comes in.** 0119 rules this out, and today's parser breaks that rule:
 it reads every image in an entry, so a reshare with no words would land on the person's wall as if it
 were theirs. An image the person did not upload is dropped even when the entry has their own words,
