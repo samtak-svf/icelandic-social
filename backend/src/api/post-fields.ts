@@ -6,7 +6,7 @@ import { POLL_OPTIONS } from "./poll-schema.ts";
 // What a post is made of, shared by the routes of a community and of a wall.
 
 /** How many images a post holds. */
-export const MAX_POST_MEDIA = LIMITS.postMediaCount;
+const MAX_POST_MEDIA = LIMITS.postMediaCount;
 
 /** How long a post's text is, in characters. */
 const MAX_POST_BODY = LIMITS.postBodyChars;

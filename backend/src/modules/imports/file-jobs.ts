@@ -1,10 +1,9 @@
 import { db, mediaBucket } from "../../env/index.ts";
 import type { ItemClass } from "../../api/imports.ts";
-import { MAX_POST_MEDIA } from "../../api/post-fields.ts";
 import { MAX_SOCIAL_UPLOAD } from "../../api/social.ts";
 import { log } from "../../shared/log.ts";
 import { type Handler, job } from "../jobs/index.ts";
-import { deleteBytes, importPost, keyOf, type ImportSource } from "./core.ts";
+import { deleteBytes, importPost, keyOf, MAX_IMPORTED_IMAGES, type ImportSource } from "./core.ts";
 import { readContext } from "./export-context.ts";
 import { type ParsedItem, parseExportFile, POSTS_FILE } from "./export-file.ts";
 import { beginSync, PARSE, PUBLISH } from "./file.ts";
@@ -23,6 +22,8 @@ const MAX_JSON = 32 * 1024 * 1024;
 const INSERT_BATCH = 50;
 /** Posts one publish run brings in, within a run's subrequests. */
 const PUBLISHED_PER_RUN = 20;
+/** Images one publish run carries; each is a read and a write, so a post of many takes a run's room. */
+const IMAGES_PER_RUN = 80;
 
 const basename = (name: string) => name.slice(name.lastIndexOf("/") + 1);
 
@@ -84,15 +85,43 @@ async function failParse(env: Env, importId: string, failure: string): Promise<v
   log("imports.parse_failed", { code: failure });
 }
 
-/** The post as it will arrive, or null when nothing of it would. */
-function arriving(item: ParsedItem, entries: Map<string, ZipEntry>): Arriving | null {
-  const present = item.images.filter((path) => {
+/**
+ * The id of the post that continues `id`. An excluded id is at most 64 characters, the
+ * length of a hash, so the number takes the place of the hash's last ones.
+ */
+const continuedId = (id: string, part: number) => {
+  const number = `-${part}`;
+  return `${id.slice(0, 64 - number.length)}${number}`;
+};
+
+/**
+ * The post as it will arrive: nothing when nothing of it would, and more than one post
+ * when its images are more than one holds (decision 0127), the rest under the same date.
+ */
+function arriving(item: ParsedItem, entries: Map<string, ZipEntry>): Arriving[] {
+  const images = item.images.filter((path) => {
     const entry = entries.get(path);
     return entry !== undefined && entry.size <= MAX_SOCIAL_UPLOAD;
   });
-  const images = present.slice(0, MAX_POST_MEDIA);
-  if (item.body === "" && images.length === 0) return null;
-  return { ...item, images, imagesLost: item.images.length - images.length };
+  if (item.body === "" && images.length === 0) return [];
+  const first: Arriving = {
+    ...item,
+    images: images.slice(0, MAX_IMPORTED_IMAGES),
+    imagesLost: item.images.length - images.length,
+  };
+  const rest: Arriving[] = [];
+  for (let at = MAX_IMPORTED_IMAGES; at < images.length; at += MAX_IMPORTED_IMAGES) {
+    rest.push({
+      ...item,
+      id: continuedId(item.id, rest.length + 2),
+      body: "",
+      images: images.slice(at, at + MAX_IMPORTED_IMAGES),
+      hasVideo: false,
+      foreignImages: 0,
+      imagesLost: 0,
+    });
+  }
+  return [first, ...rest];
 }
 
 /** A parsed entry from the ZIP, undefined when it is not JSON; an archive failure ends the parse. */
@@ -136,9 +165,9 @@ async function parseFile(env: Env, importId: string): Promise<void> {
       .filter((item) => firstTime(item.id))
       .flatMap((item) => {
         lost.foreignImages += item.foreignImages;
-        const row = arriving(item, entries);
-        if (row === null) lost.empty += 1;
-        return row === null ? [] : [row];
+        const arrives = arriving(item, entries);
+        if (arrives.length === 0) lost.empty += 1;
+        return arrives;
       });
     for (let at = 0; at < rows.length; at += INSERT_BATCH) {
       await db(env).batch(
@@ -189,6 +218,16 @@ type Chosen = {
   link: string | null;
   class: ItemClass;
 };
+
+/** As many of `rows` as a run's images allow, and always one: it would otherwise never come. */
+export function aRun<Row extends { images: string }>(rows: Row[]): Row[] {
+  let images = 0;
+  const over = rows.findIndex((row, at) => {
+    images += (JSON.parse(row.images) as string[]).length;
+    return at > 0 && images > IMAGES_PER_RUN;
+  });
+  return over === -1 ? rows : rows.slice(0, over);
+}
 
 /** The image loaders of a post: those whose entry is in the ZIP, and within what a post takes. */
 function loadersOf(
@@ -241,7 +280,7 @@ const publish: Handler = async (env, _key, payload) => {
       classes: string;
     }>();
   if (!row) return;
-  const { results } = await db(env)
+  const { results: chosen } = await db(env)
     .prepare(
       `SELECT item_id AS id, at, body, images, has_video AS hasVideo, link, class
          FROM import_file_items
@@ -253,7 +292,9 @@ const publish: Handler = async (env, _key, payload) => {
     )
     .bind(importId, row.fromAt, row.toAt, row.excluded, row.classes, PUBLISHED_PER_RUN)
     .all<Chosen>();
-  if (results.length === 0) return finish(env, importId);
+  if (chosen.length === 0) return finish(env, importId);
+  const results = aRun(chosen);
+  const last = chosen.length < PUBLISHED_PER_RUN && results.length === chosen.length;
 
   const imagesOf = row.kind !== "file" ? storedImages(env) : await zipImages(env, importId);
   const owner: ImportSource = {
@@ -291,10 +332,10 @@ const publish: Handler = async (env, _key, payload) => {
           WHERE import_id = ? AND item_id IN (SELECT value FROM json_each(?))`,
       )
       .bind(importId, JSON.stringify(results.map((r) => r.id))),
-    ...(results.length === PUBLISHED_PER_RUN ? [next] : []),
+    ...(last ? [] : [next]),
   ]);
   // A short run was the last: the next one would find nothing, so finish here.
-  if (results.length < PUBLISHED_PER_RUN) await finish(env, importId);
+  if (last) await finish(env, importId);
 };
 
 /** The handlers of the file import's jobs. */

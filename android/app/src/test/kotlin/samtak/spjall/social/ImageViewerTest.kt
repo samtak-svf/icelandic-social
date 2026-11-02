@@ -8,6 +8,7 @@ import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeLeft
@@ -76,6 +77,29 @@ class ImageViewerTest {
     }
 
     private fun opened() = compose.onAllNodesWithContentDescription(viewer)
+
+    @Test
+    fun aPostShowsFourImagesAndHowManyMoreAndTheViewerHasThemAll() {
+        show(6)
+        compose.onNodeWithContentDescription(numbered(4, 6)).assertExists()
+        compose.onNodeWithContentDescription(numbered(5, 6)).assertDoesNotExist()
+        compose.onNodeWithText(context.getString(R.string.post_images_more, 2)).assertExists()
+        compose.onNodeWithContentDescription(numbered(4, 6)).performClick()
+        compose.waitForIdle()
+        opened().assertCountEquals(1)
+        repeat(2) {
+            compose.onNode(hasContentDescription(viewer)).performTouchInput { swipeLeft() }
+            compose.waitForIdle()
+        }
+        compose.onNodeWithContentDescription(numbered(6, 6)).assertExists()
+    }
+
+    @Test
+    fun aPostOfFourImagesSaysNothingMore() {
+        show(4)
+        compose.onNodeWithContentDescription(numbered(4, 4)).assertExists()
+        compose.onNodeWithText(context.getString(R.string.post_images_more, 0)).assertDoesNotExist()
+    }
 
     @Test
     fun aTapOnAnImageOpensTheViewerAtThatImage() {

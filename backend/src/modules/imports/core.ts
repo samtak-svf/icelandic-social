@@ -1,5 +1,4 @@
 import type { ItemClass } from "../../api/imports.ts";
-import { MAX_POST_MEDIA } from "../../api/post-fields.ts";
 import { db, mediaBucket } from "../../env/index.ts";
 import { toHex } from "../../shared/bytes.ts";
 import { log } from "../../shared/log.ts";
@@ -178,6 +177,9 @@ const release = (env: Env, source: ImportSource, postId: string) =>
     .bind(source.accountId, postId)
     .run();
 
+/** The images one imported post keeps (decision 0127); the composer's limit is its own. */
+export const MAX_IMPORTED_IMAGES = 20;
+
 /** Copies the images a post holds into our own bucket (decision 0120); those that were images. */
 async function carryImages(
   env: Env,
@@ -186,7 +188,7 @@ async function carryImages(
   images: SourcePost["images"],
 ): Promise<string[]> {
   const carried: string[] = [];
-  for (const load of images.slice(0, MAX_POST_MEDIA)) {
+  for (const load of images.slice(0, MAX_IMPORTED_IMAGES)) {
     const bytes = await load();
     const stored = await upload(
       env,

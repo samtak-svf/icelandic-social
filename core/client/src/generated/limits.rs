@@ -33,6 +33,9 @@ pub const POLL_OPTION_CHARS: usize = 80;
 /// Images on a post (decision 0065).
 pub const POST_MEDIA_COUNT: usize = 4;
 
+/// Images a post shows before how many more; an imported post can hold more than a new one (decision 0127).
+pub const POST_IMAGES_SHOWN: usize = 4;
+
 /// Images on a comment (decision 0082).
 pub const COMMENT_MEDIA_COUNT: usize = 1;
 

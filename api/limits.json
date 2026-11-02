@@ -38,6 +38,12 @@
       "doc": "Images on a post (decision 0065)."
     },
     {
+      "name": "postImagesShown",
+      "unit": "count",
+      "value": 4,
+      "doc": "Images a post shows before how many more; an imported post can hold more than a new one (decision 0127)."
+    },
+    {
       "name": "commentMediaCount",
       "unit": "count",
       "value": 1,

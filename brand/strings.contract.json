@@ -1958,6 +1958,13 @@
         "count": "int"
       }
     },
+    "post_images_more": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "On the last image a post shows: how many more its viewer holds (docs/decisions/0127). A screen reader skips it, since that image says it is number N of how many.",
+      "placeholders": {
+        "count": "int"
+      }
+    },
     "post_title": {
       "surfaces": ["android", "ios", "web"],
       "description": "Title of the post screen's top bar (#356)."

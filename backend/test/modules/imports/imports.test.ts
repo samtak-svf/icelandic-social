@@ -175,10 +175,24 @@ describe("importing a post", () => {
       "backlog",
     );
     expect(result.outcome).toBe("imported");
-    // Four fit in a post; of the first four one is no image.
-    expect(result).toMatchObject({ imagesLeftOut: 3 });
+    // Past the composer's limit they all come, and only the one that is no image stays out.
+    expect(result).toMatchObject({ imagesLeftOut: 1 });
     const [read] = (await wall(owner, owner)).posts;
-    expect(read?.media).toHaveLength(3);
+    expect(read?.media).toHaveLength(5);
+  });
+
+  it("carries no more images than a post holds", async () => {
+    const owner = await person("eigandi");
+    const image = await png(2, 2);
+    const result = await comeIn(
+      E,
+      await opened(owner),
+      post({ images: Array.from({ length: 22 }, () => async () => image) }),
+      "backlog",
+    );
+    expect(result).toMatchObject({ imagesLeftOut: 2 });
+    const [read] = (await wall(owner, owner)).posts;
+    expect(read?.media).toHaveLength(20);
   });
 
   it("does not load the images of a post it already has", async () => {

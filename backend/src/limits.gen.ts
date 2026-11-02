@@ -22,6 +22,8 @@ export const LIMITS = {
   pollOptionChars: 80,
   /** Images on a post (decision 0065). */
   postMediaCount: 4,
+  /** Images a post shows before how many more; an imported post can hold more than a new one (decision 0127). */
+  postImagesShown: 4,
   /** Images on a comment (decision 0082). */
   commentMediaCount: 1,
   /** The fewest options a poll holds. */

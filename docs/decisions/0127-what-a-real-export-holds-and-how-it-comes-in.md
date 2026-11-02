@@ -1,6 +1,6 @@
 # 0127. What a real export holds, and how it comes in
 
-- Status: accepted; implemented in part (sorting, the truthful preview, whole text and captions, held until opened), the rest designed, not yet implemented (#461)
+- Status: accepted; implemented in part (sorting, the truthful preview, whole text and captions, held until opened, more than four images), the rest designed, not yet implemented (#461)
 - Date: 2026-11-01
 - Decided by: the overseer, on Guðröður Atli Jónsson's question of how best to bring in everything an export offers; his to overturn
 - Amends: [0119](0119-importing-a-persons-own-content.md), [0120](0120-feeding-the-import-from-public-profiles-and-pages.md) (the export file only)

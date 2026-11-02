@@ -4969,6 +4969,18 @@
         }
       }
     },
+    "post_images_more": {
+      "comment": "On the last image a post shows: how many more its viewer holds (docs/decisions/0127). A screen reader skips it, since that image says it is number N of how many.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "+%1$lld"
+          }
+        }
+      }
+    },
     "post_title": {
       "comment": "Title of the post screen's top bar (#356).",
       "extractionState": "manual",
