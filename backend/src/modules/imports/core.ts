@@ -135,12 +135,33 @@ async function claim(
   const held = await db(env)
     .prepare(
       `SELECT source_post_id AS sourcePostId, post_id AS postId, claimed_at AS claimedAt,
-              done_at AS doneAt
+              done_at AS doneAt, import_id AS importId
          FROM imported_posts
-        WHERE account_id = ?1 AND source = ?2 AND (source_post_id = ?3 OR fingerprint = ?4)`,
+        WHERE account_id = ?1 AND source = ?2 AND (source_post_id = ?3 OR fingerprint = ?4)
+        ORDER BY source_post_id = ?3 DESC`,
     )
     .bind(source.accountId, source.source, sourcePostId, fingerprint)
-    .first<{ sourcePostId: string; postId: string; claimedAt: number; doneAt: number | null }>();
+    .first<{
+      sourcePostId: string;
+      postId: string;
+      claimedAt: number;
+      doneAt: number | null;
+      importId: string | null;
+    }>();
+  // One import names each of its posts once, so another id with this date and text is another
+  // post: an album's photos taken in one second, split across posts under one name. The
+  // fingerprint is for a second route, and only the first of them can hold it.
+  if (held && held.sourcePostId !== sourcePostId && held.importId === source.importId) {
+    await db(env)
+      .prepare(
+        `INSERT INTO imported_posts
+           (account_id, source, source_post_id, fingerprint, import_id, post_id, claimed_at)
+         VALUES (?, ?, ?, NULL, ?, ?, ?)`,
+      )
+      .bind(source.accountId, source.source, sourcePostId, source.importId, postId, now)
+      .run();
+    return { postId, done: false };
+  }
   if (held?.doneAt) return { postId: held.postId, done: true };
   if (!held || held.claimedAt > now - LEASE_MS) {
     throw new Error(`import ${source.importId}: a post is in progress`);
