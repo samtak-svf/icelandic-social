@@ -44,7 +44,7 @@ const status = (over: Partial<ImportStatus> = {}): ImportStatus => ({
     { class: "other_timeline", posts: 0, images: 0, imagesLost: 0, videos: 0 },
     { class: "hidden", posts: 0, images: 0, imagesLost: 0, videos: 0 },
   ],
-  lost: { videoOnly: 0, foreignOnly: 0, foreignImages: 0, empty: 0 },
+  lost: { videoOnly: 0, foreignOnly: 0, foreignImages: 0, empty: 0, videoFiles: 0, videoBytes: 0 },
   ...over,
 });
 
@@ -189,9 +189,17 @@ describe("the choice of what to publish", () => {
         { class: "other_timeline", posts: 0, images: 0, imagesLost: 0, videos: 0 },
         { class: "hidden", posts: 0, images: 0, imagesLost: 0, videos: 0 },
       ],
-      lost: { videoOnly: 115, foreignOnly: 177, foreignImages: 2, empty: 7 },
+      lost: {
+        videoOnly: 115,
+        foreignOnly: 177,
+        foreignImages: 2,
+        empty: 7,
+        videoFiles: 392,
+        videoBytes: 1_100_000_000,
+      },
     });
     expect(lostLines(s, new Set(["own"]))).toEqual([
+      strings.imports_lost_video_files({ count: 392, size: "1,1 GB" }),
       strings.imports_lost_videos({ count: 4 }),
       strings.imports_lost_images({ count: 1 }),
       strings.imports_lost_video_only({ count: 115 }),
@@ -199,7 +207,7 @@ describe("the choice of what to publish", () => {
       strings.imports_lost_foreign_images({ count: 2 }),
       strings.imports_lost_empty({ count: 7 }),
     ]);
-    expect(lostLines(s, new Set(["own", "link"]))[0]).toBe(
+    expect(lostLines(s, new Set(["own", "link"]))[1]).toBe(
       strings.imports_lost_videos({ count: 64 }),
     );
     const html = drawChoice(paged(), choice(), s);

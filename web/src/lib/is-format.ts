@@ -90,3 +90,14 @@ export function listStamp(at: number, now: number, yesterday: string): string {
   if (d.getFullYear() === today.getFullYear()) return `${d.getDate()}. ${month.replace(/\.$/, "")}`;
   return `${d.getDate()}. ${month} ${d.getFullYear()}`;
 }
+
+const MEGABYTE = 1_000_000;
+const GIGABYTE = 1_000_000_000;
+const oneDecimal = (value: number) => (Math.round(value * 10) / 10).toFixed(1).replace(".", ",");
+
+/** A file size in the largest whole unit: 1,1 GB or 392,0 MB, and never 0,0 MB. */
+export function formatIsSize(bytes: number): string {
+  return bytes >= GIGABYTE
+    ? `${oneDecimal(bytes / GIGABYTE)} GB`
+    : `${oneDecimal(Math.max(bytes / MEGABYTE, 0.1))} MB`;
+}

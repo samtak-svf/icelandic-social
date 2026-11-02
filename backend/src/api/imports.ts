@@ -37,10 +37,12 @@ const ImportFileUpload = z
 
 /** What kind of post a preview row is (decision 0127); only `own` comes unless chosen. */
 const ImportItemClass = z
-  .enum(["own", "link", "other_timeline", "hidden"])
+  .enum(["own", "link", "other_timeline", "hidden", "album", "profile", "uncategorized"])
   .openapi("ImportItemClass");
 export type ItemClass = z.infer<typeof ImportItemClass>;
 export const ITEM_CLASSES = ImportItemClass.options;
+/** What comes in unless the person chooses otherwise: what they wrote and their own albums. */
+export const DEFAULT_ITEM_CLASSES: readonly ItemClass[] = ["own", "album"];
 
 const ImportStatus = z
   .object({
@@ -76,6 +78,8 @@ const ImportStatus = z
         foreignOnly: z.int().openapi({ description: "Someone else's image with no own words" }),
         foreignImages: z.int().openapi({ description: "Someone else's images on own posts" }),
         empty: z.int().openapi({ description: "Entries with nothing that could come" }),
+        videoFiles: z.int().openapi({ description: "Video files in the export; none comes in" }),
+        videoBytes: z.int().openapi({ description: "How large those video files are" }),
       })
       .openapi({ description: "What the file held and no post will carry" }),
   })
@@ -134,8 +138,8 @@ const PublishImport = z
     excluded: z.array(z.string().max(64)).max(LIMITS.excludedPostsCount).optional().openapi({
       description: "Ids of posts to leave out",
     }),
-    classes: z.array(ImportItemClass).min(1).max(4).optional().openapi({
-      description: "The kinds of post to bring in; only the person's own when left out",
+    classes: z.array(ImportItemClass).min(1).max(ITEM_CLASSES.length).optional().openapi({
+      description: "The kinds of post to bring in; the person's own and their albums when left out",
     }),
   })
   .openapi("PublishImport");

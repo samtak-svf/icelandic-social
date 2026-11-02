@@ -1351,6 +1351,12 @@ export const strings = {
   imports_class_other_timeline: "Skrifað á veggi eða síður annarra",
   /** Posts the person hid at the source. */
   imports_class_hidden: "Falið á hinum miðlinum",
+  /** Photos in the person's own albums, outside any post. */
+  imports_class_album: "Myndaalbúm",
+  /** Profile pictures and cover photos, which were never posts. */
+  imports_class_profile: "Prófílmyndir og forsíðumyndir",
+  /** Photos the export lists outside any album or post. */
+  imports_class_uncategorized: "Myndir utan albúma",
   /** What one kind of post holds. */
   imports_class_counts: (args: { posts: string; images: string }): string =>
     "Póstar: " + args.posts + ". Myndir: " + args.images + ".",
@@ -1422,6 +1428,11 @@ export const strings = {
     plural.select(args.count) === "one"
       ? "Ekki var hægt að lesa " + String(args.count) + " færslu."
       : "Ekki var hægt að lesa " + String(args.count) + " færslur.",
+  /** How many video files the export holds and how large they are; none comes in. {size} is written like 1,1 GB. */
+  imports_lost_video_files: (args: { count: number; size: string }): string =>
+    plural.select(args.count) === "one"
+      ? String(args.count) + " myndband í skránni, samtals " + args.size
+      : String(args.count) + " myndbönd í skránni, samtals " + args.size,
   /** Posts whose video stays behind while the text comes. */
   imports_lost_videos: (args: { count: number }): string =>
     plural.select(args.count) === "one"

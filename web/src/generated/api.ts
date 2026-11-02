@@ -1115,7 +1115,7 @@ export type ImportSummary = ImportStatus & {
   createdAt: number;
 };
 
-export type ImportItemClass = "own" | "link" | "other_timeline" | "hidden";
+export type ImportItemClass = "own" | "link" | "other_timeline" | "hidden" | "album" | "profile" | "uncategorized";
 
 export interface ImportStatus {
   state: "uploading" | "parsing" | "ready" | "publishing" | "done" | "failed" | "removing";
@@ -1153,6 +1153,10 @@ export interface ImportStatus {
     foreignImages: number;
     /** Entries with nothing that could come */
     empty: number;
+    /** Video files in the export; none comes in */
+    videoFiles: number;
+    /** How large those video files are */
+    videoBytes: number;
   };
 }
 
@@ -1193,7 +1197,7 @@ export interface PublishImport {
   to?: number;
   /** Ids of posts to leave out */
   excluded?: Array<string>;
-  /** The kinds of post to bring in; only the person's own when left out */
+  /** The kinds of post to bring in; the person's own and their albums when left out */
   classes?: Array<ImportItemClass>;
 }
 

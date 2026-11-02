@@ -112,6 +112,7 @@ export const fromImport = {
   hasVideo: null,
   class: null,
   foreignImages: null,
+  needsImages: null,
 } satisfies Record<keyof ParsedItem, keyof ExportPostFields | null>;
 
 export const json = (value: unknown) => new TextEncoder().encode(JSON.stringify(value, null, 2));

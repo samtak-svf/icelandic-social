@@ -3332,6 +3332,18 @@
       "surfaces": ["web"],
       "description": "Posts the person hid at the source."
     },
+    "imports_class_album": {
+      "surfaces": ["web"],
+      "description": "Photos in the person's own albums, outside any post."
+    },
+    "imports_class_profile": {
+      "surfaces": ["web"],
+      "description": "Profile pictures and cover photos, which were never posts."
+    },
+    "imports_class_uncategorized": {
+      "surfaces": ["web"],
+      "description": "Photos the export lists outside any album or post."
+    },
     "imports_class_counts": {
       "surfaces": ["web"],
       "description": "What one kind of post holds.",
@@ -3470,6 +3482,15 @@
       "plural": true,
       "placeholders": {
         "count": "int"
+      }
+    },
+    "imports_lost_video_files": {
+      "surfaces": ["web"],
+      "description": "How many video files the export holds and how large they are; none comes in. {size} is written like 1,1 GB.",
+      "plural": true,
+      "placeholders": {
+        "count": "int",
+        "size": "string"
       }
     },
     "imports_lost_videos": {

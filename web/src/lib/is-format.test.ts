@@ -1,7 +1,13 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
-import { formatIsDate, formatIsDateShort, formatIsDateTime, listStamp } from "./is-format.ts";
+import {
+  formatIsDate,
+  formatIsDateShort,
+  formatIsDateTime,
+  formatIsSize,
+  listStamp,
+} from "./is-format.ts";
 
 // Node ships full ICU, so its Intl is what CLDR says; the browsers that lack
 // Icelandic are why the web does not use it (#357).
@@ -100,5 +106,13 @@ describe("a conversation row's stamp", () => {
       const older = Date.UTC(2024, m, 5, 9);
       expect(listStamp(older, now, "Í gær")).toBe(dated.format(older));
     }
+  });
+});
+
+describe("Icelandic file sizes", () => {
+  it("write a decimal comma, in the largest unit, and never nothing", () => {
+    expect(formatIsSize(1_130_000_000)).toBe("1,1 GB");
+    expect(formatIsSize(392_000_000)).toBe("392,0 MB");
+    expect(formatIsSize(12)).toBe("0,1 MB");
   });
 });
