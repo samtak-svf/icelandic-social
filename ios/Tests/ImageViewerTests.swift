@@ -1,8 +1,17 @@
+import SpjallCore
 import XCTest
 
 @testable import Spjall
 
 final class ImageViewerTests: XCTestCase {
+    func testAPostShowsFourImagesAndCountsTheRest() {
+        let images = (0..<6).map { PostImage(mediaId: "m\($0)", width: 80, height: 60) }
+        let split = shownPostImages(images)
+        XCTAssertEqual(split.shown.map(\.mediaId), ["m0", "m1", "m2", "m3"])
+        XCTAssertEqual(split.more, 2)
+        XCTAssertEqual(shownPostImages(Array(images.prefix(4))).more, 0)
+    }
+
     func testTheStartIndexIsClampedIntoTheImages() {
         XCTAssertEqual(ImageViewerState(count: 3, start: 1).index, 1)
         XCTAssertEqual(ImageViewerState(count: 3, start: 9).index, 2)

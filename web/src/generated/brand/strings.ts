@@ -713,6 +713,9 @@ export const strings = {
   /** Text alternative of an image in a post with several, so a screen reader tells them apart (#355). */
   post_image_alt_numbered: (args: { n: number; count: number }): string =>
     "Mynd " + String(args.n) + " af " + String(args.count),
+  /** On the last image a post shows: how many more its viewer holds (docs/decisions/0127). A screen reader skips it, since that image says it is number N of how many. */
+  post_images_more: (args: { count: number }): string =>
+    "+" + String(args.count),
   /** Title of the post screen's top bar (#356). */
   post_title: "Póstur",
   /** Title and link label of the public privacy policy page (/privacy, decision 0009, #383). */

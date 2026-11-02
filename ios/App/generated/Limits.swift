@@ -34,6 +34,9 @@ enum Limits {
     /// Images on a post (decision 0065).
     nonisolated static let postMediaCount = 4
 
+    /// Images a post shows before how many more; an imported post can hold more than a new one (decision 0127).
+    nonisolated static let postImagesShown = 4
+
     /// Images on a comment (decision 0082).
     nonisolated static let commentMediaCount = 1
 

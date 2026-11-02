@@ -859,6 +859,8 @@
     <string name="problem_join_declined">Stjórnandi hafnaði beiðninni. Þú getur beðið aftur eftir 30 daga.</string>
     <!-- Text alternative of an image in a post with several, so a screen reader tells them apart (#355). -->
     <string name="post_image_alt_numbered">Mynd %1$d af %2$d</string>
+    <!-- On the last image a post shows: how many more its viewer holds (docs/decisions/0127). A screen reader skips it, since that image says it is number N of how many. -->
+    <string name="post_images_more">+%1$d</string>
     <!-- Title of the post screen's top bar (#356). -->
     <string name="post_title">Póstur</string>
     <!-- Action on a group's info screen: add people to the group (docs/decisions/0078). -->

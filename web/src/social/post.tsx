@@ -12,6 +12,7 @@ import {
   type Post,
   type SocialMedia,
 } from "../generated/api.ts";
+import { LIMITS } from "../generated/limits.ts";
 import { strings } from "../generated/brand/strings.ts";
 import { Dialog } from "../ui/dialog.tsx";
 import { DotsIcon, Menu, MenuItem } from "../ui/menu.tsx";
@@ -348,7 +349,10 @@ function PostMenu({
   );
 }
 
-/** A post's images, up to four, two to a row when there are several; pressing one opens the viewer. */
+/**
+ * A post's images, two to a row when there are several; pressing one opens the viewer. An imported
+ * post can hold more than it shows, and the last one shown says how many more the viewer has.
+ */
 export function Images({ postId, media }: Readonly<{ postId: string; media: SocialMedia[] }>) {
   const { open, viewer } = useViewer();
   const items: ViewerItem[] = media.map((m, i) => ({
@@ -359,10 +363,21 @@ export function Images({ postId, media }: Readonly<{ postId: string; media: Soci
         ? strings.post_image_alt_numbered({ n: i + 1, count: media.length })
         : strings.post_image_alt,
   }));
+  const shown = items.slice(0, LIMITS.postImagesShown);
   return (
     <div className={`grid gap-1 ${media.length > 1 ? "grid-cols-2" : ""}`}>
-      {items.map((item, i) => (
-        <Image key={item.media.mediaId} item={item} onOpen={() => open(items, i)} />
+      {shown.map((item, i) => (
+        <div key={item.media.mediaId} className="relative">
+          <Image item={item} onOpen={() => open(items, i)} />
+          {i === shown.length - 1 && items.length > shown.length && (
+            <span
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-0 flex items-center justify-center rounded-md bg-black/60 text-2xl font-semibold text-white"
+            >
+              {strings.post_images_more({ count: items.length - shown.length })}
+            </span>
+          )}
+        </div>
       ))}
       {viewer}
     </div>

@@ -35,6 +35,9 @@ object Limits {
     /** Images on a post (decision 0065). */
     const val POST_MEDIA_COUNT = 4
 
+    /** Images a post shows before how many more; an imported post can hold more than a new one (decision 0127). */
+    const val POST_IMAGES_SHOWN = 4
+
     /** Images on a comment (decision 0082). */
     const val COMMENT_MEDIA_COUNT = 1
 

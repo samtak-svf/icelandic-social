@@ -1,7 +1,6 @@
-import { MAX_POST_MEDIA } from "../../api/post-fields.ts";
 import { db, mediaBucket } from "../../env/index.ts";
 import { toHex } from "../../shared/bytes.ts";
-import { keyOf } from "./core.ts";
+import { keyOf, MAX_IMPORTED_IMAGES } from "./core.ts";
 import { FILE_MS } from "./file.ts";
 import { loadImage, type ScrapedItem } from "./scrape.ts";
 
@@ -30,7 +29,7 @@ async function keyPart(id: string): Promise<string> {
 export async function stageItem(env: Env, importId: string, item: ScrapedItem): Promise<void> {
   const part = await keyPart(item.id);
   const images: string[] = [];
-  for (const [at, url] of item.images.slice(0, MAX_POST_MEDIA).entries()) {
+  for (const [at, url] of item.images.slice(0, MAX_IMPORTED_IMAGES).entries()) {
     const bytes = await loadImage(url);
     if (bytes.byteLength === 0) continue;
     const key = `${keyOf(importId)}/${part}/${at}`;

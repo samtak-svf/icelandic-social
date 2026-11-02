@@ -481,6 +481,7 @@
   "problem_not_found": "Þetta er ekki lengur til.",
   "problem_join_declined": "Stjórnandi hafnaði beiðninni. Þú getur beðið aftur eftir 30 daga.",
   "post_image_alt_numbered": "Mynd {n} af {count}",
+  "post_images_more": "+{count}",
   "post_title": "Póstur",
   "privacy_title": "Persónuverndarstefna",
   "privacy_controller_heading": "Ábyrgðaraðili",

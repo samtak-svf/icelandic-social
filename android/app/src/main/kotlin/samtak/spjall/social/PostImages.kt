@@ -16,6 +16,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
@@ -28,9 +30,12 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.hideFromAccessibility
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.withContext
 import samtak.spjall.brand.BrandTokens.Radius
@@ -38,6 +43,7 @@ import samtak.spjall.brand.R
 import samtak.spjall.core.CoreException
 import samtak.spjall.core.Post
 import samtak.spjall.core.PostImage
+import samtak.spjall.limits.Limits
 import samtak.spjall.media.LocalPhotoDecoding
 import samtak.spjall.media.rememberPhoto
 import samtak.spjall.ui.ImageViewer
@@ -78,7 +84,10 @@ internal fun WithPostImages(
     CompositionLocalProvider(LocalPostImages provides images, content = content)
 }
 
-/** A post's images under its text: one at its own shape, more two to a row as squares. */
+/**
+ * A post's images under its text: one at its own shape, more two to a row as squares. An imported post can hold
+ * more than it shows, and the last one shown says how many more the viewer has (decision 0127).
+ */
 @Composable
 fun PostImageGrid(post: Post) {
     val images = post.images
@@ -114,17 +123,45 @@ fun PostImageGrid(post: Post) {
         return
     }
     Column(verticalArrangement = Arrangement.spacedBy(GAP.dp)) {
-        images.chunked(2).forEachIndexed { rowIndex, row ->
+        val shown = images.take(Limits.POST_IMAGES_SHOWN)
+        shown.chunked(2).forEachIndexed { rowIndex, row ->
             Row(horizontalArrangement = Arrangement.spacedBy(GAP.dp)) {
                 row.forEachIndexed { column, image ->
                     val index = rowIndex * 2 + column
-                    PostImageView(post.postId, image, descriptions[index], Modifier.weight(1f).aspectRatio(1f)) {
-                        viewing = index
+                    Box(Modifier.weight(1f).aspectRatio(1f)) {
+                        PostImageView(post.postId, image, descriptions[index], Modifier.matchParentSize()) {
+                            viewing = index
+                        }
+                        if (index == shown.lastIndex && images.size > shown.size) {
+                            MoreImages(images.size - shown.size, Modifier.matchParentSize())
+                        }
                     }
                 }
                 if (row.size == 1) Box(modifier = Modifier.weight(1f))
             }
         }
+    }
+}
+
+/** How many more images the viewer holds, over the last one shown; that image says so to a screen reader. */
+@Composable
+private fun MoreImages(
+    count: Int,
+    modifier: Modifier,
+) {
+    Box(
+        modifier =
+            modifier
+                .clip(RoundedCornerShape(Radius.THUMBNAIL_DP.dp))
+                .background(Color.Black.copy(alpha = MORE_SCRIM))
+                .semantics { hideFromAccessibility() },
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = stringResource(R.string.post_images_more, count),
+            color = Color.White,
+            style = MaterialTheme.typography.headlineSmall,
+        )
     }
 }
 
@@ -207,6 +244,7 @@ private const val THUMBNAIL = 72
 private const val REMOVE = 40
 private const val MARK = 22
 private const val GAP = 6
+private const val MORE_SCRIM = 0.6f
 
 /** A tall or wide image alone is cropped to no more than this. */
 internal const val MIN_RATIO = 0.75f

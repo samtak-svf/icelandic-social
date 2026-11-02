@@ -42,7 +42,14 @@ func postPhoto(_ path: String, side: Int) -> UIImage? {
     return UIImage(cgImage: image)
 }
 
-/// A post's images under its text: one at its own shape, within bounds, more two to a row as squares.
+/// The images a post shows, and how many more its viewer holds: an imported post can hold more (decision 0127).
+func shownPostImages(_ images: [PostImage]) -> (shown: [PostImage], more: Int) {
+    let shown = Array(images.prefix(Limits.postImagesShown))
+    return (shown, images.count - shown.count)
+}
+
+/// A post's images under its text: one at its own shape, within bounds, more two to a row as squares; the last one
+/// shown says how many more the viewer has.
 struct PostImageGrid: View {
     let post: Post
 
@@ -77,8 +84,9 @@ struct PostImageGrid: View {
                 onOpen: { opening = ImageViewerOpening(index: 0, count: post.images.count) }
             )
         } else if !post.images.isEmpty {
-            let rows = stride(from: 0, to: post.images.count, by: 2).map {
-                Array(post.images[$0..<min($0 + 2, post.images.count)])
+            let (shown, more) = shownPostImages(post.images)
+            let rows = stride(from: 0, to: shown.count, by: 2).map {
+                Array(shown[$0..<min($0 + 2, shown.count)])
             }
             VStack(spacing: 6) {
                 ForEach(rows, id: \.first?.mediaId) { row in
@@ -92,13 +100,36 @@ struct PostImageGrid: View {
                                     opening = ImageViewerOpening(
                                         index: post.images.firstIndex { $0.mediaId == image.mediaId } ?? 0,
                                         count: post.images.count)
-                                })
+                                }
+                            )
+                            .overlay {
+                                if more > 0, image.mediaId == shown.last?.mediaId {
+                                    MoreImages(count: more)
+                                }
+                            }
                         }
                         if row.count == 1 { Color.clear.aspectRatio(1, contentMode: .fit) }
                     }
                 }
             }
         }
+    }
+}
+
+/// How many more images the viewer holds, over the last one shown; that image says so to VoiceOver.
+private struct MoreImages: View {
+    let count: Int
+
+    var body: some View {
+        RoundedRectangle(cornerRadius: BrandTokens.Radius.thumbnail)
+            .fill(Color.black.opacity(0.6))
+            .overlay {
+                Text(verbatim: plural("post_images_more", count))
+                    .font(.title2.weight(.semibold))
+                    .foregroundStyle(.white)
+            }
+            .allowsHitTesting(false)
+            .accessibilityHidden(true)
     }
 }
 
