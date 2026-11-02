@@ -1,4 +1,5 @@
-import { type ExportContext, repairText, zipPath } from "./export-file.ts";
+import { type ExportContext, listOf, record, repairText, zipPath } from "./export-file.ts";
+import { type OwnPhoto, photosIn } from "./export-photos.ts";
 
 // What the rest of an export says about its posts file (decision 0127): which media are
 // the person's own, which posts were written on someone else's timeline, and which they
@@ -8,18 +9,6 @@ import { type ExportContext, repairText, zipPath } from "./export-file.ts";
 const OWN_MEDIA = /^(album\/[^/]*|your_uncategorized_photos[^/]*|your_videos[^/]*)\.json$/;
 const OTHER_TIMELINES = /^posts_on_other_pages_and_profiles[^/]*\.json$/;
 const ARCHIVE = /^archive[^/]*\.json$/;
-
-const record = (value: unknown): Record<string, unknown> | null =>
-  typeof value === "object" && value !== null && !Array.isArray(value)
-    ? (value as Record<string, unknown>)
-    : null;
-
-/** The file's list: the file itself, or the first list inside its one wrapping object. */
-const listOf = (json: unknown): unknown[] => {
-  if (Array.isArray(json)) return json;
-  const inner = Object.values(record(json) ?? {}).find(Array.isArray);
-  return (inner as unknown[] | undefined) ?? [];
-};
 
 /** Every `uri` string anywhere in a value; a stack, since a file chooses its own depth. */
 function urisIn(json: unknown): string[] {
@@ -40,11 +29,14 @@ function urisIn(json: unknown): string[] {
 
 const directoryOf = (name: string) => name.slice(0, name.lastIndexOf("/") + 1);
 
+/** An entry's path under the directory of a posts file, when it sits under one. */
+const underPosts = (name: string, directories: readonly string[]) =>
+  name.slice(directories.find((d) => name.startsWith(d))?.length ?? 0);
+
 /** What each entry beside a posts file is, by its path under that file's directory. */
 function kindOf(name: string, directories: readonly string[]) {
-  const directory = directories.find((d) => name.startsWith(d));
-  if (directory === undefined) return null;
-  const path = name.slice(directory.length);
+  if (!directories.some((d) => name.startsWith(d))) return null;
+  const path = underPosts(name, directories);
   if (OWN_MEDIA.test(path)) return "media" as const;
   if (OTHER_TIMELINES.test(path)) return "timelines" as const;
   return ARCHIVE.test(path) ? ("archive" as const) : null;
@@ -60,6 +52,7 @@ const emptyContext = () => ({
   ownMedia: new Set<string>(),
   otherTimelines: new Set<number>(),
   archived: new Map<string, number[]>(),
+  photos: [] as OwnPhoto[],
 });
 
 function addArchived(context: ReturnType<typeof emptyContext>, json: unknown): void {
@@ -92,14 +85,16 @@ export async function readContext(
   names: readonly string[],
   posts: readonly string[],
   read: (name: string) => Promise<unknown>,
-): Promise<ExportContext> {
+): Promise<ExportContext & { photos: OwnPhoto[] }> {
   const context = emptyContext();
   const directories = [...new Set(posts.map(directoryOf))];
   for (const name of contextEntries(names, posts)) {
     const json = await read(name);
     const kind = kindOf(name, directories);
-    if (kind === "media") for (const uri of urisIn(json)) context.ownMedia.add(uri);
-    else if (kind === "timelines") addTimelines(context, json);
+    if (kind === "media") {
+      for (const uri of urisIn(json)) context.ownMedia.add(uri);
+      context.photos.push(...photosIn(underPosts(name, directories), json));
+    } else if (kind === "timelines") addTimelines(context, json);
     else addArchived(context, json);
   }
   return context;

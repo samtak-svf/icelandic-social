@@ -816,6 +816,9 @@
   "imports_class_link": "Tenglar án eigin texta",
   "imports_class_other_timeline": "Skrifað á [[wall.acc.pl]] eða síður annarra",
   "imports_class_hidden": "Falið á hinum miðlinum",
+  "imports_class_album": "Myndaalbúm",
+  "imports_class_profile": "Prófílmyndir og forsíðumyndir",
+  "imports_class_uncategorized": "Myndir utan albúma",
   "imports_class_counts": "Póstar: {posts}. Myndir: {images}.",
   "imports_no_class": "Veldu að minnsta kosti einn flokk.",
   "imports_lost_heading": "Þetta kemur ekki með:",
@@ -857,6 +860,10 @@
   "imports_lost_videos": {
     "one": "Myndband úr {count} pósti, textinn kemur með",
     "other": "Myndbönd úr {count} póstum, textinn kemur með"
+  },
+  "imports_lost_video_files": {
+    "one": "{count} myndband í skránni, samtals {size}",
+    "other": "{count} myndbönd í skránni, samtals {size}"
   },
   "imports_lost_images": {
     "one": "{count} mynd sem ekki er hægt að flytja",

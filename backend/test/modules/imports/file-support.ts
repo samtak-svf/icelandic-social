@@ -26,7 +26,14 @@ export type Status = {
     imagesLost: number;
     videos: number;
   }[];
-  lost: { videoOnly: number; foreignOnly: number; foreignImages: number; empty: number };
+  lost: {
+    videoOnly: number;
+    foreignOnly: number;
+    foreignImages: number;
+    empty: number;
+    videoFiles: number;
+    videoBytes: number;
+  };
   held: { posts: number; groups: { class: string; year: number; posts: number }[] };
 };
 export type Item = {
@@ -115,6 +122,22 @@ export async function arrive(owner: Person, importId: string, choice: object = {
 export const wall = async (reader: Person, owner: Person) =>
   (await get<{ posts: Read[] }>(reader, `/v1/accounts/${owner.accountId}/wall/posts?limit=50`))
     .posts;
+
+/** A photo as an album lists it. */
+export const photo = (uri: string, seconds: number, description?: string) => ({
+  uri,
+  creation_timestamp: seconds,
+  ...(description === undefined ? {} : { description: escaped(description) }),
+});
+export const namedAlbum = (
+  index: number,
+  name: string,
+  photos: unknown[],
+  description = "",
+): FixtureEntry => ({
+  name: `posts/album/${index}.json`,
+  data: utf8({ name: escaped(name), description: escaped(description), photos }),
+});
 
 /** The person's own album, which says whose the media beside the posts are. */
 export const album = (...uris: string[]): FixtureEntry => ({

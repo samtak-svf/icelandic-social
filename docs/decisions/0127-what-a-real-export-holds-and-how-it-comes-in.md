@@ -1,6 +1,6 @@
 # 0127. What a real export holds, and how it comes in
 
-- Status: accepted; implemented in part (sorting, the truthful preview, whole text and captions, held until opened, more than four images), the rest designed, not yet implemented (#461)
+- Status: accepted; implemented (#461)
 - Date: 2026-11-01
 - Decided by: the overseer, on Guðröður Atli Jónsson's question of how best to bring in everything an export offers; his to overturn
 - Amends: [0119](0119-importing-a-persons-own-content.md), [0120](0120-feeding-the-import-from-public-profiles-and-pages.md) (the export file only)
@@ -63,10 +63,13 @@ posts do not arrive. After this record it shows, per class, what arrives and wha
 About 70% of the media is not in the posts file at all. The import reads the album files too, as a
 class of its own, on by default when the person chose albums in their export:
 
-- A photo with a caption is its own post, under its own date.
+- A photo with a caption is its own post, under its own date. Photos with the same caption from one
+  album on one day are one post of up to 20 images: one album in the measured file repeats a caption
+  on 40 photos of a day.
 - Photos without a caption from one album on one day form one post of up to 20 images, with the
-  album's name as its text. In the measured file, 1296 photos in the person's own albums become about
-  320 posts rather than 1296.
+  album's name as its text, and under it the album's description when it has one. In the measured
+  file, 1296 photos in the person's own albums become 283 posts rather than 1296. A post whose
+  text is only that name does not come in without its images.
 - A photo already in a post is not brought in twice: the media path is the key.
 - **Profile pictures and cover photos** (146) are a class that starts off. They were never posts.
 - **Uncategorized photos** (1638 outside posts) are a class that starts off, because what the file
@@ -99,7 +102,7 @@ They are parsed by nothing and stored nowhere.
 
 ### Video
 
-Posts here hold no video, so video stays out, and the preview says how many (392 files, 1.1 GB). The
+Posts here hold no video, so video stays out, and the preview says how many (393 files, 1.1 GB). The
 text of a post with a video comes in. Storing it is cheap, so cost is not the reason: video in a post
 is a product of its own (players on three platforms, moderation, limits) and needs its own record.
 

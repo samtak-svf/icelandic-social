@@ -5,7 +5,8 @@ import { log } from "../../shared/log.ts";
 import { type Handler, job } from "../jobs/index.ts";
 import { deleteBytes, importPost, keyOf, MAX_IMPORTED_IMAGES, type ImportSource } from "./core.ts";
 import { readContext } from "./export-context.ts";
-import { type ParsedItem, parseExportFile, POSTS_FILE } from "./export-file.ts";
+import { type ParsedItem, parseExportFile, POSTS_FILE, VIDEO } from "./export-file.ts";
+import { photoPosts } from "./export-photos.ts";
 import { beginSync, PARSE, PUBLISH } from "./file.ts";
 import { r2Source, readDirectory, readEntry, type ZipEntry, ZipError } from "./zip.ts";
 
@@ -49,8 +50,22 @@ const insertItem = (env: Env, importId: string, item: Arriving) =>
     );
 
 /** What no post will carry, as a file's tally holds it. */
-export type Lost = { videoOnly: number; foreignOnly: number; foreignImages: number; empty: number };
-const NOTHING_LOST: Lost = { videoOnly: 0, foreignOnly: 0, foreignImages: 0, empty: 0 };
+export type Lost = {
+  videoOnly: number;
+  foreignOnly: number;
+  foreignImages: number;
+  empty: number;
+  videoFiles: number;
+  videoBytes: number;
+};
+const NOTHING_LOST: Lost = {
+  videoOnly: 0,
+  foreignOnly: 0,
+  foreignImages: 0,
+  empty: 0,
+  videoFiles: 0,
+  videoBytes: 0,
+};
 
 /** The preview rows are all written: the import shows what it holds, to choose from. */
 export const previewReady = (env: Env, importId: string, skipped: number, lost = NOTHING_LOST) =>
@@ -103,7 +118,7 @@ function arriving(item: ParsedItem, entries: Map<string, ZipEntry>): Arriving[] 
     const entry = entries.get(path);
     return entry !== undefined && entry.size <= MAX_SOCIAL_UPLOAD;
   });
-  if (item.body === "" && images.length === 0) return [];
+  if (images.length === 0 && (item.body === "" || item.needsImages)) return [];
   const first: Arriving = {
     ...item,
     images: images.slice(0, MAX_IMPORTED_IMAGES),
@@ -148,20 +163,18 @@ async function parseFile(env: Env, importId: string): Promise<void> {
     (name) => readJson(source, entries.get(name) as ZipEntry),
   );
   let skipped = 0;
-  const lost = { ...NOTHING_LOST };
+  const videos = directory.filter((e) => VIDEO.test(e.name));
+  const lost = {
+    ...NOTHING_LOST,
+    videoFiles: videos.length,
+    videoBytes: videos.reduce((total, video) => total + video.size, 0),
+  };
   // The export repeats a post: one that was seen counts once, as its row exists once.
   const seen = new Set<string>();
   const firstTime = (id: string) => !seen.has(id) && Boolean(seen.add(id));
-  for (const entry of posts) {
-    const json = await readJson(source, entry);
-    if (json === undefined) {
-      skipped++;
-      continue;
-    }
-    const parsed = await parseExportFile(json, context);
-    skipped += parsed.skipped;
-    for (const { id, why } of parsed.dropped) if (firstTime(id)) lost[why] += 1;
-    const rows = parsed.items
+  /** Writes what these posts become, each counted once. */
+  const write = async (items: ParsedItem[]) => {
+    const rows = items
       .filter((item) => firstTime(item.id))
       .flatMap((item) => {
         lost.foreignImages += item.foreignImages;
@@ -174,7 +187,22 @@ async function parseFile(env: Env, importId: string): Promise<void> {
         rows.slice(at, at + INSERT_BATCH).map((item) => insertItem(env, importId, item)),
       );
     }
+  };
+  // A photo a post holds is not brought in again: its path is the key, whatever the post's kind.
+  const taken = new Set<string>();
+  for (const entry of posts) {
+    const json = await readJson(source, entry);
+    if (json === undefined) {
+      skipped++;
+      continue;
+    }
+    const parsed = await parseExportFile(json, context);
+    skipped += parsed.skipped;
+    for (const { id, why } of parsed.dropped) if (firstTime(id)) lost[why] += 1;
+    for (const item of parsed.items) for (const path of item.images) taken.add(path);
+    await write(parsed.items);
   }
+  await write(await photoPosts(context.photos, taken));
   await previewReady(env, importId, skipped, lost).run();
 }
 

@@ -40,7 +40,15 @@ export function statusOf(file: FileRow): FileStatus {
     failure: file.failure,
     counts: { posts, images, videos, skipped, earliest, latest },
     classes: ITEM_CLASSES.map((name) => ({ class: name, ...(tally[name] ?? NONE) })),
-    lost: { videoOnly: 0, foreignOnly: 0, foreignImages: 0, empty: 0, ...lost },
+    lost: {
+      videoOnly: 0,
+      foreignOnly: 0,
+      foreignImages: 0,
+      empty: 0,
+      videoFiles: 0,
+      videoBytes: 0,
+      ...lost,
+    },
   };
 }
 

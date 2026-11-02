@@ -1,19 +1,23 @@
 import type { ImportItem, ImportStatus } from "../generated/api.ts";
 import { strings } from "../generated/brand/strings.ts";
+import { formatIsSize } from "../lib/is-format.ts";
 
 // The kinds of post an export holds, and what it holds that does not come (decision
 // 0127). The person sees all of it before choosing, so the publish holds no surprise.
 
 export type ItemClass = ImportItem["class"];
 
-/** Only the person's own words and images come unless they choose more. */
-export const DEFAULT_CLASSES: ReadonlySet<ItemClass> = new Set<ItemClass>(["own"]);
+/** What the person wrote and their own albums come unless they choose otherwise. */
+export const DEFAULT_CLASSES: ReadonlySet<ItemClass> = new Set<ItemClass>(["own", "album"]);
 
 export const CLASS_LABEL: Readonly<Record<ItemClass, string>> = {
   own: strings.imports_class_own,
   link: strings.imports_class_link,
   other_timeline: strings.imports_class_other_timeline,
   hidden: strings.imports_class_hidden,
+  album: strings.imports_class_album,
+  profile: strings.imports_class_profile,
+  uncategorized: strings.imports_class_uncategorized,
 };
 
 /** One checkbox for each kind of post the file holds. */
@@ -67,8 +71,12 @@ export function lostLines(status: ImportStatus, chosen: ReadonlySet<ItemClass>):
   const rows = status.classes.filter((row) => chosen.has(row.class));
   const sum = (read: (row: (typeof rows)[number]) => number) =>
     rows.reduce((total, row) => total + read(row), 0);
-  const { videoOnly, foreignOnly, foreignImages, empty } = status.lost;
+  const { videoOnly, foreignOnly, foreignImages, empty, videoFiles, videoBytes } = status.lost;
   const lines: readonly [number, (args: { count: number }) => string][] = [
+    [
+      videoFiles,
+      ({ count }) => strings.imports_lost_video_files({ count, size: formatIsSize(videoBytes) }),
+    ],
     [sum((row) => row.videos), strings.imports_lost_videos],
     [sum((row) => row.imagesLost), strings.imports_lost_images],
     [videoOnly, strings.imports_lost_video_only],

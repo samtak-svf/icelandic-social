@@ -1,6 +1,6 @@
 import { db, mediaBucket } from "../../env/index.ts";
 import { abortUpload, PART_SIZE, partLength, partsOf, uploadPart } from "../../shared/multipart.ts";
-import type { ItemClass } from "../../api/imports.ts";
+import { DEFAULT_ITEM_CLASSES, type ItemClass } from "../../api/imports.ts";
 import { job } from "../jobs/index.ts";
 import { deleteBytes, keyOf, openImport, requestRemoval } from "./core.ts";
 import { SOURCE_KEY } from "./export-file.ts";
@@ -226,7 +226,7 @@ export async function publishFile(
         choice.to ?? null,
         JSON.stringify(choice.excluded ?? []),
         now + PUBLISH_MS,
-        JSON.stringify(choice.classes ?? ["own"]),
+        JSON.stringify(choice.classes ?? DEFAULT_ITEM_CLASSES),
       ),
     job(
       env,

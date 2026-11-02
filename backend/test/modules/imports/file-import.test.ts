@@ -180,8 +180,18 @@ describe("the kinds of post a file holds (decision 0127)", () => {
       { class: "link", posts: 1, images: 0, imagesLost: 0, videos: 0 },
       { class: "other_timeline", posts: 1, images: 0, imagesLost: 0, videos: 0 },
       { class: "hidden", posts: 1, images: 0, imagesLost: 0, videos: 0 },
+      { class: "album", posts: 0, images: 0, imagesLost: 0, videos: 0 },
+      { class: "profile", posts: 0, images: 0, imagesLost: 0, videos: 0 },
+      { class: "uncategorized", posts: 0, images: 0, imagesLost: 0, videos: 0 },
     ]);
-    expect(read.lost).toEqual({ videoOnly: 1, foreignOnly: 1, foreignImages: 1, empty: 1 });
+    expect(read.lost).toEqual({
+      videoOnly: 1,
+      foreignOnly: 1,
+      foreignImages: 1,
+      empty: 1,
+      videoFiles: 1,
+      videoBytes: expect.any(Number) as number,
+    });
   });
 
   it("labels each preview row with its kind", async () => {

@@ -21,6 +21,8 @@ export type ParsedItem = {
   class: ItemClass;
   /** Someone else's images on this post, which stay out while its words come in. */
   foreignImages: number;
+  /** Its text only names the images, so it does not arrive without them. */
+  needsImages: boolean;
 };
 
 /** What became no post, and why. */
@@ -36,8 +38,8 @@ export type ExportContext = {
   archived: ReadonlyMap<string, readonly number[]>;
 };
 
-const IMAGE = /\.(jpe?g|png|webp|gif|avif)$/i;
-const VIDEO = /\.(mp4|mov|m4v|webm)$/i;
+export const IMAGE = /\.(jpe?g|png|webp|gif|avif)$/i;
+export const VIDEO = /\.(mp4|mov|m4v|webm)$/i;
 /** The whole text of an imported post; a row in D1 and a post both stay far under this. */
 export const MAX_BODY = 100_000;
 /** How close an archived text's date is to its post's, in seconds: the two are written apart. */
@@ -45,10 +47,17 @@ const ARCHIVE_WINDOW = 2 * 24 * 60 * 60;
 /** A line that is nothing but one address. */
 const BARE_URL = /^\w+:\/\/\S+$/;
 
-const record = (value: unknown): Record<string, unknown> | null =>
+export const record = (value: unknown): Record<string, unknown> | null =>
   typeof value === "object" && value !== null && !Array.isArray(value)
     ? (value as Record<string, unknown>)
     : null;
+
+/** The file's list: the file itself, or the first list inside its one wrapping object. */
+export const listOf = (json: unknown): unknown[] => {
+  if (Array.isArray(json)) return json;
+  const inner = Object.values(record(json) ?? {}).find(Array.isArray);
+  return (inner as unknown[] | undefined) ?? [];
+};
 
 /**
  * The export writes each UTF-8 byte as one Latin-1 code point. A string is repaired
@@ -77,7 +86,7 @@ const textOf = (value: unknown) => (typeof value === "string" ? repairText(value
 /** A path inside the ZIP, from its root. */
 export const zipPath = (uri: string) => uri.replace(/^(\.?\/)+/, "");
 
-async function idOf(at: number, text: string, firstMedia: string): Promise<string> {
+export async function idOf(at: number, text: string, firstMedia: string): Promise<string> {
   const data = new TextEncoder().encode(`${at}\n${text}\n${firstMedia}`);
   const digest = await crypto.subtle.digest("SHA-256", data);
   return toHex(new Uint8Array(digest));
@@ -230,6 +239,7 @@ async function parseEntry(raw: unknown, context: ExportContext): Promise<Parsed 
     id,
     at,
     body: withLinks(words, attached.links).slice(0, MAX_BODY),
+    needsImages: false,
     images: attached.images,
     hasVideo: attached.hasVideo,
     class: kind,
