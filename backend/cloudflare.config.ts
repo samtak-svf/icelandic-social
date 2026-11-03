@@ -123,10 +123,10 @@ export default defineConfig(({ mode }) => {
         // off whatever this says.
         IMPORT_PAGE: bindings.text("off"),
         // Raised when a protocol change would break older builds; the apps read
-        // it from /health and ask the user to update. 0.5.0: builds before it
-        // open on Fljótið, whose routes are gone (decision 0044).
-        MIN_CLIENT_VERSION_ANDROID: bindings.text("0.5.0"),
-        MIN_CLIENT_VERSION_IOS: bindings.text("0.5.0"),
+        // it from /health and ask the user to update. 0.16.0 since 2026-11-03
+        // (#289); before that 0.5.0, the first build without Fljótið (decision 0044).
+        MIN_CLIENT_VERSION_ANDROID: bindings.text("0.16.0"),
+        MIN_CLIENT_VERSION_IOS: bindings.text("0.16.0"),
         // The web's floor is the version of the web build this Worker serves,
         // raised by the deploy that ships a new one, so every older tab is
         // refused with 426 and reloads. 0.2.0 is the first to read a notice with
