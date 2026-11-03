@@ -1,6 +1,6 @@
 # 0100. A post reaction is any one emoji, the same as the chat
 
-- Status: accepted; implemented (#273); old kind fields removed (#PRN)
+- Status: accepted; implemented (#273); old kind fields removed (#548)
 - Date: 2026-10-26
 - Decided by: Guðröður Atli Jónsson
 - Amends: [0063](0063-communities-audiences-and-moderation.md) (a post's reaction was one of five fixed kinds)
