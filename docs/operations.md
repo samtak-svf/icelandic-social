@@ -266,7 +266,15 @@ pnpm exec cf d1 query "$DB" --sql \
 Bump `versionName` in `android/app/build.gradle.kts` and `MARKETING_VERSION` in `ios/project.yml`
 to the same value in one PR and merge it. `apps-release.yml` then uploads the Android bundle to Play
 internal testing and the iOS build to TestFlight (decision 0128); it fails when the two versions
-differ. Then walk the release smoke list ([testing.md](testing.md)) and post pass or fail on #399.
+differ. The run waits on the `play` and `testflight` environments, so approve both. Then walk the
+release smoke list ([testing.md](testing.md)) and post pass or fail on the version-bump PR.
+
+A hosted macOS job can be cancelled before it starts, with the annotation "The job was not acquired
+by Runner of type hosted even after multiple attempts". That is GitHub's macOS capacity, and none of
+our code ran. Re-run only the failed jobs (`gh run rerun <run-id> --failed`), and approve the
+`testflight` environment again: the re-run asks for it anew. The Android upload that already
+succeeded is not repeated.
+
 `android-play.yml` and `ios-testflight.yml` stay runnable by hand for a re-upload; a hand run
 numbers its build from its own run count, below the numbers `apps-release.yml` uses, so a
 re-upload after an automatic run passes `build_number` above that run's (its run number + 1000,

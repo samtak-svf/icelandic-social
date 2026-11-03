@@ -125,7 +125,7 @@ never a debug build:
 4. One check per area: the home feed, a post with images, adding a reaction, messages (send and
    receive between two test accounts), a community, the import screen.
 
-The result of each release goes on #399 as pass or fail per line, with the version. The detail
+The result of each release goes in a comment on its version-bump PR, as pass or fail per line. The detail
 (screenshots, odd behaviour) goes in `private/e2e/`; a fail becomes an issue before the next bump.
 
 ## Known sources of noise, and what to do
