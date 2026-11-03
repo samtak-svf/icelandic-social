@@ -108,6 +108,7 @@ export const OWNERS = {
   import_page_offers: "imports",
   // A direct transfer's standing import and what it stages (decision 0129).
   transfer_imports: "imports",
+  transfer_budgets: "imports",
   transfer_albums: "imports",
   transfer_photos: "imports",
   // The authorization server an exporter talks to (decision 0129).

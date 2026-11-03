@@ -72,7 +72,7 @@ export function token(E: Env, form: Record<string, string>, auth = basic()): Pro
   });
 }
 
-/** Sends the person to consent and returns the request id the consent screen shows. */
+/** Sends the person to consent and returns the request id the consent screen shows. A query value of `""` leaves that parameter out. */
 export async function authorize(E: Env, query: Record<string, string> = {}): Promise<string> {
   const params = new URLSearchParams({
     response_type: "code",
@@ -82,6 +82,7 @@ export async function authorize(E: Env, query: Record<string, string> = {}): Pro
     state: "s-1",
     ...query,
   });
+  for (const [key, value] of Object.entries(query)) if (value === "") params.delete(key);
   const response = await call(E, `/oauth/authorize?${params}`);
   expect(response.status).toBe(302);
   const location = response.headers.get("location") ?? "";

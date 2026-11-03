@@ -19,10 +19,17 @@ import {
 /** The most items one standing import takes in, so that one exporter cannot fill the store. */
 const MAX_TRANSFER_ITEMS = 50_000;
 
+/**
+ * The most bytes one person lets one exporter stage and fetch, in photos and in the images
+ * of posts: 2 GiB. It is counted in transfer_budgets, which removing the import leaves alone,
+ * so removing and sending again does not buy more room.
+ */
+const MAX_TRANSFER_BYTES = 2 * 1024 ** 3;
+
 /** Who a transfer comes from: the exporter's client, and the source its posts are kept under. */
 export type Exporter = { clientId: string; source: string };
 
-type Standing = ImportSource & { items: number };
+type Standing = ImportSource & { clientId: string };
 
 /** The staged photo's key, under the import, so that removing the import removes it. */
 export const stagedKey = (importId: string, photoId: string) =>
@@ -32,14 +39,13 @@ export const stagedKey = (importId: string, photoId: string) =>
 async function standing(env: Env, accountId: string, exporter: Exporter): Promise<Standing> {
   const row = await db(env)
     .prepare(
-      `SELECT t.import_id AS importId, t.items, s.audience, s.removing_at AS removingAt
+      `SELECT t.import_id AS importId, s.audience, s.removing_at AS removingAt
          FROM transfer_imports t JOIN import_sources s ON s.import_id = t.import_id
         WHERE t.account_id = ? AND t.client_id = ?`,
     )
     .bind(accountId, exporter.clientId)
     .first<{
       importId: string;
-      items: number;
       audience: Standing["audience"];
       removingAt: number | null;
     }>();
@@ -49,7 +55,7 @@ async function standing(env: Env, accountId: string, exporter: Exporter): Promis
       accountId,
       source: exporter.source,
       audience: row.audience,
-      items: row.items,
+      clientId: exporter.clientId,
     };
   }
   // One being removed is let go, and what comes next starts a new one.
@@ -66,7 +72,7 @@ async function standing(env: Env, accountId: string, exporter: Exporter): Promis
     )
     .bind(accountId, exporter.clientId, opened.importId)
     .run();
-  if (made.meta.changes === 1) return { ...opened, items: 0 };
+  if (made.meta.changes === 1) return { ...opened, clientId: exporter.clientId };
   // Another item opened it first.
   await db(env)
     .prepare("DELETE FROM import_sources WHERE import_id = ?")
@@ -75,15 +81,52 @@ async function standing(env: Env, accountId: string, exporter: Exporter): Promis
   return standing(env, accountId, exporter);
 }
 
-function touch(env: Env, importId: string, taken: number, left: number) {
+function touch(env: Env, importId: string, left: number) {
   return db(env)
     .prepare(
-      `UPDATE transfer_imports SET items = items + ?, left_behind = left_behind + ?, last_item_at = ?
+      `UPDATE transfer_imports SET left_behind = left_behind + ?, last_item_at = ?
         WHERE import_id = ?`,
     )
-    .bind(taken, left, Date.now(), importId)
+    .bind(left, Date.now(), importId)
     .run();
 }
+
+/**
+ * Takes room for one item, or false when the import is full. One conditional UPDATE, so
+ * parallel items cannot all pass a check made before any of them is counted.
+ */
+async function takeRoom(env: Env, importId: string): Promise<boolean> {
+  const taken = await db(env)
+    .prepare("UPDATE transfer_imports SET items = items + 1 WHERE import_id = ? AND items < ?")
+    .bind(importId, MAX_TRANSFER_ITEMS)
+    .run();
+  return taken.meta.changes === 1;
+}
+
+const giveRoom = (env: Env, importId: string) =>
+  db(env)
+    .prepare("UPDATE transfer_imports SET items = items - 1 WHERE import_id = ? AND items > 0")
+    .bind(importId)
+    .run();
+
+/** Counts `size` bytes against the budget, or false when they would pass it; atomically. */
+async function takeBytes(env: Env, source: Standing, size: number): Promise<boolean> {
+  await db(env)
+    .prepare("INSERT OR IGNORE INTO transfer_budgets (account_id, client_id) VALUES (?, ?)")
+    .bind(source.accountId, source.clientId)
+    .run();
+  const taken = await db(env)
+    .prepare(
+      `UPDATE transfer_budgets SET bytes = bytes + ?
+        WHERE account_id = ? AND client_id = ? AND bytes + ? <= ?`,
+    )
+    .bind(size, source.accountId, source.clientId, size, MAX_TRANSFER_BYTES)
+    .run();
+  return taken.meta.changes === 1;
+}
+
+/** Thrown from inside an image's load when its bytes would pass the budget. */
+class OverBudget extends Error {}
 
 /** A social post, brought in held; "full" when the import has no room left. */
 export async function receivePost(
@@ -93,9 +136,27 @@ export async function receivePost(
   post: SourcePost,
 ): Promise<ImportResult | "full"> {
   const source = await standing(env, accountId, exporter);
-  if (source.items >= MAX_TRANSFER_ITEMS) return "full";
-  const result = await importPost(env, source, post, "backlog");
-  await touch(env, source.importId, result.outcome === "imported" ? 1 : 0, 0);
+  if (!(await takeRoom(env, source.importId))) return "full";
+  // The images are fetched while the post is made; each is counted before it is kept.
+  const counted: SourcePost = {
+    ...post,
+    images: post.images.map((load) => async () => {
+      const bytes = await load();
+      if (bytes.byteLength > 0 && !(await takeBytes(env, source, bytes.byteLength)))
+        throw new OverBudget();
+      return bytes;
+    }),
+  };
+  let result: ImportResult;
+  try {
+    result = await importPost(env, source, counted, "backlog");
+  } catch (error) {
+    await giveRoom(env, source.importId);
+    if (error instanceof OverBudget) return "full";
+    throw error;
+  }
+  if (result.outcome !== "imported") await giveRoom(env, source.importId);
+  await touch(env, source.importId, 0);
   return result;
 }
 
@@ -115,7 +176,7 @@ export async function receiveAlbum(
     )
     .bind(source.importId, album.albumId, album.name, album.description)
     .run();
-  await touch(env, source.importId, 0, 0);
+  await touch(env, source.importId, 0);
 }
 
 /** A photo, staged until it is gathered; "already" when the same bytes came before. */
@@ -132,7 +193,12 @@ export async function receivePhoto(
     .bind(source.importId, photoId)
     .first();
   if (known) return "already";
-  if (source.items >= MAX_TRANSFER_ITEMS) return "full";
+  if (!(await takeRoom(env, source.importId))) return "full";
+  // Both counts are taken before anything is written to R2.
+  if (!(await takeBytes(env, source, photo.bytes.byteLength))) {
+    await giveRoom(env, source.importId);
+    return "full";
+  }
   await mediaBucket(env).put(stagedKey(source.importId, photoId), photo.bytes);
   await db(env)
     .prepare(
@@ -141,14 +207,14 @@ export async function receivePhoto(
     )
     .bind(source.importId, photoId, photo.albumId, photo.takenAt, photo.caption, Date.now())
     .run();
-  await touch(env, source.importId, 1, 0);
+  await touch(env, source.importId, 0);
   return "staged";
 }
 
 /** An item acknowledged and not brought in: a video, or a file past the limit. */
 export async function leftBehind(env: Env, accountId: string, exporter: Exporter): Promise<void> {
   const source = await standing(env, accountId, exporter);
-  await touch(env, source.importId, 0, 1);
+  await touch(env, source.importId, 1);
 }
 
 export type TransferSummary = {

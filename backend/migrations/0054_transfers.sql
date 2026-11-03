@@ -9,6 +9,8 @@ CREATE TABLE transfer_requests (
   client_id TEXT NOT NULL,
   redirect_uri TEXT NOT NULL,
   scope TEXT NOT NULL,
+  -- Whether the authorization request named redirect_uri; if not, the token request need not (RFC 6749 4.1.3).
+  redirect_named INTEGER NOT NULL DEFAULT 1,
   state TEXT,
   code_challenge TEXT,
   expires_at INTEGER NOT NULL
@@ -32,6 +34,8 @@ CREATE TABLE transfer_tokens (
   grant_id TEXT NOT NULL REFERENCES transfer_grants (grant_id) ON DELETE CASCADE,
   kind TEXT NOT NULL CHECK (kind IN ('code', 'access', 'refresh')),
   redirect_uri TEXT,
+  -- Carried from the request: whether the token request must repeat redirect_uri.
+  redirect_named INTEGER NOT NULL DEFAULT 1,
   code_challenge TEXT,
   expires_at INTEGER,
   used_at INTEGER
@@ -51,6 +55,16 @@ CREATE TABLE transfer_imports (
   last_item_at INTEGER,
   PRIMARY KEY (account_id, client_id)
 ) STRICT;
+
+-- The bytes a person has let an exporter stage, kept apart from transfer_imports so that
+-- removing the import does not give the room back: remove and send again would otherwise
+-- be a way past the budget.
+CREATE TABLE transfer_budgets (
+  account_id TEXT NOT NULL REFERENCES accounts (account_id) ON DELETE CASCADE,
+  client_id TEXT NOT NULL,
+  bytes INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (account_id, client_id)
+) STRICT, WITHOUT ROWID;
 
 -- An album as the exporter named it, which its photos are grouped under.
 CREATE TABLE transfer_albums (

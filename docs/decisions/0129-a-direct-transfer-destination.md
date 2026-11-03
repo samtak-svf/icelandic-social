@@ -41,10 +41,14 @@ single-use for ten minutes; a reused code or refresh token is read as stolen and
 (S256) is honoured when the exporter sends it, and a verifier without a challenge is refused as a
 downgrade. The person sees each grant (since when, what came in, what was left behind) and revokes
 it on the imports page; a revoked grant answers the exporter `session_invalidated`, which is the
-protocol's signal to stop. Revoking keeps what came in; removing the import removes it.
+protocol's signal to stop. Revoking keeps what came in; removing the import removes it. A suspended person's existing grant
+keeps delivering, held, as page and connection syncs do; opening held content is what suspension
+stops, and only a new consent is refused.
 
-**Limits the protocol can act on.** A person's transfers hold at most 50,000 items; past that the
-answer is `413 destination_full`, which pauses the job. There is no per-item rate limit: the
+**Limits the protocol can act on.** A person's transfers hold at most 50,000 items and 2 GiB of photos and fetched post images per
+exporter; past either the answer is `413 destination_full`, which pauses the job. Both are
+taken by one conditional update before anything is written, so parallel items cannot pass them,
+and the bytes are counted apart from the import, so removing it does not give the room back. There is no per-item rate limit: the
 exporter sends one item at a time and gives up after about thirteen seconds of retries, so a 429
 would lose items, not slow them.
 

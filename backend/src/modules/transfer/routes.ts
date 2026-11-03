@@ -75,6 +75,7 @@ export function transferRoutes(app: OpenAPIHono<AppEnv>): void {
     const request = client && (await requestOf(c.env, c.req.valid("param").requestId));
     if (!client || !request || request.clientId !== client.id) return fail(c, 404, "not_found");
     const redirect = await approve(c.env, accountId, request);
+    if (redirect === null) return fail(c, 404, "not_found");
     log("transfers.granted", { accountId });
     return c.json({ redirect }, 200);
   });

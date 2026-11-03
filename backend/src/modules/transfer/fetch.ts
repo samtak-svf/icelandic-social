@@ -14,7 +14,8 @@ const LOCAL = /(^|\.)(localhost|local|internal|localdomain|home|lan|arpa|test|in
 export function fetchable(url: URL): boolean {
   if (url.protocol !== "https:" || url.username !== "" || url.password !== "") return false;
   if (url.port !== "" && url.port !== "443") return false;
-  const host = url.hostname;
+  // A name may end in the root dot, which names the same host: `localhost.` is `localhost`.
+  const host = url.hostname.replace(/\.$/, "");
   // An IPv6 literal is bracketed, and an IPv4 one is all digits and dots.
   if (host.startsWith("[") || /^[\d.]+$/.test(host) || /^0x/i.test(host)) return false;
   return host.includes(".") && !LOCAL.test(host);

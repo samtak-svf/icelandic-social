@@ -1,6 +1,7 @@
 import { env } from "cloudflare:workers";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { jobHandlers, startDueTransfers } from "../../../src/modules/imports/index.ts";
+import { fetchable } from "../../../src/modules/transfer/fetch.ts";
 import { runJobs } from "../../../src/modules/jobs/index.ts";
 import { png } from "../../images.ts";
 import { ok, person, type Person } from "../../people.ts";
@@ -181,6 +182,64 @@ describe("direct transfer items", () => {
     expect(expired.status).toBe(401);
     expect(await expired.json()).toMatchObject({ error: "invalid_token" });
     expect(expired.headers.get("www-authenticate")).toContain("invalid_token");
+  });
+
+  it("answers destination_full before staging a photo that would pass the byte budget", async () => {
+    const E = await transferEnv();
+    const anna = await person("Anna");
+    const tokens = await connect(E, anna);
+    const one = await png(3, 3);
+    const described = { "@type": "Photo", name: "p.png", uploadedTime: 1_560_000_000 };
+    const send = (bytes: Uint8Array) =>
+      deliver(E, tokens, "photos", multipart(described, bytes), RELATED);
+    expect((await send(one)).status).toBe(200);
+    const three = await png(7, 7);
+    const four = await png(9, 9);
+    // Room for either of the next two but not both, so two sent at once cannot both pass.
+    const room = Math.max(three.byteLength, four.byteLength);
+    await env.DB.prepare("UPDATE transfer_budgets SET bytes = ? WHERE account_id = ?")
+      .bind(2 * 1024 ** 3 - room, anna.accountId)
+      .run();
+    const answers = await Promise.all([send(three), send(four)]);
+    expect(answers.map((a) => a.status).sort()).toEqual([200, 413]);
+    expect(await answers.find((a) => a.status === 413)?.json()).toMatchObject({
+      error: "destination_full",
+    });
+    const grant = await summary(E, anna);
+    const staged = await env.MEDIA.list({ prefix: `imports/${grant?.importId}/transfer/` });
+    expect(staged.objects).toHaveLength(2);
+
+    // Removing the import does not give the room back.
+    await env.DB.prepare("DELETE FROM import_sources WHERE import_id = ?")
+      .bind(grant?.importId)
+      .run();
+    const kept = await env.DB.prepare("SELECT bytes FROM transfer_budgets WHERE account_id = ?")
+      .bind(anna.accountId)
+      .first<{ bytes: number }>();
+    expect(kept?.bytes).toBeGreaterThan(2 * 1024 ** 3 - room);
+  });
+
+  it("counts a fetched post image against the byte budget", async () => {
+    const E = await transferEnv();
+    const anna = await person("Anna");
+    const tokens = await connect(E, anna);
+    const image = await png(4, 4);
+    vi.stubGlobal("fetch", async () => new Response(image, { status: 200 }));
+    const withImage = (id: string) =>
+      activity(id, "mynd", {
+        attachments: [{ type: "IMAGE", url: `${MEDIA}/${id}.png` }],
+      });
+    expect((await deliver(E, tokens, "social-posts", withImage("i-1"))).status).toBe(200);
+    const spent = await env.DB.prepare("SELECT bytes FROM transfer_budgets WHERE account_id = ?")
+      .bind(anna.accountId)
+      .first<{ bytes: number }>();
+    expect(spent?.bytes).toBe(image.byteLength);
+  });
+
+  it("refuses a fetch to a host written with a trailing dot", () => {
+    expect(fetchable(new URL("https://localhost./x.png"))).toBe(false);
+    expect(fetchable(new URL("https://nas.local./x.png"))).toBe(false);
+    expect(fetchable(new URL("https://media.exporter.example./x.png"))).toBe(true);
   });
 
   it("refuses a vertical the grant does not cover, and one that does not exist", async () => {

@@ -76,7 +76,13 @@ function authorize(c: Context<AppEnv>, client: TransferClient) {
     (query.code_challenge_method !== "S256" || !CHALLENGE.test(challenge))
   )
     return refuse("invalid_request");
-  return { redirectUri, scope: scopes.join(" "), state: query.state ?? null, challenge };
+  return {
+    redirectUri,
+    redirectNamed: query.redirect_uri !== undefined,
+    scope: scopes.join(" "),
+    state: query.state ?? null,
+    challenge,
+  };
 }
 
 export function oauthRoutes() {
@@ -91,6 +97,7 @@ export function oauthRoutes() {
     const requestId = await createRequest(c.env, {
       clientId: client.id,
       redirectUri: checked.redirectUri,
+      redirectNamed: checked.redirectNamed,
       scope: checked.scope,
       state: checked.state,
       codeChallenge: checked.challenge ?? null,

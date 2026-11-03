@@ -1,6 +1,7 @@
 import { env } from "cloudflare:workers";
 import { describe, expect, it } from "vitest";
 import { expireTransfers } from "../../../src/modules/transfer/index.ts";
+import { approve, requestOf, type Request } from "../../../src/modules/transfer/grants.ts";
 import { ok, person } from "../../people.ts";
 import {
   as,
@@ -236,6 +237,70 @@ describe("direct transfer authorization", () => {
     await authorize(E);
     await consent(E, anna);
     expect(await expireTransfers(E, Date.now() + 60 * 60 * 1000)).toBeGreaterThan(0);
+  });
+
+  it("lets one request be approved once, however many approvals race", async () => {
+    const E = await transferEnv();
+    const anna = await person("Anna");
+    const requestId = await authorize(E);
+    // Both have read the request before either consumes it, as two parallel calls would.
+    const request = await requestOf(E, requestId);
+    expect(request).not.toBeNull();
+    const answers = await Promise.all([
+      approve(E, anna.accountId, request as Request),
+      approve(E, anna.accountId, request as Request),
+    ]);
+    expect(answers.filter((a) => a !== null)).toHaveLength(1);
+    const row = await env.DB.prepare(
+      "SELECT COUNT(*) AS n FROM transfer_grants WHERE account_id = ?",
+    )
+      .bind(anna.accountId)
+      .first<{ n: number }>();
+    expect(row?.n).toBe(1);
+    // And through the route, a request already consumed answers not found.
+    const again = await as(E, anna, "POST", `/v1/transfer-requests/${requestId}/approve`);
+    expect(again.status).toBe(404);
+  });
+
+  it("accepts a token request without redirect_uri only when the authorization had none", async () => {
+    const E = await transferEnv();
+    const anna = await person("Anna");
+    const bare = await consent(E, anna, { redirect_uri: "" });
+    expect((await token(E, { grant_type: "authorization_code", code: bare })).status).toBe(200);
+    // A redirect_uri that is present must still match.
+    const wrong = await consent(E, anna, { redirect_uri: "" });
+    expect(
+      (
+        await token(E, {
+          grant_type: "authorization_code",
+          code: wrong,
+          redirect_uri: "https://exporter.example/other",
+        })
+      ).status,
+    ).toBe(400);
+    // A request that named it makes the token request name it.
+    const named = await consent(E, anna);
+    expect((await token(E, { grant_type: "authorization_code", code: named })).status).toBe(400);
+  });
+
+  it("drops a used refresh token after a day, and keeps a recent one to catch a replay", async () => {
+    const E = await transferEnv();
+    const anna = await person("Anna");
+    const first = await connect(E, anna);
+    await token(E, { grant_type: "refresh_token", refresh_token: first.refresh_token });
+    const used = () =>
+      env.DB.prepare(
+        `SELECT COUNT(*) AS n FROM transfer_tokens
+          WHERE kind = 'refresh' AND used_at IS NOT NULL
+            AND grant_id IN (SELECT grant_id FROM transfer_grants WHERE account_id = ?)`,
+      )
+        .bind(anna.accountId)
+        .first<{ n: number }>()
+        .then((r) => r?.n);
+    await expireTransfers(E, Date.now() + 60 * 60 * 1000);
+    expect(await used()).toBe(1);
+    await expireTransfers(E, Date.now() + 25 * 60 * 60 * 1000);
+    expect(await used()).toBe(0);
   });
 
   it("answers 404 everywhere while no exporter is registered", async () => {
