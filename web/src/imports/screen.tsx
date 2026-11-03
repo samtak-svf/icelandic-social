@@ -8,10 +8,11 @@ import { Status } from "../ui/kit.tsx";
 import { FileSection } from "./file-section.tsx";
 import { PageSection, type PageNotice } from "./page-section.tsx";
 import { ProfileSection } from "./profile-section.tsx";
+import { TransferSection } from "./transfer-section.tsx";
 import { ImportProblem, STATE_WORD, usePoll } from "./shared.tsx";
 
 // Where a person brings their own posts in from another platform (decisions 0119,
-// 0120): by file, and by whichever connections are switched on.
+// 0120, 0129): by file, by whichever connections are switched on, and by direct transfer.
 
 /** The earlier files, newest as the API gives them; nothing is drawn with none. */
 export function EarlierList({ imports }: Readonly<{ imports: readonly ImportSummary[] }>) {
@@ -53,6 +54,7 @@ export function ImportsScreen({ notice }: Readonly<{ notice?: PageNotice | undef
       <FileSection />
       <ProfileSection />
       <PageSection notice={notice} />
+      <TransferSection />
       {list?.ok === false && (
         <Status>
           <ImportProblem problem={list.problem} />

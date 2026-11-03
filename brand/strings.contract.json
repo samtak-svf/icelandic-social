@@ -3663,6 +3663,89 @@
       "placeholders": {
         "count": "int"
       }
+    },
+    "transfer_title": {
+      "surfaces": ["web"],
+      "description": "Heading of the imports page section listing direct transfers (decision 0129)."
+    },
+    "transfer_hint": {
+      "surfaces": ["web"],
+      "description": "What a direct transfer is, under that heading."
+    },
+    "transfer_since": {
+      "surfaces": ["web"],
+      "description": "When the person allowed a transfer.",
+      "placeholders": {
+        "date": "string"
+      }
+    },
+    "transfer_last": {
+      "surfaces": ["web"],
+      "description": "When the last item of a transfer arrived.",
+      "placeholders": {
+        "date": "string"
+      }
+    },
+    "transfer_held": {
+      "surfaces": ["web"],
+      "description": "How many transferred posts are still held.",
+      "plural": true,
+      "placeholders": {
+        "count": "int"
+      }
+    },
+    "transfer_left_behind": {
+      "surfaces": ["web"],
+      "description": "How many transferred items were acknowledged and not brought in.",
+      "placeholders": {
+        "count": "int"
+      }
+    },
+    "transfer_revoke": {
+      "surfaces": ["web"],
+      "description": "Button that takes a transfer grant back."
+    },
+    "transfer_revoke_confirm": {
+      "surfaces": ["web"],
+      "description": "Confirmation before taking a transfer grant back."
+    },
+    "transfer_consent_title": {
+      "surfaces": ["web"],
+      "description": "Heading of the consent screen for a direct transfer.",
+      "placeholders": {
+        "client": "string"
+      }
+    },
+    "transfer_consent_body": {
+      "surfaces": ["web"],
+      "description": "What allowing a transfer does.",
+      "placeholders": {
+        "client": "string"
+      }
+    },
+    "transfer_consent_what": {
+      "surfaces": ["web"],
+      "description": "Lead-in to the list of what a transfer brings."
+    },
+    "transfer_scope_social": {
+      "surfaces": ["web"],
+      "description": "A transfer scope: social posts."
+    },
+    "transfer_scope_media": {
+      "surfaces": ["web"],
+      "description": "A transfer scope: photos, albums and videos."
+    },
+    "transfer_allow": {
+      "surfaces": ["web"],
+      "description": "Button that allows a transfer."
+    },
+    "transfer_deny": {
+      "surfaces": ["web"],
+      "description": "Button that refuses a transfer."
+    },
+    "transfer_consent_gone": {
+      "surfaces": ["web"],
+      "description": "A consent request that expired or never existed."
     }
   }
 }
