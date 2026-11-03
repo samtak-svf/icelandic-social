@@ -21,6 +21,12 @@ on:
         description: Upload to TestFlight after the build
         type: boolean
         default: true
+      build_number:
+        description: >-
+          Run number to derive the build number from. Empty: this run's own number.
+          A re-upload after an apps-release run needs one above that run's number.
+        type: string
+        default: ""
   workflow_call:
     inputs:
       upload:

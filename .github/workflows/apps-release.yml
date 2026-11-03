@@ -60,7 +60,9 @@ jobs:
           echo "changed=$changed" >> "$GITHUB_OUTPUT"
           # The build numbers derive from the run number plus each lane's offset. This run
           # counts from 1, so it starts above every number the manual runs reached.
-          echo "build=$((GITHUB_RUN_NUMBER + 1000))" >> "$GITHUB_OUTPUT"
+          build=$((GITHUB_RUN_NUMBER + 1000))
+          echo "build number base $build"
+          echo "build=$build" >> "$GITHUB_OUTPUT"
 
   android:
     needs: version
