@@ -144,6 +144,10 @@ const REFUSED: Record<string, { allowed: number; call: (s: Setting) => Promise<R
     allowed: 404,
     call: (s) => s.one.call("POST", `/v1/imports/im_${"0".repeat(32)}/publish`, {}),
   },
+  approveTransferRequest: {
+    allowed: 404,
+    call: (s) => s.one.call("POST", `/v1/transfer-requests/tr_${"0".repeat(32)}/approve`),
+  },
   createWallPost: {
     allowed: 200,
     call: (s) => s.one.call("POST", "/v1/wall/posts", { body: "Nýtt", audience: "friends" }),
@@ -219,6 +223,9 @@ const NOT_REFUSED: Record<string, readonly string[]> = {
     "deleteImport",
     "deleteImportConnection",
     "deleteImportPage",
+    // Refusing or taking back a transfer only stops content coming in (decision 0129).
+    "denyTransferRequest",
+    "revokeTransfer",
     "setPhoto",
     "removePhoto",
     "setPhotoFrames",
