@@ -9,6 +9,6 @@
     "measure:feed": "node feed.ts"
   },
   "devDependencies": {
-    "wrangler": "4.152.0"
+    "wrangler": "4.156.0"
   }
 }
