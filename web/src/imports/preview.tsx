@@ -1,5 +1,5 @@
 import { Link, useNavigate } from "@tanstack/react-router";
-import { useCallback, useId, useMemo, useState } from "react";
+import { useCallback, useId, useMemo, useState, type ReactNode } from "react";
 import {
   deleteImport,
   getImport,
@@ -12,7 +12,7 @@ import {
 import { strings } from "../generated/brand/strings.ts";
 import { formatIsDate } from "../lib/is-format.ts";
 import type { Problem } from "../problem.ts";
-import { outcome, useLoad } from "../social/outcome.ts";
+import { outcome, useLoad, type Outcome } from "../social/outcome.ts";
 import { usePaged, type Paged } from "../social/paged.ts";
 import { Button, ProblemText, Status } from "../ui/kit.tsx";
 import { CLASS_LABEL, ClassFields, DEFAULT_CLASSES, LostList, type ItemClass } from "./classes.tsx";
@@ -263,29 +263,6 @@ function Chooser({
   );
 }
 
-/** What the import holds, and how many were opened last. */
-function Holding({
-  importId,
-  held,
-  reload,
-}: Readonly<{ importId: string; held: ImportDetail["held"]; reload: () => void }>) {
-  const [opened, setOpened] = useState<number | null>(null);
-  return (
-    <>
-      {opened !== null && <p className="mt-4">{strings.imports_held_opened({ count: opened })}</p>}
-      <HeldSection
-        importId={importId}
-        held={held}
-        changed={reload}
-        opened={(count) => {
-          setOpened(count);
-          reload();
-        }}
-      />
-    </>
-  );
-}
-
 /** The screen of one import. */
 export function ImportPreview({ importId }: Readonly<{ importId: string }>) {
   const navigate = useNavigate();
@@ -293,6 +270,7 @@ export function ImportPreview({ importId }: Readonly<{ importId: string }>) {
   const [status, reload] = useLoad(load);
   const [problem, setProblem] = useState<Problem | null>(null);
   const [removing, setRemoving] = useState(false);
+  const [opened, setOpened] = useState<number | null>(null);
   const current = status?.ok === true ? status.data : null;
   const waiting = useMemo(() => current !== null && WAITING.includes(current.state), [current]);
   usePoll(waiting, reload);
@@ -307,6 +285,57 @@ export function ImportPreview({ importId }: Readonly<{ importId: string }>) {
     else setProblem(removed.problem);
   }
 
+  return (
+    <PreviewView
+      status={status}
+      opened={opened}
+      removing={removing}
+      problem={problem}
+      remove={() => void remove()}
+      chooser={
+        current?.state === "ready" ? (
+          <Chooser importId={importId} status={current} published={reload} />
+        ) : null
+      }
+      held={
+        current !== null && mayOpen(current) ? (
+          <HeldSection
+            importId={importId}
+            held={current.held}
+            changed={reload}
+            opened={(count) => {
+              setOpened(count);
+              reload();
+            }}
+          />
+        ) : null
+      }
+    />
+  );
+}
+
+/**
+ * The screen of one import, drawn from what it was given. The opened message is not part of the
+ * held section: reloading empties that section, and the message has to outlive it.
+ */
+export function PreviewView({
+  status,
+  opened,
+  removing,
+  problem,
+  remove,
+  chooser,
+  held,
+}: Readonly<{
+  status: Outcome<ImportDetail> | null;
+  opened: number | null;
+  removing: boolean;
+  problem: Problem | null;
+  remove: () => void;
+  chooser: ReactNode;
+  held: ReactNode;
+}>) {
+  const current = status?.ok === true ? status.data : null;
   const sentence = current === null ? null : stateSentence(current);
   return (
     <>
@@ -323,15 +352,12 @@ export function ImportPreview({ importId }: Readonly<{ importId: string }>) {
         </Status>
       )}
       {sentence !== null && <p className="mt-4">{sentence}</p>}
-      {current?.state === "ready" && (
-        <Chooser importId={importId} status={current} published={reload} />
-      )}
-      {current !== null && mayOpen(current) && (
-        <Holding importId={importId} held={current.held} reload={reload} />
-      )}
+      {chooser}
+      {opened !== null && <p className="mt-4">{strings.imports_held_opened({ count: opened })}</p>}
+      {held}
       {current !== null && current.state !== "removing" && (
         <div className="mt-6">
-          <Button tone="danger" onClick={() => void remove()} disabled={removing}>
+          <Button tone="danger" onClick={remove} disabled={removing}>
             {strings.imports_remove}
           </Button>
         </div>

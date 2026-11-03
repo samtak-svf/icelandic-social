@@ -70,6 +70,8 @@ test("an export file: the choice, the wall, and taking it all back", async ({ br
   await a
     .getByRole("button", { name: strings.imports_held_open({ count: 1 }), exact: true })
     .click();
+  // The held section empties on reload; the message must outlive it.
+  await expect(a.getByRole("heading", { name: strings.imports_held_title })).toHaveCount(0);
   await expect(
     a.getByText(strings.imports_held_opened({ count: 1 }), { exact: true }),
   ).toBeVisible();
