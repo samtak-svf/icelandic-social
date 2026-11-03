@@ -9,14 +9,26 @@
 
 use std::ffi::CString;
 
+use rsqlite_vfs::VfsFilesManager;
 use sqlite_wasm_rs::{
     SQLITE_OK, WasmOsCallback, sqlite3_vfs_find, sqlite3_vfs_register, sqlite3mc_vfs_create,
 };
-pub use sqlite_wasm_vfs::sahpool::{OpfsSAHError as OpfsError, OpfsSAHPoolUtil as OpfsPool};
+use sqlite_wasm_vfs::sahpool::OpfsSAHError;
+pub use sqlite_wasm_vfs::sahpool::OpfsSAHPoolUtil as OpfsPool;
 use sqlite_wasm_vfs::sahpool::{OpfsSAHPoolCfgBuilder, install};
 
 /// sqlite3mc's prefix for the VFS it wraps around another one.
 const CIPHER_VFS_PREFIX: &str = "multipleciphers-";
+
+/// What went wrong with the pool: the VFS crate's own error, or the cipher
+/// that could not be put over it.
+#[derive(Debug, thiserror::Error)]
+pub enum OpfsError {
+    #[error(transparent)]
+    Pool(#[from] OpfsSAHError),
+    #[error("{0}")]
+    Cipher(String),
+}
 
 /// Installs the pool named `pool_name`, in the OPFS directory of the same
 /// name, and makes SQLite's default VFS sqlite3mc's cipher over it, and
@@ -36,7 +48,10 @@ pub async fn install_opfs(pool_name: &str) -> Result<OpfsPool, OpfsError> {
 /// expired session leave behind (0064). Every `Store` and `Reader` on the
 /// pool must be dropped first; the pool refuses otherwise.
 pub async fn wipe_opfs(pool_name: &str) -> Result<(), OpfsError> {
-    install_opfs(pool_name).await?.clear_all().await
+    install_opfs(pool_name)
+        .await?
+        .clear()
+        .map_err(OpfsError::from)
 }
 
 /// sqlite3mc wraps the default VFS once, when SQLite initialises, and that is
@@ -44,7 +59,7 @@ pub async fn wipe_opfs(pool_name: &str) -> Result<(), OpfsError> {
 /// `PRAGMA key` on it fails ("Encryption is not supported by the VFS"). So
 /// the pool gets its own wrapper, made once and registered as the default.
 fn encrypt_by_default(pool_name: &str) -> Result<(), OpfsError> {
-    let nul = |_| OpfsError::Generic(format!("a NUL in the pool name {pool_name:?}"));
+    let nul = |_| OpfsError::Cipher(format!("a NUL in the pool name {pool_name:?}"));
     let real = CString::new(pool_name).map_err(nul)?;
     let wrapped = CString::new(format!("{CIPHER_VFS_PREFIX}{pool_name}")).map_err(nul)?;
     // SAFETY: both names are NUL-terminated strings that outlive the calls;
@@ -62,7 +77,7 @@ fn encrypt_by_default(pool_name: &str) -> Result<(), OpfsError> {
     if rc == SQLITE_OK {
         Ok(())
     } else {
-        Err(OpfsError::Generic(format!(
+        Err(OpfsError::Cipher(format!(
             "the cipher over {pool_name:?} could not be registered: {rc}"
         )))
     }
