@@ -13,6 +13,7 @@
 
 use std::path::Path;
 
+use rsqlite_vfs::transfer::DbTransfer;
 use spjall_store::{FILE_NAME, Key, Store, install_opfs, wipe_opfs};
 use wasm_bindgen_test::{wasm_bindgen_test, wasm_bindgen_test_configure};
 
@@ -51,8 +52,8 @@ async fn a_row_survives_closing_and_reacquiring_the_pool() {
     // Pausing gives every access handle back to OPFS and unpausing takes
     // them again, so the reopen below reads the file, not a cache.
     let pool = install_opfs(POOL).await.expect("the installed pool");
-    pool.pause_vfs().expect("pause");
-    pool.unpause_vfs().await.expect("unpause");
+    pool.pause().expect("pause");
+    pool.resume().await.expect("unpause");
 
     let store = Store::open(dir, &KEY).expect("reopen");
     let value: Vec<u8> = store

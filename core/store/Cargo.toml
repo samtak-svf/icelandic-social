@@ -10,18 +10,23 @@ publish.workspace = true
 [features]
 # rusqlite's SQLite on wasm32 with SQLite3 Multiple Ciphers compiled in, so
 # the store's `PRAGMA key` encrypts the file as SQLCipher does natively (0064).
-sqlite3mc = ["dep:sqlite-wasm-rs", "sqlite-wasm-rs?/sqlite3mc"]
+sqlite3mc = ["dep:sqlite-wasm-rs", "sqlite-wasm-rs?/sqlite3mc", "sqlite-wasm-rs?/wasm-bindgen"]
 # The store in the browser's Origin Private File System, through the
 # `opfs-sahpool` VFS under sqlite3mc's cipher, in a dedicated Worker only
 # (decision 0081). It is the default VFS once `install_opfs` has run.
-opfs = ["sqlite3mc", "dep:sqlite-wasm-vfs"]
+opfs = ["sqlite3mc", "dep:sqlite-wasm-vfs", "dep:rsqlite-vfs", "dep:thiserror"]
 
 [dependencies]
 rusqlite.workspace = true
 
 [target.'cfg(all(target_arch = "wasm32", target_os = "unknown"))'.dependencies]
 sqlite-wasm-rs = { version = "0.6", default-features = false, optional = true }
-sqlite-wasm-vfs = { version = "0.3", optional = true }
+# `VfsFilesManager`, the trait that carries the pool's `clear`.
+rsqlite-vfs = { version = "0.2", optional = true }
+thiserror = { workspace = true, optional = true }
+sqlite-wasm-vfs = { version = "0.3", default-features = false, features = [
+  "sahpool",
+], optional = true }
 
 [dev-dependencies]
 serde_json.workspace = true

@@ -2691,11 +2691,13 @@ dependencies = [
 name = "spjall-store"
 version = "0.60.0"
 dependencies = [
+ "rsqlite-vfs",
  "rusqlite",
  "serde_json",
  "sqlite-wasm-rs",
  "sqlite-wasm-vfs",
  "tempfile",
+ "thiserror",
  "wasm-bindgen-test",
 ]
 
@@ -2758,8 +2760,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "36bd8e29bf08189a005b2df1df99823aa0861cabe9044e5f31ed54ca292ee618"
 dependencies = [
  "cc",
+ "js-sys",
  "rsqlite-vfs",
  "sqlite3mc-src",
+ "wasm-bindgen",
 ]
 
 [[package]]
@@ -2767,6 +2771,14 @@ name = "sqlite-wasm-vfs"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "11859fbd5ce417c37e9e8c1993b55b9dc21ea7dd6452ba9097115f06e54a7e4a"
+dependencies = [
+ "futures-util",
+ "js-sys",
+ "rsqlite-vfs",
+ "thiserror",
+ "wasm-bindgen",
+ "web-sys",
+]
 
 [[package]]
 name = "sqlite3mc-src"
