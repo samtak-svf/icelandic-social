@@ -100,21 +100,25 @@ describe("the client version floor", () => {
 
   it("answers 426 on a /v1 route, before the token is looked at, and leaves /health open", async () => {
     const owner = await device();
-    const tooOld = { error: "client_too_old", minVersion: "0.5.0", requestId: expect.any(String) };
+    const tooOld = { error: "client_too_old", minVersion: "0.16.0", requestId: expect.any(String) };
     const old = await fetch("/v1/me", { ...owner.auth, "spjall-client": "android/0.1.0" });
     expect(old.status).toBe(426);
     expect(await old.json()).toEqual({ ...tooOld, updateUrl: ANDROID_URL });
-    // A build from before the header counts as 0.1.0, so the 0.5.0 floor shuts it out,
+    // A build from before the header counts as 0.1.0, so the 0.16.0 floor shuts it out,
     // and an unnamed request names no platform to give a URL for.
     const unnamed = await fetch("/v1/me", owner.auth);
     expect(unnamed.status).toBe(426);
     expect(await unnamed.json()).toEqual(tooOld);
-    const iosOld = await fetch("/v1/me", { "spjall-client": "ios/0.4.9" });
+    const iosOld = await fetch("/v1/me", { "spjall-client": "ios/0.15.9" });
     expect(iosOld.status).toBe(426);
     expect(await iosOld.json()).toEqual({ ...tooOld, updateUrl: IOS_URL });
     expect((await fetch("/v1/me", { ...owner.auth, "spjall-client": "x" })).status).toBe(400);
 
-    for (const build of ["android/0.5.0", "ios/0.5.0", "ios/0.10.0"])
+    const androidOld = await fetch("/v1/me", { ...owner.auth, "spjall-client": "android/0.15.9" });
+    expect(androidOld.status).toBe(426);
+    expect(await androidOld.json()).toEqual({ ...tooOld, updateUrl: ANDROID_URL });
+
+    for (const build of ["android/0.16.0", "ios/0.16.0", "ios/0.17.7"])
       expect((await fetch("/v1/me", { ...owner.auth, "spjall-client": build })).status).toBe(200);
     expect((await fetch("/health", {})).status).toBe(200);
     expect((await fetch("/health", { "spjall-client": "android/0.0.9" })).status).toBe(200);

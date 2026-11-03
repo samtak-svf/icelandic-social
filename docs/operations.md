@@ -189,6 +189,14 @@ transfer past its 24 hours (`history.expired` in the logs, with a count), and th
 1-day `history/` rule is the backstop. A transfer that is gone is sent again from the phone by
 linking again.
 
+## Raising the client floor
+
+The floors are `MIN_CLIENT_VERSION_ANDROID`, `MIN_CLIENT_VERSION_IOS` and
+`MIN_CLIENT_VERSION_WEB` in `backend/cloudflare.config.ts` (decision 0030): `/health` reports
+them and a `/v1` request below its floor gets 426 `client_too_old`. The Android and iOS floor
+is 0.16.0 since 2026-11-03 (#289; it was 0.5.0). A floor moves in the same PR as the tests that
+name it (`health.test.ts`, `client-version.test.ts`), and never past `tooling/old-client/release.json`.
+
 ## Jobs
 
 ```bash
