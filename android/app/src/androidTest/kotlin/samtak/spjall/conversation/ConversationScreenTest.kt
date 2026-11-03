@@ -161,7 +161,7 @@ class ConversationScreenTest {
                 calls += "retry"
             }
 
-            override fun paused() = Unit
+            override fun visible(shown: Boolean) = Unit
         }
 
     private val context get() = InstrumentationRegistry.getInstrumentation().targetContext
