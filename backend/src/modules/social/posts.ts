@@ -292,8 +292,6 @@ export async function createPost(
   return {
     ...content,
     anonymous,
-    reactions: [],
-    myReaction: null,
     emojis: [],
     myEmoji: null,
     commentCount: 0,

@@ -1,4 +1,11 @@
-import { emojiOfKind, kindOfEmoji, REACTIONS, type ReactionKind } from "../../../api/social.ts";
+// The frozen history of decision 0100, not API: the five kinds a reaction had before it became an emoji.
+const KIND_EMOJI: Record<string, string> = {
+  like: "👍",
+  love: "❤️",
+  laugh: "😂",
+  wow: "😮",
+  sad: "😢",
+};
 
 /**
  * A reaction row holds the emoji itself (decision 0100). A space made before
@@ -10,8 +17,8 @@ export function ensureEmojiReactions(sql: SqlStorage): void {
   const columns = sql.exec<{ name: string }>("PRAGMA table_info(reactions)").toArray();
   if (!columns.some((c) => c.name === "kind")) return;
   sql.exec("ALTER TABLE reactions RENAME COLUMN kind TO emoji");
-  for (const kind of REACTIONS) {
-    sql.exec("UPDATE reactions SET emoji = ? WHERE emoji = ?", emojiOfKind(kind), kind);
+  for (const [kind, emoji] of Object.entries(KIND_EMOJI)) {
+    sql.exec("UPDATE reactions SET emoji = ? WHERE emoji = ?", emoji, kind);
   }
 }
 
@@ -20,19 +27,10 @@ export function reactionViews(
   counts: { emoji: string; count: number }[],
   mine: string | null,
 ): {
-  reactions: { kind: ReactionKind; count: number }[];
-  myReaction: ReactionKind | null;
   emojis: { emoji: string; count: number }[];
   myEmoji: string | null;
 } {
-  const kinds = new Map<ReactionKind, number>();
-  for (const { emoji, count } of counts) {
-    const kind = kindOfEmoji(emoji);
-    if (kind) kinds.set(kind, count);
-  }
   return {
-    reactions: [...kinds].map(([kind, count]) => ({ kind, count })),
-    myReaction: mine === null ? null : kindOfEmoji(mine),
     emojis: counts.map(({ emoji, count }) => ({ emoji, count })),
     myEmoji: mine,
   };

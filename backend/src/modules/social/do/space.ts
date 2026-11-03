@@ -1,5 +1,4 @@
 import { DurableObject } from "cloudflare:workers";
-import type { ReactionKind } from "../../../api/social.ts";
 import {
   type CommentContent,
   type CommentRecord,
@@ -29,9 +28,6 @@ export type PostContent = {
   body: string;
   media: MediaRef[];
   createdAt: number;
-  /** The old kinds, derived from the emoji (0100). */
-  reactions: { kind: ReactionKind; count: number }[];
-  myReaction: ReactionKind | null;
   emojis: { emoji: string; count: number }[];
   myEmoji: string | null;
   commentCount: number;

@@ -91,7 +91,7 @@ const REFUSED: Record<string, { allowed: number; call: (s: Setting) => Promise<R
   },
   react: {
     allowed: 204,
-    call: (s) => s.one.call("PUT", `/v1/posts/${s.postId}/reaction`, { kind: "love" }),
+    call: (s) => s.one.call("PUT", `/v1/posts/${s.postId}/reaction`, { emoji: "❤️" }),
   },
   likeComment: {
     allowed: 204,

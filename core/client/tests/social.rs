@@ -51,8 +51,6 @@ fn post(id: &str) -> Value {
         "body": "Æfing fellur niður í kvöld.",
         "media": [{ "mediaId": "sm_1", "width": 1024, "height": 768 }],
         "createdAt": 1_760_000_100_000u64,
-        "reactions": [{ "kind": "like", "count": 3 }, { "kind": "sad", "count": 1 }],
-        "myReaction": "like",
         "emojis": [{ "emoji": "🙏", "count": 3 }, { "emoji": "👍", "count": 1 }],
         "myEmoji": "🙏",
         "commentCount": 2,

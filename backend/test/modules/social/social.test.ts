@@ -23,8 +23,6 @@ type Post = {
   author: { accountId: string; name: string | null };
   body: string;
   media: { mediaId: string; width: number; height: number }[];
-  reactions: { kind: string; count: number }[];
-  myReaction: string | null;
   emojis: { emoji: string; count: number }[];
   myEmoji: string | null;
   commentCount: number;
@@ -81,8 +79,8 @@ describe("posts", () => {
       communityId: open,
       author: { accountId: member.accountId, name: "Meðlimur" },
       body: "Fyrsta uppskeran í ár",
-      reactions: [],
-      myReaction: null,
+      emojis: [],
+      myEmoji: null,
       commentCount: 0,
     });
     // An open community is read by any signed-in account, but only members post.
@@ -136,12 +134,12 @@ describe("posts", () => {
     const theirs = await posted(writer, id, "Skrifað af skrifara");
     const owners = await posted(owner, id, "Skrifað af eiganda");
     await writer.call("POST", `/v1/posts/${owners.postId}/comments`, { body: "Gott" });
-    await writer.call("PUT", `/v1/posts/${owners.postId}/reaction`, { kind: "love" });
+    await writer.call("PUT", `/v1/posts/${owners.postId}/reaction`, { emoji: "❤️" });
     await blocker.call("PUT", `/v1/blocks/${writer.accountId}`);
 
     expect((await getPost(blocker, theirs.postId)).status).toBe(404);
     const seen = await ok<Post>(await getPost(blocker, owners.postId));
-    expect(seen).toMatchObject({ commentCount: 0, reactions: [] });
+    expect(seen).toMatchObject({ commentCount: 0, emojis: [] });
     const comments = await ok<{ comments: Comment[] }>(
       await blocker.call("GET", `/v1/posts/${owners.postId}/comments`),
     );
@@ -196,23 +194,21 @@ describe("comments and reactions", () => {
     const [owner, a, b] = [await person("Eigandi"), await person("Anna"), await person("Bjarni")];
     const id = await community(owner, "open", a, b);
     const { postId } = await posted(owner, id, "Kjósið");
-    await a.call("PUT", `/v1/posts/${postId}/reaction`, { kind: "like" });
-    await b.call("PUT", `/v1/posts/${postId}/reaction`, { kind: "like" });
-    await a.call("PUT", `/v1/posts/${postId}/reaction`, { kind: "wow" });
+    await a.call("PUT", `/v1/posts/${postId}/reaction`, { emoji: "👍" });
+    await b.call("PUT", `/v1/posts/${postId}/reaction`, { emoji: "👍" });
+    await a.call("PUT", `/v1/posts/${postId}/reaction`, { emoji: "😮" });
     expect(await ok<Post>(await getPost(a, postId))).toMatchObject({
-      reactions: [
-        { kind: "like", count: 1 },
-        { kind: "wow", count: 1 },
+      emojis: [
+        { emoji: "👍", count: 1 },
+        { emoji: "😮", count: 1 },
       ],
-      myReaction: "wow",
+      myEmoji: "😮",
     });
     expect((await a.call("DELETE", `/v1/posts/${postId}/reaction`)).status).toBe(204);
     expect(await ok<Post>(await getPost(a, postId))).toMatchObject({
-      reactions: [{ kind: "like", count: 1 }],
-      myReaction: null,
+      emojis: [{ emoji: "👍", count: 1 }],
+      myEmoji: null,
     });
-    const odd = await a.call("PUT", `/v1/posts/${postId}/reaction`, { kind: "angry" });
-    expect(odd.status).toBe(400);
   });
 
   it("take any one emoji, counted most used first, and refuse what is not one", async () => {
@@ -238,34 +234,25 @@ describe("comments and reactions", () => {
       { emoji: "👍🏽", count: 1 },
     ]);
     expect(seen.myEmoji).toBe("🙏");
-    // An emoji with no old kind is absent from the old fields.
-    expect(seen).toMatchObject({ reactions: [], myReaction: null });
     expect((await react(a, { emoji: "😮" })).status).toBe(204);
     expect(await ok<Post>(await getPost(a, postId))).toMatchObject({
       myEmoji: "😮",
-      myReaction: "wow",
-      reactions: [{ kind: "wow", count: 1 }],
     });
     for (const bad of ["a", "👍👍", "like!", "", "👍a"]) {
       expect((await react(a, { emoji: bad })).status, bad).toBe(400);
     }
     expect((await react(a, {})).status).toBe(400);
-    expect((await react(a, { kind: "like", emoji: "👍" })).status).toBe(400);
     expect(await ok<Post>(await getPost(a, postId))).toMatchObject({ myEmoji: "😮" });
   });
 
-  it("keep an old build working: its kind is stored as the emoji and read back as both", async () => {
-    const [owner, a, b] = [await person("Eigandi"), await person("Anna"), await person("Bjarni")];
-    const id = await community(owner, "open", a, b);
+  it("refuse an old kind: the body is an emoji and nothing else (0100)", async () => {
+    const [owner, a] = [await person("Eigandi"), await person("Anna")];
+    const id = await community(owner, "open", a);
     const { postId } = await posted(owner, id, "Gamla appið");
-    await a.call("PUT", `/v1/posts/${postId}/reaction`, { kind: "love" });
-    await b.call("PUT", `/v1/posts/${postId}/reaction`, { emoji: "❤️" });
-    expect(await ok<Post>(await getPost(a, postId))).toMatchObject({
-      reactions: [{ kind: "love", count: 2 }],
-      myReaction: "love",
-      emojis: [{ emoji: "❤️", count: 2 }],
-      myEmoji: "❤️",
-    });
+    const react = (body: object) => a.call("PUT", `/v1/posts/${postId}/reaction`, body);
+    expect((await react({ kind: "like" })).status).toBe(400);
+    expect((await react({ kind: "angry" })).status).toBe(400);
+    expect(await ok<Post>(await getPost(a, postId))).toMatchObject({ myEmoji: null, emojis: [] });
   });
 });
 
@@ -534,13 +521,13 @@ describe("deleting", () => {
     const theirs = await posted(leaver, id, "Bless", [mediaId]);
     const owners = await posted(owner, id, "Halló");
     await leaver.call("POST", `/v1/posts/${owners.postId}/comments`, { body: "Hæ" });
-    await leaver.call("PUT", `/v1/posts/${owners.postId}/reaction`, { kind: "sad" });
+    await leaver.call("PUT", `/v1/posts/${owners.postId}/reaction`, { emoji: "😢" });
 
     await deleteAccount(euEnv(env), leaver.accountId);
     expect((await getPost(owner, theirs.postId)).status).toBe(404);
     expect(await ok<Post>(await getPost(owner, owners.postId))).toMatchObject({
       commentCount: 0,
-      reactions: [],
+      emojis: [],
     });
     expect(await env.PROFILES.head(`social/${id}/${mediaId}`)).toBeNull();
     const indexed = await env.DB.prepare("SELECT COUNT(*) AS n FROM post_index WHERE author_id = ?")

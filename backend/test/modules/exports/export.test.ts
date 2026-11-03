@@ -63,7 +63,7 @@ describe("an export", () => {
     await other.call("POST", `/v1/posts/${mine.postId}/comments`, { body: "Orð annars manns" });
     const theirs = await post(other, id, "Póstur annars");
     await me.call("POST", `/v1/posts/${theirs.postId}/comments`, { body: "Mitt svar" });
-    await me.call("PUT", `/v1/posts/${theirs.postId}/reaction`, { kind: "love" });
+    await me.call("PUT", `/v1/posts/${theirs.postId}/reaction`, { emoji: "❤️" });
     await befriend(me, other);
 
     const done = await exported(me);

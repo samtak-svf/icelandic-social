@@ -93,10 +93,10 @@ describe("jobs", () => {
 
   it("tell of a reaction once, and nothing across a block or to oneself", async () => {
     const { author, reader, postId } = await scene();
-    for (const body of [{ kind: "like" }, { emoji: "🙏" }, { kind: "like" }]) {
+    for (const body of [{ emoji: "👍" }, { emoji: "🙏" }, { emoji: "👍" }]) {
       await reader.call("PUT", `/v1/posts/${postId}/reaction`, body);
     }
-    await author.call("PUT", `/v1/posts/${postId}/reaction`, { kind: "like" });
+    await author.call("PUT", `/v1/posts/${postId}/reaction`, { emoji: "👍" });
     await author.call("POST", `/v1/posts/${postId}/comments`, { body: "Takk" });
     const push = recorder();
     await run(push);
@@ -208,7 +208,7 @@ describe("jobs", () => {
       .run();
     const { key } = await apns();
     const apple = provider(new Response(null, { status: 200 }));
-    await reader.call("PUT", `/v1/posts/${postId}/reaction`, { kind: "like" });
+    await reader.call("PUT", `/v1/posts/${postId}/reaction`, { emoji: "👍" });
     await run(sender({ apns: key, fetch: apple.fetch }, env.DB));
     expect(JSON.parse(apple.seen[0]!.body)).toEqual(apnsPayload());
   });

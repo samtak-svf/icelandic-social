@@ -6,7 +6,6 @@ import {
   createPostRoute,
   deleteCommentRoute,
   deletePostRoute,
-  emojiOfKind,
   feedRoute,
   getPostMediaRoute,
   getPostRoute,
@@ -270,7 +269,7 @@ export function socialRoutes(app: OpenAPIHono<AppEnv>): void {
     if (refused) return fail(c, 403, refused);
     const { communityId, authorId } = found.post;
     const body = c.req.valid("json");
-    const emoji = body.emoji ?? emojiOfKind(body.kind!);
+    const emoji = body.emoji;
     // One notice for each account's reaction to a post, whatever it changes to.
     await noteAuthor(c.env, communityId, accountId, [
       notice(c.env, `${postId}:${accountId}`, {

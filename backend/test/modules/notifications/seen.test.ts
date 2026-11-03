@@ -9,7 +9,7 @@ import { inbox, recorder, run, scene, tick } from "./support.ts";
 async function two() {
   const { author, readers, postId } = await scene("A", "B");
   const [a, b] = readers as [(typeof readers)[0], (typeof readers)[0]];
-  await a.call("PUT", `/v1/posts/${postId}/reaction`, { kind: "like" });
+  await a.call("PUT", `/v1/posts/${postId}/reaction`, { emoji: "👍" });
   await run(recorder());
   await tick();
   await b.call("POST", `/v1/posts/${postId}/comments`, { body: "Hæ" });

@@ -124,7 +124,7 @@ describe("a client from before friends", () => {
       it(`${platform}/${version} reads its list and counts as if there were none`, async () => {
         const { author, readers, postId } = await scene("Lesandi", "Vinur");
         const [reader, friend] = readers;
-        await reader!.call("PUT", `/v1/posts/${postId}/reaction`, { kind: "like" });
+        await reader!.call("PUT", `/v1/posts/${postId}/reaction`, { emoji: "👍" });
         await settle();
         const client = `${platform}/${version}`;
         const before = await noticesAs(author, client);
@@ -197,7 +197,7 @@ describe("migration 0041", () => {
     }
     const { author, readers, postId } = await scene("Lesandi", "Annar");
     for (const reader of readers) {
-      await reader.call("PUT", `/v1/posts/${postId}/reaction`, { kind: "like" });
+      await reader.call("PUT", `/v1/posts/${postId}/reaction`, { emoji: "👍" });
     }
     await ask(readers[0]!, author);
     await settle();

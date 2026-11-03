@@ -141,10 +141,10 @@ describe("the leak test", () => {
       await reader.call("POST", `/v1/posts/${made.postId}/comments`, { body: "Svar", media: [] }),
     );
     expect(
-      (await third.call("PUT", `/v1/posts/${made.postId}/reaction`, { kind: "like" })).status,
+      (await third.call("PUT", `/v1/posts/${made.postId}/reaction`, { emoji: "👍" })).status,
     ).toBe(204);
     expect(
-      (await reader.call("PUT", `/v1/posts/${made.postId}/reaction`, { kind: "love" })).status,
+      (await reader.call("PUT", `/v1/posts/${made.postId}/reaction`, { emoji: "❤️" })).status,
     ).toBe(204);
     // A reply to the commenter, so the commenter has a notification.
     await seen(
@@ -287,7 +287,7 @@ describe("the leak test, route by route", () => {
     );
     expect((await moderator.call("POST", `/v1/posts/${polled.postId}/approve`)).status).toBe(204);
     await reader.call("POST", `/v1/posts/${postId}/comments`, { body: "Svar", media: [] });
-    await third.call("PUT", `/v1/posts/${postId}/reaction`, { kind: "like" });
+    await third.call("PUT", `/v1/posts/${postId}/reaction`, { emoji: "👍" });
     expect(
       (
         await third.call("POST", "/v1/reports", {
@@ -417,7 +417,7 @@ describe("nothing answers by who the author is", () => {
     });
     expect(reply.status).toBe(200);
     expect(
-      (await moderator.call("PUT", `/v1/posts/${postId}/reaction`, { kind: "like" })).status,
+      (await moderator.call("PUT", `/v1/posts/${postId}/reaction`, { emoji: "👍" })).status,
     ).toBe(204);
 
     // The block still holds for the author: no reply, no notice.

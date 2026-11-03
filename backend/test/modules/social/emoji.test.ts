@@ -2,7 +2,6 @@ import { runInDurableObject } from "cloudflare:test";
 import { env } from "cloudflare:workers";
 import { describe, expect, it } from "vitest";
 import { Emoji, isEmoji } from "../../../src/api/emoji.ts";
-import { emojiOfKind, kindOfEmoji } from "../../../src/api/social.ts";
 import { ensureEmojiReactions } from "../../../src/modules/social/do/reactions.ts";
 
 // The one rule for "an emoji" a post reaction takes (decision 0100).
@@ -49,18 +48,6 @@ describe("isEmoji", () => {
     expect(isEmoji("👍".repeat(40))).toBe(false);
     expect(Emoji.safeParse("x").success).toBe(false);
     expect(Emoji.safeParse(5).success).toBe(false);
-  });
-});
-
-describe("the five old kinds", () => {
-  it("map to an emoji and back", () => {
-    expect(emojiOfKind("like")).toBe("👍");
-    expect(emojiOfKind("love")).toBe("❤️");
-    expect(emojiOfKind("laugh")).toBe("😂");
-    expect(emojiOfKind("wow")).toBe("😮");
-    expect(emojiOfKind("sad")).toBe("😢");
-    expect(kindOfEmoji("😮")).toBe("wow");
-    expect(kindOfEmoji("🙏")).toBeNull();
   });
 });
 

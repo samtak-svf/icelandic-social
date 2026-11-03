@@ -25,9 +25,7 @@ pub struct Post {
     pub media: Vec<SocialMedia>,
     /// Unix milliseconds.
     pub created_at: u64,
-    /// Each emoji the caller can see, most used first (0100). The server's
-    /// older `reactions` and `myReaction` are not read: they go once the
-    /// client floor passes 0.16.0.
+    /// Each emoji the caller can see, most used first (0100).
     pub emojis: Vec<EmojiCount>,
     /// The caller's own emoji, if any (0100).
     pub my_emoji: Option<String>,
