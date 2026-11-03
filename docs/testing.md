@@ -221,6 +221,13 @@ instances), for its speed and its arm64 AVD, each chosen by a repository variabl
 
 - **Unset means hosted.** Every lane falls back to `ubuntu-latest`, so deleting a variable moves its
   jobs back to GitHub with no workflow change. A PR from a fork always runs hosted.
+- **`tooling/ci-timings.mjs` is the fixed definition of the headline figures (#392).** Read-only
+  through `gh api`; its method is reconstructed, because the first measurements were never written
+  down. Open-to-merge is `createdAt` to `mergedAt` of the newest 60 merged PRs into `main`, dependabot
+  excluded. Queue is a job's `started_at` minus `created_at`, and ran is `completed_at` minus
+  `started_at`, over the newest 60 successful runs of each workflow with a `pull_request` trigger
+  (`--workflow` names them, repeatable). Each is count, median, p90 and max in minutes, nearest-rank,
+  as a table or `--json`. `tooling/ci-measure.mjs` stays the tool for a window of time and per-job rows.
 - **Every job's total wait came down except `web`, which went up by half a minute at the median.**
   Medians in minutes of queue plus run, p90 in brackets, on PRs. Before is the Macs: the newest 60
   successful runs since 10-29 (the #393 baseline), and 10-23 to 10-30 for the core and device jobs.
