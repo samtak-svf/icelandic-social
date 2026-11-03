@@ -1,8 +1,9 @@
 name: android-play
 
 # A signed release bundle uploaded to Google Play's internal testing track,
-# on Samtak svf.'s own Play account (decision 0010). Manual only: each run
-# signs a build and can upload it.
+# on Samtak svf.'s own Play account (decision 0010). Started by
+# apps-release.yml on a version bump (decision 0128) or by hand: each run signs
+# a build and can upload it.
 #
 # The upload key and the Play service account are the organisation's, so they
 # live in the environment `play` (required reviewers), never in repo secrets.
@@ -18,6 +19,18 @@ on:
         description: Upload to the internal testing track after the build
         type: boolean
         default: true
+  workflow_call:
+    inputs:
+      upload:
+        description: Upload to the internal testing track after the build
+        type: boolean
+        default: true
+      build_number:
+        description: >-
+          Run number to derive the build number from (apps-release.yml passes one
+          above every number the manual runs reached). Empty: this run's own number.
+        type: string
+        default: ""
 
 concurrency:
   group: android-play
@@ -90,7 +103,7 @@ jobs:
       - name: Bundle (release)
         working-directory: android
         env:
-          SPJALL_VERSION_CODE: ${{ github.run_number }}
+          SPJALL_VERSION_CODE: ${{ inputs.build_number || github.run_number }}
           SPJALL_UPLOAD_STORE_FILE: ${{ runner.temp }}/upload.jks
           SPJALL_UPLOAD_STORE_PASSWORD: ${{ secrets.ANDROID_UPLOAD_STORE_PASSWORD }}
           SPJALL_UPLOAD_KEY_ALIAS: ${{ secrets.ANDROID_UPLOAD_KEY_ALIAS }}

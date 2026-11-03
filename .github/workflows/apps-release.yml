@@ -1,0 +1,81 @@
+name: apps-release
+
+# Every version change merged to main goes to the testers with no hand step
+# (decision 0128): the Android bundle to Play's internal testing track and the
+# iOS build to TestFlight, through the two signing workflows. This file holds no
+# secret and signs nothing; `secrets: inherit` hands the called workflows the
+# environment secrets they read themselves. A manual run of either workflow
+# stays for a re-upload.
+
+permissions:
+  contents: read
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - android/app/build.gradle.kts
+      - ios/project.yml
+      - .github/workflows/apps-release.yml
+
+# Its own group: the called workflows keep theirs (android-play, ios-testflight),
+# and two bumps in a row queue instead of racing.
+concurrency:
+  group: apps-release
+  cancel-in-progress: false
+
+jobs:
+  version:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    outputs:
+      changed: ${{ steps.read.outputs.changed }}
+      build: ${{ steps.read.outputs.build }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 2
+      - name: Versions at HEAD and before it
+        id: read
+        run: |
+          android_of() { sed -n 's/^ *versionName = "\([^"]*\)".*/\1/p' | head -n1; }
+          ios_of() { sed -n 's/^ *MARKETING_VERSION: "\([^"]*\)".*/\1/p' | head -n1; }
+          android=$(android_of < android/app/build.gradle.kts)
+          ios=$(ios_of < ios/project.yml)
+          if [ -z "$android" ] || [ -z "$ios" ]; then
+            echo "::error::could not read a version (android='$android', ios='$ios')"
+            exit 1
+          fi
+          if [ "$android" != "$ios" ]; then
+            echo "::error::the apps share one version: android $android, ios $ios"
+            exit 1
+          fi
+          before_android=$(git show HEAD^:android/app/build.gradle.kts 2>/dev/null | android_of || true)
+          before_ios=$(git show HEAD^:ios/project.yml 2>/dev/null | ios_of || true)
+          changed=false
+          if [ "$android" != "$before_android" ] || [ "$ios" != "$before_ios" ]; then changed=true; fi
+          echo "version $android (before: android '$before_android', ios '$before_ios'), changed=$changed"
+          echo "changed=$changed" >> "$GITHUB_OUTPUT"
+          # The build numbers derive from the run number plus each lane's offset. This run
+          # counts from 1, so it starts above every number the manual runs reached.
+          echo "build=$((GITHUB_RUN_NUMBER + 1000))" >> "$GITHUB_OUTPUT"
+
+  android:
+    needs: version
+    if: needs.version.outputs.changed == 'true'
+    uses: ./.github/workflows/android-play.yml
+    secrets: inherit
+    with:
+      upload: true
+      build_number: ${{ needs.version.outputs.build }}
+
+  ios:
+    needs: version
+    if: needs.version.outputs.changed == 'true'
+    uses: ./.github/workflows/ios-testflight.yml
+    secrets: inherit
+    with:
+      upload: true
+      build_number: ${{ needs.version.outputs.build }}

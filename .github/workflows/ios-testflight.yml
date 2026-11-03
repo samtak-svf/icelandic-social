@@ -2,7 +2,8 @@ name: ios-testflight
 
 # A signed TestFlight build on the interim Apple team (decision 0011), with the
 # interim ids from identifiers/ids.json (appleInterim), never the frozen ones.
-# Manual only: each run signs a build and can upload it to TestFlight.
+# Started by apps-release.yml on a version bump (decision 0128) or by hand: each
+# run signs a build and can upload it to TestFlight.
 #
 # The signing material is the interim team's, scoped to the team rather than
 # to an app (docs/store-accounts/): the Apple Distribution certificate as a
@@ -20,6 +21,18 @@ on:
         description: Upload to TestFlight after the build
         type: boolean
         default: true
+  workflow_call:
+    inputs:
+      upload:
+        description: Upload to TestFlight after the build
+        type: boolean
+        default: true
+      build_number:
+        description: >-
+          Run number to derive the build number from (apps-release.yml passes one
+          above every number the manual runs reached). Empty: this run's own number.
+        type: string
+        default: ""
 
 concurrency:
   group: ios-testflight
@@ -131,7 +144,7 @@ jobs:
       - name: Archive (Interim)
         working-directory: ios
         env:
-          RUN_NUMBER: ${{ github.run_number }}
+          RUN_NUMBER: ${{ inputs.build_number || github.run_number }}
           BUILD_NUMBER_OFFSET: 100
         run: |
           set -o pipefail

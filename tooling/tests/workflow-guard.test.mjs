@@ -5,6 +5,7 @@ import {
   findInAction,
   findInWorkflow,
   findProblems,
+  releaseLaneProblems,
   RUNNER_EXPRESSIONS,
 } from "../workflow-guard.mjs";
 
@@ -200,5 +201,42 @@ describe("workflow-guard", () => {
     ).toEqual([[8, "action-paths"]]);
     // A workflow with no path filter runs on every change already.
     expect(actionPathProblems("w.yml", `on: push\n${steps}`, uses)).toEqual([]);
+  });
+
+  describe("the release lane signs on hosted runners (decision 0128)", () => {
+    const android = ".github/workflows/android-play.yml";
+    const caller = "on: push\njobs:\n  a:\n    uses: ./.github/workflows/ios-testflight.yml\n";
+
+    it("accepts literal hosted runners in a signing workflow", () => {
+      expect(releaseLaneProblems(android, job("    runs-on: ubuntu-latest\n"))).toEqual([]);
+      expect(releaseLaneProblems(android, job("    runs-on: macos-26\n"))).toEqual([]);
+    });
+
+    it("refuses a self-hosted label, a variable or a matrix in a signing workflow", () => {
+      for (const runsOn of [
+        "[self-hosted, macOS]",
+        "${{ fromJSON(vars.MAC_RUNNER_LABELS || '[\"macos-26\"]') }}",
+        "${{ matrix.os }}",
+        "",
+      ]) {
+        const found = releaseLaneProblems(android, job(`    runs-on: ${runsOn}\n`));
+        expect(
+          found.map((p) => p.rule),
+          runsOn,
+        ).toEqual(["release-lane"]);
+      }
+    });
+
+    it("checks a workflow that calls a signing workflow too", () => {
+      const bad = `${caller}  b:\n    runs-on: [self-hosted]\n`;
+      expect(releaseLaneProblems("w.yml", bad).map((p) => p.rule)).toEqual(["release-lane"]);
+      expect(releaseLaneProblems("w.yml", `${caller}  b:\n    runs-on: ubuntu-latest\n`)).toEqual(
+        [],
+      );
+    });
+
+    it("leaves other workflows alone", () => {
+      expect(releaseLaneProblems("w.yml", job("    runs-on: [self-hosted]\n"))).toEqual([]);
+    });
   });
 });

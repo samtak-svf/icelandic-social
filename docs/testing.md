@@ -87,8 +87,8 @@ timestamp comes from a past year so the row stamp never moves.
 ## Checking by hand on a phone
 
 Some defects show only on a real screen: a long name that wraps, an icon that is the same for
-every row. Each release's hand checks are a list in the gitignored `private/e2e/`, with the
-screenshots of the run beside it. Messages go only between test accounts.
+every row. The list every release walks is the "Release smoke list" below; the detail of a run
+(notes, screenshots) goes in the gitignored `private/e2e/`. Messages go only between test accounts.
 
 **A phone that holds a real account takes the debug build beside the store install, never over
 it.** The debug build type has its own application id (`.debug` suffix) and its own URL scheme,
@@ -112,6 +112,21 @@ prove push, the store update path or R8.
   test renders the view with `ImageRenderer` at a phone's width and writes the PNG to
   `private/`, as was done for the wrapping verified name. The rest waits for a TestFlight build
   on a real iPhone.
+
+## Release smoke list
+
+Every version bump on `main` reaches the testers by itself (decision 0128), so each release is
+walked once on a physical phone, from the tester track (the Play internal link or TestFlight),
+never a debug build:
+
+1. Install, or update over the previous release, and open it.
+2. Sign in.
+3. A push arrives, and tapping it opens its own screen.
+4. One check per area: the home feed, a post with images, adding a reaction, messages (send and
+   receive between two test accounts), a community, the import screen.
+
+The result of each release goes on #399 as pass or fail per line, with the version. The detail
+(screenshots, odd behaviour) goes in `private/e2e/`; a fail becomes an issue before the next bump.
 
 ## Known sources of noise, and what to do
 

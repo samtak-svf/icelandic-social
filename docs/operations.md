@@ -253,6 +253,15 @@ pnpm exec cf d1 query "$DB" --sql \
   "UPDATE accounts SET suspended_at = NULL, suspended_until = NULL WHERE account_id = '<accountId>'"
 ```
 
+## Shipping the apps
+
+Bump `versionName` in `android/app/build.gradle.kts` and `MARKETING_VERSION` in `ios/project.yml`
+to the same value in one PR and merge it. `apps-release.yml` then uploads the Android bundle to Play
+internal testing and the iOS build to TestFlight (decision 0128); it fails when the two versions
+differ. Then walk the release smoke list ([testing.md](testing.md)) and post pass or fail on #399.
+`android-play.yml` and `ios-testflight.yml` stay runnable by hand for a re-upload; a hand run
+numbers its build from its own run count, below the numbers `apps-release.yml` uses.
+
 ## Testers
 
 Testers reach the maintainer directly and are added by hand
