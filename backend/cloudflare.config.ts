@@ -245,6 +245,7 @@ export default defineConfig(({ mode }) => {
         //   IMPORT_PAGE_CONFIG   the platform's addresses, app id, scopes and hosts, as JSON
         //   IMPORT_PAGE_APP_SECRET the platform app's secret
         //   IMPORT_PAGE_KEY      what the stored page tokens are sealed under
+        //   TRANSFER_CLIENT      the exporter allowed to transfer in, as JSON (decision 0129)
         // Staging sets none of them (`jurisdiction-check.mjs`, docs/operations.md).
       },
       // Durable Object classes, declared (decision 0032). Conversation and Inbox

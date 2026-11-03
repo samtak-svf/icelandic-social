@@ -60,6 +60,32 @@ export function fail<S extends ContentfulStatusCode>(
 }
 
 /**
+ * An error answer in the shape OAuth 2.0 (RFC 6749 5.2) and the Data Transfer Initiative's
+ * protocol read, which an exporter acts on by `error` (decision 0129): the same request id as
+ * fail(), never cached, and a Bearer challenge with a 401 that is not about the client's own
+ * credentials (invalid_client carries the Basic challenge its caller sets).
+ */
+export function protocolFail<S extends ContentfulStatusCode>(
+  c: Context<AppEnv>,
+  status: S,
+  error: string,
+  description?: string,
+) {
+  c.header("cache-control", "no-store");
+  if (status === 401 && error !== "invalid_client") {
+    c.header("www-authenticate", `Bearer error="${error}"`);
+  }
+  return c.json(
+    {
+      error,
+      ...(description ? { error_description: description } : {}),
+      requestId: c.var.requestId,
+    },
+    status,
+  );
+}
+
+/**
  * Cancels an unread request body before returning `answer`, so a client that
  * is uploading stops sending it. A refusal that leaves the body unread makes
  * the client finish a body nobody will read, which workerd then resets.

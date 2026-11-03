@@ -202,6 +202,7 @@ type Secrets = {
   IMPORT_PAGE_CONFIG?: string;
   IMPORT_PAGE_APP_SECRET?: string;
   IMPORT_PAGE_KEY?: string;
+  TRANSFER_CLIENT?: string;
 };
 
 /**
@@ -240,6 +241,15 @@ export function importPage(env: Env): { config: string; appSecret: string; key: 
   } = env as Env & Secrets;
   if (!config || !appSecret || !key) return null;
   return { config, appSecret, key };
+}
+
+/**
+ * The one exporter allowed to transfer into this destination, as JSON (decision 0129):
+ * its client id, name, secret hash, redirect addresses and import source. Undefined while
+ * unset, and then every transfer endpoint answers as if it did not exist.
+ */
+export function transferClient(env: Env): string | undefined {
+  return (env as Env & Secrets).TRANSFER_CLIENT || undefined;
 }
 
 /**

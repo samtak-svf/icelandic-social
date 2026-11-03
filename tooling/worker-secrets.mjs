@@ -81,6 +81,14 @@ export const SECRETS = [
     when: /** @type {const} */ ("later"),
     reason: "the platform app does not exist yet",
   })),
+  // The exporter a direct transfer comes from (decision 0129), set once it has issued
+  // a client. Unset, every transfer endpoint answers not found.
+  {
+    name: "TRANSFER_CLIENT",
+    vault: "transfer-client",
+    when: "later",
+    reason: "no exporter has issued a client yet",
+  },
 ];
 
 /**
