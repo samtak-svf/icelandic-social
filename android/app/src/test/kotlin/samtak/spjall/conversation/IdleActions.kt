@@ -63,5 +63,5 @@ internal val IdleActions =
 
         override fun retry() = Unit
 
-        override fun paused() = Unit
+        override fun visible(shown: Boolean) = Unit
     }

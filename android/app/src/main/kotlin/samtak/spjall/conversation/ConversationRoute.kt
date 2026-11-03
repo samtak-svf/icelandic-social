@@ -156,7 +156,7 @@ private fun ConversationRoute(
 
             override fun retry() = model.retry()
 
-            override fun paused() = model.paused()
+            override fun visible(shown: Boolean) = if (shown) model.shown() else model.paused()
         },
     )
 }

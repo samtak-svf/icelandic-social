@@ -87,8 +87,9 @@ fun ConversationScreen(
     state: ConversationViewModel.State,
     actions: ConversationActions,
 ) {
-    LifecycleEventEffect(Lifecycle.Event.ON_STOP) { actions.paused() }
-    DisposableEffect(Unit) { onDispose { actions.paused() } }
+    LifecycleEventEffect(Lifecycle.Event.ON_START) { actions.visible(true) }
+    LifecycleEventEffect(Lifecycle.Event.ON_STOP) { actions.visible(false) }
+    DisposableEffect(Unit) { onDispose { actions.visible(false) } }
     val conversation = state.conversation
     val group = (conversation?.members?.size ?: 0) > 1
     // No one else is here once a block ends a 1:1: nothing to send to.

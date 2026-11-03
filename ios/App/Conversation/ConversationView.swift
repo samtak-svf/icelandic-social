@@ -88,10 +88,9 @@ struct ConversationView: View {
             }
         }
         .task { await model.follow() }
-        .onChange(of: scenePhase) { _, phase in
-            if phase != .active { model.paused() }
-        }
-        .onDisappear { model.paused() }
+        .onAppear { model.visible(scenePhase == ScenePhase.active) }
+        .onChange(of: scenePhase) { _, phase in model.visible(phase == ScenePhase.active) }
+        .onDisappear { model.visible(false) }
         .alert(
             "delete_confirm",
             isPresented: Binding(get: { deleting != nil }, set: { if !$0 { deleting = nil } }),

@@ -21,6 +21,7 @@ final class ConversationModelTests: XCTestCase {
         account.list = [c1]
         let model = ConversationModel(
             id: "c1", account: account, live: live, drafts: drafts, sleep: sleeps.sleep, now: { FakeAccount.now })
+        model.visible(true)  // in front, as the view leaves it; ConversationReadTests covers the rest
         following.append(Task { await model.follow() })
         await eventually { model.loaded }
         return model
@@ -39,17 +40,6 @@ final class ConversationModelTests: XCTestCase {
         XCTAssertFalse(model.older, "a short page is the whole timeline")
         await eventually { self.marks == ["markRead c1 2"] }
         XCTAssertEqual(account.calls.last, "sync")
-    }
-
-    func testMarksReadOnlyWhenTheNewestAdvanced() async {
-        account.timelines["c1"] = [item(1)]
-        let model = await model()
-        await eventually { self.marks.count == 1 }
-        await model.load()
-        XCTAssertEqual(marks.count, 1)
-        account.timelines["c1", default: []].append(item(2))
-        live.emit(.timeline(conversation: "c1", changed: [2]))
-        await eventually { self.marks == ["markRead c1 1", "markRead c1 2"] }
     }
 
     func testReadsAgainOnlyForEventsOfThisConversation() async {
@@ -268,9 +258,9 @@ final class ConversationModelTests: XCTestCase {
         let model = await model()
         model.type("H")
         await eventually { self.live.sent == [self.typing(true)] }
-        model.paused()
+        model.visible(false)
         await eventually { self.live.sent.last == self.typing(false) }
-        model.paused()
+        model.visible(false)
         await Task.yield()
         XCTAssertEqual(live.sent.count, 2, "a second pause sends nothing")
 
@@ -286,7 +276,7 @@ final class ConversationModelTests: XCTestCase {
         let model = await model()
         model.type("H")
         await eventually { self.account.calls.contains("typing c1 true") }
-        model.paused()
+        model.visible(false)
         XCTAssertEqual(live.sent, [])
     }
 

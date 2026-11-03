@@ -151,7 +151,7 @@ class ConversationViewModel(
     // A burst of events reads the timeline once.
     private val reads = Channel<Unit>(Channel.CONFLATED)
     private var failed: (() -> Unit)? = null
-    private var marked: ULong? = null
+    private val reader = ReadMarker { withContext(io) { account.markRead(id, it) }.also { live.sync() } }
 
     // Typing frames go one at a time and in order. A key never cancels one:
     // the core counts a frame toward its throttle when it makes it, so a
@@ -481,8 +481,15 @@ class ConversationViewModel(
         failed?.invoke() ?: load()
     }
 
-    /** The screen went away or to the background: no one is typing here any more. */
+    /** The screen is in front of the person again: read what came while it was away, and mark it read. */
+    fun shown() {
+        reader.shown = true
+        load()
+    }
+
+    /** The screen went away or to the background: no one is typing, and nothing is read until [shown]. */
     fun paused() {
+        reader.shown = false
         stopTyping()
     }
 
@@ -554,21 +561,12 @@ class ConversationViewModel(
                     problem = null,
                 )
             }
-            markRead(items)
+            reader.read(items)
             scheduleExpiry(items)
         } catch (e: CoreException) {
             failed = ::load
             _state.update { it.copy(loaded = true, problem = e.problem()) }
         }
-    }
-
-    /** The newest item is on screen once the timeline is read, so everything up to it is read. */
-    private suspend fun markRead(items: List<Item>) {
-        val newest = items.mapNotNull { it.seq }.maxOrNull() ?: return
-        if (marked?.let { newest <= it } == true) return
-        withContext(io) { account.markRead(id, newest) }
-        marked = newest
-        live.sync()
     }
 
     private suspend fun download(seq: ULong): Media {

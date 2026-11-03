@@ -47,11 +47,12 @@ class ConversationViewModelTest {
 
     @After fun reset() = Dispatchers.resetMain()
 
+    /** A model whose screen is in front, as `ON_START` leaves it; [ConversationReadTest] covers the rest. */
     private fun TestScope.model(): ConversationViewModel {
         account.conversations = listOf(conversation("c1", person("a2", "Anna")))
         return ConversationViewModel("c1", account, live, Drafts(), dispatcher, { _, _ -> }) {
             FakeAccount.NOW.toLong() + testScheduler.currentTime
-        }.also { runCurrent() }
+        }.apply { shown() }.also { runCurrent() }
     }
 
     private fun sends() = account.calls.filter { it.startsWith("send ") }
@@ -68,20 +69,6 @@ class ConversationViewModelTest {
             assertFalse("a short page is the whole timeline", state.older)
             assertTrue("markRead c1 2" in account.calls)
             assertEquals(1, live.syncs)
-        }
-
-    @Test
-    fun marksReadOnlyWhenTheNewestAdvanced() =
-        runTest(dispatcher) {
-            account.timelines["c1"] = mutableListOf(item(1u))
-            val model = model()
-            model.load()
-            runCurrent()
-            assertEquals(1, account.calls.count { it.startsWith("markRead") })
-            account.timelines.getValue("c1") += item(2u)
-            live.events.emit(Event.Timeline("c1", listOf(2uL)))
-            runCurrent()
-            assertEquals(listOf("markRead c1 1", "markRead c1 2"), account.calls.filter { it.startsWith("markRead") })
         }
 
     @Test

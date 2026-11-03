@@ -83,6 +83,6 @@ interface ConversationActions {
 
     fun retry()
 
-    /** The screen left or went to the background. */
-    fun paused()
+    /** The screen came to the front (`ON_START`, the first time included), or left or went behind ([shown] false). */
+    fun visible(shown: Boolean)
 }

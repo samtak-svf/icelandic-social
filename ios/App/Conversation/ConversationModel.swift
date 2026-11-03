@@ -117,7 +117,7 @@ final class ConversationModel {
     @ObservationIgnored private var readAgain = false
     @ObservationIgnored private var loadingOlder = false
     @ObservationIgnored private var loadingShared = false
-    @ObservationIgnored private var marked: UInt64?
+    @ObservationIgnored private let reader: ReadMarker
     @ObservationIgnored private var typingSent = false
     @ObservationIgnored private var typingIdleTask: Task<Void, Never>?
     @ObservationIgnored private var typingShownTask: Task<Void, Never>?
@@ -138,6 +138,10 @@ final class ConversationModel {
         self.sleep = sleep
         self.now = now
         self.draft = drafts[id]
+        self.reader = ReadMarker { [account, live] seq in
+            try await offMain { try account.markRead(id, seq: seq) }
+            live.sync()
+        }
     }
 
     /// Reads the timeline, then again after each event for it, for as long as the screen shows.
@@ -503,9 +507,11 @@ final class ConversationModel {
         if let failed { await failed() } else { await load() }
     }
 
-    /// The screen went away or to the background: no one is typing here any more.
-    func paused() {
-        stopTyping()
+    /// The screen came to the front, or left it or went to the background: only in front is anything read
+    /// (#554), and away from it no one is typing.
+    func visible(_ shown: Bool) {
+        reader.shown = shown
+        if shown { Task { await reader.read(items) } } else { stopTyping() }
     }
 
     /// Queues `body`, shows it from the core's own store at once (the reader overlays what this device
@@ -548,7 +554,7 @@ final class ConversationModel {
             older = older && items.count >= Int(size)
             problem = nil
             loaded = true
-            await markRead(items)
+            await reader.read(items)
             scheduleExpiry(items)
             if let current = shared { await readShared(size: max(Self.page, UInt32(current.items.count))) }
         } catch {
@@ -566,16 +572,6 @@ final class ConversationModel {
         } catch {
             problem = Problem(error)
         }
-    }
-
-    /// The newest item is on screen once the timeline is read, so everything up to it is read.
-    private func markRead(_ items: [Item]) async {
-        guard let newest = items.compactMap(\.seq).max() else { return }
-        if let marked, newest <= marked { return }
-        let (account, id) = (account, id)
-        guard (try? await offMain { try account.markRead(id, seq: newest) }) != nil else { return }
-        marked = newest
-        live.sync()
     }
 
     @discardableResult
