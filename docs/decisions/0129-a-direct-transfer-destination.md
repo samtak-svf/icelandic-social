@@ -1,6 +1,6 @@
 # 0129. A direct transfer destination
 
-- Status: accepted; implemented (#461), not yet enabled
+- Status: accepted; implemented (#550), not yet enabled
 - Date: 2026-11-03
 - Decided by: the overseer, on Guðröður Atli Jónsson's order of 2026-11-03 to let a person push their content here from another platform directly; his to overturn
 - Amends: [0127](0127-what-a-real-export-holds-and-how-it-comes-in.md) (a third way in, beside the file and the feed)
