@@ -46,6 +46,11 @@
 //    callers grant `actions: read`: GitHub checks the called file's every job
 //    against the caller, so a run without it fails to start at all.
 //
+// 13. The release lane signs on hosted runners only (decision 0128). The two signing
+//    workflows (android-play.yml, ios-testflight.yml) and every workflow that
+//    calls one have a literal GitHub-hosted `runs-on` in each job: no variable,
+//    no matrix, no `self-hosted`. Signing material never reaches our machines.
+//
 // Line-based on purpose: the rules are about single lines, and the guard stays
 // dependency-free like the others (tooling/lib/repo.mjs).
 
@@ -76,7 +81,7 @@ const ENTRY = /^\s+-\s+["']?([^"'\s]+)["']?\s*$/;
 const SECRET = /\bsecrets\.(?!GITHUB_TOKEN\b)\w+/;
 
 /**
- * @typedef {{ file: string, line: number, rule: "pin" | "fork-runner" | "trigger" | "secret-runner" | "nohup" | "rust-toolchain" | "fixed-port" | "exclusive-lane" | "cargo-home" | "runner-expr" | "action-paths" | "tree-proof", message: string }} Problem
+ * @typedef {{ file: string, line: number, rule: "pin" | "fork-runner" | "trigger" | "secret-runner" | "nohup" | "rust-toolchain" | "fixed-port" | "exclusive-lane" | "cargo-home" | "runner-expr" | "action-paths" | "tree-proof" | "release-lane", message: string }} Problem
  */
 
 /**
@@ -393,6 +398,40 @@ export function treeProofProblems(file, text) {
   return found;
 }
 
+const RELEASE_FILES = new Set([
+  ".github/workflows/android-play.yml",
+  ".github/workflows/ios-testflight.yml",
+]);
+const RELEASE_CALL =
+  /^\s*uses:\s*\.\/\.github\/workflows\/(?:android-play|ios-testflight)\.yml\s*$/m;
+const HOSTED_RUNNER = /^(?:ubuntu|macos|windows)-[\w.-]+$/;
+
+/**
+ * Rule 13: the signing workflows and their callers run on literal hosted runners.
+ * @param {string} file repo-relative path
+ * @param {string} text
+ * @returns {Problem[]}
+ */
+export function releaseLaneProblems(file, text) {
+  if (!RELEASE_FILES.has(file) && !RELEASE_CALL.test(text)) return [];
+  /** @type {Problem[]} */
+  const found = [];
+  text.split("\n").forEach((raw, index) => {
+    const code = raw.replace(/^(\s*)#.*$/, "$1");
+    const runsOn = /^\s*runs-on:\s*(.*?)\s*(?:#.*)?$/.exec(code)?.[1];
+    if (runsOn !== undefined && !HOSTED_RUNNER.test(runsOn.replace(/^["']|["']$/g, ""))) {
+      found.push({
+        file,
+        line: index + 1,
+        rule: "release-lane",
+        message:
+          "the release lane signs on a literal GitHub-hosted runner (ubuntu-*, macos-*), never a variable, matrix or self-hosted one (decision 0128)",
+      });
+    }
+  });
+  return found;
+}
+
 /**
  * @param {string} [root]
  * @returns {Problem[]}
@@ -409,6 +448,7 @@ export function findProblems(root = ROOT) {
         ...findInWorkflow(f, read(f)),
         ...actionPathProblems(f, read(f), actionUses),
         ...treeProofProblems(f, read(f)),
+        ...releaseLaneProblems(f, read(f)),
       ]),
     ...actions.flatMap((f) => findInAction(f, read(f))),
   ];
@@ -419,7 +459,7 @@ function main() {
   for (const p of problems) console.error(`::error file=${p.file},line=${p.line}::${p.message}`);
   if (problems.length > 0) process.exit(1);
   console.log(
-    "✓ workflows pin every action by SHA, keep fork PRs and secrets off the org runners, use no nohup, install Rust only through the action, no fixed dev port, the exclusive lane only for Android and the toolchain action before CARGO_HOME is written, one runs-on expression per runner variable, composite actions pinned too, every used local action in the path filters, every job the tree-proof gate can skip proven",
+    "✓ workflows pin every action by SHA, keep fork PRs and secrets off the org runners, use no nohup, install Rust only through the action, no fixed dev port, the exclusive lane only for Android and the toolchain action before CARGO_HOME is written, one runs-on expression per runner variable, composite actions pinned too, every used local action in the path filters, every job the tree-proof gate can skip proven, the release lane on literal hosted runners",
   );
 }
 
