@@ -573,7 +573,7 @@ describe("/v1/feed", () => {
         `"author":{"accountId":"${owner.accountId}","name":"Eigandi","verified":true,` +
         `"photo":null,"role":"owner"},` +
         `"body":"Halló","media":[],"createdAt":${String(post.createdAt)},` +
-        `"reactions":[],"myReaction":null,"emojis":[],"myEmoji":null,` +
+        `"emojis":[],"myEmoji":null,` +
         `"commentCount":0,"latestComment":null,"anonymous":false,"communityId":"${id}",` +
         `"mine":false,"state":"visible","pinned":false}],"next":null}`,
     );

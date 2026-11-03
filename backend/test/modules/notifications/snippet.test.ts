@@ -18,7 +18,7 @@ async function comment(body: string) {
 describe("notification snippet", () => {
   it("quotes the newest comment, and the post for a reaction", async () => {
     const { author, a, postId } = await comment("  Halló\n  heimur  ");
-    await a.call("PUT", `/v1/posts/${postId}/reaction`, { kind: "like" });
+    await a.call("PUT", `/v1/posts/${postId}/reaction`, { emoji: "👍" });
     await run(recorder());
     const rows = (await inbox(author)).notifications;
     expect(rows.find((r) => r.kind === "comment")!.snippet).toBe("Halló heimur");

@@ -83,7 +83,7 @@ describe("a notification with no community", () => {
   it("leaves a community row reaching an old client unchanged", async () => {
     const { author, readers, id, postId } = await scene("Lesandi");
     const [reader] = readers;
-    await reader!.call("PUT", `/v1/posts/${postId}/reaction`, { kind: "like" });
+    await reader!.call("PUT", `/v1/posts/${postId}/reaction`, { emoji: "👍" });
     await run(recorder());
     await tick();
     await tell("a", aboutAccount(author, reader!));
@@ -100,7 +100,7 @@ describe("a notification with no community", () => {
 
   it("does not page an old client onto an empty page", async () => {
     const { author, readers, postId } = await scene("Lesandi");
-    await readers[0]!.call("PUT", `/v1/posts/${postId}/reaction`, { kind: "like" });
+    await readers[0]!.call("PUT", `/v1/posts/${postId}/reaction`, { emoji: "👍" });
     await run(recorder());
     await tick();
     for (const key of ["a", "b", "c"]) await tell(key, aboutAccount(author, readers[0]!));
@@ -231,7 +231,7 @@ describe("migration 0038", () => {
     const { author, readers, id, postId } = await scene("Lesandi", "Annar");
     const [a, b] = readers;
     for (const reader of [a!, b!]) {
-      await reader.call("PUT", `/v1/posts/${postId}/reaction`, { kind: "like" });
+      await reader.call("PUT", `/v1/posts/${postId}/reaction`, { emoji: "👍" });
     }
     await run(recorder());
     await tell("a", {

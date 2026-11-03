@@ -478,7 +478,7 @@ describe("migration 0042", () => {
     const moderator = await platformModerator("Samtak");
     const { author, readers, postId } = await scene("Lesandi", "Annar");
     for (const reader of readers) {
-      await reader.call("PUT", `/v1/posts/${postId}/reaction`, { kind: "like" });
+      await reader.call("PUT", `/v1/posts/${postId}/reaction`, { emoji: "👍" });
     }
     await reportAccount(readers[0]!, author);
     await settle();

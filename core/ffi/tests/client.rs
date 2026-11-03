@@ -655,7 +655,6 @@ fn the_social_calls_cross_the_exported_api() {
         r#"{"posts":[{"postId":"p_1","communityId":"cm_1",
         "author":{"accountId":"a","name":null,"verified":false},"body":"Halló",
         "media":[{"mediaId":"sm_1","width":4,"height":3}],"createdAt":2,
-        "reactions":[{"kind":"laugh","count":2}],"myReaction":null,
         "emojis":[{"emoji":"😂","count":2}],"myEmoji":null,"commentCount":0,
         "state":"removed"}],"next":"2"}"#,
     );

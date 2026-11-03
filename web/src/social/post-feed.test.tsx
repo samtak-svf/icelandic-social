@@ -111,8 +111,6 @@ const live = (over: Partial<Post> = {}): Post => ({
   body: "Texti pósts",
   media: [],
   createdAt: 1_700_000_000_000,
-  reactions: [],
-  myReaction: null,
   emojis: [],
   myEmoji: "",
   commentCount: 0,

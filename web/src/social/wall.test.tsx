@@ -49,8 +49,6 @@ const wallPost = (over: Partial<Post> = {}): Post => ({
   body: "Texti",
   media: [],
   createdAt: 1_700_000_000_000,
-  reactions: [],
-  myReaction: null,
   emojis: [],
   myEmoji: "",
   commentCount: 0,

@@ -9,7 +9,7 @@ import {
   PhotoVersion,
   RATE_LIMITED,
 } from "./common.ts";
-import { ReactionBody, ReactionFields } from "./reaction-kinds.ts";
+import { ReactionBody, ReactionFields } from "./emoji.ts";
 import { Poll } from "./poll-schema.ts";
 import { MediaId, POST_FIELDS, WallAudience } from "./post-fields.ts";
 
@@ -23,8 +23,6 @@ export { MAX_BIO, MediaId, POST_FIELDS, WallAudience } from "./post-fields.ts";
 
 /** The largest image a post takes, before it is re-encoded. */
 export const MAX_SOCIAL_UPLOAD = LIMITS.imageBytes;
-
-export { emojiOfKind, kindOfEmoji, REACTIONS, type ReactionKind } from "./reaction-kinds.ts";
 
 const CommunityId = OpaqueId;
 export const PostId = OpaqueId.openapi({ example: "p_3f9a1b2c3d4e5f60718293a4b5c6d7e8" });

@@ -172,7 +172,7 @@ const PATHS: Path[] = [
   },
   {
     name: "react",
-    call: (by, w) => by.call("PUT", `/v1/posts/${w.postId}/reaction`, { kind: "like" }),
+    call: (by, w) => by.call("PUT", `/v1/posts/${w.postId}/reaction`, { emoji: "👍" }),
     expect: writesOnPost(204),
   },
   {

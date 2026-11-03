@@ -20,8 +20,6 @@ function tombstone(row: IndexedPost, viewer: string): Post {
     body: "",
     media: [],
     createdAt: row.createdAt,
-    reactions: [],
-    myReaction: null,
     emojis: [],
     myEmoji: null,
     commentCount: 0,

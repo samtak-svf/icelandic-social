@@ -2106,49 +2106,6 @@
             "type": "integer",
             "description": "Unix milliseconds"
           },
-          "reactions": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "properties": {
-                "kind": {
-                  "type": "string",
-                  "enum": [
-                    "like",
-                    "love",
-                    "laugh",
-                    "wow",
-                    "sad"
-                  ]
-                },
-                "count": {
-                  "type": "integer"
-                }
-              },
-              "required": [
-                "kind",
-                "count"
-              ]
-            },
-            "deprecated": true,
-            "description": "Deprecated: use `emojis`. Counts of the five old kinds, derived from the emoji; any other emoji is absent. Removed once the client floor passes 0.16.0 (0100)"
-          },
-          "myReaction": {
-            "type": [
-              "string",
-              "null"
-            ],
-            "enum": [
-              "like",
-              "love",
-              "laugh",
-              "wow",
-              "sad",
-              null
-            ],
-            "deprecated": true,
-            "description": "Deprecated: use `myEmoji`. Its old kind, null when it has none (0100)"
-          },
           "emojis": {
             "type": "array",
             "items": {
@@ -2221,8 +2178,6 @@
           "body",
           "media",
           "createdAt",
-          "reactions",
-          "myReaction",
           "emojis",
           "myEmoji",
           "commentCount",
@@ -15209,20 +15164,11 @@
                     "maxLength": 32,
                     "description": "Any one emoji (decision 0100)",
                     "example": "🙏"
-                  },
-                  "kind": {
-                    "type": "string",
-                    "enum": [
-                      "like",
-                      "love",
-                      "laugh",
-                      "wow",
-                      "sad"
-                    ],
-                    "deprecated": true,
-                    "description": "Deprecated: one of the five old kinds, stored as its emoji. For a build below 0.16.0; send `emoji`"
                   }
-                }
+                },
+                "required": [
+                  "emoji"
+                ]
               }
             }
           }

@@ -22,8 +22,6 @@ const post = (n: number): Post => ({
   body: `Færsla númer ${n}`,
   media: [],
   createdAt: n,
-  reactions: [],
-  myReaction: null,
   emojis: [],
   myEmoji: "",
   commentCount: 0,

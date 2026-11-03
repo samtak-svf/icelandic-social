@@ -17,13 +17,13 @@ describe("grouped notifications", () => {
   it("make one row of two reactors, newest first, and count one reactor once", async () => {
     const { author, readers, postId } = await scene("Fyrst", "Annar");
     const [first, second] = readers as [(typeof readers)[0], (typeof readers)[0]];
-    await first.call("PUT", `/v1/posts/${postId}/reaction`, { kind: "like" });
+    await first.call("PUT", `/v1/posts/${postId}/reaction`, { emoji: "👍" });
     await run(recorder());
     await tick();
     await second.call("PUT", `/v1/posts/${postId}/reaction`, { emoji: "🙏" });
     await run(recorder(), Date.now() + 10);
     // The same reactor changing its reaction is the same job: nothing more.
-    await second.call("PUT", `/v1/posts/${postId}/reaction`, { kind: "like" });
+    await second.call("PUT", `/v1/posts/${postId}/reaction`, { emoji: "👍" });
     await run(recorder(), Date.now() + 20);
 
     const { notifications, unread } = await inbox(author);
@@ -132,7 +132,7 @@ describe("grouped notifications", () => {
   it("make a read group unread again and move it to the top on a new actor", async () => {
     const { author, readers, postId } = await scene("A", "B");
     const [a, b] = readers as [(typeof readers)[0], (typeof readers)[0]];
-    await a.call("PUT", `/v1/posts/${postId}/reaction`, { kind: "like" });
+    await a.call("PUT", `/v1/posts/${postId}/reaction`, { emoji: "👍" });
     await run(recorder());
     await tick();
     await a.call("POST", `/v1/posts/${postId}/comments`, { body: "Hæ" });
@@ -143,7 +143,7 @@ describe("grouped notifications", () => {
     await author.call("POST", "/v1/notifications/read", { upTo: Date.now() + 1000 });
     expect((await inbox(author)).unread).toBe(0);
 
-    await b.call("PUT", `/v1/posts/${postId}/reaction`, { kind: "like" });
+    await b.call("PUT", `/v1/posts/${postId}/reaction`, { emoji: "👍" });
     await run(recorder(), Date.now() + 20);
     const after = await inbox(author);
     expect(after.unread).toBe(1);

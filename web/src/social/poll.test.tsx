@@ -33,8 +33,6 @@ const post = (p: Poll): Post => ({
   body: "Á að funda?",
   media: [],
   createdAt: 1,
-  reactions: [],
-  myReaction: null,
   emojis: [],
   myEmoji: "",
   commentCount: 0,

@@ -38,3 +38,17 @@ export const Emoji = z.string().refine(isEmoji, { message: "not exactly one emoj
     "Exactly one emoji: one grapheme cluster, a ZWJ sequence, skin tone or flag included",
   example: "🙏",
 });
+
+/** The body of the reaction route: any one emoji (decision 0100). */
+export const ReactionBody = z.object({
+  emoji: Emoji.openapi({ description: "Any one emoji (decision 0100)" }),
+});
+
+/** The reaction fields of a post (decision 0100). */
+export const ReactionFields = {
+  emojis: z.array(z.object({ emoji: Emoji, count: z.int() })).openapi({
+    description:
+      "Each emoji the caller can see on the post, with its count: most used first, equal counts in code point order (decision 0100)",
+  }),
+  myEmoji: Emoji.nullable().openapi({ description: "The caller's own reaction, if any" }),
+};

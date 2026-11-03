@@ -609,19 +609,6 @@ export interface Post {
   media: Array<SocialMedia>;
   /** Unix milliseconds */
   createdAt: number;
-  /**
-   * Deprecated: use `emojis`. Counts of the five old kinds, derived from the emoji; any other emoji is absent. Removed once the client floor passes 0.16.0 (0100)
-   * @deprecated
-   */
-  reactions: Array<{
-    kind: "like" | "love" | "laugh" | "wow" | "sad";
-    count: number;
-  }>;
-  /**
-   * Deprecated: use `myEmoji`. Its old kind, null when it has none (0100)
-   * @deprecated
-   */
-  myReaction: "like" | "love" | "laugh" | "wow" | "sad" | null;
   /** Each emoji the caller can see on the post, with its count: most used first, equal counts in code point order (decision 0100) */
   emojis: Array<{
     /** Exactly one emoji: one grapheme cluster, a ZWJ sequence, skin tone or flag included */
@@ -2885,12 +2872,7 @@ export function react(args: {
   };
   body: {
     /** Any one emoji (decision 0100) */
-    emoji?: string;
-    /**
-     * Deprecated: one of the five old kinds, stored as its emoji. For a build below 0.16.0; send `emoji`
-     * @deprecated
-     */
-    kind?: "like" | "love" | "laugh" | "wow" | "sad";
+    emoji: string;
   };
 }, init?: CallInit): Promise<
   | { status: 204; data: undefined }
