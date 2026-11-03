@@ -7,6 +7,7 @@ import { connectionJobHandlers } from "./scrape-jobs.ts";
 import { jobHandlers as coreJobs } from "./core.ts";
 import { fileJobHandlers } from "./file-jobs.ts";
 import { pageJobHandlers } from "./page-jobs.ts";
+import { transferJobHandlers } from "./transfer-gather.ts";
 
 export { connectionRoutes } from "./connection-routes.ts";
 export { expireUnproven } from "./connections.ts";
@@ -19,6 +20,16 @@ export { importPost, openImport, requestRemoval, type SourcePost } from "./core.
 export { deleteAccountFiles, expireFiles } from "./file.ts";
 export type { ParsedItem } from "./export-file.ts";
 export { importRoutes } from "./routes.ts";
+export {
+  type Exporter,
+  leftBehind,
+  receiveAlbum,
+  receivePhoto,
+  receivePost,
+  transferSummary,
+  type TransferSummary,
+} from "./transfer.ts";
+export { startDueTransfers } from "./transfer-gather.ts";
 
 /** The handlers of the jobs this module runs. */
 export const jobHandlers = (): Record<string, Handler> => ({
@@ -26,4 +37,5 @@ export const jobHandlers = (): Record<string, Handler> => ({
   ...fileJobHandlers(),
   ...connectionJobHandlers(),
   ...pageJobHandlers(),
+  ...transferJobHandlers(),
 });

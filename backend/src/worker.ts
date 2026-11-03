@@ -14,9 +14,11 @@ import {
   expireUnproven,
   scrapeHealth,
   startDuePages,
+  startDueTransfers,
   startDueScrapes,
 } from "./modules/imports/index.ts";
 import { expireJobs, jobHealth, runJobs } from "./modules/jobs/index.ts";
+import { expireTransfers } from "./modules/transfer/index.ts";
 import { expireMedia } from "./modules/messaging/index.ts";
 import { expireLog, expireReports } from "./modules/moderation/index.ts";
 import { expireNotifications } from "./modules/notifications/index.ts";
@@ -47,6 +49,7 @@ export default {
       if (ran.done + ran.retried + ran.failed > 0) log("jobs.ran", { count: ran.done });
       await startDueScrapes(env);
       await startDuePages(env);
+      await startDueTransfers(env);
       const expired = await expireHistory(env);
       if (expired > 0) log("history.expired", { count: expired });
       return;
@@ -67,6 +70,7 @@ export default {
     log("exports.expired", { count: await expireExports(env) });
     log("import_connections.expired", { count: await expireUnproven(env) });
     log("import_page_offers.expired", { count: await expirePageOffers(env) });
+    log("transfer_requests.expired", { count: await expireTransfers(env) });
     const scrape = await scrapeHealth(env);
     if (scrape) {
       log("imports.scrape_spend", { count: scrape.spentMicros });

@@ -1200,6 +1200,42 @@ export interface OpenHeld {
   year?: number;
 }
 
+export interface TransferList {
+  /** Whether an exporter is configured here */
+  available: boolean;
+  grants: Array<TransferGrant>;
+}
+
+export interface TransferGrant {
+  grantId: string;
+  /** The exporter, as the person reads it */
+  clientName: string;
+  scopes: Array<TransferScope>;
+  /** Milliseconds since the epoch */
+  createdAt: number;
+  /** The standing import its items come into, reviewed as any import; null before the first */
+  importId: string | null;
+  posts: number;
+  /** Of those, how many wait to be opened */
+  held: number;
+  /** Items taken and not brought in, as videos */
+  leftBehind: number;
+  /** Milliseconds since the epoch */
+  lastItemAt: number | null;
+}
+
+export type TransferScope = "social-posts" | "media";
+
+export interface TransferRequest {
+  clientName: string;
+  scopes: Array<TransferScope>;
+}
+
+export interface TransferRedirect {
+  /** Where the browser goes back to the exporter */
+  redirect: string;
+}
+
 export interface ExportSummary {
   exportId: string;
   state: "building" | "ready" | "failed";
@@ -3820,6 +3856,76 @@ export function openHeldPosts(args: {
   | { status: 429; data: ApiError }
 > {
   return call("POST", "/v1/imports/{importId}/open", args, init);
+}
+
+/** The exporters the caller allowed to transfer in, newest first */
+export function listTransfers(init?: CallInit): Promise<
+  | { status: 200; data: TransferList }
+  | { status: 401; data: ApiError }
+  | { status: 426; data: ApiError }
+> {
+  return call("GET", "/v1/transfers", undefined, init);
+}
+
+/** Take a grant back: its tokens stop working, and what came in stays held */
+export function revokeTransfer(args: {
+  path: {
+    grantId: string;
+  };
+}, init?: CallInit): Promise<
+  | { status: 204; data: undefined }
+  | { status: 400; data: ApiError }
+  | { status: 401; data: ApiError }
+  | { status: 404; data: ApiError }
+  | { status: 426; data: ApiError }
+> {
+  return call("DELETE", "/v1/transfers/{grantId}", args, init);
+}
+
+/** What an exporter asks to be allowed, for the consent screen */
+export function getTransferRequest(args: {
+  path: {
+    requestId: string;
+  };
+}, init?: CallInit): Promise<
+  | { status: 200; data: TransferRequest }
+  | { status: 400; data: ApiError }
+  | { status: 401; data: ApiError }
+  | { status: 404; data: ApiError }
+  | { status: 426; data: ApiError }
+> {
+  return call("GET", "/v1/transfer-requests/{requestId}", args, init);
+}
+
+/** Allow the exporter, and send the browser back with a one-time code */
+export function approveTransferRequest(args: {
+  path: {
+    requestId: string;
+  };
+}, init?: CallInit): Promise<
+  | { status: 200; data: TransferRedirect }
+  | { status: 400; data: ApiError }
+  | { status: 401; data: ApiError }
+  | { status: 403; data: ApiError }
+  | { status: 404; data: ApiError }
+  | { status: 426; data: ApiError }
+> {
+  return call("POST", "/v1/transfer-requests/{requestId}/approve", args, init);
+}
+
+/** Refuse the exporter, and send the browser back saying so */
+export function denyTransferRequest(args: {
+  path: {
+    requestId: string;
+  };
+}, init?: CallInit): Promise<
+  | { status: 200; data: TransferRedirect }
+  | { status: 400; data: ApiError }
+  | { status: 401; data: ApiError }
+  | { status: 404; data: ApiError }
+  | { status: 426; data: ApiError }
+> {
+  return call("POST", "/v1/transfer-requests/{requestId}/deny", args, init);
 }
 
 /** The caller's exports that have not expired, newest first */

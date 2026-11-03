@@ -293,6 +293,51 @@ field changes with it, so nothing here needs a migration or an `api: breaking` l
 4. Read every string that carries the token: a new gender can read wrong where no table sees it. Run
    `node tooling/mac-remote.mjs android` and re-record the screenshots that show the word (`docs/testing.md`).
 
+## Direct transfers
+
+A person on another platform can push their posts and photos here directly, under the Data Transfer
+Initiative's open standard ([decision 0129](decisions/0129-a-direct-transfer-destination.md)). It is
+dark until an exporter has issued a client and its secret is set: until then every endpoint below
+answers 404 and the imports page shows nothing about it.
+
+| What the exporter registers           | Value                                                                                                               |
+| ------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| Base endpoint (Generic Importers API) | `https://spjall.samtak.is/dtp/` (`social-posts`, `media`; `photos` and `videos` are aliases of `media`)             |
+| Authorization URL                     | `https://spjall.samtak.is/oauth/authorize` (authorization code; PKCE S256 honoured)                                 |
+| Token URL                             | `https://spjall.samtak.is/oauth/token` (`authorization_code`, `refresh_token`; client auth by Basic header or form) |
+| Revocation URL                        | `https://spjall.samtak.is/oauth/revoke`                                                                             |
+| Scopes                                | `social-posts`, `media` (none asked means both)                                                                     |
+
+The consent screen is `/transfer/<request id>` in the web app, where the authorization URL sends the
+person. Access tokens last an hour; refresh tokens rotate on every use.
+
+**The secret.** `TRANSFER_CLIENT`, from the vault entry `samtak-spjall-transfer-client`, is one JSON
+object:
+
+```json
+{
+  "id": "<client id the exporter uses>",
+  "name": "<the name the consent screen and the grant list show>",
+  "secretSha256": "<64 hex: SHA-256 of the client secret>",
+  "redirectUris": ["https://<the exporter's callback>"],
+  "source": "platform-a"
+}
+```
+
+Only the SHA-256 of the client secret is stored (`printf %s "$SECRET" | sha256sum`); the secret
+itself goes to the exporter and nowhere else. `source` is the import source key the posts are
+filed under.
+
+**To switch it on:** create the vault entry, set its `when` in `tooling/worker-secrets.mjs` to
+`"now"` in a PR, and once merged run `node tooling/worker-secrets.mjs` as for any other secret.
+Check with `curl -sI https://spjall.samtak.is/oauth/authorize`: 400 (no client id) means on, 404
+means off.
+
+**To switch it off:** `cf workers secrets delete TRANSFER_CLIENT` and set `when` back to `"later"`.
+Every endpoint answers 404 at once; grants and what came in stay, and come back with the secret.
+To end one person's transfers, they revoke the grant on the imports page; to end every grant of an
+exporter for good, give it a new client id, which no old token matches.
+
 ## Monitoring
 
 The daily cron logs these with counts only (decision 0008):

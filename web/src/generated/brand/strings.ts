@@ -1529,4 +1529,44 @@ export const strings = {
     plural.select(args.count) === "one"
       ? String(args.count) + " póstur birtur."
       : String(args.count) + " póstar birtir.",
+  /** Heading of the imports page section listing direct transfers (decision 0129). */
+  transfer_title: "Beinn flutningur af öðrum miðli",
+  /** What a direct transfer is, under that heading. */
+  transfer_hint: "Þegar þú velur þessa þjónustu sem áfangastað á hinum miðlinum berast póstar og myndir beint hingað. Allt bíður hjá þér þar til þú opnar það.",
+  /** When the person allowed a transfer. */
+  transfer_since: (args: { date: string }): string =>
+    "Leyft " + args.date + ".",
+  /** When the last item of a transfer arrived. */
+  transfer_last: (args: { date: string }): string =>
+    "Síðast barst " + args.date + ".",
+  /** How many transferred posts are still held. */
+  transfer_held: (args: { count: number }): string =>
+    plural.select(args.count) === "one"
+      ? String(args.count) + " póstur bíður þín."
+      : String(args.count) + " póstar bíða þín.",
+  /** How many transferred items were acknowledged and not brought in. */
+  transfer_left_behind: (args: { count: number }): string =>
+    "Myndskeið og of stórar skrár sem komu ekki með: " + String(args.count) + ".",
+  /** Button that takes a transfer grant back. */
+  transfer_revoke: "Stöðva flutning",
+  /** Confirmation before taking a transfer grant back. */
+  transfer_revoke_confirm: "Stöðva flutninginn? Það sem komið er bíður áfram þar til þú eyðir því.",
+  /** Heading of the consent screen for a direct transfer. */
+  transfer_consent_title: (args: { client: string }): string =>
+    args.client + " vill senda efni hingað",
+  /** What allowing a transfer does. */
+  transfer_consent_body: (args: { client: string }): string =>
+    "Ef þú leyfir það sendir " + args.client + " efnið þitt hingað. Allt bíður hjá þér og enginn annar sér það fyrr en þú opnar það. Þú getur stöðvað flutninginn hvenær sem er á innflutningssíðunni.",
+  /** Lead-in to the list of what a transfer brings. */
+  transfer_consent_what: "Það sem kemur:",
+  /** A transfer scope: social posts. */
+  transfer_scope_social: "Póstar",
+  /** A transfer scope: photos, albums and videos. */
+  transfer_scope_media: "Myndir og albúm",
+  /** Button that allows a transfer. */
+  transfer_allow: "Leyfa",
+  /** Button that refuses a transfer. */
+  transfer_deny: "Hafna",
+  /** A consent request that expired or never existed. */
+  transfer_consent_gone: "Þessi beiðni er útrunnin eða ekki til. Byrjaðu aftur á hinum miðlinum.",
 } as const;

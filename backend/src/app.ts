@@ -28,6 +28,7 @@ import {
   pageSignInRoutes,
 } from "./modules/imports/index.ts";
 import { exportRoutes } from "./modules/exports/index.ts";
+import { itemRoutes, oauthRoutes, transferRoutes } from "./modules/transfer/index.ts";
 import { messagingRoutes } from "./modules/messaging/index.ts";
 import { moderationRoutes } from "./modules/moderation/index.ts";
 import { notificationRoutes, withdrawingRequestNotice } from "./modules/notifications/index.ts";
@@ -114,6 +115,9 @@ export function createApp() {
   pageRoutes(app);
   importRoutes(app);
 
+  // Direct transfers from an exporter (decision 0129).
+  transferRoutes(app);
+
   // A person's own content as one file (decision 0126).
   exportRoutes(app);
 
@@ -128,6 +132,9 @@ export function createApp() {
   app.route("/", linkHost());
   app.route("/", webSignInRoutes(linkOrJoin));
   app.route("/", pageSignInRoutes());
+  // An exporter's own protocol, outside the contract (decision 0129).
+  app.route("/", oauthRoutes());
+  app.route("/", itemRoutes());
 
   return app;
 }

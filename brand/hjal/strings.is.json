@@ -924,5 +924,24 @@
   "imports_held_opened": {
     "one": "{count} póstur birtur.",
     "other": "{count} póstar birtir."
-  }
+  },
+  "transfer_title": "Beinn flutningur af öðrum miðli",
+  "transfer_hint": "Þegar þú velur þessa þjónustu sem áfangastað á hinum miðlinum berast póstar og myndir beint hingað. Allt bíður hjá þér þar til þú opnar það.",
+  "transfer_since": "Leyft {date}.",
+  "transfer_last": "Síðast barst {date}.",
+  "transfer_held": {
+    "one": "{count} póstur bíður þín.",
+    "other": "{count} póstar bíða þín."
+  },
+  "transfer_left_behind": "Myndskeið og of stórar skrár sem komu ekki með: {count}.",
+  "transfer_revoke": "Stöðva flutning",
+  "transfer_revoke_confirm": "Stöðva flutninginn? Það sem komið er bíður áfram þar til þú eyðir því.",
+  "transfer_consent_title": "{client} vill senda efni hingað",
+  "transfer_consent_body": "Ef þú leyfir það sendir {client} efnið þitt hingað. Allt bíður hjá þér og enginn annar sér það fyrr en þú opnar það. Þú getur stöðvað flutninginn hvenær sem er á innflutningssíðunni.",
+  "transfer_consent_what": "Það sem kemur:",
+  "transfer_scope_social": "Póstar",
+  "transfer_scope_media": "Myndir og albúm",
+  "transfer_allow": "Leyfa",
+  "transfer_deny": "Hafna",
+  "transfer_consent_gone": "Þessi beiðni er útrunnin eða ekki til. Byrjaðu aftur á hinum miðlinum."
 }
