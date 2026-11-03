@@ -121,7 +121,9 @@ never a debug build:
 
 1. Install, or update over the previous release, and open it.
 2. Sign in.
-3. A push arrives, and tapping it opens its own screen.
+3. A push arrives, and tapping it opens its own screen. With a conversation left open and the app
+   sent to the background, a new message keeps its notification and the sender does not see it read
+   (#554).
 4. One check per area: the home feed, a post with images, adding a reaction, messages (send and
    receive between two test accounts), a community, the import screen.
 
