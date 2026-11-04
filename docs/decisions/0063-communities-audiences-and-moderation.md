@@ -1,6 +1,6 @@
 # 0063. Communities have an audience, roles and a moderation log; their content is hosted, not encrypted
 
-- Status: accepted; implemented (#49, #58), the tombstone, the statement of reasons and the single review (#374); amended by [0066](0066-moderation-in-d1.md), [0070](0070-community-deletion-and-declined-requests.md), [0071](0071-comment-replies-and-reactions.md), [0079](0079-community-layout-feed-and-management.md), [0080](0080-communities-follow-the-familiar-group-layout.md), [0091](0091-anonymous-posts-in-a-community.md), [0100](0100-a-post-reaction-is-any-one-emoji.md) and [0115](0115-the-wall.md)
+- Status: accepted; implemented (#49, #58), the tombstone, the statement of reasons and the single review (#374); amended by [0066](0066-moderation-in-d1.md), [0070](0070-community-deletion-and-declined-requests.md), [0071](0071-comment-replies-and-reactions.md), [0079](0079-community-layout-feed-and-management.md), [0080](0080-communities-follow-the-familiar-group-layout.md), [0091](0091-anonymous-posts-in-a-community.md), [0100](0100-a-post-reaction-is-any-one-emoji.md), [0115](0115-the-wall.md) and [0130](0130-community-invitations-are-noticed.md)
 - Date: 2026-10-17
 - Decided by: Guðröður Atli Jónsson
 - Builds on: [0001](0001-eu-storage-and-residency-wording.md), [0008](0008-no-pii-in-logs.md),
@@ -15,6 +15,7 @@
 - Amended by: [0091](0091-anonymous-posts-in-a-community.md) (a post may hide its byline from members; every reveal is logged)
 - Amended by: [0100](0100-a-post-reaction-is-any-one-emoji.md) (a post reaction is any one emoji; the five kinds stay as derived fields until the client floor passes 0.16.0)
 - Amended by: [0115](0115-the-wall.md) (an account's posts are for friends by default, and every report on them goes to the platform)
+- Amended by: [0130](0130-community-invitations-are-noticed.md) (an invitation keeps its inviter, reaches the invited person as a notice, is accepted or declined, and a moderator can withdraw it)
 
 ## Decision
 

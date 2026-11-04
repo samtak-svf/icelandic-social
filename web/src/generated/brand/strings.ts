@@ -869,6 +869,22 @@ export const strings = {
   community_invite_sent: "Boð sent",
   /** No person matched the invitation search */
   community_invite_none: "Enginn fannst",
+  /** On a community the reader is invited to: who invited them (decision 0130). {name} is the inviter; only the invited person sees it. */
+  community_invited_by: (args: { name: string }): string =>
+    args.name + " bauð þér að ganga í hópinn.",
+  /** On a community the reader is invited to, when the invitation has no recorded inviter (decision 0130). */
+  community_invited: "Þér er boðið að ganga í hópinn.",
+  /** Button on an invited community: accept the invitation and join. */
+  community_accept_invite: "Þiggja boðið",
+  /** Button on an invited community: decline the invitation. The inviter is not told. */
+  community_decline_invite: "Hafna boðinu",
+  /** Heading for moderators: invitations sent and not yet answered (decision 0130). */
+  community_invitations_pending: "Boð sem bíða svars",
+  /** Under a pending invitation in the moderators' list: who sent it. {name} is the inviter. */
+  community_invitation_from: (args: { name: string }): string =>
+    "Boð frá " + args.name,
+  /** Button for a moderator: withdraw a pending invitation (decision 0130). */
+  community_withdraw_invite: "Draga boðið til baka",
   /** Told after the community link was copied */
   community_link_copied: "Hlekkur hópsins afritaður",
   /** Name of the picture stack of members in a community header */
@@ -1231,6 +1247,11 @@ export const strings = {
   notification_kind_friend_request: "Vinabeiðnir",
   /** Notification settings row: the reader's friend requests accepted (decision 0114). */
   notification_kind_friend_accepted: "Samþykktar vinabeiðnir",
+  /** A notification: a moderator invited the reader to a community (decision 0130). {name} is the inviter. */
+  notice_community_invite: (args: { name: string }): string =>
+    args.name + " bauð þér í hópinn.",
+  /** Notification settings row: invitations to a community (decision 0130). */
+  notification_kind_community_invite: "Boð um inngöngu",
   /** The server refused a friend request. It never says why: a decline is not disclosed (decision 0114). */
   problem_request_refused: "Ekki er hægt að senda þessa beiðni núna.",
   /** The server refused a friend request: too many in 24 hours. */

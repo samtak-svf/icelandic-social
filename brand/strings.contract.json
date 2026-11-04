@@ -2277,6 +2277,40 @@
       "surfaces": ["android", "web"],
       "description": "No person matched the invitation search"
     },
+    "community_invited_by": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "On a community the reader is invited to: who invited them (decision 0130). {name} is the inviter; only the invited person sees it.",
+      "placeholders": {
+        "name": "string"
+      }
+    },
+    "community_invited": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "On a community the reader is invited to, when the invitation has no recorded inviter (decision 0130)."
+    },
+    "community_accept_invite": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "Button on an invited community: accept the invitation and join."
+    },
+    "community_decline_invite": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "Button on an invited community: decline the invitation. The inviter is not told."
+    },
+    "community_invitations_pending": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "Heading for moderators: invitations sent and not yet answered (decision 0130)."
+    },
+    "community_invitation_from": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "Under a pending invitation in the moderators' list: who sent it. {name} is the inviter.",
+      "placeholders": {
+        "name": "string"
+      }
+    },
+    "community_withdraw_invite": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "Button for a moderator: withdraw a pending invitation (decision 0130)."
+    },
     "community_link_copied": {
       "surfaces": ["android", "web", "ios"],
       "description": "Told after the community link was copied"
@@ -3092,6 +3126,17 @@
     "notification_kind_friend_accepted": {
       "surfaces": ["android", "ios", "web"],
       "description": "Notification settings row: the reader's friend requests accepted (decision 0114)."
+    },
+    "notice_community_invite": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "A notification: a moderator invited the reader to a community (decision 0130). {name} is the inviter.",
+      "placeholders": {
+        "name": "string"
+      }
+    },
+    "notification_kind_community_invite": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "Notification settings row: invitations to a community (decision 0130)."
     },
     "problem_request_refused": {
       "surfaces": ["android", "ios", "web"],

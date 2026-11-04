@@ -1,11 +1,12 @@
 # 0106. Notification levels per kind and per community
 
-- Status: accepted; implemented in the Worker, the core, the web and both apps (#308); amended by 0114
+- Status: accepted; implemented in the Worker, the core, the web and both apps (#308); amended by 0114 and 0130
 - Date: 2026-10-27
 - Decided by: Guðröður Atli Jónsson, approving the notifications v2 plan (#308)
 - Amends: [0067](0067-jobs-and-notifications.md) (per-kind settings, listed as not built)
 - Amended by: [0114](0114-friends-and-the-person-screen.md) (two more kinds, a friend request and its acceptance),
-  [0115](0115-the-wall.md) (a kind with no level: reports waiting, in the list and never pushed)
+  [0115](0115-the-wall.md) (a kind with no level: reports waiting, in the list and never pushed),
+  [0130](0130-community-invitations-are-noticed.md) (a community invitation)
 
 ## Decision
 

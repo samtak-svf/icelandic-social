@@ -937,6 +937,20 @@
     <string name="community_invite_sent">Boð sent</string>
     <!-- No person matched the invitation search -->
     <string name="community_invite_none">Enginn fannst</string>
+    <!-- On a community the reader is invited to: who invited them (decision 0130). {name} is the inviter; only the invited person sees it. -->
+    <string name="community_invited_by">%1$s bauð þér að ganga í hópinn.</string>
+    <!-- On a community the reader is invited to, when the invitation has no recorded inviter (decision 0130). -->
+    <string name="community_invited">Þér er boðið að ganga í hópinn.</string>
+    <!-- Button on an invited community: accept the invitation and join. -->
+    <string name="community_accept_invite">Þiggja boðið</string>
+    <!-- Button on an invited community: decline the invitation. The inviter is not told. -->
+    <string name="community_decline_invite">Hafna boðinu</string>
+    <!-- Heading for moderators: invitations sent and not yet answered (decision 0130). -->
+    <string name="community_invitations_pending">Boð sem bíða svars</string>
+    <!-- Under a pending invitation in the moderators' list: who sent it. {name} is the inviter. -->
+    <string name="community_invitation_from">Boð frá %1$s</string>
+    <!-- Button for a moderator: withdraw a pending invitation (decision 0130). -->
+    <string name="community_withdraw_invite">Draga boðið til baka</string>
     <!-- Told after the community link was copied -->
     <string name="community_link_copied">Hlekkur hópsins afritaður</string>
     <!-- Name of the picture stack of members in a community header -->
@@ -1270,6 +1284,10 @@
     <string name="notification_kind_friend_request">Vinabeiðnir</string>
     <!-- Notification settings row: the reader's friend requests accepted (decision 0114). -->
     <string name="notification_kind_friend_accepted">Samþykktar vinabeiðnir</string>
+    <!-- A notification: a moderator invited the reader to a community (decision 0130). {name} is the inviter. -->
+    <string name="notice_community_invite">%1$s bauð þér í hópinn.</string>
+    <!-- Notification settings row: invitations to a community (decision 0130). -->
+    <string name="notification_kind_community_invite">Boð um inngöngu</string>
     <!-- The server refused a friend request. It never says why: a decline is not disclosed (decision 0114). -->
     <string name="problem_request_refused">Ekki er hægt að senda þessa beiðni núna.</string>
     <!-- The server refused a friend request: too many in 24 hours. -->
