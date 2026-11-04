@@ -555,6 +555,11 @@ export interface Community {
   joinRequested: boolean;
   /** A moderator invited the caller */
   invited: boolean;
+  /** Who invited the caller; null when it is not invited or the invitation records no inviter (decision 0130) */
+  invitedBy: {
+    accountId: string;
+    name: string | null;
+  } | null;
   /** Until when (Unix milliseconds) a moderator muted the caller here: it reads, but does not post, comment or react */
   mutedUntil: number | null;
   /** Its owner's account was deleted and no moderator was left to take it over; it is deleted 90 days later */
@@ -706,6 +711,17 @@ export interface JoinRequest {
   verified: boolean;
   /** Unix milliseconds */
   requestedAt: number;
+}
+
+export interface CommunityInvitation {
+  accountId: string;
+  name: string | null;
+  invitedBy: {
+    accountId: string;
+    name: string | null;
+  } | null;
+  /** Unix milliseconds */
+  createdAt: number;
 }
 
 export interface CommunityAvatarSet {
@@ -977,7 +993,7 @@ export interface NotificationPage {
 
 export interface Notification {
   notificationId: string;
-  kind: "comment" | "reply" | "reaction" | "join_approved" | "moderated" | "friend_request" | "friend_accepted" | "reports_waiting";
+  kind: "comment" | "reply" | "reaction" | "join_approved" | "moderated" | "friend_request" | "friend_accepted" | "community_invite" | "reports_waiting";
   actor: Author | null;
   /** The newest three distinct accounts that caused the notification, newest first (decision 0103) */
   actors: Array<Author>;
@@ -1010,6 +1026,7 @@ export interface NotificationSettings {
     moderated: NotificationLevel;
     friend_request: NotificationLevel;
     friend_accepted: NotificationLevel;
+    community_invite: NotificationLevel;
   };
   /** The communities with a level set; the others are `push` */
   communities: Array<{
@@ -2162,6 +2179,45 @@ export function inviteToCommunity(args: {
   | { status: 426; data: ApiError }
 > {
   return call("PUT", "/v1/communities/{communityId}/invitations/{accountId}", args, init);
+}
+
+/** Take an invitation back; the invited account's notice goes with it */
+export function withdrawInvitation(args: {
+  path: {
+    communityId: string;
+    accountId: string;
+  };
+}, init?: CallInit): Promise<
+  | { status: 204; data: undefined }
+  | { status: 400; data: ApiError }
+  | { status: 401; data: ApiError }
+  | { status: 403; data: ApiError }
+  | { status: 404; data: ApiError }
+  | { status: 426; data: ApiError }
+> {
+  return call("DELETE", "/v1/communities/{communityId}/invitations/{accountId}", args, init);
+}
+
+/**
+ * The invitations that wait, newest first
+ *
+ * Moderators only. `invitedBy` is null when the inviter's account is gone or the invitation predates the record (decision 0130).
+ */
+export function listInvitations(args: {
+  path: {
+    communityId: string;
+  };
+}, init?: CallInit): Promise<
+  | { status: 200; data: {
+    invitations: Array<CommunityInvitation>;
+  } }
+  | { status: 400; data: ApiError }
+  | { status: 401; data: ApiError }
+  | { status: 403; data: ApiError }
+  | { status: 404; data: ApiError }
+  | { status: 426; data: ApiError }
+> {
+  return call("GET", "/v1/communities/{communityId}/invitations", args, init);
 }
 
 /** Make a member a moderator, or a moderator a member again */
@@ -3556,6 +3612,7 @@ export function putNotificationSettings(args: {
       moderated?: NotificationLevel;
       friend_request?: NotificationLevel;
       friend_accepted?: NotificationLevel;
+      community_invite?: NotificationLevel;
     };
   };
 }, init?: CallInit): Promise<

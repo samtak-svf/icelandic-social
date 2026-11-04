@@ -1900,6 +1900,30 @@
             "type": "boolean",
             "description": "A moderator invited the caller"
           },
+          "invitedBy": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "accountId": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9_-]{1,128}$",
+                "example": "c_9f3a1b"
+              },
+              "name": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "accountId",
+              "name"
+            ],
+            "description": "Who invited the caller; null when it is not invited or the invitation records no inviter (decision 0130)"
+          },
           "mutedUntil": {
             "type": [
               "integer",
@@ -2025,6 +2049,7 @@
           "role",
           "joinRequested",
           "invited",
+          "invitedBy",
           "mutedUntil",
           "readOnly",
           "deletedAt",
@@ -2487,6 +2512,55 @@
           "name",
           "verified",
           "requestedAt"
+        ]
+      },
+      "CommunityInvitation": {
+        "type": "object",
+        "properties": {
+          "accountId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,128}$",
+            "example": "c_9f3a1b"
+          },
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "invitedBy": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "accountId": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9_-]{1,128}$",
+                "example": "c_9f3a1b"
+              },
+              "name": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "accountId",
+              "name"
+            ]
+          },
+          "createdAt": {
+            "type": "integer",
+            "description": "Unix milliseconds"
+          }
+        },
+        "required": [
+          "accountId",
+          "name",
+          "invitedBy",
+          "createdAt"
         ]
       },
       "CommunityAvatarSet": {
@@ -3693,6 +3767,7 @@
               "moderated",
               "friend_request",
               "friend_accepted",
+              "community_invite",
               "reports_waiting"
             ]
           },
@@ -3815,6 +3890,9 @@
               },
               "friend_accepted": {
                 "$ref": "#/components/schemas/NotificationLevel"
+              },
+              "community_invite": {
+                "$ref": "#/components/schemas/NotificationLevel"
               }
             },
             "required": [
@@ -3824,7 +3902,8 @@
               "join_approved",
               "moderated",
               "friend_request",
-              "friend_accepted"
+              "friend_accepted",
+              "community_invite"
             ],
             "description": "A level for each kind; `push` if never set"
           },
@@ -11592,6 +11671,201 @@
             }
           }
         }
+      },
+      "delete": {
+        "operationId": "withdrawInvitation",
+        "tags": [
+          "communities"
+        ],
+        "summary": "Take an invitation back; the invited account's notice goes with it",
+        "security": [
+          {
+            "deviceToken": []
+          },
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,128}$",
+              "example": "cm_3f9a1b2c3d4e5f60718293a4b5c6d7e8"
+            },
+            "required": true,
+            "name": "communityId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,128}$",
+              "example": "c_9f3a1b"
+            },
+            "required": true,
+            "name": "accountId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "The invitation is gone"
+          },
+          "400": {
+            "description": "The request does not match the schema",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No device token or session the route takes, or one that is not valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "not_permitted: only the community's moderators and its owner may do this",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "not_found: no such community, or no such invitation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "426": {
+            "description": "client_too_old: Spjall-Client names a version below the floor; minVersion says which",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/communities/{communityId}/invitations": {
+      "get": {
+        "operationId": "listInvitations",
+        "tags": [
+          "communities"
+        ],
+        "summary": "The invitations that wait, newest first",
+        "description": "Moderators only. `invitedBy` is null when the inviter's account is gone or the invitation predates the record (decision 0130).",
+        "security": [
+          {
+            "deviceToken": []
+          },
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,128}$",
+              "example": "cm_3f9a1b2c3d4e5f60718293a4b5c6d7e8"
+            },
+            "required": true,
+            "name": "communityId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The invitations",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "invitations": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/CommunityInvitation"
+                      }
+                    }
+                  },
+                  "required": [
+                    "invitations"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request does not match the schema",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No device token or session the route takes, or one that is not valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "not_permitted: only the community's moderators and its owner may do this",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "not_found: no such community",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "426": {
+            "description": "client_too_old: Spjall-Client names a version below the floor; minVersion says which",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/v1/communities/{communityId}/members/{accountId}/role": {
@@ -18364,6 +18638,9 @@
                         "$ref": "#/components/schemas/NotificationLevel"
                       },
                       "friend_accepted": {
+                        "$ref": "#/components/schemas/NotificationLevel"
+                      },
+                      "community_invite": {
                         "$ref": "#/components/schemas/NotificationLevel"
                       }
                     }

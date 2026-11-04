@@ -26,6 +26,7 @@ export const KINDS: readonly Kind[] = [
   "moderated",
   "friend_request",
   "friend_accepted",
+  "community_invite",
 ];
 
 const ALL_LEVELS: readonly NotificationLevel[] = ["push", "in_app", "off"];
@@ -44,6 +45,7 @@ export const KIND_TEXT: Record<Kind, string> = {
   moderated: strings.notification_kind_moderated,
   friend_request: strings.notification_kind_friend_request,
   friend_accepted: strings.notification_kind_friend_accepted,
+  community_invite: strings.notification_kind_community_invite,
 };
 
 /** The levels a kind may be set to, loudest first. */

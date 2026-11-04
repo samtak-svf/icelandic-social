@@ -13,6 +13,7 @@ type NoticeKind =
   | "moderated"
   | "friend_request"
   | "friend_accepted"
+  | "community_invite"
   | "reports_waiting";
 export type NoticeBadge = "emoji" | "comment" | "approved" | "moderator" | "friend";
 
@@ -49,6 +50,7 @@ const BADGE: Record<NoticeKind, NoticeBadge> = {
   moderated: "moderator",
   friend_request: "friend",
   friend_accepted: "friend",
+  community_invite: "approved",
   reports_waiting: "moderator",
 };
 
@@ -94,7 +96,12 @@ export function noticeText(n: NoticeSource): NoticeText {
   const name = names[0] ?? null;
   const shown = (value: string | null) => value ?? strings.person_deleted;
   // One person, so never grouped (decision 0114).
-  if (n.kind === "friend_request" || n.kind === "friend_accepted") {
+  // One person invites, so never grouped (decision 0130).
+  if (
+    n.kind === "friend_request" ||
+    n.kind === "friend_accepted" ||
+    n.kind === "community_invite"
+  ) {
     const stem = `notice_${n.kind}` as const;
     return { key: stem, args: { name }, badge, text: strings[stem]({ name: shown(name) }) };
   }
