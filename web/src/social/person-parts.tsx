@@ -14,6 +14,7 @@ import { Button } from "../ui/kit.tsx";
 import { DotsIcon, Menu, MenuItem } from "../ui/menu.tsx";
 import { Avatar } from "./avatar.tsx";
 import { FriendRow } from "./friend-row.tsx";
+import { endsNotice } from "./ends-notice.ts";
 import { outcome } from "./outcome.ts";
 import type { useAct } from "./use-act.ts";
 
@@ -63,13 +64,13 @@ export function RelationActions({
           <Button
             tone="primary"
             disabled={busy}
-            onClick={() => act(() => outcome(acceptFriendRequest(path), 204))}
+            onClick={() => act(() => endsNotice(outcome(acceptFriendRequest(path), 204)))}
           >
             {strings.person_accept}
           </Button>
           <Button
             disabled={busy}
-            onClick={() => act(() => outcome(declineFriendRequest(path), 204))}
+            onClick={() => act(() => endsNotice(outcome(declineFriendRequest(path), 204)))}
           >
             {strings.person_decline}
           </Button>

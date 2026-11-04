@@ -14,6 +14,7 @@ import {
 } from "../generated/api.ts";
 import { strings } from "../generated/brand/strings.ts";
 import { formatIsDate } from "../lib/is-format.ts";
+import { endsNotice } from "../social/ends-notice.ts";
 import { FriendRow } from "../social/friend-row.tsx";
 import { outcome, useLoad, type Outcome } from "../social/outcome.ts";
 import { SuggestedPeople } from "../social/suggestions.tsx";
@@ -99,13 +100,15 @@ function Incoming({
           <Button
             tone="primary"
             disabled={busy}
-            onClick={() => act(() => outcome(acceptFriendRequest(pathOf(person)), 204))}
+            onClick={() => act(() => endsNotice(outcome(acceptFriendRequest(pathOf(person)), 204)))}
           >
             {strings.person_accept}
           </Button>
           <Button
             disabled={busy}
-            onClick={() => act(() => outcome(declineFriendRequest(pathOf(person)), 204))}
+            onClick={() =>
+              act(() => endsNotice(outcome(declineFriendRequest(pathOf(person)), 204)))
+            }
           >
             {strings.person_decline}
           </Button>

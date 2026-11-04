@@ -28,11 +28,19 @@ final class NotificationsModel: ScreenModel {
     var failed: (() async -> Void)?
     /// This visit has marked the list seen, so a page loaded after keeps the boundary from before.
     private var visiting = false
+    /// Announcements of a call that ended a notice of the caller's (#570).
+    @ObservationIgnored private let ended: AsyncStream<Void>
 
     /// `cancel` takes the delivered notifications with these ids off the lock screen (0107).
     init(social: Social, cancel: @escaping @Sendable ([String]) async -> Void = { _ in }) {
         self.social = social
         self.cancel = cancel
+        ended = social.noticeChanges.changes()
+    }
+
+    /// Asks for the count again each time a call ends a notice, so the bell is right without a change of screen.
+    func followEndedNotices() async {
+        for await _ in ended { await refresh() }
     }
 
     /// Rows made since the list was last looked at, or all of them when it never was.

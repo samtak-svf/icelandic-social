@@ -17,6 +17,8 @@ import samtak.spjall.media.Files
 import samtak.spjall.push.Push
 import samtak.spjall.push.SystemNotifier
 import samtak.spjall.social.CoreSocial
+import samtak.spjall.social.NoticeChanges
+import samtak.spjall.social.NoticingSocial
 import samtak.spjall.social.Social
 import samtak.spjall.socket.OkHttpWire
 import samtak.spjall.socket.Socket
@@ -55,8 +57,11 @@ class AppGraph(
 
     val account: Account = CoreAccount { client }
 
+    /** Announces a call that ended a notice of the caller's, so the bell asks again (#570). */
+    val noticeChanges = NoticeChanges()
+
     /** Communities, posts and notifications: hosted, kept apart from the conversation store (decision 0060). */
-    val social: Social = CoreSocial { client }
+    val social: Social = NoticingSocial(CoreSocial { client }, noticeChanges)
 
     val files = Files(context)
 

@@ -128,6 +128,7 @@ struct HomeView: View {
         }
         // The count on the bell, as the server has it.
         .task { await notices.refresh() }
+        .task { await notices.followEndedNotices() }
         .task {
             for await _ in socket.events() { await push.quiet() }
         }

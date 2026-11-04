@@ -6,7 +6,7 @@ import SpjallCore
 /// it is kept apart from `Account`, whose conversations are end-to-end encrypted: nothing here is written to the
 /// conversation store or to the device at all. Every call asks the server and blocks on the network, so the
 /// models make them off the main actor.
-protocol Social: Sendable, Friending, Walling, Homing, Inviting {
+protocol Social: Sendable, Friending, Walling, Homing, Inviting, Noticing {
     /// Whether Kenni vouches for this account: only a verified one creates a community (0063).
     func me() throws -> Me
     /// A page of the communities this account may see, by name when `query` is set.
@@ -168,11 +168,11 @@ extension CoreAccount: Social {
 
     func community(_ id: String) throws -> Community { try core().community(communityId: id) }
 
-    func joinCommunity(_ id: String) throws -> JoinState { try core().joinCommunity(communityId: id) }
+    func joinCommunity(_ id: String) throws -> JoinState { try ended(core().joinCommunity(communityId: id)) }
 
     func leaveCommunity(_ id: String) throws { try core().leaveCommunity(communityId: id) }
 
-    func withdrawJoinRequest(_ id: String) throws { try core().withdrawJoinRequest(communityId: id) }
+    func withdrawJoinRequest(_ id: String) throws { try ended(core().withdrawJoinRequest(communityId: id)) }
 
     func joinRequests(_ community: String) throws -> [JoinRequest] {
         try core().joinRequests(communityId: community)

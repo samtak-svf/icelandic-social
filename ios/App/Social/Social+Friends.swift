@@ -48,9 +48,9 @@ extension CoreAccount {
 
     func cancelFriendRequest(_ account: String) throws { try core().cancelFriendRequest(accountId: account) }
 
-    func acceptFriendRequest(_ account: String) throws { try core().acceptFriendRequest(accountId: account) }
+    func acceptFriendRequest(_ account: String) throws { try ended(core().acceptFriendRequest(accountId: account)) }
 
-    func declineFriendRequest(_ account: String) throws { try core().declineFriendRequest(accountId: account) }
+    func declineFriendRequest(_ account: String) throws { try ended(core().declineFriendRequest(accountId: account)) }
 
     func endFriendship(_ account: String) throws { try core().endFriendship(accountId: account) }
 

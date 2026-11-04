@@ -4,6 +4,7 @@ import { strings } from "../generated/brand/strings.ts";
 import { formatIsDate } from "../lib/is-format.ts";
 import type { Problem } from "../problem.ts";
 import { Button, ProblemText, Status } from "../ui/kit.tsx";
+import { endsNotice } from "./ends-notice.ts";
 import { outcome, type Outcome } from "./outcome.ts";
 import { useSuspended } from "./suspended.tsx";
 
@@ -70,8 +71,8 @@ export function Membership({
         by={community.invitedBy}
         busy={busy}
         suspended={suspended}
-        accept={() => void change(outcome(joinCommunity({ path }), 200))}
-        decline={() => void change(outcome(withdrawJoinRequest({ path }), 204))}
+        accept={() => void change(endsNotice(outcome(joinCommunity({ path }), 200)))}
+        decline={() => void change(endsNotice(outcome(withdrawJoinRequest({ path }), 204)))}
       />
     );
   } else if (declinedUntil !== null && declinedUntil > Date.now()) {
@@ -89,7 +90,7 @@ export function Membership({
         <p>{strings.community_join_requested}</p>
         <Button
           disabled={busy}
-          onClick={() => void change(outcome(withdrawJoinRequest({ path }), 204))}
+          onClick={() => void change(endsNotice(outcome(withdrawJoinRequest({ path }), 204)))}
         >
           {strings.community_withdraw_request}
         </Button>
@@ -102,7 +103,7 @@ export function Membership({
       <Button
         tone="primary"
         disabled={busy || suspended}
-        onClick={() => void change(outcome(joinCommunity({ path }), 200))}
+        onClick={() => void change(endsNotice(outcome(joinCommunity({ path }), 200)))}
       >
         {label}
       </Button>

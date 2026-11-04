@@ -250,7 +250,8 @@ class MainActivity : ComponentActivity() {
                 ?.destination
                 ?.route
         // The bell's count, asked for on every change of screen, as the web does (decisions 0067, 0109).
-        val unread: UnreadViewModel = viewModel(key = "unread-$signIns") { UnreadViewModel(graph.social) }
+        val unread: UnreadViewModel =
+            viewModel(key = "unread-$signIns") { UnreadViewModel(graph.social, changes = graph.noticeChanges.changed) }
         val count by unread.count.collectAsStateWithLifecycle()
         LaunchedEffect(route) { unread.refresh() }
         LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { unread.refresh() }
