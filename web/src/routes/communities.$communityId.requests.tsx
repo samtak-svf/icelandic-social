@@ -10,6 +10,7 @@ import { strings } from "../generated/brand/strings.ts";
 import type { Problem } from "../problem.ts";
 import { ManageFrame } from "../social/manage-frame.tsx";
 import { outcome, useLoad, when, type Outcome } from "../social/outcome.ts";
+import { InvitationsPending } from "../social/invitations-pending.tsx";
 import { AuthorName } from "../social/author-name.tsx";
 import { Button, ProblemText, Status } from "../ui/kit.tsx";
 
@@ -62,6 +63,7 @@ function Requests({
           ))}
         </ul>
       )}
+      <InvitationsPending communityId={communityId} />
     </>
   );
 }

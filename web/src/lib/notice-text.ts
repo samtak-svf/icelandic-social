@@ -15,7 +15,7 @@ type NoticeKind =
   | "friend_accepted"
   | "community_invite"
   | "reports_waiting";
-export type NoticeBadge = "emoji" | "comment" | "approved" | "moderator" | "friend";
+export type NoticeBadge = "emoji" | "comment" | "approved" | "moderator" | "friend" | "invite";
 
 export interface NoticeSource {
   kind: NoticeKind;
@@ -50,7 +50,7 @@ const BADGE: Record<NoticeKind, NoticeBadge> = {
   moderated: "moderator",
   friend_request: "friend",
   friend_accepted: "friend",
-  community_invite: "approved",
+  community_invite: "invite",
   reports_waiting: "moderator",
 };
 

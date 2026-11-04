@@ -3,7 +3,7 @@ import type { NoticeBadge } from "../lib/notice-text.ts";
 
 // The mark on the corner of a notification's picture: the reaction's own
 // emoji, a speech bubble for a comment or reply, a check for an approved
-// request and a shield for a moderator's action (api/presentation.vectors.json).
+// request, an envelope for an invitation and a shield for a moderator's action (api/presentation.vectors.json).
 
 const SVG = {
   "aria-hidden": true,
@@ -31,6 +31,12 @@ const GLYPH: Record<Exclude<NoticeBadge, "emoji">, ReactNode> = {
     <svg {...SVG}>
       <circle cx="12" cy="8" r="4" />
       <path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7" />
+    </svg>
+  ),
+  invite: (
+    <svg {...SVG}>
+      <rect x="3" y="5" width="18" height="14" rx="2" />
+      <path d="M3 7l9 6 9-6" />
     </svg>
   ),
   moderator: (

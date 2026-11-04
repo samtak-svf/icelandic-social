@@ -342,7 +342,7 @@ fn every_notice_vector_reads_as_a_known_kind_and_action() {
     let vectors: Value =
         serde_json::from_str(include_str!("../../../api/presentation.vectors.json")).unwrap();
     let cases = vectors["notice"].as_array().unwrap();
-    assert_eq!(cases.len(), 27);
+    assert_eq!(cases.len(), 29);
     for case in cases {
         let _: NotificationKind = serde_json::from_value(case["kind"].clone()).unwrap();
         if let Some(action) = case.get("action") {

@@ -7,6 +7,7 @@ describe("levelsFor", () => {
   it("offers every level, except that a moderator's action is never off", () => {
     expect(levelsFor("comment")).toEqual(["push", "in_app", "off"]);
     expect(levelsFor("moderated")).toEqual(["push", "in_app"]);
+    expect(levelsFor("community_invite")).toEqual(["push", "in_app", "off"]);
   });
 });
 
