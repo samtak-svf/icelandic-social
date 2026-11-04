@@ -285,6 +285,8 @@ struct CommunityView: View {
             }
             .buttonStyle(.plain)
             .disabled(model.busy)
+        } else if community.role == nil, community.invited {
+            InvitationAnswer(community: community, model: model, writes: mayWrite(suspension))
         } else if community.role == nil, let until = model.declinedUntil {
             SocialNote(text: "community_join_declined")
             Text(verbatim: localized("community_join_again", calendarDate(until)))

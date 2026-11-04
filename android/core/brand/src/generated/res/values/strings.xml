@@ -948,7 +948,7 @@
     <!-- Heading for moderators: invitations sent and not yet answered (decision 0130). -->
     <string name="community_invitations_pending">Boð sem bíða svars</string>
     <!-- Under a pending invitation in the moderators' list: who sent it. {name} is the inviter. -->
-    <string name="community_invitation_from">Boð frá %1$s</string>
+    <string name="community_invitation_from">%1$s sendi boðið</string>
     <!-- Button for a moderator: withdraw a pending invitation (decision 0130). -->
     <string name="community_withdraw_invite">Draga boðið til baka</string>
     <!-- Told after the community link was copied -->

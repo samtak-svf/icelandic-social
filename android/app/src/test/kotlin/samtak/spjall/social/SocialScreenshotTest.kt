@@ -24,8 +24,10 @@ import samtak.spjall.core.CardCommunity
 import samtak.spjall.core.CardKind
 import samtak.spjall.core.CardRef
 import samtak.spjall.core.CommunityAudience
+import samtak.spjall.core.CommunityInvitation
 import samtak.spjall.core.CommunityRole
 import samtak.spjall.core.EmojiCount
+import samtak.spjall.core.InvitedBy
 import samtak.spjall.core.JoinRequest
 import samtak.spjall.core.PostImage
 import samtak.spjall.core.ReportTargetKind
@@ -149,6 +151,21 @@ class SocialScreenshotTest {
             declinedUntil = 1_800_000_000_000uL,
         )
 
+    private val invitedState =
+        declinedState.copy(
+            community = community("k6", audience = CommunityAudience.PRIVATE, invitedBy = InvitedBy("a2", "Anna")),
+            declinedUntil = null,
+        )
+
+    private val invitationsState =
+        requestsState.copy(
+            invitations =
+                listOf(
+                    CommunityInvitation("a4", "Bjarni", InvitedBy("a2", "Anna"), 1_700_200_000_000uL),
+                    CommunityInvitation("a5", null, null, 1_700_300_000_000uL),
+                ),
+        )
+
     private val notificationsState =
         NotificationsViewModel.State(
             notifications =
@@ -196,6 +213,8 @@ class SocialScreenshotTest {
     private val postScreen = @Composable { PostScreen(postState, none<PostActions>()) }
     private val requestsScreen = @Composable { JoinRequestsScreen(requestsState, none<JoinRequestsActions>()) }
     private val declinedScreen = @Composable { CommunityScreen(declinedState, none<CommunityActions>()) }
+    private val invitedScreen = @Composable { CommunityScreen(invitedState, none<CommunityActions>()) }
+    private val invitationsScreen = @Composable { JoinRequestsScreen(invitationsState, none<JoinRequestsActions>()) }
     private val reportsScreen = @Composable { ReportsScreen(reportsState, none<ReportsActions>()) }
     private val notificationsScreen =
         @Composable { NotificationsScreen(notificationsState, none<NotificationsActions>()) }
@@ -265,6 +284,24 @@ class SocialScreenshotTest {
     @Test
     @Config(fontScale = 2f)
     fun declinedCutsNoWord() = noWordCut(declinedScreen)
+
+    @Test
+    fun invited() = shoot(invitedScreen)
+
+    @Test
+    @Config(qualifiers = "+night")
+    fun invitedAtNight() = shoot(invitedScreen)
+
+    @Test
+    @Config(fontScale = 2f)
+    fun invitedCutsNoWord() = noWordCut(invitedScreen)
+
+    @Test
+    fun pendingInvitations() = shoot(invitationsScreen)
+
+    @Test
+    @Config(qualifiers = "+night")
+    fun pendingInvitationsAtNight() = shoot(invitationsScreen)
 
     @Test
     fun reports() = shoot(reportsScreen)

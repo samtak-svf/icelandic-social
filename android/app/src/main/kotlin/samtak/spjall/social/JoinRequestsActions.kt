@@ -8,5 +8,8 @@ interface JoinRequestsActions {
 
     fun decline(accountId: String)
 
+    /** Takes back an invitation that waits (0130). */
+    fun withdraw(accountId: String)
+
     fun retry()
 }

@@ -1,6 +1,6 @@
 # 0130. A community invitation is noticed, answered and withdrawable
 
-- Status: accepted; designed, not yet implemented
+- Status: accepted; implemented (#560, #563, #568)
 - Date: 2026-11-04
 - Decided by: Guðröður Atli Jónsson, approving the #558 plan (2026-11-04)
 - Amends: [0063](0063-communities-audiences-and-moderation.md) (an invitation keeps its inviter, is answered

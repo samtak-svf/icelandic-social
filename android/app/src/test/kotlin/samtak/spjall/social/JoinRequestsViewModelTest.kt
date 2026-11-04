@@ -16,7 +16,9 @@ import org.junit.Before
 import org.junit.Test
 import samtak.spjall.account.Problem
 import samtak.spjall.core.CommunityAudience
+import samtak.spjall.core.CommunityInvitation
 import samtak.spjall.core.CommunityRole
+import samtak.spjall.core.InvitedBy
 import samtak.spjall.core.JoinRequest
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -90,5 +92,49 @@ class JoinRequestsViewModelTest {
             val state = model().state.value
             assertTrue(state.requests.isEmpty())
             assertTrue(state.loaded)
+        }
+
+    @Test
+    fun theInvitationsThatWaitComeWithTheRequests() =
+        runTest(dispatcher) {
+            social.invitations["k1"] =
+                mutableListOf(
+                    CommunityInvitation("a4", "Bjarni", InvitedBy("a1", "Ég"), 3uL),
+                    CommunityInvitation("a5", null, null, 4uL),
+                )
+            val state = model().state.value
+            assertEquals(listOf("a4", "a5"), state.invitations.map { it.accountId })
+            assertEquals(null, state.invitations[1].invitedBy)
+        }
+
+    @Test
+    fun noInvitationsLeavesTheListEmpty() =
+        runTest(dispatcher) {
+            val state = model().state.value
+            assertTrue(state.invitations.isEmpty())
+        }
+
+    @Test
+    fun withdrawingAnInvitationTakesItBackAndAsksForTheListsAgain() =
+        runTest(dispatcher) {
+            social.invitations["k1"] = mutableListOf(CommunityInvitation("a4", "Bjarni", null, 3uL))
+            val model = model()
+            model.withdraw("a4")
+            advanceUntilIdle()
+            assertTrue("withdrawInvitation k1 a4" in social.calls)
+            val state = model.state.value
+            assertTrue(state.invitations.isEmpty())
+            assertEquals(listOf("a2", "a3"), state.requests.map { it.accountId })
+            assertFalse(model.state.value.busy)
+        }
+
+    @Test
+    fun anInvitationAnotherModeratorWithdrewIsNamedAsGone() =
+        runTest(dispatcher) {
+            social.invitations["k1"] = mutableListOf()
+            val model = model()
+            model.withdraw("a9")
+            advanceUntilIdle()
+            assertEquals(Problem.NotFound, model.state.value.problem)
         }
 }

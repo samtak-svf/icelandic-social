@@ -882,7 +882,7 @@ export const strings = {
   community_invitations_pending: "Boð sem bíða svars",
   /** Under a pending invitation in the moderators' list: who sent it. {name} is the inviter. */
   community_invitation_from: (args: { name: string }): string =>
-    "Boð frá " + args.name,
+    args.name + " sendi boðið",
   /** Button for a moderator: withdraw a pending invitation (decision 0130). */
   community_withdraw_invite: "Draga boðið til baka",
   /** Told after the community link was copied */

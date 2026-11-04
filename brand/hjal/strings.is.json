@@ -561,7 +561,7 @@
   "community_accept_invite": "Þiggja boðið",
   "community_decline_invite": "Hafna boðinu",
   "community_invitations_pending": "Boð sem bíða svars",
-  "community_invitation_from": "Boð frá {name}",
+  "community_invitation_from": "{name} sendi boðið",
   "community_withdraw_invite": "Draga boðið til baka",
   "community_link_copied": "Hlekkur [[group.gen.def]] afritaður",
   "community_members_stack": "Meðlimir [[group.gen.def]]",

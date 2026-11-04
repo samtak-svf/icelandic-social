@@ -210,7 +210,7 @@ final class FriendsTests: XCTestCase {
     func testTheLevelsListEveryKindIncludingTheFriendOnes() async {
         let model = NotificationLevelsModel(social: social)
         await model.load()
-        XCTAssertEqual(NotificationLevelsModel.kinds.count, 7)
+        XCTAssertEqual(NotificationLevelsModel.kinds.count, 8)
         XCTAssertTrue(NotificationLevelsModel.kinds.contains(.friendRequest))
         XCTAssertTrue(NotificationLevelsModel.kinds.contains(.friendAccepted))
     }

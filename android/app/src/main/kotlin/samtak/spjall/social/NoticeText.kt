@@ -10,7 +10,7 @@ import samtak.spjall.core.SocialNotification
 import samtak.spjall.core.SocialNotificationKind
 
 /** The mark on the corner of a notification's picture (decisions 0103, 0104). */
-enum class NoticeBadge { EMOJI, COMMENT, APPROVED, MODERATOR, FRIEND }
+enum class NoticeBadge { EMOJI, COMMENT, APPROVED, MODERATOR, FRIEND, INVITE }
 
 /**
  * The sentence of a notification row and of its push, and the badge, chosen by the rule in
@@ -58,6 +58,8 @@ fun noticeLine(
         // One person asks or answers, so these never group: a count of actors is not read (0114).
         SocialNotificationKind.FRIEND_REQUEST -> person(R.string.notice_friend_request, names)
         SocialNotificationKind.FRIEND_ACCEPTED -> person(R.string.notice_friend_accepted, names)
+        // One person invites, so never grouped (0130).
+        SocialNotificationKind.COMMUNITY_INVITE -> person(R.string.notice_community_invite, names, NoticeBadge.INVITE)
     }
 
 private fun moderatedLine(action: NotificationAction?): Int =
@@ -103,7 +105,8 @@ private fun actors(
 private fun person(
     @StringRes key: Int,
     names: List<String?>,
-) = NoticeLine(key, false, names.firstOrNull(), null, 0, NoticeBadge.FRIEND)
+    badge: NoticeBadge = NoticeBadge.FRIEND,
+) = NoticeLine(key, false, names.firstOrNull(), null, 0, badge)
 
 private fun fixed(
     @StringRes key: Int,

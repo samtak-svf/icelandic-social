@@ -11,11 +11,20 @@ struct JoinRequestsView: View {
                 if !model.loaded {
                     ProgressView().frame(maxWidth: .infinity).padding(.top, 40)
                 }
-                if model.loaded && model.requests.isEmpty && model.problem == nil {
+                if model.loaded && model.requests.isEmpty && model.invitations.isEmpty && model.problem == nil {
                     EmptyState(systemImage: "person.crop.circle.badge.questionmark", text: "join_requests_empty")
                 }
                 ForEach(model.requests, id: \.accountId) { request in
                     RequestCard(request: request, model: model)
+                }
+                if !model.invitations.isEmpty {
+                    Text("community_invitations_pending")
+                        .font(.sans(14, black: true))
+                        .foregroundStyle(BrandTokens.Colors.fg)
+                        .padding(.top, 8)
+                    ForEach(model.invitations, id: \.accountId) { invitation in
+                        InvitationCard(invitation: invitation, model: model)
+                    }
                 }
             }
             .padding(16)
@@ -59,6 +68,35 @@ private struct RequestCard: View {
                     .buttonStyle(.plain)
                     .disabled(model.answering != nil)
                 }
+            }
+            .padding(14)
+        }
+    }
+}
+
+/// One pending invitation: the invited account's name, who invited it when that is known, and the way to take it back.
+private struct InvitationCard: View {
+    let invitation: CommunityInvitation
+    let model: JoinRequestsModel
+
+    var body: some View {
+        Panel {
+            VStack(alignment: .leading, spacing: 10) {
+                Text(verbatim: invitation.name ?? localized("person_unnamed"))
+                    .font(.sans(14, black: true))
+                    .foregroundStyle(BrandTokens.Colors.fg)
+                if let by = invitation.invitedBy {
+                    Text(verbatim: localized("community_invitation_from", by.name ?? localized("person_deleted")))
+                        .font(TypeStyle.meta)
+                        .foregroundStyle(BrandTokens.Colors.mutedFg)
+                }
+                Button {
+                    Task { await model.withdraw(invitation) }
+                } label: {
+                    PillLabel(text: "community_withdraw_invite", filled: false, wide: false)
+                }
+                .buttonStyle(.plain)
+                .disabled(model.answering != nil)
             }
             .padding(14)
         }

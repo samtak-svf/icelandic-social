@@ -117,6 +117,7 @@ final class PresentationVectorsTests: XCTestCase {
                 case "join_approved": .joinApproved
                 case "friend_request": .friendRequest
                 case "friend_accepted": .friendAccepted
+                case "community_invite": .communityInvite
                 case "moderated": .moderated
                 default: preconditionFailure("unknown kind in \(vector)")
                 }

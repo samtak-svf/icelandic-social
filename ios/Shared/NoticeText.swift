@@ -2,9 +2,9 @@ import Foundation
 import SpjallCore
 
 /// The mark on a notification's picture (decision 0103): the reaction's own emoji, a speech bubble, a check or a
-/// shield, or a person for a friend request and its answer (0114).
+/// shield, a person for a friend request and its answer (0114), or an envelope for an invitation (0130).
 enum NoticeBadge: String, Equatable, Sendable {
-    case emoji, comment, approved, moderator, friend
+    case emoji, comment, approved, moderator, friend, invite
 }
 
 /// The arguments of a notification's sentence. A nil name is a deleted account.
@@ -37,8 +37,9 @@ func noticeWording(
     case .reply: (base, badge) = ("notice_reply", .comment)
     case .reaction: (base, badge) = ("notice_reaction", .emoji)
     case .joinApproved: return NoticeWording(key: "notice_join_approved", args: .none, badge: .approved)
-    case .friendRequest: return friendWording("notice_friend_request", names)
-    case .friendAccepted: return friendWording("notice_friend_accepted", names)
+    case .friendRequest: return oneActorWording("notice_friend_request", names, badge: .friend)
+    case .friendAccepted: return oneActorWording("notice_friend_accepted", names, badge: .friend)
+    case .communityInvite: return oneActorWording("notice_community_invite", names, badge: .invite)
     case .moderated:
         return NoticeWording(key: moderatedKey(action), args: .none, badge: .moderator)
     }
@@ -54,9 +55,9 @@ func noticeWording(
     }
 }
 
-/// A friend request or its answer names its one actor, whatever the count (0114).
-private func friendWording(_ key: String, _ names: [String?]) -> NoticeWording {
-    NoticeWording(key: key, args: .one(name: names.first ?? nil), badge: .friend)
+/// A friend request, its answer (0114) or an invitation (0130) names its one actor, whatever the count.
+private func oneActorWording(_ key: String, _ names: [String?], badge: NoticeBadge) -> NoticeWording {
+    NoticeWording(key: key, args: .one(name: names.first ?? nil), badge: badge)
 }
 
 private func moderatedKey(_ action: NotificationAction?) -> String {

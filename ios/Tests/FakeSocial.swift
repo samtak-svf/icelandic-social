@@ -217,10 +217,10 @@ final class FakeSocial: Social, @unchecked Sendable {
     func joinCommunity(_ id: String) throws -> JoinState {
         try call("joinCommunity \(id)")
         guard var found = communities[id] else { throw notFound }
-        let state = joins[id] ?? (found.audience == .open ? .member : .requested)
+        let state = joins[id] ?? (found.audience == .open || found.invited ? .member : .requested)
         switch state {
         case .member:
-            found.role = .member
+            found.admit()
             mine.append(id)
         case .requested:
             found.joinRequested = true
@@ -240,7 +240,7 @@ final class FakeSocial: Social, @unchecked Sendable {
     func withdrawJoinRequest(_ id: String) throws {
         try call("withdrawJoinRequest \(id)")
         guard var found = communities[id] else { throw notFound }
-        found.joinRequested = false
+        found.endRequests()
         communities[id] = found
     }
 

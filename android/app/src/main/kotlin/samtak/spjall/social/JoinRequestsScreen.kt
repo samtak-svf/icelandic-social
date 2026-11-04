@@ -12,10 +12,12 @@ import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -25,6 +27,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import samtak.spjall.brand.R
 import samtak.spjall.core.Author
+import samtak.spjall.core.CommunityInvitation
 import samtak.spjall.core.JoinRequest
 import samtak.spjall.ui.Palette
 import samtak.spjall.ui.ProblemCard
@@ -58,12 +61,13 @@ internal fun JoinRequestsBody(
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             state.problem?.let { problem -> item(key = "problem") { ProblemCard(problem) { actions.retry() } } }
-            if (state.loaded && state.problem == null && state.requests.isEmpty()) {
+            if (state.loaded && state.problem == null && state.nothingWaits) {
                 item(key = "empty") { Muted(stringResource(R.string.join_requests_empty)) }
             }
             items(state.requests, key = { it.accountId }) { request ->
                 RequestCard(request, enabled = !state.busy, actions = actions)
             }
+            invitationItems(state, actions)
         }
     }
 }
@@ -89,5 +93,43 @@ private fun RequestCard(
                 modifier = Modifier.heightIn(min = 44.dp),
             ) { Text(stringResource(R.string.join_request_decline)) }
         }
+    }
+}
+
+/** The invitations that wait, under their own heading; nothing at all when there are none (0130). */
+private fun LazyListScope.invitationItems(
+    state: JoinRequestsViewModel.State,
+    actions: JoinRequestsActions,
+) {
+    if (state.invitations.isEmpty()) return
+    item(key = "invitations-heading") {
+        Text(stringResource(R.string.community_invitations_pending), style = MaterialTheme.typography.titleMedium)
+    }
+    items(state.invitations, key = { "invitation-${it.accountId}" }) { invitation ->
+        InvitationCard(invitation, enabled = !state.busy, actions = actions)
+    }
+}
+
+@Composable
+private fun InvitationCard(
+    invitation: CommunityInvitation,
+    enabled: Boolean,
+    actions: JoinRequestsActions,
+) {
+    SocialCard {
+        Text(
+            invitation.name ?: stringResource(R.string.person_unnamed),
+            style = MaterialTheme.typography.titleSmall,
+        )
+        invitation.invitedBy?.let {
+            Muted(
+                stringResource(R.string.community_invitation_from, it.name ?: stringResource(R.string.person_deleted)),
+            )
+        }
+        OutlinedButton(
+            onClick = { actions.withdraw(invitation.accountId) },
+            enabled = enabled,
+            modifier = Modifier.heightIn(min = 44.dp),
+        ) { Text(stringResource(R.string.community_withdraw_invite)) }
     }
 }
