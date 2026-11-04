@@ -46,7 +46,8 @@ community still offered a join request, and nobody could take the invitation bac
 - **A moderator sees the pending invitations** (`GET /v1/communities/{id}/invitations`: the account,
   its name, the inviter and the time) and **can withdraw one**
   (`DELETE /v1/communities/{id}/invitations/{accountId}`). Both are moderator-only, like sending an
-  invitation. A withdrawal withdraws the notice and writes a line in the moderation log.
+  invitation. A withdrawal withdraws the notice and, like sending an invitation, writes a log line
+  with ids only (0008), not a moderation-log entry.
 
 ### Old clients
 
