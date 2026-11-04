@@ -32,6 +32,8 @@ export type LifecycleHooks = {
   recordAnonymous: (env: Env, communityId: string, by: string, on: boolean) => D1PreparedStatement;
   /** The posts the account reads as featured in the community (decision 0088). */
   featured: (env: Env, accountId: string, communityId: string) => Promise<PostView[]>;
+  /** The statement that withdraws the notice of an invitation to the community (decision 0130). */
+  withdrawInvite: (env: Env, communityId: string, accountId: string) => D1PreparedStatement;
   /** What a purge removes beyond the graph: the space's content and images. */
   purgeContent: (env: Env, communityId: string) => Promise<void>;
   /**

@@ -5,6 +5,7 @@
 
 export { canRead, moderates } from "./access.ts";
 export { handOverCommunities, standing, type Standing } from "./communities.ts";
+export { invitationStands } from "./invitations.ts";
 export { markRead, notePost } from "./hub.ts";
 export { expireCommunities, type LifecycleHooks, purgeWall } from "./lifecycle.ts";
 export { ensureWall, spaceExists, spaceLabels, wallAt, wallOf, wallsAmong } from "./walls.ts";

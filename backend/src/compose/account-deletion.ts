@@ -1,3 +1,5 @@
+import { db } from "../env/index.ts";
+import { forgettingInviteNotices } from "../modules/notifications/index.ts";
 import { dropAccount, orphans, revokeAllDevices } from "../identity/index.ts";
 import { handOverCommunities, purgeWall } from "../modules/communities/index.ts";
 import { communityLifecycle } from "./community-lifecycle.ts";
@@ -30,6 +32,8 @@ export async function deleteAccount(env: Env, accountId: string): Promise<void> 
   await purgeWall(env, accountId, communityLifecycle);
   // Its friendships, requests and snoozes go both ways, and the notices it caused (0114).
   await forgetFriends(env, accountId);
+  // The invitations it sent: their notices would read as nobody's (0130).
+  await db(env).batch([forgettingInviteNotices(env, accountId)]);
   // A history transfer's row would go with the account, its bytes would not.
   await deleteAccountHistory(env, accountId);
   // An import file's rows would go with the account, its bytes would not.
