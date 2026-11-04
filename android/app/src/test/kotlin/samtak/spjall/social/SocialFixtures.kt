@@ -7,6 +7,7 @@ import samtak.spjall.core.CommunityAudience
 import samtak.spjall.core.CommunityRole
 import samtak.spjall.core.CoreException
 import samtak.spjall.core.EmojiCount
+import samtak.spjall.core.InvitedBy
 import samtak.spjall.core.ModerationState
 import samtak.spjall.core.Poll
 import samtak.spjall.core.Post
@@ -37,6 +38,8 @@ fun community(
     lastPostAt: ULong? = null,
     anonymousPosts: Boolean = false,
     pendingAnonymous: ULong = 0uL,
+    invitedBy: InvitedBy? = null,
+    invited: Boolean = invitedBy != null,
 ) = Community(
     communityId = id,
     name = name,
@@ -46,7 +49,8 @@ fun community(
     memberCount = 3uL,
     role = role,
     joinRequested = false,
-    invited = false,
+    invited = invited,
+    invitedBy = invitedBy,
     mutedUntil = mutedUntil,
     readOnly = false,
     deletedAt = null,

@@ -254,6 +254,10 @@ class NotificationsViewModelTest {
             Opens.Community("k1"),
             notification("n", SocialNotificationKind.JOIN_APPROVED, 1uL, postId = null).opens(),
         )
+        assertEquals(
+            Opens.Community("k1"),
+            notification("n", SocialNotificationKind.COMMUNITY_INVITE, 1uL, postId = null).opens(),
+        )
     }
 
     @Test

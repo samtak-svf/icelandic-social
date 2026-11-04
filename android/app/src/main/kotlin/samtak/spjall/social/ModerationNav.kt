@@ -37,6 +37,8 @@ private fun joinRequestsActions(
 
     override fun decline(accountId: String) = model.decline(accountId)
 
+    override fun withdraw(accountId: String) = model.withdraw(accountId)
+
     override fun retry() = model.retry()
 }
 

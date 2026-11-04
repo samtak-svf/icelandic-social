@@ -263,6 +263,8 @@ private fun JoinPart(
     actions: CommunityActions,
 ) {
     when {
+        // An invitation stands: it is answered, and no request to join is offered beside it (0130).
+        community.invited && community.role == null -> InvitedPart(community, state, actions)
         community.joinRequested ->
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Muted(stringResource(R.string.community_join_requested))

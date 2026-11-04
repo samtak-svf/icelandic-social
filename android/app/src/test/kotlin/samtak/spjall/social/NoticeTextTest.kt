@@ -52,6 +52,22 @@ class NoticeTextTest {
     }
 
     @Test
+    fun anInvitationNamesItsInviterAndWearsTheInviteBadge() {
+        val invited = noticeLine(SocialNotificationKind.COMMUNITY_INVITE, listOf("Anna"), 1)
+        assertEquals(resources.getString(R.string.notice_community_invite, "Anna"), invited.text(resources))
+        assertEquals(NoticeBadge.INVITE, invited.badge)
+        assertEquals(invited.key, noticeLine(SocialNotificationKind.COMMUNITY_INVITE, listOf("Anna", "Bo"), 5).key)
+        assertEquals(
+            resources.getString(R.string.notice_community_invite, resources.getString(R.string.person_deleted)),
+            noticeLine(SocialNotificationKind.COMMUNITY_INVITE, listOf(null), 1).text(resources),
+        )
+        assertEquals(
+            R.string.notification_kind_community_invite,
+            SocialNotificationKind.COMMUNITY_INVITE.settingLabel(),
+        )
+    }
+
+    @Test
     fun theFriendKindsAreSwitchesInTheSettingsToo() {
         assertEquals(R.string.notification_kind_friend_request, SocialNotificationKind.FRIEND_REQUEST.settingLabel())
         assertEquals(R.string.notification_kind_friend_accepted, SocialNotificationKind.FRIEND_ACCEPTED.settingLabel())

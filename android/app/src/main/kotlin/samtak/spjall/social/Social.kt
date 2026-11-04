@@ -11,7 +11,6 @@ import samtak.spjall.core.CommunityPage
 import samtak.spjall.core.CoreClient
 import samtak.spjall.core.Frame
 import samtak.spjall.core.Framing
-import samtak.spjall.core.JoinRequest
 import samtak.spjall.core.JoinState
 import samtak.spjall.core.ModerationAction
 import samtak.spjall.core.ModerationLogPage
@@ -34,7 +33,8 @@ interface Social :
     SocialNotifications,
     SocialFriends,
     SocialComments,
-    SocialHome {
+    SocialHome,
+    SocialRequests {
     /** A page of the communities this account may see, [query] matching their names; [after] is the `next` before. */
     fun communities(
         query: String?,
@@ -63,21 +63,6 @@ interface Social :
 
     /** Takes back a join request that waits; no error when none does. */
     fun withdrawJoinRequest(id: String)
-
-    /** The join requests that wait in a private community, oldest first; for its owner and moderators. */
-    fun joinRequests(communityId: String): List<JoinRequest>
-
-    /** Makes the account that asked a member. */
-    fun approveJoinRequest(
-        communityId: String,
-        accountId: String,
-    )
-
-    /** Declines a request; the account may ask again after 30 days (decision 0070). */
-    fun declineJoinRequest(
-        communityId: String,
-        accountId: String,
-    )
 
     /** Deletes a community this account owns; it can be restored for 30 days (decision 0070). */
     fun deleteCommunity(communityId: String)
@@ -333,7 +318,8 @@ class CoreSocial private constructor(
     SocialNotifications by CoreNotifications(lazyClient),
     SocialFriends by CoreFriends(lazyClient),
     SocialComments by CoreComments(lazyClient),
-    SocialHome by CoreHome(lazyClient) {
+    SocialHome by CoreHome(lazyClient),
+    SocialRequests by CoreRequests(lazyClient) {
     constructor(open: () -> CoreClient) : this(lazy(open))
 
     private val client by lazyClient
@@ -359,18 +345,6 @@ class CoreSocial private constructor(
     override fun leaveCommunity(id: String) = client.leaveCommunity(id)
 
     override fun withdrawJoinRequest(id: String) = client.withdrawJoinRequest(id)
-
-    override fun joinRequests(communityId: String) = client.joinRequests(communityId)
-
-    override fun approveJoinRequest(
-        communityId: String,
-        accountId: String,
-    ) = client.approveJoinRequest(communityId, accountId)
-
-    override fun declineJoinRequest(
-        communityId: String,
-        accountId: String,
-    ) = client.declineJoinRequest(communityId, accountId)
 
     override fun deleteCommunity(communityId: String) = client.deleteCommunity(communityId)
 
