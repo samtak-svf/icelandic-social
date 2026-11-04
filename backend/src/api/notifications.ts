@@ -19,6 +19,7 @@ const Notification = z
       "moderated",
       "friend_request",
       "friend_accepted",
+      "community_invite",
       "reports_waiting",
     ]),
     // Who did it, the newest if several; null once deleted.
@@ -179,6 +180,7 @@ const KIND_LEVELS = {
   moderated: Level,
   friend_request: Level,
   friend_accepted: Level,
+  community_invite: Level,
 };
 
 const NotificationSettings = z

@@ -34,6 +34,7 @@ import {
 } from "../social/index.ts";
 import { space } from "../../env/index.ts";
 import { notice } from "../jobs/index.ts";
+import { withdrawingInviteNotice } from "../notifications/index.ts";
 import { entry } from "./log.ts";
 import { closing, isPlatformModerator, openReport, type OpenReport } from "./reports.ts";
 
@@ -131,6 +132,10 @@ async function apply(
     verb === "mute"
       ? { action: "mute", until: input.until ?? 0 }
       : { action: verb as Exclude<Sanction["action"], "mute"> };
+  // A ban ends an invitation, so the notice of it goes with it (decision 0130).
+  if (what.action === "ban") {
+    entries = [...entries, withdrawingInviteNotice(env, communityId, target.targetAccount)];
+  }
   await sanction(env, communityId, target.targetAccount, what, entries);
 }
 

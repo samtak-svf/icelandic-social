@@ -9,7 +9,10 @@ import { noticeHandler } from "./notify.ts";
 export { expireNotifications, forgetCommunity } from "./list.ts";
 export {
   forgettingFriendNotices,
+  forgettingInviteNotices,
   withdrawingFriendNotices,
+  withdrawingCommunityInviteNotices,
+  withdrawingInviteNotice,
   withdrawingReportsWaiting,
   withdrawingRequestNotice,
 } from "./withdraw.ts";

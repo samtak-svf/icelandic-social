@@ -2,7 +2,7 @@ import { db } from "../../env/index.ts";
 import { activeDevices, blockedEither } from "../../identity/index.ts";
 import type { Notice } from "../jobs/index.ts";
 import type { PushSender } from "../messaging/index.ts";
-import { standing } from "../communities/index.ts";
+import { invitationStands, standing } from "../communities/index.ts";
 import { areFriends, requestOpen } from "../friends/index.ts";
 import { commentContent, postAccess } from "../social/index.ts";
 import { levelFor } from "./settings.ts";
@@ -50,6 +50,9 @@ async function eventStands(env: Env, n: Notice): Promise<boolean> {
       return requestOpen(env, n.actorId, n.accountId);
     case "friend_accepted":
       return areFriends(env, n.accountId, n.actorId);
+    case "community_invite":
+      if (n.communityId === null) return false;
+      return invitationStands(env, n.communityId, n.accountId);
     case "reports_waiting":
       return reportsWaitFor(env, n.accountId);
   }

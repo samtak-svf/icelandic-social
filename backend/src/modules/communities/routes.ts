@@ -17,10 +17,12 @@ import {
   approveJoinRequestRoute,
   declineJoinRequestRoute,
   inviteMemberRoute,
+  listInvitationsRoute,
   listJoinRequestsRoute,
   listMembersRoute,
   setRoleRoute,
   transferOwnershipRoute,
+  withdrawInvitationRoute,
 } from "../../api/community-members.ts";
 import type { AppEnv } from "../../http.ts";
 import { notSuspended } from "../../identity/index.ts";
@@ -32,18 +34,19 @@ import {
   createCommunity,
   discover,
   isVerified,
-  joinRequests,
   members,
   standing,
   updateCommunity,
   view,
 } from "./communities.ts";
+import { invitations, joinRequests } from "./invitations.ts";
 import { pinCommunity, unpinCommunity } from "./hub.ts";
 import {
   addMember,
   approve,
   decline,
   invite,
+  withdrawInvitation,
   removeMember,
   requestToJoin,
   setRole,
@@ -174,7 +177,9 @@ export function communityRoutes(app: OpenAPIHono<AppEnv>, hooks: LifecycleHooks)
     if (found.readOnly) return fail(c, 403, "read_only");
     if (found.joinDeclinedUntil !== null && !found.invited) return fail(c, 409, "join_declined");
     if (found.audience === "open" || found.invited) {
-      await addMember(c.env, communityId, accountId);
+      await addMember(c.env, communityId, accountId, [
+        hooks.withdrawInvite(c.env, communityId, accountId),
+      ]);
       log("community.joined", { accountId, communityId });
       return c.json({ state: "member" as const }, 200);
     }
@@ -184,7 +189,11 @@ export function communityRoutes(app: OpenAPIHono<AppEnv>, hooks: LifecycleHooks)
   });
 
   app.openapi(withdrawJoinRequestRoute, async (c) => {
-    await withdraw(c.env, c.req.valid("param").communityId, c.var.session.accountId);
+    const { communityId } = c.req.valid("param");
+    const { accountId } = c.var.session;
+    await withdraw(c.env, communityId, accountId, [
+      hooks.withdrawInvite(c.env, communityId, accountId),
+    ]);
     return c.body(null, 204);
   });
 
@@ -223,7 +232,12 @@ export function communityRoutes(app: OpenAPIHono<AppEnv>, hooks: LifecycleHooks)
     const found = await standing(c.env, accountId, communityId);
     if (!found) return fail(c, 404, "not_found");
     if (!moderates(found)) return fail(c, 403, "not_permitted");
-    if (!(await approve(c.env, communityId, target, accountId))) return fail(c, 404, "not_found");
+    if (
+      !(await approve(c.env, communityId, target, accountId, [
+        hooks.withdrawInvite(c.env, communityId, target),
+      ]))
+    )
+      return fail(c, 404, "not_found");
     log("community.request_approved", { accountId, communityId });
     return c.body(null, 204);
   });
@@ -252,6 +266,28 @@ export function communityRoutes(app: OpenAPIHono<AppEnv>, hooks: LifecycleHooks)
     if (invited === "missing") return fail(c, 404, "not_found");
     if (invited === "blocked") return fail(c, 403, "blocked");
     log("community.invited", { accountId, communityId });
+    return c.body(null, 204);
+  });
+
+  app.openapi(listInvitationsRoute, async (c) => {
+    const { communityId } = c.req.valid("param");
+    const found = await standing(c.env, c.var.session.accountId, communityId);
+    if (!found) return fail(c, 404, "not_found");
+    if (!moderates(found)) return fail(c, 403, "not_permitted");
+    return c.json({ invitations: await invitations(c.env, communityId) }, 200);
+  });
+
+  app.openapi(withdrawInvitationRoute, async (c) => {
+    const { communityId, accountId: target } = c.req.valid("param");
+    const { accountId } = c.var.session;
+    const found = await standing(c.env, accountId, communityId);
+    if (!found) return fail(c, 404, "not_found");
+    if (!moderates(found)) return fail(c, 403, "not_permitted");
+    const removed = await withdrawInvitation(c.env, communityId, target, [
+      hooks.withdrawInvite(c.env, communityId, target),
+    ]);
+    if (!removed) return fail(c, 404, "not_found");
+    log("community.invitation_withdrawn", { accountId, communityId });
     return c.body(null, 204);
   });
 

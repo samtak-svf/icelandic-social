@@ -23,6 +23,10 @@ export type Standing = {
   role: Role | null;
   joinRequested: boolean;
   invited: boolean;
+  /** Who invited the viewer, if recorded (decision 0130). */ invitedBy: {
+    accountId: string;
+    name: string | null;
+  } | null;
   readOnly: boolean;
   banned: boolean;
   /** Until when a moderator muted the viewer here, or null. */
@@ -112,6 +116,10 @@ const COLUMNS = `c.community_id, c.name, c.description, c.audience, c.created_at
             ELSE 0 END AS pending_anonymous,
        EXISTS (SELECT 1 FROM community_invitations i
                 WHERE i.community_id = c.community_id AND i.account_id = ?1) AS invited,
+       (SELECT i.invited_by FROM community_invitations i
+         WHERE i.community_id = c.community_id AND i.account_id = ?1) AS invited_by,
+       (SELECT a.display_name FROM accounts a WHERE a.account_id = (SELECT i.invited_by FROM community_invitations i
+         WHERE i.community_id = c.community_id AND i.account_id = ?1)) AS invited_by_name,
        CASE WHEN c.audience = 'open' OR m.role IS NOT NULL
             THEN (SELECT COUNT(*) FROM community_members n WHERE n.community_id = c.community_id)
        END AS member_count`;
@@ -144,6 +152,8 @@ type Row = {
   banned: number;
   requested: number;
   invited: number;
+  invited_by: string | null;
+  invited_by_name: string | null;
   declined_at: number | null;
   pending: number | null;
   open_reports: number | null;
@@ -161,6 +171,8 @@ function standingOf(row: Row): Standing {
     role: row.role,
     joinRequested: row.requested === 1,
     invited: row.invited === 1,
+    invitedBy:
+      row.invited_by === null ? null : { accountId: row.invited_by, name: row.invited_by_name },
     readOnly: row.read_only_since !== null,
     banned: row.banned === 1,
     mutedUntil: row.muted_until,
@@ -271,6 +283,7 @@ export async function createCommunity(
     role: "owner",
     joinRequested: false,
     invited: false,
+    invitedBy: null,
     readOnly: false,
     banned: false,
     mutedUntil: null,
@@ -419,28 +432,6 @@ export async function members(
     )
     .bind(viewer, communityId, moderating ? 1 : 0)
     .all<Omit<Member, "verified"> & { verified: number }>();
-  return results.map((r) => ({ ...r, verified: r.verified === 1 }));
-}
-
-export type JoinRequest = {
-  accountId: string;
-  name: string | null;
-  verified: boolean;
-  requestedAt: number;
-};
-
-/** The join requests that wait, oldest first; a moderator sees them whoever made them. */
-export async function joinRequests(env: Env, communityId: string): Promise<JoinRequest[]> {
-  const { results } = await db(env)
-    .prepare(
-      `SELECT r.account_id AS accountId, a.display_name AS name, a.verified,
-              r.created_at AS requestedAt
-         FROM community_join_requests r JOIN accounts a ON a.account_id = r.account_id
-        WHERE r.community_id = ? AND r.declined_at IS NULL
-        ORDER BY r.created_at, r.account_id`,
-    )
-    .bind(communityId)
-    .all<Omit<JoinRequest, "verified"> & { verified: number }>();
   return results.map((r) => ({ ...r, verified: r.verified === 1 }));
 }
 

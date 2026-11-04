@@ -22,6 +22,7 @@ export function draftCommunity(draft: Draft): Community {
     role: "owner",
     joinRequested: false,
     invited: false,
+    invitedBy: null,
     mutedUntil: null,
     readOnly: false,
     deletedAt: null,

@@ -9,16 +9,18 @@ use std::path::Path;
 use spjall_client::api;
 pub mod friends;
 pub mod home;
+pub mod invitations;
 pub mod moderation_reviews;
 pub mod notifications;
 pub mod posts;
 pub mod wall;
 pub use friends::*;
 pub use home::*;
+pub use invitations::*;
 pub use moderation_reviews::*;
 pub use notifications::*;
 pub use posts::*;
-pub use spjall_client::api::{JoinRequest, JoinState};
+pub use spjall_client::api::JoinState;
 pub use wall::*;
 
 use crate::CoreError;
@@ -133,6 +135,9 @@ pub struct Community {
     pub join_requested: bool,
     /// A moderator invited this account: joining takes it at once.
     pub invited: bool,
+    /// Who invited this account (0130); none for an older invitation.
+    #[uniffi(default = None)]
+    pub invited_by: Option<InvitedBy>,
     /// Until when, in Unix milliseconds, a moderator muted this account
     /// here: it reads, but does not post, comment or react.
     pub muted_until: Option<u64>,
@@ -188,17 +193,6 @@ pub struct Community {
     pub featured: Vec<Post>,
 }
 
-/// An account asking to join a private community.
-#[uniffi::remote(Record)]
-pub struct JoinRequest {
-    pub account_id: String,
-    /// None for an account that never gave one.
-    pub name: Option<String>,
-    pub verified: bool,
-    /// Unix milliseconds.
-    pub requested_at: u64,
-}
-
 impl From<api::Community> for Community {
     fn from(community: api::Community) -> Self {
         let api::Community {
@@ -211,6 +205,7 @@ impl From<api::Community> for Community {
             role,
             join_requested,
             invited,
+            invited_by,
             muted_until,
             read_only,
             deleted_at,
@@ -239,6 +234,7 @@ impl From<api::Community> for Community {
             role: role.map(Into::into),
             join_requested,
             invited,
+            invited_by,
             muted_until,
             read_only,
             deleted_at,

@@ -130,6 +130,51 @@ export const inviteMemberRoute = createRoute({
   },
 });
 
+const Invitation = z
+  .object({
+    accountId: OpaqueId,
+    name: z.string().nullable(),
+    invitedBy: z.object({ accountId: OpaqueId, name: z.string().nullable() }).nullable(),
+    createdAt: z.int().openapi({ description: "Unix milliseconds" }),
+  })
+  .openapi("CommunityInvitation");
+
+export const listInvitationsRoute = createRoute({
+  method: "get",
+  path: "/v1/communities/{communityId}/invitations",
+  operationId: "listInvitations",
+  tags: ["communities"],
+  summary: "The invitations that wait, newest first",
+  description:
+    "Moderators only. `invitedBy` is null when the inviter's account is gone or the invitation predates the record (decision 0130).",
+  security: ACCOUNT,
+  request: { params: community },
+  responses: {
+    200: json("The invitations", z.object({ invitations: z.array(Invitation) })),
+    ...INVALID,
+    ...AUTHED,
+    ...MODERATORS_ONLY,
+    ...NOT_FOUND,
+  },
+});
+
+export const withdrawInvitationRoute = createRoute({
+  method: "delete",
+  path: "/v1/communities/{communityId}/invitations/{accountId}",
+  operationId: "withdrawInvitation",
+  tags: ["communities"],
+  summary: "Take an invitation back; the invited account's notice goes with it",
+  security: ACCOUNT,
+  request: { params: communityMember },
+  responses: {
+    204: { description: "The invitation is gone" },
+    ...INVALID,
+    ...AUTHED,
+    ...MODERATORS_ONLY,
+    404: errorResponse("not_found: no such community, or no such invitation"),
+  },
+});
+
 export const setRoleRoute = createRoute({
   method: "put",
   path: "/v1/communities/{communityId}/members/{accountId}/role",

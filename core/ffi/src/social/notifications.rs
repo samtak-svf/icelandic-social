@@ -62,6 +62,9 @@ pub enum SocialNotificationKind {
     FriendRequest,
     /// An account took this one's request (0114): `actor` names it.
     FriendAccepted,
+    /// A moderator invited this account to a community (0130): `actor` names
+    /// the moderator, `community_id` the community.
+    CommunityInvite,
 }
 
 /// Something addressed to this account. It carries ids, never the
@@ -129,6 +132,7 @@ impl From<api::Notification> for SocialNotification {
                 K::Moderated => SocialNotificationKind::Moderated,
                 K::FriendRequest => SocialNotificationKind::FriendRequest,
                 K::FriendAccepted => SocialNotificationKind::FriendAccepted,
+                K::CommunityInvite => SocialNotificationKind::CommunityInvite,
             },
             actor,
             actors,
@@ -157,6 +161,7 @@ impl From<SocialNotificationKind> for api::NotificationKind {
             K::Moderated => Self::Moderated,
             K::FriendRequest => Self::FriendRequest,
             K::FriendAccepted => Self::FriendAccepted,
+            K::CommunityInvite => Self::CommunityInvite,
         }
     }
 }
@@ -172,6 +177,7 @@ impl From<api::NotificationKind> for SocialNotificationKind {
             K::Moderated => Self::Moderated,
             K::FriendRequest => Self::FriendRequest,
             K::FriendAccepted => Self::FriendAccepted,
+            K::CommunityInvite => Self::CommunityInvite,
         }
     }
 }

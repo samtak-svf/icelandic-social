@@ -6,6 +6,7 @@
 
 mod friends;
 mod home;
+mod invitations;
 mod media;
 mod moderation;
 mod notifications;
@@ -18,8 +19,8 @@ use poll::{check_poll, server_trim};
 
 use crate::api::{
     Audience, Author, Card, Comment, CommentPage, Community, CommunityImagePage, CommunityMember,
-    CommunityPage, JoinRequest, JoinState, Moderation, ModerationAction, NewReport, Post, PostPage,
-    Ref, ReportPage, ReportState, Role, Transport,
+    CommunityPage, JoinState, Moderation, ModerationAction, NewReport, Post, PostPage, Ref,
+    ReportPage, ReportState, Role, Transport,
 };
 use crate::{ClientError, Hosted, is_id};
 
@@ -149,28 +150,6 @@ impl<T: Transport> Hosted<T> {
         id(community, "community id")?;
         let api = self.api()?;
         Ok(api.withdraw_join_request(community)?)
-    }
-
-    /// The join requests that wait, for a moderator of the community.
-    pub fn join_requests(&self, community: &str) -> Result<Vec<JoinRequest>, ClientError> {
-        id(community, "community id")?;
-        Ok(self.api()?.join_requests(community)?)
-    }
-
-    /// Takes the requesting account in as a member.
-    pub fn approve_join_request(&self, community: &str, account: &str) -> Result<(), ClientError> {
-        id(community, "community id")?;
-        id(account, "account id")?;
-        let api = self.api()?;
-        Ok(api.approve_join_request(community, account)?)
-    }
-
-    /// Declines a join request; the account may ask again later.
-    pub fn decline_join_request(&self, community: &str, account: &str) -> Result<(), ClientError> {
-        id(community, "community id")?;
-        id(account, "account id")?;
-        let api = self.api()?;
-        Ok(api.decline_join_request(community, account)?)
     }
 
     /// Deletes a community (its owner or a platform moderator); it can be

@@ -6,8 +6,13 @@ import { notice } from "../jobs/index.ts";
 // its members, requests and invitations.
 
 /** Makes `accountId` a member; any request or invitation it had is used up. */
-export async function addMember(env: Env, communityId: string, accountId: string): Promise<void> {
-  await db(env).batch(admit(env, communityId, accountId));
+export async function addMember(
+  env: Env,
+  communityId: string,
+  accountId: string,
+  also: D1PreparedStatement[] = [],
+): Promise<void> {
+  await db(env).batch([...admit(env, communityId, accountId), ...also]);
 }
 
 function admit(env: Env, communityId: string, accountId: string): D1PreparedStatement[] {
@@ -49,8 +54,16 @@ export async function requestToJoin(
     .run();
 }
 
-/** Removes a waiting request and invitation alike; a decline stays until its wait ends. */
-export async function withdraw(env: Env, communityId: string, accountId: string): Promise<void> {
+/**
+ * Removes a waiting request and invitation alike; a decline stays until its wait ends.
+ * `also` is written in the same batch (the notice of the invitation, decision 0130).
+ */
+export async function withdraw(
+  env: Env,
+  communityId: string,
+  accountId: string,
+  also: D1PreparedStatement[] = [],
+): Promise<void> {
   await db(env).batch([
     db(env)
       .prepare(
@@ -61,7 +74,27 @@ export async function withdraw(env: Env, communityId: string, accountId: string)
     db(env)
       .prepare("DELETE FROM community_invitations WHERE community_id = ? AND account_id = ?")
       .bind(communityId, accountId),
+    ...also,
   ]);
+}
+
+/**
+ * Takes an invitation back as a moderator (decision 0130); false when there was none.
+ * `also` is written in the same batch.
+ */
+export async function withdrawInvitation(
+  env: Env,
+  communityId: string,
+  accountId: string,
+  also: D1PreparedStatement[] = [],
+): Promise<boolean> {
+  const [removed] = await db(env).batch([
+    db(env)
+      .prepare("DELETE FROM community_invitations WHERE community_id = ? AND account_id = ?")
+      .bind(communityId, accountId),
+    ...also,
+  ]);
+  return (removed?.meta.changes ?? 0) > 0;
 }
 
 /** Removes a member who is not the owner; false when there was no such member. */
@@ -86,6 +119,7 @@ export async function approve(
   communityId: string,
   accountId: string,
   by: string,
+  also: D1PreparedStatement[] = [],
 ): Promise<boolean> {
   const now = Date.now();
   const [admitted] = await db(env).batch([
@@ -105,6 +139,7 @@ export async function approve(
       true,
     ),
     ...admit(env, communityId, accountId).slice(1),
+    ...also,
   ]);
   return (admitted?.meta.changes ?? 0) > 0;
 }
@@ -151,15 +186,23 @@ export async function invite(
     await approve(env, communityId, accountId, inviter);
     return "joined";
   }
+  const now = Date.now();
   await db(env).batch([
     db(env)
       .prepare(
-        `INSERT INTO community_invitations (community_id, account_id, created_at)
-         SELECT ?1, ?2, ?3 WHERE NOT EXISTS (SELECT 1 FROM community_members
-                                              WHERE community_id = ?1 AND account_id = ?2)
+        `INSERT INTO community_invitations (community_id, account_id, created_at, invited_by)
+         SELECT ?1, ?2, ?3, ?4 WHERE NOT EXISTS (SELECT 1 FROM community_members
+                                                  WHERE community_id = ?1 AND account_id = ?2)
          ON CONFLICT DO NOTHING`,
       )
-      .bind(communityId, accountId, Date.now()),
+      .bind(communityId, accountId, now, inviter),
+    // Written only when the invitation is new: inviting again adds no second notice (0130).
+    notice(
+      env,
+      `${communityId}:${accountId}:${now}`,
+      { kind: "community_invite", accountId, actorId: inviter, communityId },
+      true,
+    ),
     db(env)
       .prepare("DELETE FROM community_join_requests WHERE community_id = ? AND account_id = ?")
       .bind(communityId, accountId),

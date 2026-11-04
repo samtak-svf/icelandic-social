@@ -52,6 +52,37 @@ export function withdrawingFriendNotices(
     .bind(one, other);
 }
 
+/** The notice telling `accountId` of its invitation to `communityId` (decision 0130). */
+export function withdrawingInviteNotice(
+  env: Env,
+  communityId: string,
+  accountId: string,
+): D1PreparedStatement {
+  return db(env)
+    .prepare(
+      `DELETE FROM notifications
+        WHERE kind = 'community_invite' AND community_id = ? AND account_id = ?`,
+    )
+    .bind(communityId, accountId);
+}
+
+/** Every notice of an invitation to `communityId`, for when the community is deleted (decision 0130). */
+export function withdrawingCommunityInviteNotices(
+  env: Env,
+  communityId: string,
+): D1PreparedStatement {
+  return db(env)
+    .prepare("DELETE FROM notifications WHERE kind = 'community_invite' AND community_id = ?")
+    .bind(communityId);
+}
+
+/** The invitation notices a deleted account caused: they would read as nobody's (decision 0130). */
+export function forgettingInviteNotices(env: Env, accountId: string): D1PreparedStatement {
+  return db(env)
+    .prepare("DELETE FROM notifications WHERE kind = 'community_invite' AND actor_id = ?")
+    .bind(accountId);
+}
+
 /** What others were told by a deleted account, which would otherwise read as nobody's. */
 export function forgettingFriendNotices(env: Env, accountId: string): D1PreparedStatement {
   return db(env)

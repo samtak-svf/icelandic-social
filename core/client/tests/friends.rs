@@ -197,7 +197,7 @@ fn a_friends_notices_have_their_own_levels() {
     );
     let settings = phone.client.hosted().notification_settings().unwrap();
     assert_eq!(
-        settings.kinds[5..],
+        settings.kinds[5..7],
         [
             (NotificationKind::FriendRequest, NotificationLevel::Off),
             (NotificationKind::FriendAccepted, NotificationLevel::InApp),

@@ -109,6 +109,19 @@ export function wallNoticeClientVersions(env: Env): Record<Client, string> {
 }
 
 /**
+ * The versions from which a client words a community invitation's notice (decision
+ * 0130), the same shape as `noticeClientVersions`.
+ */
+export function inviteNoticeClientVersions(env: Env): Record<Client, string> {
+  const floors = minClientVersions(env);
+  return {
+    android: env.INVITE_NOTICE_CLIENT_VERSION,
+    ios: env.INVITE_NOTICE_CLIENT_VERSION,
+    web: floors.web,
+  };
+}
+
+/**
  * Where a mobile client below its floor gets a current build (decision 0030):
  * the URL each platform's var names, else the brand's Android link and
  * TestFlight's scheme.

@@ -30,6 +30,7 @@ describe("notification settings", () => {
         moderated: "push",
         friend_request: "push",
         friend_accepted: "push",
+        community_invite: "push",
       },
       communities: [],
     });
