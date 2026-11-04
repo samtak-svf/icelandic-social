@@ -17,7 +17,6 @@ import samtak.spjall.core.CommunityRole
 import samtak.spjall.core.CoreException
 import samtak.spjall.core.Frame
 import samtak.spjall.core.Framing
-import samtak.spjall.core.JoinRequest
 import samtak.spjall.core.JoinState
 import samtak.spjall.core.ModerationAction
 import samtak.spjall.core.ModerationLogEntry
@@ -41,11 +40,8 @@ import samtak.spjall.ui.Suspension
  */
 @Suppress("TooManyFunctions")
 class FakeSocial :
-    FakeSocialFriends(),
+    FakeSocialRequests(),
     Social {
-    /** Every community, by id. */
-    val communities = linkedMapOf<String, Community>()
-
     /** Each community's posts, newest first. */
     val posts = mutableMapOf<String, MutableList<Post>>()
 
@@ -54,9 +50,6 @@ class FakeSocial :
 
     /** Each community's reports, open and closed. */
     val reports = mutableMapOf<String, MutableList<Report>>()
-
-    /** Each community's waiting join requests, oldest first. */
-    val requests = mutableMapOf<String, MutableList<JoinRequest>>()
 
     /** Each community's members, owner and moderators first. */
     val members = mutableMapOf<String, MutableList<CommunityMember>>()
@@ -126,8 +119,8 @@ class FakeSocial :
     override fun joinCommunity(id: String): JoinState {
         call("joinCommunity $id")
         val community = communities.getValue(id)
-        return if (community.audience == CommunityAudience.OPEN) {
-            communities[id] = community.copy(role = CommunityRole.MEMBER)
+        return if (community.audience == CommunityAudience.OPEN || community.invited) {
+            communities[id] = community.copy(role = CommunityRole.MEMBER, invited = false, invitedBy = null)
             JoinState.MEMBER
         } else {
             communities[id] = community.copy(joinRequested = true)
@@ -142,38 +135,7 @@ class FakeSocial :
 
     override fun withdrawJoinRequest(id: String) {
         call("withdrawJoinRequest $id")
-        communities[id] = communities.getValue(id).copy(joinRequested = false)
-    }
-
-    override fun joinRequests(communityId: String): List<JoinRequest> {
-        call("joinRequests $communityId")
-        return requests[communityId].orEmpty().toList()
-    }
-
-    override fun approveJoinRequest(
-        communityId: String,
-        accountId: String,
-    ) {
-        call("approveJoinRequest $communityId $accountId")
-        answered(communityId, accountId)
-    }
-
-    override fun declineJoinRequest(
-        communityId: String,
-        accountId: String,
-    ) {
-        call("declineJoinRequest $communityId $accountId")
-        answered(communityId, accountId)
-    }
-
-    private fun answered(
-        communityId: String,
-        accountId: String,
-    ) {
-        val list = requests[communityId] ?: throw notFound()
-        if (!list.removeAll { it.accountId == accountId }) throw notFound()
-        val community = communities.getValue(communityId)
-        communities[communityId] = community.copy(pendingJoinRequests = list.size.toULong())
+        communities[id] = communities.getValue(id).copy(joinRequested = false, invited = false, invitedBy = null)
     }
 
     override fun deleteCommunity(communityId: String) {

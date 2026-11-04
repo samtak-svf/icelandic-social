@@ -43,6 +43,16 @@ object AppIcons {
             "M18 15.5c0-2-1.2-3.2-3-3.5",
         )
 
+    /** An envelope: the mark of an invitation (decision 0130). */
+    val Mail =
+        outline(
+            "mail",
+            20f,
+            1.8f,
+            "M5 4h10a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V6a2 2 0 012-2z",
+            "M3 6l7 5l7-5",
+        )
+
     /** The photo button of the comment box (0082): a frame with a sun and a hill. */
     val Photo =
         outline(
