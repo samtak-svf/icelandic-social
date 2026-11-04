@@ -30,6 +30,7 @@ final class FakeSocial: Social, @unchecked Sendable {
     private var _pending: [String: [Post]] = [:]
     private var _authors: [String: Author] = [:]
     private var made = 0
+    let noticeChanges = NoticeChanges()
 
     var calls: [String] { lock.withLock { _calls } }
 
@@ -214,34 +215,12 @@ final class FakeSocial: Social, @unchecked Sendable {
         return found
     }
 
-    func joinCommunity(_ id: String) throws -> JoinState {
-        try call("joinCommunity \(id)")
-        guard var found = communities[id] else { throw notFound }
-        let state = joins[id] ?? (found.audience == .open || found.invited ? .member : .requested)
-        switch state {
-        case .member:
-            found.admit()
-            mine.append(id)
-        case .requested:
-            found.joinRequested = true
-        }
-        communities[id] = found
-        return state
-    }
-
     func leaveCommunity(_ id: String) throws {
         try call("leaveCommunity \(id)")
         guard var found = communities[id] else { throw notFound }
         found.role = nil
         communities[id] = found
         mine.removeAll { $0 == id }
-    }
-
-    func withdrawJoinRequest(_ id: String) throws {
-        try call("withdrawJoinRequest \(id)")
-        guard var found = communities[id] else { throw notFound }
-        found.endRequests()
-        communities[id] = found
     }
 
     func joinRequests(_ community: String) throws -> [JoinRequest] {

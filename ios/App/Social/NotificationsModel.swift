@@ -35,6 +35,13 @@ final class NotificationsModel: ScreenModel {
         self.cancel = cancel
     }
 
+    /// Asks for the count again each time a call ends a notice, so the bell is right without a change of screen.
+    /// Each call subscribes afresh: a stream ends with the task that read it, so a view that appears again follows
+    /// again, and a model that `@State` builds and discards holds no subscription.
+    func followEndedNotices() async {
+        for await _ in social.noticeChanges.changes() { await refresh() }
+    }
+
     /// Rows made since the list was last looked at, or all of them when it never was.
     var fresh: [SocialNotification] { notifications.filter { notice in seenAt.map { $0 < notice.createdAt } ?? true } }
 

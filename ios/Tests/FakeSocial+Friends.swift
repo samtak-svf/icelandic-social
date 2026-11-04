@@ -90,6 +90,7 @@ extension FakeSocial {
 
     func acceptFriendRequest(_ account: String) throws {
         try call("acceptFriendRequest \(account)")
+        defer { noticeChanges.announce() }
         var state = server
         if let request = state.incoming.first(where: { $0.person.accountId == account }) {
             state.incoming.removeAll { $0.person.accountId == account }
@@ -100,6 +101,7 @@ extension FakeSocial {
 
     func declineFriendRequest(_ account: String) throws {
         try call("declineFriendRequest \(account)")
+        defer { noticeChanges.announce() }
         server.incoming.removeAll { $0.person.accountId == account }
     }
 

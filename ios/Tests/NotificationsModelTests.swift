@@ -162,4 +162,48 @@ final class NotificationsModelTests: XCTestCase {
         XCTAssertEqual(model.unread, 3)
         XCTAssertNil(model.problem)
     }
+
+    /// #570: answering an invitation or a friend request ends a notice, and the bell asks for its count again
+    /// without a change of screen.
+    func testTheCountIsAskedForAgainAfterACallThatEndsANotice() async throws {
+        let model = await model()
+        XCTAssertEqual(model.unseen, 3)
+        let following = Task { await model.followEndedNotices() }
+        defer { following.cancel() }
+        try await subscribed(1)
+        for (count, call) in [(2, "joinCommunity"), (1, "withdrawJoinRequest"), (0, "acceptFriendRequest")] {
+            social.notifications = Array(rows.prefix(count))
+            social.communities["k1"] = makeCommunity("k1", "K")
+            switch call {
+            case "joinCommunity": _ = try social.joinCommunity("k1")
+            case "withdrawJoinRequest": try social.withdrawJoinRequest("k1")
+            default: try social.acceptFriendRequest("a1")
+            }
+            for _ in 0..<200 where model.unseen != count { try await Task.sleep(for: .milliseconds(10)) }
+            XCTAssertEqual(model.unseen, count, call)
+        }
+    }
+
+    /// #570: a view that appears again follows again; the first task's end does not end the second's announcements.
+    func testFollowingAgainAfterTheFirstTaskEndedStillAsks() async throws {
+        let model = await model()
+        let first = Task { await model.followEndedNotices() }
+        try await subscribed(1)
+        first.cancel()
+        _ = await first.value
+        try await subscribed(0)
+        let second = Task { await model.followEndedNotices() }
+        defer { second.cancel() }
+        try await subscribed(1)
+        social.notifications = []
+        try social.acceptFriendRequest("a1")
+        for _ in 0..<200 where model.unseen != 0 { try await Task.sleep(for: .milliseconds(10)) }
+        XCTAssertEqual(model.unseen, 0)
+    }
+
+    /// Waits until `count` followers are subscribed to the fake's announcements.
+    private func subscribed(_ count: Int) async throws {
+        for _ in 0..<500 where social.noticeChanges.listening != count { try await Task.sleep(for: .milliseconds(5)) }
+        XCTAssertEqual(social.noticeChanges.listening, count)
+    }
 }

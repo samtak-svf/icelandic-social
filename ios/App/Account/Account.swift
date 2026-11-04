@@ -138,6 +138,8 @@ final class CoreAccount: Account, @unchecked Sendable {
     private let lock = NSLock()
     private var client: CoreClient?
     private var suspended = false
+    /// Announces the calls that end a notice of the caller's, so the bell asks again (#570).
+    let noticeChanges = NoticeChanges()
 
     init(open: @escaping @Sendable () throws -> CoreClient) {
         self.open = open

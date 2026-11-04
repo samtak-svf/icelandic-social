@@ -5,9 +5,11 @@ import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import samtak.spjall.core.CoreException
@@ -20,11 +22,17 @@ import samtak.spjall.core.CoreException
 class UnreadViewModel(
     private val social: Social,
     private val io: CoroutineDispatcher = Dispatchers.IO,
+    changes: Flow<Unit> = emptyFlow(),
 ) : ViewModel() {
     private val _count = MutableStateFlow(0L)
     val count: StateFlow<Long> = _count.asStateFlow()
 
     private var job: Job? = null
+
+    init {
+        // An action that ended a notice of the caller's (#570): the count is asked for again at once.
+        viewModelScope.launch { changes.collect { refresh() } }
+    }
 
     fun refresh() {
         job?.cancel()
