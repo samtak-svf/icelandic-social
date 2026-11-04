@@ -23,6 +23,8 @@ pub enum NotificationKind {
     FriendRequest,
     /// An account took the caller's request (0114).
     FriendAccepted,
+    /// A moderator invited the caller to a community (0130).
+    CommunityInvite,
 }
 
 /// How loudly the caller is told (0106): nothing, a row in the list, or a
@@ -48,7 +50,7 @@ pub struct NotificationSettings {
 
 /// The kinds, in the order `NotificationSettings::kinds` lists them, with
 /// the name the server keys them by.
-const NOTIFICATION_KINDS: [(NotificationKind, &str); 7] = [
+const NOTIFICATION_KINDS: [(NotificationKind, &str); 8] = [
     (NotificationKind::Comment, "comment"),
     (NotificationKind::Reply, "reply"),
     (NotificationKind::Reaction, "reaction"),
@@ -56,6 +58,7 @@ const NOTIFICATION_KINDS: [(NotificationKind, &str); 7] = [
     (NotificationKind::Moderated, "moderated"),
     (NotificationKind::FriendRequest, "friend_request"),
     (NotificationKind::FriendAccepted, "friend_accepted"),
+    (NotificationKind::CommunityInvite, "community_invite"),
 ];
 
 #[derive(Deserialize)]
@@ -371,7 +374,7 @@ mod contract_tests {
             .iter()
             .partition(|kind| WITHHELD.contains(&kind.as_str().unwrap()));
         assert_eq!(held.len(), WITHHELD.len());
-        assert_eq!(shown.len(), 7);
+        assert_eq!(shown.len(), 8);
         assert!(shown.iter().copied().all(decodes));
         assert!(!held.iter().copied().any(decodes));
     }

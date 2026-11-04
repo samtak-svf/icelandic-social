@@ -9,12 +9,14 @@ use std::path::Path;
 use crate::frames::{Frame, Framing};
 
 mod friends;
+mod invitations;
 mod me;
 mod moderation_reviews;
 mod notifications;
 mod posts;
 mod walls;
 pub use friends::*;
+pub use invitations::*;
 pub use me::*;
 pub use moderation_reviews::*;
 pub use notifications::*;
@@ -634,6 +636,9 @@ pub struct Community {
     pub join_requested: bool,
     /// A moderator invited the caller.
     pub invited: bool,
+    /// Who invited the caller (0130); none for an older invitation or server.
+    #[serde(default)]
+    pub invited_by: Option<InvitedBy>,
     /// Until when, in Unix milliseconds, a moderator muted the caller here:
     /// it reads, but does not post, comment or react.
     pub muted_until: Option<u64>,
@@ -708,17 +713,6 @@ struct Communities {
 pub enum JoinState {
     Member,
     Requested,
-}
-
-/// An account asking to join a private community.
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct JoinRequest {
-    pub account_id: String,
-    pub name: Option<String>,
-    pub verified: bool,
-    /// Unix milliseconds.
-    pub requested_at: u64,
 }
 
 #[derive(Deserialize)]
