@@ -5468,7 +5468,7 @@
         "is": {
           "stringUnit": {
             "state": "translated",
-            "value": "Boð frá %1$@"
+            "value": "%1$@ sendi boðið"
           }
         }
       }
