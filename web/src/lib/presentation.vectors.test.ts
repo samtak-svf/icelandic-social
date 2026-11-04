@@ -84,6 +84,7 @@ const KINDS = [
   "moderated",
   "friend_request",
   "friend_accepted",
+  "community_invite",
 ] as const;
 function kindOf(kind: string): (typeof KINDS)[number] {
   const found = KINDS.find((k) => k === kind);

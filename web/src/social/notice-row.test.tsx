@@ -113,4 +113,21 @@ describe("NoticeRow", () => {
       strings.notice_reaction_two({ name: "Garðar Pálsson", other: "Anna Jónsdóttir" }),
     );
   });
+
+  it("reads an invitation as one actor's sentence and opens the community", () => {
+    const invite: Partial<Notification> = {
+      kind: "community_invite",
+      postId: null,
+      emoji: undefined,
+      snippet: null,
+    };
+    const out = html(row(invite));
+    expect(out).toContain(strings.notice_community_invite({ name: "Garðar Pálsson" }));
+    expect(out).toContain('href="/communities/$communityId"');
+    // The envelope, not the approved check.
+    expect(out).toContain('<rect x="3" y="5"');
+    expect(html(row({ ...invite, actor: null, actors: [], actorCount: 0 }))).toContain(
+      strings.notice_community_invite({ name: strings.person_deleted }),
+    );
+  });
 });
