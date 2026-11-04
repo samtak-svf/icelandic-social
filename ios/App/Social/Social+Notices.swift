@@ -18,6 +18,9 @@ final class NoticeChanges: Sendable {
         return stream
     }
 
+    /// How many streams are open: lets a test wait until a follower has subscribed instead of guessing a delay.
+    var listening: Int { listeners.withLock { continuations.count } }
+
     func announce() {
         let all = listeners.withLock { Array(continuations.values) }
         for continuation in all { continuation.yield() }
