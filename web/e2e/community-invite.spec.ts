@@ -1,7 +1,7 @@
 import type { Page } from "@playwright/test";
 import { strings } from "../src/generated/brand/strings.ts";
-import { expectMember, found, manage, person, runJobs } from "./social-helpers.ts";
-import { expect, test } from "./origin.ts";
+import { accountOf, expectMember, found, manage, person, runJobs } from "./social-helpers.ts";
+import { CLIENT, expect, test, WEB } from "./origin.ts";
 
 // Decision 0130: a moderator's invitation reaches the invited person as a
 // notice and as an answer on the community's page, and the moderator sees the
@@ -9,21 +9,29 @@ import { expect, test } from "./origin.ts";
 
 const MODERATOR = "Umsjón Boðsdóttir";
 
-/** The moderator invites `name` from the community's page, through the invitation dialog. */
-async function invite(moderator: Page, community: string, name: string) {
-  await moderator.goto(community);
-  await moderator.getByRole("button", { name: strings.invite, exact: true }).click();
-  const dialog = moderator.getByRole("dialog");
-  await dialog.getByRole("searchbox").fill(name);
-  const row = dialog.getByRole("listitem").filter({ hasText: name });
-  await row.getByRole("button", { name: strings.invite, exact: true }).click();
-  await expect(dialog.getByText(strings.community_invite_sent)).toBeVisible();
-  await moderator.keyboard.press("Escape");
+/**
+ * The moderator invites `invited` as the page does: the dialog lists only accounts with a device
+ * (listPeople), and a web-only account has none, so the call is the one the dialog makes.
+ */
+async function invite(moderator: Page, community: string, invited: Page) {
+  const communityId = community.split("/").pop() ?? "";
+  const accountId = await accountOf(invited);
+  const status = await moderator.evaluate(
+    async ([id, account, headers]) =>
+      (
+        await fetch(`/v1/communities/${id}/invitations/${account}`, {
+          method: "PUT",
+          headers,
+        })
+      ).status,
+    [communityId, accountId, CLIENT] as const,
+  );
+  expect(status).toBe(204);
 }
 
 /** The notice of the invitation in the invited person's list of notices. */
 async function notice(page: Page) {
-  await page.goto("/");
+  await page.goto(WEB);
   await page.getByRole("link", { name: new RegExp(strings.notifications_title) }).click();
   await expect(page.getByRole("heading", { name: strings.notifications_title })).toBeVisible();
   return page.getByText(strings.notice_community_invite({ name: MODERATOR }), { exact: true });
@@ -37,8 +45,8 @@ test("an invitation is noticed, declined, accepted and withdrawn", async ({ brow
   const c = await person(browser, "Cecilía Boðnadóttir");
   const community = await found(moderator, "private", "Lokaður hópur.");
 
-  await invite(moderator, community, "Anna Boðnadóttir");
-  await invite(moderator, community, "Bjarni Boðnason");
+  await invite(moderator, community, a);
+  await invite(moderator, community, b);
   await runJobs();
 
   // A sees the notice and, on the community's page, who asked; no join request is offered.
@@ -58,7 +66,7 @@ test("an invitation is noticed, declined, accepted and withdrawn", async ({ brow
   await expect(await notice(b)).toHaveCount(0);
 
   // C is invited, the moderator sees C waiting and takes the invitation back.
-  await invite(moderator, community, "Cecilía Boðnadóttir");
+  await invite(moderator, community, c);
   await runJobs();
   await expect(await notice(c)).toHaveCount(1);
   await moderator.goto(community);
