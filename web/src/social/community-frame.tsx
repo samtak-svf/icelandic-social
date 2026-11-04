@@ -1,21 +1,16 @@
 import { Outlet, useLocation, useNavigate, useSearch } from "@tanstack/react-router";
 import { createContext, useCallback, useContext, useState } from "react";
 import type { Problem } from "../problem.ts";
-import {
-  getCommunity,
-  joinCommunity,
-  restoreCommunity,
-  withdrawJoinRequest,
-  type Community,
-} from "../generated/api.ts";
+import { getCommunity, restoreCommunity, type Community } from "../generated/api.ts";
 import { strings } from "../generated/brand/strings.ts";
 import { formatIsDate } from "../lib/is-format.ts";
 import { Button, ProblemText, Status } from "../ui/kit.tsx";
 import { CommunityAside } from "./community-aside.tsx";
 import { CommunityBar, CommunityHeader } from "./community-header.tsx";
+import { Membership } from "./community-membership.tsx";
 import { CommunityTabs, tabOf } from "./community-tabs.tsx";
 import { useMembers, type Members } from "./members.ts";
-import { outcome, useLoad, type Outcome } from "./outcome.ts";
+import { outcome, useLoad } from "./outcome.ts";
 import { useSuspended } from "./suspended.tsx";
 
 // What every tab of a community shares (decisions 0063, 0080, 0089): the bar,
@@ -105,68 +100,6 @@ function Columns({
         </div>
       </div>
       <CommunityAside community={community} members={members} />
-    </div>
-  );
-}
-
-function Membership({
-  community,
-  changed,
-}: Readonly<{ community: Community; changed: () => void }>) {
-  const suspended = useSuspended();
-  const [busy, setBusy] = useState(false);
-  const [problem, setProblem] = useState<Problem | null>(null);
-  const path = { communityId: community.communityId };
-
-  async function change(pending: Promise<Outcome<unknown>>) {
-    setBusy(true);
-    setProblem(null);
-    const done = await pending;
-    setBusy(false);
-    if (done.ok) changed();
-    else if (done.problem) setProblem(done.problem);
-  }
-
-  const declinedUntil = community.joinDeclinedUntil;
-  let control = null;
-  if (declinedUntil !== null && declinedUntil > Date.now()) {
-    control = (
-      <>
-        <p>{strings.community_join_declined}</p>
-        <p className="text-sm text-muted-fg">
-          {strings.community_join_again({ date: formatIsDate(declinedUntil) })}
-        </p>
-      </>
-    );
-  } else if (community.joinRequested) {
-    control = (
-      <>
-        <p>{strings.community_join_requested}</p>
-        <Button
-          disabled={busy}
-          onClick={() => void change(outcome(withdrawJoinRequest({ path }), 204))}
-        >
-          {strings.community_withdraw_request}
-        </Button>
-      </>
-    );
-  } else if (community.role === null) {
-    const label =
-      community.audience === "open" ? strings.community_join : strings.community_request_join;
-    control = (
-      <Button
-        tone="primary"
-        disabled={busy || suspended}
-        onClick={() => void change(outcome(joinCommunity({ path }), 200))}
-      >
-        {label}
-      </Button>
-    );
-  }
-  return (
-    <div className="mt-4 flex flex-col items-start gap-2">
-      {control}
-      <Status>{problem && <ProblemText problem={problem} />}</Status>
     </div>
   );
 }
