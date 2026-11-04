@@ -118,7 +118,7 @@ private fun InvitationCard(
 ) {
     SocialCard {
         Text(
-            invitation.name ?: stringResource(R.string.person_deleted),
+            invitation.name ?: stringResource(R.string.person_unnamed),
             style = MaterialTheme.typography.titleSmall,
         )
         invitation.invitedBy?.let {
