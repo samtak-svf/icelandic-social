@@ -120,13 +120,13 @@ jobs:
           xcodegen generate
 
       - name: Import the distribution certificate
-        uses: apple-actions/import-codesign-certs@77ba2a2a8f5cfc8c405ebf3159f767c323e238f9 # v7.1.0
+        uses: apple-actions/import-codesign-certs@288b8ec97b82c66b6f2a6baaf7acc8dfbcbe331c # v7.2.0
         with:
           p12-file-base64: ${{ secrets.IOS_SIGNING_P12_BASE64 }}
           p12-password: ${{ secrets.IOS_SIGNING_P12_PASSWORD }}
 
       - name: Profile for ${{ needs.preflight.outputs.app }}
-        uses: apple-actions/download-provisioning-profiles@230860ab5f632551a5f9a5e1d98a774485463888 # v7.0.0
+        uses: apple-actions/download-provisioning-profiles@233aa54e59082c0e8a8cf8b0b02c72dea2422ef9 # v7.1.0
         with:
           bundle-id: ${{ needs.preflight.outputs.app }}
           profile-type: IOS_APP_STORE
@@ -135,7 +135,7 @@ jobs:
           api-private-key: ${{ secrets.ASC_API_KEY_P8 }}
 
       - name: Profile for ${{ needs.preflight.outputs.nse }}
-        uses: apple-actions/download-provisioning-profiles@230860ab5f632551a5f9a5e1d98a774485463888 # v7.0.0
+        uses: apple-actions/download-provisioning-profiles@233aa54e59082c0e8a8cf8b0b02c72dea2422ef9 # v7.1.0
         with:
           bundle-id: ${{ needs.preflight.outputs.nse }}
           profile-type: IOS_APP_STORE
@@ -214,7 +214,7 @@ jobs:
 
       - name: Upload to TestFlight
         if: inputs.upload
-        uses: apple-actions/upload-testflight-build@958b2fe4969e2ab1824f79f07c270b950f06bb3a # v5.8.0
+        uses: apple-actions/upload-testflight-build@665328adbecbc3ad929d3da710696d928b8a7ba9 # v5.9.0
         with:
           app-path: ios/build/ipa/Spjall.ipa
           issuer-id: ${{ secrets.ASC_API_ISSUER_ID }}
