@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { base64url, fromBase64 } from "../../src/shared/bytes.ts";
 import { seal, unseal } from "../../src/shared/seal.ts";
 
 // The bug each test names: a value readable without the key, a value sealed for one
@@ -23,8 +24,15 @@ describe("seal", () => {
     const sealed = await seal("key", "purpose", value);
     expect(await unseal("other", "purpose", sealed)).toBeNull();
     expect(await unseal("key", "other", sealed)).toBeNull();
-    const flipped = sealed.slice(0, -2) + (sealed.endsWith("A") ? "BB" : "AA");
-    expect(await unseal("key", "purpose", flipped)).toBeNull();
+    // Flip one bit of a decoded byte: rewriting base64 characters can touch only the padding
+    // bits of the last one and leave the bytes as they were (#562).
+    const [iv, body] = sealed.split(".") as [string, string];
+    const bytes = fromBase64(body.replaceAll("-", "+").replaceAll("_", "/"));
+    for (const at of [0, bytes.length >> 1, bytes.length - 1]) {
+      const changed = bytes.slice();
+      changed[at] = (changed[at] ?? 0) ^ 1;
+      expect(await unseal("key", "purpose", `${iv}.${base64url(changed)}`)).toBeNull();
+    }
     expect(await unseal("key", "purpose", "nonsense")).toBeNull();
     expect(await unseal("key", "purpose", "")).toBeNull();
   });
