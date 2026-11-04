@@ -62,6 +62,8 @@ test("an invitation is noticed, declined, accepted and withdrawn", async ({ brow
   await expect(await notice(b)).toHaveCount(1);
   await b.goto(community);
   await b.getByRole("button", { name: strings.community_accept_invite }).click();
+  // The refetch re-renders the bar; a menu opened before it lands is closed by it.
+  await expect(b.getByRole("button", { name: strings.community_accept_invite })).toHaveCount(0);
   await expectMember(b);
   await expect(await notice(b)).toHaveCount(0);
 
