@@ -4,11 +4,13 @@ import SpjallCore
 
 /// The join requests that wait in a private community (#354, decision 0070), oldest first. A moderator takes
 /// an account in, or declines it, and the account may ask again after 30 days. An answered request leaves the
-/// list; the list is then asked for again.
+/// list; the list is then asked for again. The invitations that wait for their answer (decision 0130) are listed
+/// with them, newest first, each to be taken back.
 @MainActor @Observable
 final class JoinRequestsModel {
     let communityId: String
     private(set) var requests: [JoinRequest] = []
+    private(set) var invitations: [CommunityInvitation] = []
     private(set) var loaded = false
     /// The account whose answer is on its way, so a second tap waits for the first.
     private(set) var answering: String?
@@ -28,7 +30,9 @@ final class JoinRequestsModel {
         let id = communityId
         problem = nil
         do {
-            requests = try await offMain { try social.joinRequests(id) }
+            (requests, invitations) = try await offMain {
+                (try social.joinRequests(id), try social.communityInvitations(id))
+            }
             failed = nil
         } catch {
             failed = { await self.load() }
@@ -53,6 +57,26 @@ final class JoinRequestsModel {
         await answer(request, again: { await self.decline(request) }) {
             try social.declineJoinRequest(id, account: request.accountId)
         }
+    }
+
+    /// Takes an invitation back, and its notice with it; the invitations are then asked for again.
+    func withdraw(_ invitation: CommunityInvitation) async {
+        guard answering == nil else { return }
+        let social = social
+        let id = communityId
+        answering = invitation.accountId
+        problem = nil
+        do {
+            invitations = try await offMain {
+                try social.withdrawInvitation(id, account: invitation.accountId)
+                return try social.communityInvitations(id)
+            }
+            failed = nil
+        } catch {
+            failed = { await self.withdraw(invitation) }
+            problem = Problem(error)
+        }
+        answering = nil
     }
 
     /// Tries the action that failed again.

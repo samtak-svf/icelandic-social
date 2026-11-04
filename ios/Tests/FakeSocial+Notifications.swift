@@ -8,6 +8,7 @@ struct NoticeServer {
     var settings = NotificationSettings(kinds: [], communities: [])
     var statements: [ModerationStatement] = []
     var friends = FriendServer()
+    var invitations: [String: [CommunityInvitation]] = [:]
     var walls = WallServer()
     var feed = HomeServer()
 }

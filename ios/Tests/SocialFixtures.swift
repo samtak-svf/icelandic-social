@@ -7,11 +7,12 @@ func makeCommunity(
     description: String = "", memberCount: UInt64? = 3, mutedUntil: UInt64? = nil, readOnly: Bool = false,
     pendingJoinRequests: UInt64? = nil, openReports: UInt64? = nil, unread: UInt64 = 0,
     lastPostAt: UInt64? = nil, pinned: Bool = false, anonymousPosts: Bool = false, pendingAnonymous: UInt64 = 0,
-    featured: [Post] = []
+    featured: [Post] = [], invited: Bool = false, invitedBy: InvitedBy? = nil
 ) -> Community {
     Community(
         communityId: id, name: name, description: description, audience: audience, createdAt: FakeAccount.now,
-        memberCount: memberCount, role: role, joinRequested: false, invited: false, mutedUntil: mutedUntil,
+        memberCount: memberCount, role: role, joinRequested: false, invited: invited, invitedBy: invitedBy,
+        mutedUntil: mutedUntil,
         readOnly: readOnly, deletedAt: nil, joinDeclinedUntil: nil, pendingJoinRequests: pendingJoinRequests,
         openReports: openReports, unread: unread, lastPostAt: lastPostAt, pinned: pinned,
         anonymousPosts: anonymousPosts, pendingAnonymous: pendingAnonymous, featured: featured)
