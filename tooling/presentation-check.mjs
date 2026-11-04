@@ -31,6 +31,7 @@ const BADGES = /** @type {Record<string, string>} */ ({
   moderated: "moderator",
   friend_request: "friend",
   friend_accepted: "friend",
+  community_invite: "invite",
 });
 
 /** The kinds that name their actors; the others name nobody. */

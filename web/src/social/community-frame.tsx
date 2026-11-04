@@ -11,7 +11,6 @@ import { Membership } from "./community-membership.tsx";
 import { CommunityTabs, tabOf } from "./community-tabs.tsx";
 import { useMembers, type Members } from "./members.ts";
 import { outcome, useLoad } from "./outcome.ts";
-import { useSuspended } from "./suspended.tsx";
 
 // What every tab of a community shares (decisions 0063, 0080, 0089): the bar,
 // the header, joining and withdrawing a join request, the row of tabs and,

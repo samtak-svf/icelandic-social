@@ -1,4 +1,4 @@
-import { isValidElement, type ReactElement, type ReactNode } from "react";
+import { isValidElement, type ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import type { CommunityInvitation } from "../generated/api.ts";
@@ -11,11 +11,12 @@ vi.mock("@tanstack/react-router", () => ({
 }));
 
 /** The onClick of the first element in the tree whose only child is `label`. */
-function clickOf(node: ReactNode, label: string): (() => void) | undefined {
+function clickOf(node: unknown, label: string): (() => void) | undefined {
   if (!isValidElement(node)) return undefined;
-  const el = node as ReactElement<{ children?: ReactNode; onClick?: () => void }>;
-  if (el.props.children === label) return el.props.onClick;
-  for (const child of [el.props.children].flat()) {
+  const children: unknown = Reflect.get(Object(node.props), "children");
+  const onClick: unknown = Reflect.get(Object(node.props), "onClick");
+  if (children === label) return typeof onClick === "function" ? () => void onClick() : undefined;
+  for (const child of [children].flat()) {
     const found = clickOf(child, label);
     if (found) return found;
   }
