@@ -5401,6 +5401,90 @@
         }
       }
     },
+    "community_invited_by": {
+      "comment": "On a community the reader is invited to: who invited them (decision 0130). {name} is the inviter; only the invited person sees it.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ bauð þér að ganga í hópinn."
+          }
+        }
+      }
+    },
+    "community_invited": {
+      "comment": "On a community the reader is invited to, when the invitation has no recorded inviter (decision 0130).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Þér er boðið að ganga í hópinn."
+          }
+        }
+      }
+    },
+    "community_accept_invite": {
+      "comment": "Button on an invited community: accept the invitation and join.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Þiggja boðið"
+          }
+        }
+      }
+    },
+    "community_decline_invite": {
+      "comment": "Button on an invited community: decline the invitation. The inviter is not told.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hafna boðinu"
+          }
+        }
+      }
+    },
+    "community_invitations_pending": {
+      "comment": "Heading for moderators: invitations sent and not yet answered (decision 0130).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Boð sem bíða svars"
+          }
+        }
+      }
+    },
+    "community_invitation_from": {
+      "comment": "Under a pending invitation in the moderators' list: who sent it. {name} is the inviter.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Boð frá %1$@"
+          }
+        }
+      }
+    },
+    "community_withdraw_invite": {
+      "comment": "Button for a moderator: withdraw a pending invitation (decision 0130).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Draga boðið til baka"
+          }
+        }
+      }
+    },
     "community_link_copied": {
       "comment": "Told after the community link was copied",
       "extractionState": "manual",
@@ -7389,6 +7473,30 @@
           "stringUnit": {
             "state": "translated",
             "value": "Samþykktar vinabeiðnir"
+          }
+        }
+      }
+    },
+    "notice_community_invite": {
+      "comment": "A notification: a moderator invited the reader to a community (decision 0130). {name} is the inviter.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ bauð þér í hópinn."
+          }
+        }
+      }
+    },
+    "notification_kind_community_invite": {
+      "comment": "Notification settings row: invitations to a community (decision 0130).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Boð um inngöngu"
           }
         }
       }
