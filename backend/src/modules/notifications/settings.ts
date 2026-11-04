@@ -15,6 +15,7 @@ const KINDS = [
   "moderated",
   "friend_request",
   "friend_accepted",
+  "community_invite",
 ] as const;
 export type Kind = (typeof KINDS)[number];
 export type Level = "off" | "in_app" | "push";

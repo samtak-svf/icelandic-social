@@ -47,14 +47,18 @@ const OLD_ACTIONS = [
  * has no words for a friend's notice until it knows that kind (0114), nor for
  * reports waiting, which only the web words for now (0115). A wall's rows have a
  * community no such app could name, and they stay out until it knows them, as
- * does the clearing of a bio or a cover. An app below `REPLY_NOTICE_CLIENT_VERSION`
+ * does the clearing of a bio or a cover. A community invitation's notice waits for the release
+ * whose core has the kind (0130). An app below `REPLY_NOTICE_CLIENT_VERSION`
  * has a core with no reply kind: it drops those rows from its list, but its counts
  * would still include them, so they stay out of both.
  */
 export function shownTo(reach: NoticeReach): string {
   if (reach === "all") return LIVE_SPACES;
-  if (reach === "wall") return `${LIVE_SPACES} AND n.kind <> 'reports_waiting'`;
-  const noQueue = `${LIVE} AND n.kind <> 'reports_waiting'
+  if (reach === "invites") return `${LIVE_SPACES} AND n.kind <> 'reports_waiting'`;
+  if (reach === "wall") {
+    return `${LIVE_SPACES} AND n.kind NOT IN ('reports_waiting', 'community_invite')`;
+  }
+  const noQueue = `${LIVE} AND n.kind NOT IN ('reports_waiting', 'community_invite')
     AND (n.action IS NULL OR n.action NOT IN ('clear_account_bio', 'clear_account_cover'))`;
   if (reach === "friends") return noQueue;
   const noFriends = `${noQueue} AND n.kind NOT IN ('friend_request', 'friend_accepted')`;
@@ -81,6 +85,7 @@ type Row = {
     | "moderated"
     | "friend_request"
     | "friend_accepted"
+    | "community_invite"
     | "reports_waiting";
   actor_id: string | null;
   community_id: string | null;

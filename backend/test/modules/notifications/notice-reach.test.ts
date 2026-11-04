@@ -105,6 +105,28 @@ describe("the notice seams", () => {
     }
   });
 
+  // The invitation's kind waits for the release whose core has it (decisions 0114, 0130).
+  it.each(["0.21.0", "0.22.9"])(
+    "keep a community invitation from an app at %s, in its list and its counts",
+    async (version) => {
+      const owner = await person("eigandi");
+      await insert(`invite-${owner.accountId}`, owner.accountId, "community_invite", null);
+      await insert(`request-${owner.accountId}`, owner.accountId, "friend_request", null);
+      for (const platform of ["android", "ios"]) {
+        const page = await read(owner, `${platform}/${version}`);
+        expect(page.notifications.map((n) => n.kind)).toEqual(["friend_request"]);
+        expect(page.unread).toBe(1);
+        expect(page.unseen).toBe(1);
+      }
+      const knowing = await read(owner, `android/${env.INVITE_NOTICE_CLIENT_VERSION}`);
+      expect(knowing.notifications.map((n) => n.kind).sort()).toEqual([
+        "community_invite",
+        "friend_request",
+      ]);
+      expect(knowing.unread).toBe(2);
+    },
+  );
+
   it("still keep the moderators' notice from every app", async () => {
     const owner = await person("eigandi");
     await insert(`queue-${owner.accountId}`, owner.accountId, "reports_waiting", null);

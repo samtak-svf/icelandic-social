@@ -249,6 +249,7 @@ const NOT_REFUSED: Record<string, readonly string[]> = {
     "withdrawVote",
     "unlikeComment",
     "withdrawJoinRequest",
+    "withdrawInvitation",
     "leaveCommunity",
     "closePoll",
     "removeWallCover",

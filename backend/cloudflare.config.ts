@@ -156,6 +156,9 @@ export default defineConfig(({ mode }) => {
         // The version from which an app knows a wall's notices (decision 0115): the release whose
         // core has the wall, the same as a friend's since that core has both. Not a floor.
         WALL_NOTICE_CLIENT_VERSION: bindings.text("0.21.0"),
+        // The version from which an app knows a community invitation's notice (decision 0130): the
+        // release whose core has the kind. Below it the row is withheld; not a floor.
+        INVITE_NOTICE_CLIENT_VERSION: bindings.text("0.23.0"),
         // Where a client below its floor gets a current build (decision 0030),
         // published by /health and the 426 body. Android's is the internal
         // track's opt-in link while the app is not on a public listing; iOS's is

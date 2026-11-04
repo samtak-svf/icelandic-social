@@ -11,7 +11,8 @@ type NoticeKind =
   | "join_approved"
   | "moderated"
   | "friend_request"
-  | "friend_accepted";
+  | "friend_accepted"
+  | "community_invite";
 
 /**
  * Who is told what, by whom, about which thing. Ids only, never content. Reports
