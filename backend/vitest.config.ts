@@ -1,6 +1,13 @@
 import { cloudflareTest, readD1Migrations } from "@cloudflare/vitest-plugin";
 import { defineConfig } from "vitest/config";
+import { vitestLoad } from "../tooling/vitest-load.mjs";
 import { workerConfig } from "./scripts/worker-config.ts";
+
+// Workers and timeouts follow free memory and the machine's load average
+// (tooling/vitest-load.mjs, docs/testing.md "Where CI runs"). The base is the
+// 15 s this suite always had; load stretches it up to 3x, never below it.
+const load = vitestLoad({ baseTimeoutMs: 15_000 });
+if (!process.env.CI) process.stderr.write(`${load.line}\n`);
 
 // Tests run inside workerd with the real bindings from cloudflare.config.ts,
 // local and isolated per test file. The entry is test/worker.ts, the real
@@ -37,7 +44,9 @@ export default defineConfig({
     // success, so the budget costs nothing when the state arrives. The test
     // timeout must exceed it, or it is the 5 s default that cuts a poll short.
     expect: { poll: { timeout: 10_000, interval: 50 } },
-    testTimeout: 15_000,
+    testTimeout: load.testTimeout,
+    hookTimeout: load.hookTimeout,
+    maxWorkers: load.maxWorkers,
     // `pnpm coverage` turns this on; the workers pool supports istanbul, not v8.
     // tooling/coverage-floor.mjs reads the summary (docs/testing.md).
     coverage: {
