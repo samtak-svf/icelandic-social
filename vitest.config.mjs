@@ -6,7 +6,7 @@ import { vitestLoad } from "./tooling/vitest-load.mjs";
 // (tooling/vitest-load.mjs, docs/testing.md "Where CI runs"). The tooling tests
 // start child processes, so the base is 10 s, stretched up to 3x under load.
 const load = vitestLoad({ baseTimeoutMs: 10_000 });
-if (!process.env.CI) process.stderr.write(`${load.line}\n`);
+if (!process.env.CI && process.env.VITEST) process.stderr.write(`${load.line}\n`);
 
 export default defineConfig({
   test: {

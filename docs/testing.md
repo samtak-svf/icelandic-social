@@ -59,6 +59,24 @@ A backend test goes with the code whose rule it holds, not the route it happens 
 the test of a reaction rule is in `modules/social/` although it goes through `/v1`. A test
 that spans modules goes with the module that starts the flow.
 
+## The fast loop: one file, one test
+
+The full backend suite takes minutes; do not wait for it while working on one rule. Run the file
+that holds the rule, from `backend/`, and narrow it to a test with `-t` (a substring or regex of
+the full test name). Web unit tests take the same arguments from `web/`, the guard tests from the root.
+
+```bash
+cd backend && pnpm exec vitest run test/shared/env.test.ts                       # one file, about 5 s
+cd backend && pnpm exec vitest run test/shared/env.test.ts -t "<part of a name>"  # one test in it
+cd backend && pnpm exec vitest run test/modules/social                           # a directory
+pnpm exec vitest run tooling/tests/guards.test.mjs                               # a guard test, from the root
+```
+
+Vitest 5 already keeps a module transform cache in `node_modules/.vitest-cache`; measured on this
+suite, switching it on or off with `--fsModuleCache` changed a 17 s subset run by under 5 %, so the
+"transform" share in the summary is mostly workerd and plugin start-up, not re-transformed modules.
+That is why one file is the fast loop. Run the full suite once before the PR; CI runs it regardless.
+
 ## A test reads the string
 
 A test takes a label from the generated strings (`strings.community_create` on the web, `getString(R.string.…)` on
