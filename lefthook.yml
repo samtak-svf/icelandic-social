@@ -103,6 +103,15 @@ pre-push:
     jurisdiction:
       run: node tooling/jurisdiction-check.mjs
 
+    # ktlint and detekt over the Kotlin and swift-format over the Swift this
+    # branch changed, where installed (docs/commands.md § Native lint).
+    native-lint:
+      run: node tooling/native-lint.mjs
+
+    # docs/decisions/README.md is generated from the records.
+    decisions-index:
+      run: node tooling/gen-decisions-index.mjs --check
+
     # Actions pinned by SHA, fork PRs never on the org runners.
     workflows:
       run: node tooling/workflow-guard.mjs
