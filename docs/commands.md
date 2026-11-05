@@ -4,8 +4,12 @@ The full command list, moved out of `AGENTS.md` (which keeps the rules). Run eve
 
 ```bash
 pnpm install           # also installs the lefthook hooks
-pnpm check             # lint, types, format, every guard CI runs (the list, and the stage each runs at: tooling/guards.json),
-                       # knip; the line cap's shrink-only list is tooling/line-count.allow.json
+pnpm check             # lint, types, format, every guard CI runs, in parallel (tooling/check.mjs reads the check:chain script;
+                       # the stage each guard runs at: tooling/guards.json), knip; the line cap's shrink-only list is
+                       # tooling/line-count.allow.json. Prints each step's output when it ends, then one summary line.
+pnpm check:changed     # the same, with lint and format narrowed to the files changed against the merge base with origin/main;
+                       # a step that cannot narrow runs in full. GUARDS_JOBS=n sets the concurrency.
+pnpm run check:chain   # the same steps, one after another
 pnpm brand:gen         # regenerate the platform files from brand/$BRAND
 pnpm test              # guard tests (vitest); each guard is proven to fail when it should
                        # what deserves a test, and the known sources of noise: docs/testing.md
@@ -21,7 +25,7 @@ pnpm --filter spjall-backend dev       # cf dev: Vite with the Cloudflare plugin
 pnpm --filter spjall-backend build     # cf build: the Worker and the web app, into .cloudflare/output
 pnpm --filter spjall-backend check     # cf workers types, tsc, api/openapi.json drift
 pnpm --filter spjall-backend test      # vitest inside workerd (@cloudflare/vitest-plugin); the full suite, minutes on a loaded machine
-# The fast loop while working: one file, or one test by name, from backend/ (about 5 s)
+# The fast loop while working: one file, or one test by name, from backend/ (7 to 22 s: cold start and a loaded machine are the slow end)
 cd backend && pnpm exec vitest run test/shared/env.test.ts
 pnpm --filter spjall-backend test:changed   # vitest run --changed origin/main: the tests whose imports the diff touches
 cd backend && pnpm exec vitest run test/shared/env.test.ts -t "<part of the test name>"
