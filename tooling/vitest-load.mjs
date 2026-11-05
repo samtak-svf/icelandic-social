@@ -13,6 +13,7 @@
 //   // maxWorkers: load.maxWorkers, testTimeout: load.testTimeout, hookTimeout: load.hookTimeout
 //
 // Overrides: VITEST_MAX_FORKS (workers), VITEST_TIMEOUT_SCALE (timeout scale).
+// The bases are vitest's own defaults (5 s test, 10 s hook); load stretches them.
 // In CI (env.CI) maxWorkers is undefined and scale is 1 unless overridden.
 import fs from 'node:fs';
 import os from 'node:os';
@@ -60,12 +61,20 @@ const sizeScale = ({ env, cores, load1, maxScale }) => {
   return { scale: Math.max(1, Math.min(maxScale, load1 / cores)), overridden: false };
 };
 
+/** @param {Record<string, any>} p */
+const summary = (p) => {
+  const mem = p.availMb == null ? 'unknown' : Math.round(p.availMb);
+  const scale = `${p.scale.toFixed(2)}${p.overridden ? ' (VITEST_TIMEOUT_SCALE)' : ''}`;
+  return `[vitest-load] workers=${p.maxWorkers ?? 'default'} (${p.basis}) cores=${p.cores} load1=${p.load1.toFixed(2)} memAvailMb=${mem} scale=${scale} testTimeout=${p.testTimeout}ms hookTimeout=${p.hookTimeout}ms`;
+};
+
 /** @param {import('./vitest-load.mjs').VitestLoadOptions} [options] */
 export const vitestLoad = ({
   perForkMb = 1100,
   reserveMb = 2048,
   minWorkers = 1,
   baseTimeoutMs = 5000,
+  baseHookTimeoutMs = 10_000,
   maxScale = 3,
   env = process.env,
   readMeminfo = defaultReadMeminfo,
@@ -77,7 +86,7 @@ export const vitestLoad = ({
   const { maxWorkers, basis } = sizeWorkers({ env, cores, load1, availMb, perForkMb, reserveMb, minWorkers });
   const { scale, overridden } = sizeScale({ env, cores, load1, maxScale });
   const testTimeout = Math.round(baseTimeoutMs * scale);
-  const mem = availMb == null ? 'unknown' : Math.round(availMb);
-  const line = `[vitest-load] workers=${maxWorkers ?? 'default'} (${basis}) cores=${cores} load1=${load1.toFixed(2)} memAvailMb=${mem} scale=${scale.toFixed(2)}${overridden ? ' (VITEST_TIMEOUT_SCALE)' : ''} testTimeout=${testTimeout}ms`;
-  return { maxWorkers, testTimeout, hookTimeout: testTimeout, scale, line };
+  const hookTimeout = Math.round(baseHookTimeoutMs * scale);
+  const line = summary({ maxWorkers, basis, cores, load1, availMb, scale, overridden, testTimeout, hookTimeout });
+  return { maxWorkers, testTimeout, hookTimeout, scale, line };
 };

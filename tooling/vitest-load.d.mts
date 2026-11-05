@@ -3,6 +3,7 @@ export interface VitestLoadOptions {
   reserveMb?: number;
   minWorkers?: number;
   baseTimeoutMs?: number;
+  baseHookTimeoutMs?: number;
   maxScale?: number;
   env?: Record<string, string | undefined>;
   readMeminfo?: () => number | null;
