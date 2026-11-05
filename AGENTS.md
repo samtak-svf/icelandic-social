@@ -48,13 +48,7 @@ Consequences, all enforced by `tooling/brand-leak-guard.mjs`:
   default the only brand not starting with `_`. Generated files may name the active brand and
   no other one.
 - **Apps read the Rust core from local paths, never from cargo or the network.**
-  `android/core/crypto/libs/` and `ios/Packages/SpjallCore/` are gitignored and filled by
-  `cargo xtask core <android|ios>` (a local build) or `cargo xtask fetch <android|ios>` (the
-  published version pinned with SHA-256 in `core/artifact.lock.json`). App CI only fetches, so
-  the lock always pins a release. No Gradle or Xcode file calls cargo (`check:core`). A new core is published by `node tooling/core-release.mjs <version>`
-  (`docs/operations.md`), which tags the merged commit and writes the lock on a branch; the lock moves only by PR.
-  A change to the wasm exports commits the regenerated `web/src/generated/core.d.ts` (the
-  `web/core/spjall_wasm.d.ts` that `cargo xtask core web` builds) in the same PR; `core.yml` fails otherwise.
+  No Gradle or Xcode file calls cargo (`check:core`). Detail, the lock and the publishing steps: [`docs/commands.md`](docs/commands.md) § The Rust core in the apps.
 
 ## Commands
 
@@ -130,12 +124,7 @@ agents prepare the commands, they do not run them (the standing exceptions are i
 `docs/decisions/NNNN-slug.md`, numbered, never renumbered. A record states the decision, why,
 and what it rules out. A superseded record is kept and marked, not deleted.
 
-Each record opens with `# NNNN. Title` and a header list: `- Status:` (`accepted`, with
-"implemented …", "designed, not yet implemented", "deferred" or "amended by NNNN" when that
-applies; the test refuses any other state, so a status is updated in the PR that lands the work),
-`- Date:` and `- Decided by:` (a person, or the overseer on a named person's question or order, ending
-"his to overturn"; never a bare agent), then any `Amended by`, `Supersedes` or
-`Closes` lines. The body starts at `## Decision`; `tooling/tests/decisions.test.mjs` holds this.
+The record format (header list and statuses) is in [`docs/decision-format.md`](docs/decision-format.md); `tooling/tests/decisions.test.mjs` enforces it.
 
 **v1 scope is [0009](docs/decisions/0009-v1-scope.md).** A feature outside its table needs a
 new record before any code.
