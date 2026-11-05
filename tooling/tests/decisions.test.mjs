@@ -7,7 +7,8 @@ import { describe, expect, it } from "vitest";
 import { ROOT } from "../lib/repo.mjs";
 
 const DIR = join(ROOT, "docs/decisions");
-const records = readdirSync(DIR).filter((f) => f.endsWith(".md"));
+// README.md is generated from the records (tooling/gen-decisions-index.mjs), not one.
+const records = readdirSync(DIR).filter((f) => /^\d{4}-.+\.md$/.test(f));
 
 /**
  * The `- Key: value` list under the title; an indented line continues the

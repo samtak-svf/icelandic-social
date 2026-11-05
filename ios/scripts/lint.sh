@@ -7,4 +7,6 @@
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
-xcrun swift-format lint --strict --recursive App NotificationService Shared Tests
+# xcrun finds swift-format on a Mac; elsewhere it is the swift-format on PATH.
+if command -v xcrun >/dev/null 2>&1; then swift_format=(xcrun swift-format); else swift_format=(swift-format); fi
+"${swift_format[@]}" lint --strict --recursive App NotificationService Shared Tests

@@ -44,6 +44,12 @@
       "stages": ["push", "ci"]
     },
     {
+      "name": "decisions-index",
+      "script": "gen-decisions-index",
+      "stages": ["push", "ci"],
+      "flag": "--check"
+    },
+    {
       "name": "frames-check",
       "script": "frames-check",
       "stages": ["push", "ci"]
@@ -82,6 +88,11 @@
       "name": "module-guard",
       "script": "module-guard",
       "stages": ["push", "ci"]
+    },
+    {
+      "name": "native-lint",
+      "script": "native-lint",
+      "stages": ["push"]
     },
     {
       "name": "peer-names",

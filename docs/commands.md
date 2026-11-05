@@ -44,7 +44,8 @@ GH_TOKEN=$(gh auth token) cargo xtask fetch android   # the pinned published art
 node tooling/mac-remote.mjs -- android/scripts/test.sh   # ktlint, detekt, lint (warnings are errors), unit tests, assembleDebug
 node tooling/mac-remote.mjs -- 'cd android && ./gradlew <task>'   # any one Gradle task
 ios/scripts/test.sh --prepare   # macOS only: the iOS tests, as ios.yml runs them (runs lint.sh first)
-ios/scripts/lint.sh             # macOS only: swift-format --strict, the same command ios.yml runs
+ios/scripts/lint.sh             # swift-format --strict, the same command ios.yml runs (needs xcrun or swift-format on PATH)
+node tooling/native-lint.mjs    # ktlint and detekt over the Kotlin, swift-format over the Swift this branch changed; pre-push runs it
 node tooling/mac-remote.mjs android   # the Android checks and emulator tests on that Mac (`-- android/scripts/test.sh` alone: check + assembleDebug)
 node tooling/mac-remote.mjs     # the same from Linux, on Samtak's own Mac over ssh (set up by tooling/mac-bootstrap.sh)
 ```
@@ -59,6 +60,27 @@ perl with `FindBin` and `IPC::Cmd`; on Fedora, `dnf install perl-FindBin perl-IP
 git worktree builds its own `core/target` of several GB, so a worktree under a small `/tmp`
 tmpfs runs out of space: point `CARGO_TARGET_DIR` at one shared directory outside `/tmp`
 (e.g. `~/.cache/spjall-target`) for every worktree.
+
+## Native lint
+
+`tooling/native-lint.mjs` (pre-push) lints the Kotlin and Swift files a branch changed since main, with no Gradle
+daemon: ktlint and detekt are plain command-line tools, so a style error fails in seconds on this machine and not
+after a trip to the Mac. A tool that is missing is skipped with one line naming the workflow that checks the files
+(`android.yml`, `ios.yml`); CI stays the gate.
+
+On Fedora both release binaries run with the system Java 21 or newer; no root is needed. Use the versions the
+Gradle plugins use (`android/gradle/libs.versions.toml`), because a newer ktlint adds rules the build does not have:
+
+```sh
+curl -fsSL -o ~/.local/bin/ktlint https://github.com/pinterest/ktlint/releases/download/1.7.1/ktlint && chmod +x ~/.local/bin/ktlint
+mkdir -p ~/.local/share/detekt && curl -fsSL -o ~/.local/share/detekt/detekt-cli-all.jar \
+  https://github.com/detekt/detekt/releases/download/v2.0.0-alpha.6/detekt-cli-2.0.0-alpha.6-all.jar
+printf '#!/bin/sh\nexec java -jar "$HOME/.local/share/detekt/detekt-cli-all.jar" "$@"\n' > ~/.local/bin/detekt && chmod +x ~/.local/bin/detekt
+```
+
+detekt runs without type resolution and only on `src/main` and `src/test`, as the Gradle task does. swift-format
+is not packaged for Fedora; on a machine without it the iOS check is the `ios` workflow. `ktlint -F <file>` fixes
+most style errors in place.
 
 ## The contract
 
@@ -79,5 +101,5 @@ writes it to every platform (`check:limits`). A text's length is its code points
 ## Tooling
 
 Tooling is plain `.mjs` with `// @ts-check` and JSDoc, type-checked by `tsc --noEmit`
-(`checkJs`). Node ≥ 24.2 (`import.meta.main`). pnpm, one workspace (the root and `backend/`)
+(`checkJs`). Node ≥ 24.2 (`import.meta.main`). pnpm, one workspace (the root, `backend/`, `web/`, `spikes/browser-storage` and `spikes/d1-workload`)
 with one lockfile; build scripts are allowed only for the root `pnpm.onlyBuiltDependencies`.
