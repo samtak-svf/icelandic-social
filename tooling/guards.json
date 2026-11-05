@@ -156,6 +156,10 @@
   ],
   "tools": [
     {
+      "script": "vitest-load",
+      "reason": "Not a guard: both vitest configs import it to size workers and timeouts from free memory and load. A byte-identical copy of a shared template; edit the template, not this file."
+    },
+    {
       "script": "contract-rebase",
       "reason": "A person runs it to put a contract branch on main; it rewrites the branch and checks nothing. migration-guard --base and the two --check commands are the gate."
     },

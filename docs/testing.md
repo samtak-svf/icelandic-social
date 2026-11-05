@@ -267,7 +267,14 @@ instances), for its speed and its arm64 AVD, each chosen by a repository variabl
   the runner's two workers. Two shards, each with its own Worker, take 6.0 (6.2), first leg created
   to last leg done. That is n=2 and one of the two is a drill with a deliberately failing shard;
   the passing run took 6.2, and the one merge since took 5.8. More workers on one runner were
-  rejected: the 5 s assertions give way under CPU load (#355). `proof` needs both shards, shown by
+  rejected: the 5 s assertions give way under CPU load (#355). That holds for the suites too:
+  `tooling/vitest-load.mjs` (a byte-identical copy of the shared template, used by both vitest
+  configs) sizes a local run from the machine instead of fixing it. Workers are the smallest of the
+  cores, what free memory holds, and the cores left idle by the one-minute load average; the test
+  and hook timeouts are stretched by load over cores, between 1x and 3x, so a suite that passes
+  alone does not time out beside other sessions. CI runs at the base timeouts (5 s; 10 s for the
+  tooling tests, 15 s for the Worker tests). `VITEST_MAX_FORKS=<n>` and `VITEST_TIMEOUT_SCALE=<x>`
+  override; each run prints its sizing on stderr (`[vitest-load] workers=...`). `proof` needs both shards, shown by
   a drill.
 - **`web` stays hosted although it is slower than its baseline.** The 5.5 is 1.7 of run plus 3.8 of
   wait, from that short sample. The same job on the Mac over 10-23 to 10-30 took 3.6 of run plus 5.6

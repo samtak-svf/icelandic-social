@@ -4,12 +4,15 @@
   // byte-identical as tooling/ids-freeze.mjs requires. pnpm owns its own lock.
   // api/openapi.json is written by backend/scripts/openapi.ts and ios/Generated/
   // and every generated/ directory (web/src/generated/, android/core/brand/src/generated/) by tooling/brand-gen.mjs; all are drift-checked byte for byte, so the
-  // generator's layout is the one that counts.
+  // generator's layout is the one that counts. tooling/vitest-load.* is a byte-identical copy
+  // of a shared template (scripts/sync-vendored.mjs in agent-config compares it), so its
+  // layout is the template's.
   "ignorePatterns": [
     "pnpm-lock.yaml",
     "**/*.gen.ts",
     "api/openapi.json",
     "**/generated/**",
+    "tooling/vitest-load.*",
     "ios/Generated/**"
   ],
   "lineWidth": 100,
