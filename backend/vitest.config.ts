@@ -16,6 +16,31 @@ if (!process.env.CI && process.env.VITEST) process.stderr.write(`${load.line}\n`
 process.env.WRANGLER_LOG ??= "warn";
 process.env.KENNITALA_HMAC_KEY ??= "test-only-kennitala-key";
 
+// workerd reports a few harmless events on its own stdout/stderr, which the pool writes
+// straight to the process streams (not through console, so `onConsoleLog` cannot reach them):
+// - "SQLite alarm overdue, running despite AlarmManager mismatch": our Durable Objects arm
+//   `setAlarm(Date.now())` to run a job at once, workerd's alarm manager then sees its clock a
+//   few milliseconds past the stored time, runs the alarm anyway and says so. The alarm ran.
+// - "SQLite alarm handler canceled with requestScheduledAlarm": an alarm that re-arms itself
+//   while running, or whose test file ended, replaces the pending run, as designed.
+// - "exception = ...: disconnected: ..." and its "stack:" line: a pipe or stream closing
+//   when a test file's isolate is torn down.
+// No code of ours can prevent these, so exactly these lines are dropped; every other line
+// (including a real workerd warning) still prints.
+const HARMLESS_WORKERD =
+  /SQLite alarm overdue, running despite AlarmManager mismatch|SQLite alarm handler canceled with requestScheduledAlarm|^exception = .*: disconnected: |^stack: .*workerd@/;
+if (process.env.VITEST) {
+  for (const stream of [process.stdout, process.stderr]) {
+    const write = stream.write.bind(stream) as (chunk: unknown, ...rest: unknown[]) => boolean;
+    stream.write = ((chunk: unknown, ...rest: unknown[]) => {
+      if (typeof chunk !== "string" || !HARMLESS_WORKERD.test(chunk)) return write(chunk, ...rest);
+      // Line by line, so a chunk that batches these with other output keeps the rest.
+      const kept = chunk.split("\n").filter((line) => !HARMLESS_WORKERD.test(line));
+      return kept.join("\n").trim() === "" ? true : write(kept.join("\n"), ...rest);
+    }) as typeof stream.write;
+  }
+}
+
 // Tests run inside workerd with the real bindings from cloudflare.config.ts,
 // local and isolated per test file. The entry is test/worker.ts, the real
 // Worker with its Durable Object stubs checked for the EU jurisdiction, which
