@@ -39,6 +39,19 @@ function codeLines(text) {
 }
 
 /**
+ * The parallel runner behind `pnpm check` runs the steps of the `check:chain` script.
+ * @param {Record<string, string>} scripts
+ * @param {Stage} stage
+ * @param {Observed} out
+ * @param {Set<string>} seen
+ */
+function followRunner(scripts, stage, out, seen) {
+  if (seen.has("check:chain") || !Object.hasOwn(scripts, "check:chain")) return;
+  seen.add("check:chain");
+  collect((scripts["check:chain"] ?? "").split(/&&|;/), scripts, stage, out, seen);
+}
+
+/**
  * Every `node tooling/x.mjs <args>` in the lines, and every `pnpm [run] <name>`
  * that names a script of the root package.json, followed through its commands.
  * @param {string[]} lines
@@ -53,6 +66,7 @@ function collect(lines, scripts, stage, out, seen = new Set()) {
       const script = m[1] ?? "";
       const args = m[2] ?? "";
       out.set(script, [...(out.get(script) ?? []), { stage, args: args.trim() }]);
+      if (script === "check") followRunner(scripts, stage, out, seen);
     }
     for (const m of line.matchAll(/\bpnpm\s+(?:run\s+)?([\w:-]+)/g)) {
       const name = m[1] ?? "";
