@@ -54,7 +54,15 @@ export async function signInVerified(page: Page, name: string) {
     if (await linked.isVisible()) break;
     expect(attempt, "every kennitala drawn was taken").toBeLessThan(4);
   }
+  // The badge comes from the person read, which Ég asks for only after /v1/me
+  // answers. A hosted `cf dev` worker has stalled that answer for 3.8 s (run
+  // 42027809525), most of an `expect`'s 5 s, so wait for the read itself and
+  // let the badge be judged once the data is in.
+  const person = page.waitForResponse(
+    (r) => /\/v1\/people\/[^/?]+$/.test(new URL(r.url()).pathname) && r.ok(),
+  );
   await page.getByRole("link", { name: strings.tab_me }).first().click();
+  await person;
   await expect(page.getByText(strings.verified_short)).toBeVisible();
   await expect(page.getByText(name).first()).toBeVisible();
 }
