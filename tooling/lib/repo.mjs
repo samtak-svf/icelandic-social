@@ -65,6 +65,22 @@ export function visibleFiles(cwd = ROOT) {
 }
 
 /**
+ * The file list after a `--files` flag, for a guard that `pnpm check:changed`
+ * narrows to the changed files (package.json `guardRunner.scoped`); `null`
+ * when the flag is absent, which means the guard walks every visible file.
+ * Files that no longer exist are dropped, as in `visibleFiles`.
+ *
+ * @param {string[]} [argv]
+ * @param {string} [cwd]
+ * @returns {string[] | null}
+ */
+export function filesFromArgs(argv = process.argv, cwd = ROOT) {
+  const i = argv.indexOf("--files");
+  if (i === -1) return null;
+  return argv.slice(i + 1).filter((file) => existsSync(join(cwd, file)));
+}
+
+/**
  * Files staged for the current commit, for pre-commit hooks.
  *
  * @param {string} [cwd]

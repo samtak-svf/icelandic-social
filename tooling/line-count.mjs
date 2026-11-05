@@ -18,7 +18,7 @@
 
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { ROOT, readJson, visibleFiles } from "./lib/repo.mjs";
+import { ROOT, filesFromArgs, readJson, visibleFiles } from "./lib/repo.mjs";
 
 /** Source files the cap applies to. */
 const COUNTED = /\.(kt|swift|rs)$/;
@@ -92,12 +92,13 @@ export function check(counts, allow, cap) {
 
 /**
  * @param {string} [root]
+ * @param {string[]} [files] the files to count; default every visible one
  * @returns {Record<string, number>}
  */
-export function measure(root = ROOT) {
+export function measure(root = ROOT, files = visibleFiles(root)) {
   /** @type {Record<string, number>} */
   const counts = {};
-  for (const path of visibleFiles(root).filter(isCounted)) {
+  for (const path of files.filter(isCounted)) {
     try {
       counts[path] = countLines(readFileSync(join(root, path), "utf8"));
     } catch {
@@ -108,18 +109,26 @@ export function measure(root = ROOT) {
 }
 
 if (import.meta.main) {
-  const counts = measure();
-  if (Object.keys(counts).length === 0) {
+  // `--files` narrows the walk to the changed files. The cap and the allowlist
+  // judge every file, so a change to either rescans the tree.
+  const scoped = filesFromArgs();
+  const narrow = scoped && !scoped.includes(ALLOWLIST) && !scoped.includes(".oxlintrc.json");
+  const counts = measure(ROOT, narrow ? scoped : undefined);
+  if (Object.keys(counts).length === 0 && !narrow) {
     console.error("❌ no .kt, .swift or .rs file found; the line count measured nothing");
     process.exit(1);
   }
   const cap = lineCap();
-  const problems = check(counts, readJson(ALLOWLIST), cap);
+  const allow = readJson(ALLOWLIST);
+  if (narrow) {
+    for (const path of Object.keys(allow)) if (!(path in counts)) delete allow[path];
+  }
+  const problems = check(counts, allow, cap);
   if (problems.length > 0) {
     for (const problem of problems) console.error(`❌ ${problem}`);
     process.exit(1);
   }
   console.log(
-    `✓ ${Object.keys(counts).length} Kotlin, Swift and Rust files within ${cap} lines or on the shrink-only list`,
+    `✓ ${Object.keys(counts).length}${narrow ? " changed" : ""} Kotlin, Swift and Rust files within ${cap} lines or on the shrink-only list`,
   );
 }

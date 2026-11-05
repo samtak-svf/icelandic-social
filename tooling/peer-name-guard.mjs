@@ -26,13 +26,15 @@
 import { createHash } from "node:crypto";
 import { readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
-import { git, readJson, ROOT, stagedFiles, visibleFiles } from "./lib/repo.mjs";
+import { filesFromArgs, git, readJson, ROOT, stagedFiles, visibleFiles } from "./lib/repo.mjs";
 
 /** @typedef {{ anywhere: string[], proper: string[], hosts: string[] }} NameList */
 /** @typedef {{ where: string, line: number, word: string }} Hit */
 
 const BINARY = /\.(png|jpe?g|gif|webp|ico|pdf|woff2?|ttf|otf|zip|jar|keystore|p8|p12)$/i;
 const SKIPPED = [/(^|\/)pnpm-lock\.yaml$/, /(^|\/)node_modules\//, /^tooling\/peer-names\.json$/];
+/** The hashed name list the verdict on every file depends on. */
+const NAME_LIST = "tooling/peer-names.json";
 const PROSE = /\.(md|mdx|txt)$/i;
 const URL_HOST = /\bhttps?:\/\/([^/\s)>\]"'`]+)/gi;
 
@@ -156,7 +158,7 @@ function main() {
     return;
   }
   /** @type {NameList} */
-  const names = readJson("tooling/peer-names.json");
+  const names = readJson(NAME_LIST);
   const message = argAfter("--message");
   const range = argAfter("--range");
   /** @type {Hit[]} */
@@ -179,8 +181,11 @@ function main() {
     }));
   } else {
     const staged = process.argv.includes("--staged");
-    const files = staged ? stagedFiles() : visibleFiles();
-    scope = `${files.length} ${staged ? "staged" : "visible"} file(s)`;
+    const scoped = filesFromArgs();
+    // The name list decides every file's verdict, so a change to it rescans all.
+    const files =
+      scoped && !scoped.includes(NAME_LIST) ? scoped : staged ? stagedFiles() : visibleFiles();
+    scope = `${files.length} ${scoped && files === scoped ? "changed" : staged ? "staged" : "visible"} file(s)`;
     hits = namesInFiles(files, names);
   }
   if (hits.length === 0) {

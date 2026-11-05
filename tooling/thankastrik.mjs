@@ -20,7 +20,7 @@
 
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { jsonStrings, ROOT, visibleFiles } from "./lib/repo.mjs";
+import { filesFromArgs, jsonStrings, ROOT, visibleFiles } from "./lib/repo.mjs";
 
 /** The two banned shapes. `\s` covers the no-break space. */
 const THANKASTRIK = [
@@ -64,8 +64,9 @@ export function auditThankastrik(files, root = ROOT) {
 }
 
 function main() {
-  const { problems, scanned } = auditThankastrik(visibleFiles());
-  if (scanned === 0) {
+  const scopedFiles = filesFromArgs();
+  const { problems, scanned } = auditThankastrik(scopedFiles ?? visibleFiles());
+  if (scanned === 0 && !scopedFiles) {
     console.error("✗ no brand JSON found: nothing was checked");
     process.exit(1);
   }
