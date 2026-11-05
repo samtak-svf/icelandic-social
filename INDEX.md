@@ -9,7 +9,7 @@ Quick navigation for AI assistants. Read this first to find the relevant section
 | Topic                                            | Line Range | Description                                                                                                  |
 | ------------------------------------------------ | ---------- | ------------------------------------------------------------------------------------------------------------ |
 | **The one structural rule: frozen ids vs brand** | 10-58      | Display names are cheap to change, resource identifiers are not; the brand folder holds everything renamable |
-| **Commands**                                     | 59-80      | Install, Worker, web, Rust core and app commands                                                             |
+| **Commands**                                     | 59-80      | The five everyday commands (install, check, brand:gen, test, ids-freeze) and the pointer to docs/commands.md |
 | **Git**                                          | 81-91      | Feature branches and PRs, never main; conventional commits                                                   |
 | **PII**                                          | 92-102     | Personal numbers never enter git; the PII guard and what it checks                                           |
 | **Public repository**                            | 103-110    | No other messenger is named; named comparisons stay in private/comparison/                                   |

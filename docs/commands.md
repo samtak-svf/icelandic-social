@@ -19,7 +19,10 @@ node tooling/ids-freeze.mjs --base origin/main   # what CI runs on a PR
 pnpm --filter spjall-backend dev       # cf dev: Vite with the Cloudflare plugin, API and web on :8787
 pnpm --filter spjall-backend build     # cf build: the Worker and the web app, into .cloudflare/output
 pnpm --filter spjall-backend check     # cf workers types, tsc, api/openapi.json drift
-pnpm --filter spjall-backend test      # vitest inside workerd (@cloudflare/vitest-plugin)
+pnpm --filter spjall-backend test      # vitest inside workerd (@cloudflare/vitest-plugin); the full suite, minutes on a loaded machine
+# The fast loop while working: one file, or one test by name, from backend/ (about 5 s)
+cd backend && pnpm exec vitest run test/shared/env.test.ts
+cd backend && pnpm exec vitest run test/shared/env.test.ts -t "<part of the test name>"
 pnpm --filter spjall-backend openapi   # regenerate api/openapi.json after a zod change ...
 node tooling/web-api.mjs     # ... then the web client from it
 cd backend && node scripts/ops.ts jobs   # way back, rollback, restores and jobs: docs/operations.md (0068)
@@ -34,7 +37,7 @@ cd core && cargo fmt --all && cargo clippy --workspace --all-targets -- -D warni
 cargo xtask core android     # needs the NDK named in core/artifact.lock.json and cargo-ndk
 cargo xtask core ios         # macOS only
 GH_TOKEN=$(gh auth token) cargo xtask fetch android   # the pinned published artifact, checksum-verified;
-                             # the repo is private, so its releases need a token (CI passes github.token)
+                             # the repo is public, so the token is optional: it only lifts the API rate limit (CI passes github.token)
 
 # The apps (they read the core from the paths xtask fills, never build it). Gradle, Xcode and the
 # emulator run on samtak-mac only, never on the Linux workstation (a local daemon fills its swap).

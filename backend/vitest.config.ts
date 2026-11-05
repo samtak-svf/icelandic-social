@@ -7,7 +7,7 @@ import { workerConfig } from "./scripts/worker-config.ts";
 // (tooling/vitest-load.mjs, docs/testing.md "Where CI runs"). The base is the
 // 15 s this suite always had; load stretches it up to 3x, never below it.
 const load = vitestLoad({ baseTimeoutMs: 15_000 });
-if (!process.env.CI) process.stderr.write(`${load.line}\n`);
+if (!process.env.CI && process.env.VITEST) process.stderr.write(`${load.line}\n`);
 
 // Tests run inside workerd with the real bindings from cloudflare.config.ts,
 // local and isolated per test file. The entry is test/worker.ts, the real
