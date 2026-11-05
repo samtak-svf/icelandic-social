@@ -95,7 +95,7 @@ describe("rebaseOn", () => {
     const root = repo();
     sideBySide(root, { [GENERATED]: "main\n" }, { [GENERATED]: "branch\n" });
 
-    expect(rebaseOn("main", root)).toBe(true);
+    expect(rebaseOn("main", root, true)).toBe(true);
     expect(readFileSync(join(root, GENERATED), "utf8")).toBe("main\n");
     expect(existsSync(join(root, ".git/rebase-merge"))).toBe(false);
   });
@@ -111,7 +111,7 @@ describe("rebaseOn", () => {
     const root = repo();
     sideBySide(root, { [SOURCE]: "main\n" }, { [SOURCE]: "branch\n" });
 
-    expect(rebaseOn("main", root)).toBe(false);
+    expect(rebaseOn("main", root, true)).toBe(false);
     expect(existsSync(join(root, ".git/rebase-merge"))).toBe(true);
   });
 
@@ -119,7 +119,7 @@ describe("rebaseOn", () => {
     const root = repo();
     sideBySide(root, { [GENERATED]: "main\n" }, { [GENERATED]: "branch\n", [SOURCE]: "branch\n" });
 
-    expect(rebaseOn("main", root)).toBe(true);
+    expect(rebaseOn("main", root, true)).toBe(true);
     expect(readFileSync(join(root, SOURCE), "utf8")).toBe("branch\n");
   });
 });
@@ -132,7 +132,7 @@ describe("settleNumbers", () => {
       { [`${MIGRATIONS}/0041_main.sql`]: "CREATE TABLE m (x TEXT);\n" },
       { [`${MIGRATIONS}/0041_mine.sql`]: "CREATE TABLE b (x TEXT);\n" },
     );
-    expect(rebaseOn("main", root)).toBe(true);
+    expect(rebaseOn("main", root, true)).toBe(true);
 
     expect(settleNumbers("main", root)).toEqual([{ from: "0041_mine.sql", to: "0042_mine.sql" }]);
     expect(existsSync(join(root, MIGRATIONS, "0041_main.sql"))).toBe(true);
@@ -150,7 +150,7 @@ describe("settleNumbers", () => {
         [SOURCE]: 'read("0041_mine.sql");\n',
       },
     );
-    expect(rebaseOn("main", root)).toBe(true);
+    expect(rebaseOn("main", root, true)).toBe(true);
 
     settleNumbers("main", root);
     expect(readFileSync(join(root, SOURCE), "utf8")).toBe('read("0042_mine.sql");\n');
@@ -164,7 +164,7 @@ describe("settleNumbers", () => {
       { [SOURCE]: "main\n" },
       { [`${MIGRATIONS}/0041_mine.sql`]: "CREATE TABLE b (x TEXT);\n" },
     );
-    expect(rebaseOn("main", root)).toBe(true);
+    expect(rebaseOn("main", root, true)).toBe(true);
 
     expect(settleNumbers("main", root)).toEqual([]);
     expect(git(root, ["diff", "--cached", "--name-only"])).toBe("");

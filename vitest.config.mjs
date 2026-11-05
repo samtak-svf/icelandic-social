@@ -10,6 +10,7 @@ if (!process.env.CI && process.env.VITEST) process.stderr.write(`${load.line}\n`
 
 export default defineConfig({
   test: {
+    experimental: { diagnostics: false },
     include: ["tooling/tests/**/*.test.mjs"],
     maxWorkers: load.maxWorkers,
     testTimeout: load.testTimeout,

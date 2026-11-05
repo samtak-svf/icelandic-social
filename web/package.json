@@ -15,6 +15,7 @@
   "scripts": {
     "typecheck": "tsc --noEmit && tsc --noEmit -p e2e",
     "test": "vitest run",
+    "test:changed": "vitest run --changed origin/main --passWithNoTests",
     "e2e": "playwright test"
   },
   "dependencies": {

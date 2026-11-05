@@ -10,6 +10,7 @@
     "typecheck": "cf workers types >/dev/null && tsc --noEmit",
     "check": "pnpm run typecheck && node scripts/openapi.ts --check",
     "test": "cf workers types >/dev/null && vitest run",
+    "test:changed": "cf workers types >/dev/null && vitest run --changed origin/main --passWithNoTests",
     "coverage": "cf workers types >/dev/null && vitest run --coverage",
     "invite:operator": "node scripts/invite-operator.ts",
     "migrate:remote": "node ../tooling/jurisdiction-check.mjs --deploy && node scripts/d1.ts migrate",

@@ -58,15 +58,23 @@ export function renumbered(onBase, own) {
  * falls back to an ordinary text merge, which is what a plain `git rebase` still does.
  * @param {string} base
  * @param {string} [root]
+ * @param {boolean} [quiet] keep git's report of a stop off stderr (the tests)
  * @returns {boolean} false when a source file stopped it
  */
-export function rebaseOn(base, root = ROOT) {
+export function rebaseOn(base, root = ROOT, quiet = false) {
   git(["config", "--local", "merge.generated.name", "written anew after the rebase"], root);
   git(["config", "--local", "merge.generated.driver", "true"], root);
   try {
-    git(["rebase", base], root);
+    // stderr is captured: git's "Rebasing (1/1)" progress is noise, and a conflict's
+    // report is printed below, only when the rebase stopped.
+    execFileSync("git", ["rebase", base], {
+      cwd: root,
+      env: GIT_ENV,
+      stdio: ["ignore", "pipe", "pipe"],
+    });
     return true;
-  } catch {
+  } catch (error) {
+    if (!quiet) process.stderr.write(String(/** @type {any} */ (error).stderr ?? ""));
     return false;
   }
 }
