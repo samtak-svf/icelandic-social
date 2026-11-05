@@ -9,6 +9,7 @@ pnpm check             # lint, types, format, every guard CI runs (the list, and
 pnpm brand:gen         # regenerate the platform files from brand/$BRAND
 pnpm test              # guard tests (vitest); each guard is proven to fail when it should
                        # what deserves a test, and the known sources of noise: docs/testing.md
+pnpm test:changed      # only the tests the diff against origin/main reaches (root, backend, web); the loop between one file and the whole suite
 pnpm format            # oxfmt --write .
 node tooling/ids-freeze.mjs --base origin/main   # what CI runs on a PR
 
@@ -22,6 +23,7 @@ pnpm --filter spjall-backend check     # cf workers types, tsc, api/openapi.json
 pnpm --filter spjall-backend test      # vitest inside workerd (@cloudflare/vitest-plugin); the full suite, minutes on a loaded machine
 # The fast loop while working: one file, or one test by name, from backend/ (about 5 s)
 cd backend && pnpm exec vitest run test/shared/env.test.ts
+pnpm --filter spjall-backend test:changed   # vitest run --changed origin/main: the tests whose imports the diff touches
 cd backend && pnpm exec vitest run test/shared/env.test.ts -t "<part of the test name>"
 pnpm --filter spjall-backend openapi   # regenerate api/openapi.json after a zod change ...
 node tooling/web-api.mjs     # ... then the web client from it
@@ -29,6 +31,7 @@ cd backend && node scripts/ops.ts jobs   # way back, rollback, restores and jobs
 
 # The web (web/ is a package of the root workspace; the Worker builds and serves it)
 pnpm --filter spjall-web test   # unit tests (vitest)
+pnpm --filter spjall-web test:changed   # only the unit tests the diff against origin/main reaches
 pnpm --filter spjall-web e2e    # Playwright in Chromium against `cf dev --mode interop` (web.yml)
 node tooling/mac-remote.mjs web   # the same on samtak-mac: fresh state, cf dev, Playwright (web/scripts/e2e.sh)
 
@@ -79,7 +82,9 @@ printf '#!/bin/sh\nexec java -jar "$HOME/.local/share/detekt/detekt-cli-all.jar"
 ```
 
 detekt runs without type resolution and only on `src/main` and `src/test`, as the Gradle task does. swift-format
-is not packaged for Fedora; on a machine without it the iOS check is the `ios` workflow. `ktlint -F <file>` fixes
+ships in Fedora's `swift-lang` package (`sudo dnf install swift-lang`, a large install); with it on PATH
+`native-lint.mjs` lints the Swift a branch changed. On a machine without it, or without `xcrun`, the iOS check is the
+`ios` workflow, or run `ios/scripts/lint.sh` on the Mac over the remote runner (`tooling/mac-remote.mjs`). `ktlint -F <file>` fixes
 most style errors in place.
 
 ## The contract

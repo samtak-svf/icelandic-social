@@ -9,6 +9,13 @@ import { workerConfig } from "./scripts/worker-config.ts";
 const load = vitestLoad({ baseTimeoutMs: 15_000 });
 if (!process.env.CI && process.env.VITEST) process.stderr.write(`${load.line}\n`);
 
+// wrangler prints "Using secrets defined in ..." and a missing-secrets warning once per
+// test file (94 times a run). Both are log-level chatter from its dev-vars loader: "error"
+// would hide real warnings too, so keep "warn" and satisfy the one it raises, with the same
+// test-only key the bindings below already hand the Worker.
+process.env.WRANGLER_LOG ??= "warn";
+process.env.KENNITALA_HMAC_KEY ??= "test-only-kennitala-key";
+
 // Tests run inside workerd with the real bindings from cloudflare.config.ts,
 // local and isolated per test file. The entry is test/worker.ts, the real
 // Worker with its Durable Object stubs checked for the EU jurisdiction, which
@@ -36,6 +43,9 @@ export default defineConfig({
     })),
   ],
   test: {
+    // The end-of-run tip to set `isolate: false` stays off: each file's own D1, R2 and
+    // Durable Object storage is what the suite relies on, so reusing workers is not safe.
+    experimental: { diagnostics: false },
     include: ["test/**/*.test.ts"],
     setupFiles: ["./test/setup.ts"],
     // Every expect.poll here waits for a Durable Object alarm that fires on

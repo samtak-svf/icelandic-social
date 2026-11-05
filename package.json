@@ -37,7 +37,8 @@
     "check:index": "node tooling/index-check.mjs",
     "check:decisions": "node tooling/gen-decisions-index.mjs --check",
     "knip": "knip",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:changed": "vitest run --changed origin/main --passWithNoTests && pnpm --filter spjall-backend test:changed && pnpm --filter spjall-web test:changed"
   },
   "devDependencies": {
     "@resvg/resvg-js": "^2.6.2",

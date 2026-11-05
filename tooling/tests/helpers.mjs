@@ -69,6 +69,9 @@ export function git(root, args) {
     {
       cwd: root,
       encoding: "utf8",
+      // stderr is captured, not inherited: a failing call still carries it in the thrown
+      // error, and a passing one (a rebase's progress line) stays out of the test output.
+      stdio: ["ignore", "pipe", "pipe"],
       // Without it a fixture's `git init` re-initialises the real repository.
       env: GIT_ENV,
     },
