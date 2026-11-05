@@ -16,6 +16,8 @@
 // with origin/main (committed, uncommitted and untracked) that match its regex,
 // and skips it when none do; a step without a `scoped` entry cannot narrow and
 // runs in full. Output prints per step when the step ends, then one summary line.
+// A passing step prints its `--- <name>: pass in N s` line only; a failing step
+// replays its whole output; `--verbose` prints every step's output (issue #588).
 // GUARDS_JOBS overrides the concurrency.
 
 import { execFileSync } from "node:child_process";
@@ -106,7 +108,23 @@ function concurrency() {
   };
 }
 
+/**
+ * What one finished step prints: the timing line, plus its output when it failed or `verbose`.
+ * @param {import("./lib/run-steps.mjs").Result} r
+ * @param {boolean} verbose
+ * @returns {string}
+ */
+export function renderResult(r, verbose) {
+  if (r.status === "skipped") return `\n--- ${r.name}: skipped, ${r.note}\n`;
+  const line = `--- ${r.name}: ${r.status} in ${(r.ms / 1000).toFixed(1)} s\n`;
+  if (r.status === "pass" && !verbose) return line;
+  const head = `\n${line}`;
+  if (!r.output.trim()) return head;
+  return head + (r.output.endsWith("\n") ? r.output : `${r.output}\n`);
+}
+
 async function main() {
+  const verbose = process.argv.includes("--verbose");
   const wantChanged = process.argv.includes("--changed");
   const pkg = readJson("package.json");
   let steps = stepsFromPackage(pkg);
@@ -119,21 +137,18 @@ async function main() {
     );
   }
   const { limit, basis } = concurrency();
-  console.log(`check: ${steps.length} steps, ${limit} at a time (${basis})`);
+  if (verbose) console.log(`check: ${steps.length} steps, ${limit} at a time (${basis})`);
   const start = Date.now();
   const results = await runSteps(steps, {
     limit,
     run: (step) => runCommand(step.command, { cwd: ROOT }),
     onResult: (r) => {
-      if (r.status === "skipped") return console.log(`\n--- ${r.name}: skipped, ${r.note}`);
-      console.log(`\n--- ${r.name}: ${r.status} in ${(r.ms / 1000).toFixed(1)} s`);
-      if (r.output.trim())
-        process.stdout.write(r.output.endsWith("\n") ? r.output : `${r.output}\n`);
+      process.stdout.write(renderResult(r, verbose));
     },
   });
   const wall = Date.now() - start;
   const failed = results.filter((r) => r.status !== "pass");
-  console.log(`\ncheck: ${summaryLine(results, wall)}`);
+  console.log(`${verbose || failed.length > 0 ? "\n" : ""}check: ${summaryLine(results, wall)}`);
   if (failed.length > 0) {
     console.log(`check: not passing: ${failed.map((r) => r.name).join(", ")}`);
     process.exitCode = 1;

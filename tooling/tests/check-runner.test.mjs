@@ -1,6 +1,6 @@
 // @ts-check
 import { describe, expect, it } from "vitest";
-import { scopeSteps, stepsFromPackage } from "../check.mjs";
+import { renderResult, scopeSteps, stepsFromPackage } from "../check.mjs";
 import { runCommand, runSteps, summaryLine, validateSteps } from "../lib/run-steps.mjs";
 
 /** A fake executor: records start and end order, fails the steps named in `failing`. */
@@ -135,5 +135,39 @@ describe("--changed", () => {
     expect(r.steps.map((s) => s.name)).toEqual(["format", "guard"]);
     expect(r.steps[0]?.after).toEqual([]);
     expect(() => validateSteps(r.steps)).not.toThrow();
+  });
+});
+
+describe("output (issue #588)", () => {
+  const noisy = Array.from({ length: 200 }, (_, i) => `> banner line ${i}`).join("\n") + "\n";
+  /** Print a run the way main() does and return the lines. */
+  async function printed(/** @type {string[]} */ failing, verbose = false) {
+    const steps = ["lint", "types", "guards"].map((n) => step(n));
+    let out = "";
+    const results = await runSteps(steps, {
+      limit: 3,
+      run: async (s) => ({ code: failing.includes(s.name) ? 1 : 0, output: noisy }),
+      onResult: (r) => (out += renderResult(r, verbose)),
+    });
+    out += `\ncheck: ${summaryLine(results, 10)}\n`;
+    return out.split("\n");
+  }
+
+  it("a pass prints only the timing lines and the summary", async () => {
+    const lines = await printed([]);
+    expect(lines.length).toBeLessThan(30);
+    expect(lines.filter((l) => /^--- \w+: pass in [\d.]+ s$/.test(l))).toHaveLength(3);
+    expect(lines.join("\n")).not.toContain("banner line");
+  });
+
+  it("a failing step replays its whole output, a passing one stays quiet", async () => {
+    const lines = await printed(["types"]);
+    expect(lines.filter((l) => l.startsWith("> banner line"))).toHaveLength(200);
+    expect(lines.some((l) => /^--- types: fail/.test(l))).toBe(true);
+  });
+
+  it("--verbose prints every step's output", async () => {
+    const lines = await printed([], true);
+    expect(lines.filter((l) => l.startsWith("> banner line"))).toHaveLength(600);
   });
 });
