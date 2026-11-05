@@ -8,6 +8,11 @@ export interface VitestLoadOptions {
   env?: Record<string, string | undefined>;
   readMeminfo?: () => number | null;
   loadavg?: () => number;
+  /** Aggregate /proc/stat cpu counters (idle includes iowait) and procs_running, or null when unreadable. */
+  readCpu?: () => { idle: number; total: number; running?: number } | null;
+  /** Synchronous pause between the two cpu samples. */
+  sleep?: (ms: number) => void;
+  sampleMs?: number;
   cores?: number;
 }
 

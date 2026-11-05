@@ -72,10 +72,19 @@ cd backend && pnpm exec vitest run test/modules/social                          
 pnpm exec vitest run tooling/tests/guards.test.mjs                               # a guard test, from the root
 ```
 
-Vitest 5 already keeps a module transform cache in `node_modules/.vitest-cache`; measured on this
-suite, switching it on or off with `--fsModuleCache` changed a 17 s subset run by under 5 %, so the
-"transform" share in the summary is mostly workerd and plugin start-up, not re-transformed modules.
-That is why one file is the fast loop. Run the full suite once before the PR; CI runs it regardless.
+Vitest 5 keeps a module transform cache in `node_modules/.vitest-cache`. Measured on the full backend
+suite (1331 tests, 94 files, 12-core box, warm cache, `pnpm --filter spjall-backend test`):
+
+| run                     | workers | wall time | vitest's phase split                   |
+| ----------------------- | ------- | --------- | -------------------------------------- |
+| default                 | 6       | 59 s      | tests 52 %, transform 23 %, setup 22 % |
+| `--fsModuleCache=true`  | 7       | 60 s      | tests 54 %, setup 22 %, transform 21 % |
+| `--fsModuleCache=false` | 6       | 72 s      | tests 42 %, transform 35 %, setup 22 % |
+| `VITEST_MAX_FORKS=1`    | 1       | 206 s     | tests 48 %, transform 32 %, setup 19 % |
+
+So the default already behaves like `--fsModuleCache=true`, and switching the option off costs about
+12 s. A 1-worker run on a busy box printed the hint "transforming modules took 83.68s ... re-done on
+every run"; none of the four runs above printed it, and no cause is established. One file stays the fast loop; run the full suite once before the PR, CI runs it regardless.
 
 ## A test reads the string
 
