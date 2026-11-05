@@ -11,7 +11,7 @@ import { euEnv } from "../../support.ts";
 const BASE = "https://spjall.test";
 export const REDIRECT = "https://exporter.example/callback";
 export const CLIENT_ID = "exporter-1";
-const CLIENT_SECRET = "exporter-secret-value";
+export const CLIENT_SECRET = "exporter-secret-value";
 
 async function sha256Hex(text: string): Promise<string> {
   const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));

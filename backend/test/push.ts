@@ -51,7 +51,11 @@ export function provider(...answers: Response[]) {
   const seen: Seen[] = [];
   const fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
     const request = new Request(input, init);
-    seen.push({ url: request.url, headers: request.headers, body: await request.text() });
+    seen.push({
+      url: request.url,
+      headers: request.headers,
+      body: new TextDecoder().decode(await request.arrayBuffer()),
+    });
     const answer = answers.shift();
     if (!answer) throw new Error(`unexpected request to ${request.url}`);
     return answer;

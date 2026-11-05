@@ -26,8 +26,13 @@ async function formOf(c: Context<AppEnv>): Promise<URLSearchParams | null> {
   if (!type.startsWith("application/x-www-form-urlencoded")) return null;
   const length = Number(c.req.header("content-length") ?? 0);
   if (length > FORM_BYTES) return null;
-  const text = await c.req.text();
-  return text.length > FORM_BYTES ? null : new URLSearchParams(text);
+  // Bytes, not .text(): workerd warns that .text() on a form body may corrupt it, and the
+  // decode here is the same UTF-8 a form body carries. The cap is on bytes, so a body with
+  // no content-length is held to it too.
+  const bytes = await c.req.arrayBuffer();
+  return bytes.byteLength > FORM_BYTES
+    ? null
+    : new URLSearchParams(new TextDecoder().decode(bytes));
 }
 
 /** Whether the request authenticates as the client, by Basic header or form body (2.3.1). */

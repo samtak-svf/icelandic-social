@@ -10,6 +10,7 @@ import {
   call,
   challengeOf,
   CLIENT_ID,
+  CLIENT_SECRET,
   connect,
   consent,
   REDIRECT,
@@ -73,6 +74,29 @@ describe("direct transfer authorization", () => {
     expect(after.status).toBe(401);
     expect(await after.json()).toMatchObject({ error: "session_invalidated" });
     expect((await ok<Grants>(await as(E, anna, "GET", "/v1/transfers"))).grants).toEqual([]);
+  });
+
+  it("reads a form body for credentials and holds it to its size", async () => {
+    const E = await transferEnv();
+    const revoke = (form: Record<string, string>) =>
+      call(E, "/oauth/revoke", {
+        method: "POST",
+        headers: { "content-type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams(form).toString(),
+      });
+    // The credentials travel in the body (RFC 6749 2.3.1), with a non-ASCII token value.
+    expect(
+      (await revoke({ client_id: CLIENT_ID, client_secret: CLIENT_SECRET, token: "þjóð" })).status,
+    ).toBe(200);
+    expect((await revoke({ client_id: CLIENT_ID, client_secret: "wrong" })).status).toBe(401);
+    // Over 16 KiB of bytes is refused, even when the characters alone would fit.
+    const big = await revoke({
+      client_id: CLIENT_ID,
+      client_secret: CLIENT_SECRET,
+      token: "þ".repeat(9_000),
+    });
+    expect(big.status).toBe(400);
+    expect(await big.json()).toMatchObject({ error: "invalid_request" });
   });
 
   it("lets the person revoke a grant, and only their own", async () => {
