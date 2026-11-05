@@ -91,6 +91,16 @@ ships in Fedora's `swift-lang` package (`sudo dnf install swift-lang`, a large i
 `ios` workflow, or run `ios/scripts/lint.sh` on the Mac over the remote runner (`tooling/mac-remote.mjs`). `ktlint -F <file>` fixes
 most style errors in place.
 
+## The Rust core in the apps
+
+`android/core/crypto/libs/` and `ios/Packages/SpjallCore/` are gitignored and filled by
+`cargo xtask core <android|ios>` (a local build) or `cargo xtask fetch <android|ios>` (the
+published version pinned with SHA-256 in `core/artifact.lock.json`). App CI only fetches, so
+the lock always pins a release. No Gradle or Xcode file calls cargo (`check:core`). A new core is published by `node tooling/core-release.mjs <version>`
+(`docs/operations.md`), which tags the merged commit and writes the lock on a branch; the lock moves only by PR.
+A change to the wasm exports commits the regenerated `web/src/generated/core.d.ts` (the
+`web/core/spjall_wasm.d.ts` that `cargo xtask core web` builds) in the same PR; `core.yml` fails otherwise.
+
 ## The contract
 
 **The contract (decisions 0005, 0097).** zod in `backend/src/api/` is the source. `api/openapi.json`
