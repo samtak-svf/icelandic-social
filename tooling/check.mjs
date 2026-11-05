@@ -133,7 +133,7 @@ async function main() {
     const scoped = scopeSteps(steps, pkg.guardRunner?.scoped ?? {}, files);
     steps = scoped.steps;
     console.log(
-      `--changed: ${files.length} file(s) against the merge base; skipped for lack of a matching file: ${scoped.dropped.join(", ") || "none"}`,
+      `--changed: ${files.length} file(s) against the merge base; ${scoped.dropped.length} scoped step(s) skipped for lack of a matching file (${scoped.dropped.join(", ") || "none"}); ${scoped.steps.length} to run`,
     );
   }
   const { limit, basis } = concurrency();

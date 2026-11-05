@@ -87,6 +87,26 @@
       "format:check": {
         "command": "pnpm exec oxfmt --check --no-error-on-unmatched-pattern {files}",
         "match": "\\.(js|mjs|ts|json|jsonc|toml|yml|yaml|md)$"
+      },
+      "check:brand-leak": {
+        "command": "node tooling/brand-leak-guard.mjs --files {files}",
+        "match": "."
+      },
+      "check:pii": {
+        "command": "node tooling/pii-guard.mjs --files {files}",
+        "match": "."
+      },
+      "check:peer-names": {
+        "command": "node tooling/peer-name-guard.mjs --files {files}",
+        "match": "."
+      },
+      "check:thankastrik": {
+        "command": "node tooling/thankastrik.mjs --files {files}",
+        "match": "^brand/[^/]+/[^/]+\\.json$"
+      },
+      "check:lines": {
+        "command": "node tooling/line-count.mjs --files {files}",
+        "match": "\\.(kt|swift|rs)$|^tooling/line-count\\.allow\\.json$|^\\.oxlintrc\\.json$"
       }
     }
   }

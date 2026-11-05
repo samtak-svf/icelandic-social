@@ -24,7 +24,14 @@ import { matchesGlob } from "node:path";
 import { readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { activeBrand, isOwned } from "./lib/brand-gen/paths.mjs";
-import { brandNames, jsonStrings, readJson, ROOT, visibleFiles } from "./lib/repo.mjs";
+import {
+  brandNames,
+  filesFromArgs,
+  jsonStrings,
+  readJson,
+  ROOT,
+  visibleFiles,
+} from "./lib/repo.mjs";
 
 /**
  * @typedef {{ stems: string[], allowPrefixes: string[], allowPaths: string[] }} LeakTerms
@@ -146,7 +153,11 @@ function main() {
     console.error("✗ no brand found under brand/: nothing was checked");
     process.exit(1);
   }
-  const files = visibleFiles();
+  // A brand.json defines the stems and allowances every file is judged by, so
+  // a changed one rescans the whole tree; any other changed file stands alone.
+  const scoped = filesFromArgs();
+  const files =
+    scoped && !scoped.some((f) => /^brand\/[^/]+\/brand\.json$/.test(f)) ? scoped : visibleFiles();
   const idProblems = leaksInIds(readJson("identifiers/ids.json"), brands);
   const leaks = leaksInFiles(files, brands);
   for (const p of idProblems) console.error(`::error file=identifiers/ids.json::${p}`);
@@ -164,7 +175,7 @@ in brand/<name>/brand.json with the reason.`);
     process.exit(1);
   }
   console.log(
-    `✓ no brand name outside brand/ in ${files.length} file(s); frozen ids neutral (${brands.map((b) => b.name).join(", ")})`,
+    `✓ no brand name outside brand/ in ${files.length} ${files === scoped ? "changed " : ""}file(s); frozen ids neutral (${brands.map((b) => b.name).join(", ")})`,
   );
 }
 

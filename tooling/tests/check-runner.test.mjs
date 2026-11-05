@@ -1,6 +1,7 @@
 // @ts-check
 import { describe, expect, it } from "vitest";
 import { renderResult, scopeSteps, stepsFromPackage } from "../check.mjs";
+import { readJson } from "../lib/repo.mjs";
 import { runCommand, runSteps, summaryLine, validateSteps } from "../lib/run-steps.mjs";
 
 /** A fake executor: records start and end order, fails the steps named in `failing`. */
@@ -135,6 +136,52 @@ describe("--changed", () => {
     expect(r.steps.map((s) => s.name)).toEqual(["format", "guard"]);
     expect(r.steps[0]?.after).toEqual([]);
     expect(() => validateSteps(r.steps)).not.toThrow();
+  });
+});
+
+describe("--changed on the real package.json (issue #590)", () => {
+  const pkg = readJson("package.json");
+  const all = stepsFromPackage(pkg);
+  const PER_FILE = [
+    "check:brand-leak",
+    "check:pii",
+    "check:peer-names",
+    "check:thankastrik",
+    "check:lines",
+  ];
+  /** Names of the steps a changed-file set selects. */
+  const selected = (/** @type {string[]} */ changed) =>
+    scopeSteps(all, pkg.guardRunner.scoped, changed).steps.map((s) => s.name);
+
+  it("a run with no changed file selects no per-file guard", () => {
+    const names = selected([]);
+    for (const guard of PER_FILE) expect(names).not.toContain(guard);
+    expect(names).not.toContain("lint");
+    expect(names).not.toContain("format:check");
+    expect(names.length).toBeLessThan(all.length - PER_FILE.length);
+  });
+
+  it("a changed source file selects the content guards, not the Kotlin line count", () => {
+    const names = selected(["web/src/a.ts"]);
+    expect(names).toEqual(
+      expect.arrayContaining(["check:brand-leak", "check:pii", "check:peer-names"]),
+    );
+    expect(names).not.toContain("check:thankastrik");
+    expect(names).not.toContain("check:lines");
+  });
+
+  it("a changed brand JSON selects thankastrik, a changed Kotlin file selects lines", () => {
+    expect(selected(["brand/x/strings.is.json"])).toContain("check:thankastrik");
+    expect(selected(["android/app/A.kt"])).toContain("check:lines");
+    expect(selected([".oxlintrc.json"])).toContain("check:lines");
+  });
+
+  it("every per-file command takes the file list", () => {
+    const { steps } = scopeSteps(all, pkg.guardRunner.scoped, ["a.kt", "brand/x/strings.is.json"]);
+    for (const guard of PER_FILE) {
+      const cmd = steps.find((s) => s.name === guard)?.command;
+      expect(cmd, guard).toMatch(/--files .*'/);
+    }
   });
 });
 

@@ -19,7 +19,7 @@
 
 import { readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
-import { ROOT, stagedFiles, visibleFiles } from "./lib/repo.mjs";
+import { filesFromArgs, ROOT, stagedFiles, visibleFiles } from "./lib/repo.mjs";
 
 /** Weights applied to the first eight digits, per Þjóðskrá's mod-11 scheme. */
 const CHECK_WEIGHTS = [3, 2, 7, 6, 5, 4, 3, 2];
@@ -179,11 +179,12 @@ export function findPii(files, root = ROOT) {
 
 function main() {
   const staged = process.argv.includes("--staged");
-  const files = staged ? stagedFiles() : visibleFiles();
+  const scoped = filesFromArgs();
+  const files = scoped ?? (staged ? stagedFiles() : visibleFiles());
   const findings = findPii(files);
   if (findings.length === 0) {
     console.log(
-      `✓ no kennitala or phone number in ${files.length} ${staged ? "staged" : "visible"} file(s)`,
+      `✓ no kennitala or phone number in ${files.length} ${scoped ? "changed" : staged ? "staged" : "visible"} file(s)`,
     );
     return;
   }
