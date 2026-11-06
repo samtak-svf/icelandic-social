@@ -10,8 +10,10 @@
 //    must never run code from outside the org.
 // 3. No `pull_request_target`: it runs with the repo's secrets on a fork's PR.
 // 4. A job that reads a secret runs on a hosted runner, never on a runner a
-//    variable names: those are our own machines (samtak-mac), and no secret
-//    reaches them (docs/testing.md, "Where CI runs").
+//    variable names (samtak-mac). Kept by choice: this repo is public, so
+//    hosted minutes are free and moving a credential job saves nothing. Since
+//    2026-11-06 the Mac host's root access is no longer the reason: the
+//    maintainer accepted that risk (docs/testing.md, "Where CI runs").
 // 5. No `nohup`: under the launchd runner on samtak-mac it has no terminal to
 //    detach from, so it exits ("can't detach from console") without starting
 //    the command. `(trap '' HUP; exec …) &` ignores SIGHUP the same way and
