@@ -69,6 +69,12 @@ jobs:
       - name: Deployable, and staging's D1 and R2 report jurisdiction eu
         run: node tooling/jurisdiction-check.mjs --staging --live
 
+      # No deploy after a merge without a test before it (as in deploy.yml).
+      - name: Types, OpenAPI drift and tests
+        run: |
+          pnpm --filter spjall-backend run check
+          pnpm --filter spjall-backend test
+
       - name: Remote D1 migrations
         run: pnpm --filter spjall-backend run migrate:staging
 
