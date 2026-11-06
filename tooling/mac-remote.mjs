@@ -4,9 +4,10 @@
 // hosted runner; a Mac that keeps its DerivedData and core between runs needs
 // only what changed.
 //
-// The transport is the maintainer's shared mac-remote script, so every repo
-// that uses the Mac obeys one data rule: the Mac is rented, and no secret and
-// no personal data may reach it. It ships tracked files with their edits plus
+// The transport is the maintainer's shared mac-remote script. A remote run
+// needs no secret, so none is shipped; that is hygiene, not a secrecy rule
+// (since 2026-11-06 the maintainer accepts that the rented Mac's host can read
+// what runs there). It ships tracked files with their edits plus
 // new files that are not ignored, deletes there what was deleted here, and
 // refuses the whole run when a selected path is under private/ (decision 0008),
 // .wrangler/ or secrets/, or is a secret-bearing file. Ignored paths never

@@ -3,8 +3,8 @@ name: jurisdiction
 # Asks Cloudflare whether the D1 database and the R2 bucket
 # backend/cloudflare.config.ts binds exist in the EU jurisdiction (decision
 # 0001). Skipped until the read-only token is set; from then on a missing or
-# non-EU resource fails. It reads a secret, so it stays on a hosted runner: no
-# secret reaches samtak-mac (tooling/workflow-guard.mjs, rule 4).
+# non-EU resource fails. It reads a secret, so it stays on a hosted runner,
+# which is free for this public repo (tooling/workflow-guard.mjs, rule 4).
 #
 # Not on PRs. The gate that matters is the deploy workflow, which runs
 # `jurisdiction-check.mjs --deploy --live` before every deploy and fails

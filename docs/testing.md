@@ -330,9 +330,12 @@ instances), for its speed and its arm64 AVD, each chosen by a repository variabl
   `SPJALL_DEV_URL`), so two Workers share one machine. `tooling/workflow-guard.mjs` keeps a fixed
   `127.0.0.1:8787` out of the workflows and `EXCLUSIVE_RUNNER_LABELS` out of every workflow but
   `android.yml`. Run by hand, `cf dev` stays on 8787.
-- **No secret reaches the Mac.** A job that reads a secret (the live jurisdiction check, deploys,
-  store uploads, signing) names a hosted runner, and `tooling/workflow-guard.mjs` refuses one that
-  reads a runner variable.
+- **Credential jobs stay hosted, by choice.** A job that reads a secret (the live jurisdiction
+  check, deploys, store uploads, signing) names a hosted runner, and `tooling/workflow-guard.mjs`
+  refuses one that reads a runner variable. This repo is public, so hosted minutes are free and
+  moving those jobs would save nothing. The Mac host's root access is not the reason: on 2026-11-06
+  the maintainer accepted that it can read secrets, since every key can be rotated, and CI that
+  holds secrets runs on the Macs in the other repos.
 - Steps that download a binary pick the build from `RUNNER_OS` and `RUNNER_ARCH`, so a job runs
   on either lane.
 - **A merge does not repeat what its PR proved.** A green PR run of a workflow leaves a marker
