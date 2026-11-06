@@ -93,6 +93,20 @@ jobs:
           target: android
           token: ${{ github.token }}
 
+      - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
+      # No release is signed or uploaded without the tests of android.yml passing on this
+      # commit: the same Gradle task, and the same check that unit tests really ran.
+      - name: Check (lint and unit tests)
+        working-directory: android
+        run: ./gradlew --console=plain check
+
+      - name: Fail when no unit tests ran
+        working-directory: android
+        run: |
+          COUNT=$(find . -path '*/build/test-results/*' -name 'TEST-*.xml' | wc -l)
+          echo "unit test result files: $COUNT"
+          test "$COUNT" -gt 0
+
       # Push needs the Firebase client values (decision 0025); the build checks
       # the file's project against identifiers/ids.json.
       - name: Signing material and Firebase config
@@ -103,7 +117,6 @@ jobs:
           echo "$KEYSTORE" | base64 -d > "$RUNNER_TEMP/upload.jks"
           printf '%s' "$GOOGLE_SERVICES" > android/app/google-services.json
 
-      - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
       # The run number gives the version code (plus an offset, app/build.gradle.kts):
       # Play refuses a repeated one.
       - name: Bundle (release)

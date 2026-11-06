@@ -119,6 +119,14 @@ jobs:
           brew install xcodegen
           xcodegen generate
 
+      # No release is signed or uploaded without the tests of ios.yml passing on this
+      # commit: the same script (swift-format, then xcodebuild test in a simulator,
+      # signed ad hoc, failing when no test ran).
+      - name: Build and test (simulator, signed ad hoc)
+        run: ios/scripts/test.sh
+        env:
+          GITHUB_TOKEN: ${{ github.token }} # the script fetches the core again on a fresh checkout
+
       - name: Import the distribution certificate
         uses: apple-actions/import-codesign-certs@288b8ec97b82c66b6f2a6baaf7acc8dfbcbe331c # v7.2.0
         with:
